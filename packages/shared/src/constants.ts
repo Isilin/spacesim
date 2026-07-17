@@ -1,0 +1,66 @@
+/** Durée d'un tick de simulation, en ms. */
+export const TICK_MS = 5000;
+
+/** Catch-up hors-ligne borné : au-delà, le temps est perdu (évite de rejouer des semaines). */
+export const MAX_CATCHUP_TICKS = (24 * 3600 * 1000) / TICK_MS;
+
+/** Dimensions des cartes galaxie et univers (viewBox SVG). */
+export const MAP_WIDTH = 1000;
+export const MAP_HEIGHT = 700;
+
+/** Dimension de la vue système (viewBox SVG carré, étoile au centre). */
+export const SYSTEM_VIEW_SIZE = 900;
+
+/** Capacité de stockage de base par ressource, + bonus par niveau d'entrepôt. */
+export const BASE_STORAGE = 1000;
+export const STORAGE_PER_DEPOT = 1000;
+
+/** Ressources non plafonnées par le stockage. */
+export const UNCAPPED_RESOURCES = ["credits", "science"] as const;
+
+/** Taille max de la file de construction (extensible par tech plus tard). */
+export const MAX_QUEUE_LENGTH = 3;
+
+/** Modificateur de gisement quand la planète n'en a pas pour la ressource extraite. */
+export const NO_DEPOSIT_MODIFIER = 0.5;
+
+/** Nourriture consommée par colon et par tick. */
+export const FOOD_PER_COLONIST = 0.05;
+
+/** Logements fournis par niveau d'habitat. */
+export const HOUSING_PER_HABITAT = 20;
+
+/** Impôt : crédits par colon et par tick, pondéré par la satisfaction. */
+export const CREDITS_PER_COLONIST = 0.02;
+
+/**
+ * Croissance de base par tick à satisfaction max, loin du plafond de population
+ * (logistique : ralentit près du plafond, négative sous 50 de satisfaction).
+ */
+export const POP_GROWTH_BASE = 0.003;
+
+/** En-dessous de ce seuil de satisfaction, la population décline. */
+export const SATISFACTION_GROWTH_THRESHOLD = 50;
+
+/** Biens de consommation par colon et par tick (manque toléré : pèse sur la satisfaction). */
+export const GOODS_PER_COLONIST = 0.02;
+
+/** Convois cargo : temps et coût selon la distance en sauts. */
+export const TRANSFER_BASE_MS = 30_000;
+export const TRANSFER_MS_PER_JUMP = 60_000;
+export const TRANSFER_BASE_CREDITS = 5;
+export const TRANSFER_CREDITS_PER_JUMP = 5;
+
+/** Sonde : révèle les planètes d'un système. */
+export const PROBE_COST_CREDITS = 25;
+export const PROBE_BASE_MS = 20_000;
+export const PROBE_MS_PER_JUMP = 30_000;
+
+/** Vaisseau colonial : coût élevé (gaté par la chaîne composants) + trajet. */
+export const COLONY_SHIP_COST = { components: 40, food: 50, credits: 100 } as const;
+export const COLONY_SHIP_BASE_MS = 60_000;
+export const COLONY_SHIP_MS_PER_JUMP = 90_000;
+
+/** Dotation d'une colonie fondée par vaisseau colonial. */
+export const NEW_COLONY_POPULATION = 10;
+export const NEW_COLONY_RESOURCES = { ore: 100, energy: 50, food: 100 } as const;

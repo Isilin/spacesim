@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1783955262466,
+      "tag": "0000_thankful_lily_hollister",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1783973757558,
+      "tag": "0001_lethal_nebula",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784017280199,
+      "tag": "0002_wide_captain_britain",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1784057652672,
+      "tag": "0003_gifted_maddog",
+      "breakpoints": true
+    }
+  ]
+}

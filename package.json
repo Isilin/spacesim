@@ -1,0 +1,14 @@
+{
+  "name": "spacesim",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev:server": "pnpm --filter @spacesim/server dev",
+    "dev:web": "pnpm --filter @spacesim/web dev",
+    "test": "pnpm --filter @spacesim/shared test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

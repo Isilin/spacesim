@@ -1,0 +1,301 @@
+import {
+  allSystems,
+  COMBAT_DIRECTIVES,
+  COMBAT_PHASES,
+  fleetPower,
+  WARSHIP_IDS,
+  WARSHIPS,
+  type BattleReport,
+  type ClientMessage,
+  type Colony,
+  type Fleet,
+  type FleetComposition,
+  type PirateLair,
+  type ResourceId,
+  type StoredBattle,
+  type TechId,
+  type Universe,
+  type WarshipId,
+} from "@spacesim/shared";
+import { useState } from "react";
+import { DIRECTIVE_LABELS, RESOURCE_LABELS, WARSHIP_LABELS } from "./labels.js";
+
+interface Props {
+  fleets: Fleet[];
+  pirateLairs: PirateLair[];
+  battles: StoredBattle[];
+  colonies: Colony[];
+  universe: Universe;
+  researched: readonly string[];
+  now: number;
+  send: (msg: ClientMessage) => void;
+}
+
+const PHASE_LABELS: Record<string, string> = {
+  long: "Longue portée",
+  medium: "Moyenne portée",
+  short: "Mêlée",
+};
+
+function formatEta(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(s / 60);
+  return m > 0 ? `${m}m${String(s % 60).padStart(2, "0")}s` : `${s}s`;
+}
+
+function compositionText(comp: FleetComposition): string {
+  const parts = (Object.entries(comp) as [WarshipId, number][])
+    .filter(([, n]) => n > 0)
+    .map(([id, n]) => `${n} ${WARSHIP_LABELS[id].name}`);
+  return parts.length > 0 ? parts.join(" · ") : "vide";
+}
+
+export function FleetsView({
+  fleets,
+  pirateLairs,
+  battles,
+  colonies,
+  universe,
+  researched,
+  now,
+  send,
+}: Props) {
+  const [newFleetColony, setNewFleetColony] = useState("");
+  const [newFleetName, setNewFleetName] = useState("");
+  const [openBattle, setOpenBattle] = useState<string | null>(null);
+  const systemName = (id: string) => allSystems(universe).find((s) => s.id === id)?.name ?? id;
+
+  const colony = colonies.find((c) => c.id === newFleetColony) ?? colonies[0];
+
+  return (
+    <div className="fleets-view">
+      <div className="colony-columns">
+        <section className="buildings-panel">
+          <h3>Flottes</h3>
+          {fleets.length === 0 && <p className="muted">Aucune flotte.</p>}
+          <ul className="route-list">
+            {fleets.map((fleet) => {
+              const lairsHere = pirateLairs.filter((l) => l.systemId === fleet.systemId);
+              return (
+                <li key={fleet.id} className="route-item">
+                  <div className="queue-head">
+                    <strong>{fleet.name}</strong>
+                    <span className="muted small">
+                      {fleet.movement
+                        ? `→ ${systemName(fleet.movement.toSystemId)} (${formatEta(fleet.movement.arrivesAt - now)})`
+                        : systemName(fleet.systemId)}
+                    </span>
+                  </div>
+                  <span className="small">
+                    {compositionText(fleet.ships)} · puissance {fleetPower(fleet.ships)}
+                  </span>
+
+                  {fleet.queue.length > 0 && (
+                    <span className="small muted">
+                      Production : {WARSHIP_LABELS[fleet.queue[0]!.warshipId as WarshipId].name} —{" "}
+                      {formatEta(fleet.queue[0]!.finishesAt - now)}
+                      {fleet.queue.length > 1 ? ` (+${fleet.queue.length - 1})` : ""}
+                    </span>
+                  )}
+
+                  {/* Production de vaisseaux */}
+                  {!fleet.movement && (
+                    <div className="warship-build">
+                      {WARSHIP_IDS.map((id) => {
+                        const def = WARSHIPS[id];
+                        const locked = !researched.includes(def.requiresTech);
+                        return (
+                          <button
+                            key={id}
+                            className="action-button small"
+                            disabled={locked}
+                            title={
+                              locked
+                                ? "Tech militaire requise"
+                                : Object.entries(def.cost)
+                                    .map(([r, n]) => `${n} ${RESOURCE_LABELS[r as ResourceId]}`)
+                                    .join(" · ")
+                            }
+                            onClick={() => send({ type: "buildWarship", fleetId: fleet.id, warshipId: id })}
+                          >
+                            + {WARSHIP_LABELS[id].name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Directives par phase */}
+                  <div className="directives">
+                    {COMBAT_PHASES.map((phase) => (
+                      <label key={phase} className="small muted">
+                        {PHASE_LABELS[phase]}
+                        <select
+                          value={fleet.directives[phase]}
+                          onChange={(e) =>
+                            send({
+                              type: "setFleetDirectives",
+                              fleetId: fleet.id,
+                              directives: { ...fleet.directives, [phase]: e.target.value },
+                            })
+                          }
+                        >
+                          {COMBAT_DIRECTIVES.map((d) => (
+                            <option key={d} value={d}>
+                              {DIRECTIVE_LABELS[d].name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+
+                  {/* Déplacement */}
+                  {!fleet.movement && (
+                    <div className="route-actions">
+                      <select
+                        className="colony-select"
+                        defaultValue=""
+                        onChange={(e) => {
+                          if (e.target.value)
+                            send({ type: "moveFleet", fleetId: fleet.id, toSystemId: e.target.value });
+                          e.target.value = "";
+                        }}
+                      >
+                        <option value="">Déplacer vers…</option>
+                        {allSystems(universe)
+                          .filter((s) => s.id !== fleet.systemId)
+                          .map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                      </select>
+                      <button
+                        className="action-button"
+                        onClick={() => send({ type: "disbandFleet", fleetId: fleet.id })}
+                      >
+                        Dissoudre
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Repaires attaquables sur place */}
+                  {lairsHere.map((lair) => (
+                    <div key={lair.id} className="lair-target">
+                      <span className="small ko">
+                        ☠ Repaire pirate — {compositionText(lair.ships)} · butin {lair.bounty} ✧
+                      </span>
+                      <button
+                        className="action-button"
+                        disabled={!!fleet.movement}
+                        onClick={() => send({ type: "attackLair", fleetId: fleet.id, lairId: lair.id })}
+                      >
+                        Attaquer
+                      </button>
+                    </div>
+                  ))}
+                </li>
+              );
+            })}
+          </ul>
+
+          {colonies.length > 0 && (
+            <div className="transfer-form">
+              <strong className="small">Nouvelle flotte</strong>
+              <label className="small muted">
+                Rattachée à{" "}
+                <select value={colony?.id ?? ""} onChange={(e) => setNewFleetColony(e.target.value)}>
+                  {colonies.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <input
+                className="fleet-name"
+                placeholder="Nom de la flotte"
+                value={newFleetName}
+                onChange={(e) => setNewFleetName(e.target.value)}
+              />
+              <button
+                disabled={!colony}
+                onClick={() => {
+                  if (!colony) return;
+                  send({ type: "createFleet", colonyId: colony.id, name: newFleetName });
+                  setNewFleetName("");
+                }}
+              >
+                Créer la flotte
+              </button>
+            </div>
+          )}
+        </section>
+
+        <section className="queue-panel">
+          <h3>Menaces & rapports</h3>
+          {pirateLairs.length > 0 && (
+            <ul className="queue-list">
+              {pirateLairs.map((lair) => (
+                <li key={lair.id} className="queue-item">
+                  <div className="queue-head">
+                    <span className="ko">☠ {systemName(lair.systemId)}</span>
+                    <span className="muted small">{fleetPower(lair.ships)}</span>
+                  </div>
+                  <span className="small muted">{compositionText(lair.ships)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <h4 className="small muted" style={{ marginTop: 12 }}>
+            Rapports de bataille
+          </h4>
+          {battles.length === 0 ? (
+            <p className="muted small">Aucune bataille.</p>
+          ) : (
+            <ul className="queue-list">
+              {battles.map((b) => {
+                const report = b.report as BattleReport;
+                const won = report.winner === "attacker";
+                return (
+                  <li key={b.id} className="queue-item">
+                    <div
+                      className="queue-head battle-head"
+                      onClick={() => setOpenBattle(openBattle === b.id ? null : b.id)}
+                    >
+                      <span className={won ? "ok" : "ko"}>
+                        {won ? "Victoire" : report.winner === "draw" ? "Nul" : "Défaite"} —{" "}
+                        {systemName(b.systemId)}
+                      </span>
+                      <span className="muted small">{b.attackerName}</span>
+                    </div>
+                    {openBattle === b.id && (
+                      <div className="battle-detail small">
+                        {report.phases.map((p, i) => (
+                          <div key={i} className="battle-phase">
+                            <strong>{PHASE_LABELS[p.phase]}</strong> —{" "}
+                            {DIRECTIVE_LABELS[p.attackerDirective].name} vs{" "}
+                            {DIRECTIVE_LABELS[p.defenderDirective].name}
+                            <div className="muted">
+                              Pertes : {compositionText(p.attackerLosses)} / ennemi{" "}
+                              {compositionText(p.defenderLosses)}
+                            </div>
+                          </div>
+                        ))}
+                        <div className="muted">
+                          Survivants : {compositionText(report.attackerSurvivors)}
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}

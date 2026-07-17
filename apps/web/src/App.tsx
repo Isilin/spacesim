@@ -1,0 +1,355 @@
+import {
+  allPlanets,
+  allSystems,
+  computeEffects,
+  findGalaxyOfSystem,
+  gatewayLinks,
+  type Planet,
+  type StarSystem,
+  type TechId,
+} from "@spacesim/shared";
+import { useEffect, useMemo, useState } from "react";
+import { ColonyView } from "./ColonyView.js";
+import { EmpireView } from "./EmpireView.js";
+import { GalaxyMap } from "./GalaxyMap.js";
+import { FleetsView } from "./FleetsView.js";
+import { GatewaysPanel } from "./GatewaysPanel.js";
+import { ResearchView } from "./ResearchView.js";
+import { RoutesView } from "./RoutesView.js";
+import { SystemPanel } from "./SystemPanel.js";
+import { SystemView } from "./SystemView.js";
+import { UniverseMap } from "./UniverseMap.js";
+import { useGameSocket } from "./useGameSocket.js";
+import { useNotifications } from "./useNotifications.js";
+
+type Tab = "map" | "colony" | "logistics" | "fleets" | "research" | "empire";
+
+/** Niveau de zoom de la carte : univers → galaxie → système. */
+type MapView =
+  | { level: "universe" }
+  | { level: "galaxy"; galaxyId: string }
+  | { level: "system"; galaxyId: string; systemId: string };
+
+/** Horloge locale pour les comptes à rebours (les timers font foi côté serveur). */
+function useNow(): number {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return now;
+}
+
+export function App() {
+  const {
+    universe,
+    game,
+    colonies,
+    transfers,
+    missions,
+    exploredSystemIds,
+    markets,
+    routes,
+    outposts,
+    gateways,
+    fleets,
+    pirateLairs,
+    battles,
+    connected,
+    actionError,
+    send,
+  } = useGameSocket();
+  const [tab, setTab] = useState<Tab>("colony");
+  const [colonyId, setColonyId] = useState<string | null>(null);
+  const [mapView, setMapView] = useState<MapView | null>(null);
+  const [selectedSystemId, setSelectedSystemId] = useState<string | null>(null);
+  const [selectedBodyId, setSelectedBodyId] = useState<string | null>(null);
+  const now = useNow();
+  const effects = useMemo(
+    () => computeEffects((game?.researched ?? []) as TechId[]),
+    [game?.researched],
+  );
+  const portalLinks = useMemo(
+    () => (universe ? gatewayLinks(universe, gateways) : []),
+    [universe, gateways],
+  );
+  const notifications = useNotifications({
+    game,
+    colonies,
+    transfers,
+    missions,
+    exploredSystemIds,
+    universe,
+    battleCount: battles.length,
+  });
+
+  if (!universe || !game) {
+    return <div className="loading">Connexion au serveur…</div>;
+  }
+
+  const colony = colonies.find((c) => c.id === colonyId) ?? colonies[0] ?? null;
+  const colonyPlanet = colony
+    ? allPlanets(universe).find((p) => p.id === colony.planetId)
+    : undefined;
+
+  // Vue par défaut : la galaxie de la colonie active.
+  const homeGalaxy = colonyPlanet
+    ? findGalaxyOfSystem(universe, colonyPlanet.systemId)
+    : universe.galaxies[0];
+  const view: MapView = mapView ?? { level: "galaxy", galaxyId: homeGalaxy?.id ?? "gal-0" };
+
+  const viewGalaxy =
+    view.level !== "universe"
+      ? universe.galaxies.find((g) => g.id === view.galaxyId) ?? universe.galaxies[0]!
+      : null;
+  const viewSystem =
+    view.level === "system" && viewGalaxy
+      ? viewGalaxy.systems.find((s) => s.id === view.systemId) ?? null
+      : null;
+  const selectedSystem = selectedSystemId
+    ? allSystems(universe).find((s) => s.id === selectedSystemId) ?? null
+    : null;
+
+  const openSystem = (system: StarSystem) => {
+    const galaxy = findGalaxyOfSystem(universe, system.id);
+    if (!galaxy) return;
+    setMapView({ level: "system", galaxyId: galaxy.id, systemId: system.id });
+    setSelectedSystemId(system.id);
+    setSelectedBodyId(null);
+  };
+
+  const selectBody = (planet: Planet) => setSelectedBodyId(planet.id);
+
+  return (
+    <div className="layout">
+      <header className="topbar">
+        <span className="brand">SPACESIM</span>
+        <nav className="tabs">
+          <button className={tab === "colony" ? "active" : ""} onClick={() => setTab("colony")}>
+            Colonie
+          </button>
+          <button className={tab === "map" ? "active" : ""} onClick={() => setTab("map")}>
+            Carte
+          </button>
+          <button
+            className={tab === "logistics" ? "active" : ""}
+            onClick={() => setTab("logistics")}
+          >
+            Logistique
+          </button>
+          <button className={tab === "fleets" ? "active" : ""} onClick={() => setTab("fleets")}>
+            Flottes{pirateLairs.length > 0 ? ` (${pirateLairs.length}☠)` : ""}
+          </button>
+          <button
+            className={tab === "research" ? "active" : ""}
+            onClick={() => setTab("research")}
+          >
+            Recherche
+          </button>
+          <button className={tab === "empire" ? "active" : ""} onClick={() => setTab("empire")}>
+            Empire
+          </button>
+        </nav>
+        {colonies.length > 1 && (
+          <select
+            className="colony-select"
+            value={colony?.id ?? ""}
+            onChange={(e) => setColonyId(e.target.value)}
+          >
+            {colonies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
+        <span className="stat influence" title="Influence de l'empire">
+          ✦ {Math.floor(game.influence)}
+        </span>
+        <span className="stat">Tick {game.tick}</span>
+        <span className={`stat ${connected ? "ok" : "ko"}`}>
+          {connected ? "● LIAISON ÉTABLIE" : "○ LIAISON PERDUE"}
+        </span>
+      </header>
+
+      {actionError && <div className="toast-error">{actionError}</div>}
+
+      {notifications.length > 0 && (
+        <div className="toast-stack">
+          {notifications.map((n) => (
+            <div key={n.id} className="toast-info">
+              {n.text}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === "colony" ? (
+        <main className="content-single">
+          {colony && colonyPlanet ? (
+            <ColonyView
+              colony={colony}
+              planet={colonyPlanet}
+              colonies={colonies}
+              transfers={transfers}
+              universe={universe}
+              effects={effects}
+              routes={routes}
+              researched={game.researched}
+              portalLinks={portalLinks}
+              send={send}
+            />
+          ) : (
+            <p className="muted">Aucune colonie.</p>
+          )}
+        </main>
+      ) : tab === "logistics" ? (
+        <main className="content-single">
+          <RoutesView
+            routes={routes}
+            colonies={colonies}
+            universe={universe}
+            exploredSystemIds={exploredSystemIds}
+            outposts={outposts}
+            now={now}
+            send={send}
+          />
+        </main>
+      ) : tab === "fleets" ? (
+        <main className="content-single">
+          <FleetsView
+            fleets={fleets}
+            pirateLairs={pirateLairs}
+            battles={battles}
+            colonies={colonies}
+            universe={universe}
+            researched={game.researched}
+            now={now}
+            send={send}
+          />
+        </main>
+      ) : tab === "research" ? (
+        <main className="content-single">
+          <ResearchView game={game} colonies={colonies} now={now} send={send} />
+        </main>
+      ) : tab === "empire" ? (
+        <main className="content-single">
+          <EmpireView
+            game={game}
+            colonies={colonies}
+            universe={universe}
+            exploredSystemIds={exploredSystemIds}
+          />
+        </main>
+      ) : (
+        <main className="content">
+          <section className="map-panel">
+            <nav className="breadcrumb">
+              <button onClick={() => setMapView({ level: "universe" })}>Univers</button>
+              {viewGalaxy && (
+                <>
+                  <span className="muted">/</span>
+                  <button
+                    onClick={() => setMapView({ level: "galaxy", galaxyId: viewGalaxy.id })}
+                  >
+                    {viewGalaxy.name}
+                  </button>
+                </>
+              )}
+              {viewSystem && (
+                <>
+                  <span className="muted">/</span>
+                  <span className="breadcrumb-current">{viewSystem.name}</span>
+                </>
+              )}
+            </nav>
+            {view.level === "universe" ? (
+              <UniverseMap
+                universe={universe}
+                colonies={colonies}
+                exploredSystemIds={exploredSystemIds}
+                gateways={gateways}
+                onSelect={(galaxy) => setMapView({ level: "galaxy", galaxyId: galaxy.id })}
+              />
+            ) : view.level === "galaxy" && viewGalaxy ? (
+              <GalaxyMap
+                galaxy={viewGalaxy}
+                colonies={colonies}
+                missions={missions}
+                exploredSystemIds={exploredSystemIds}
+                claimedSystemIds={game.claimedSystemIds}
+                selectedId={selectedSystemId}
+                onSelect={(s) => setSelectedSystemId(s.id)}
+                onOpenSystem={openSystem}
+              />
+            ) : viewSystem ? (
+              <SystemView
+                system={viewSystem}
+                colonies={colonies}
+                explored={exploredSystemIds.includes(viewSystem.id)}
+                selectedBodyId={selectedBodyId}
+                onSelectBody={selectBody}
+              />
+            ) : null}
+          </section>
+          <aside className="side-panel">
+            {view.level === "system" && viewSystem ? (
+              <SystemPanel
+                system={viewSystem}
+                colonies={colonies}
+                missions={missions}
+                explored={exploredSystemIds.includes(viewSystem.id)}
+                activeColony={colony}
+                effects={effects}
+                markets={markets}
+                universe={universe}
+                outposts={outposts}
+                game={game}
+                routes={routes}
+                portalLinks={portalLinks}
+                now={now}
+                send={send}
+              />
+            ) : selectedSystem ? (
+              <>
+                <SystemPanel
+                  system={selectedSystem}
+                  colonies={colonies}
+                  missions={missions}
+                  explored={exploredSystemIds.includes(selectedSystem.id)}
+                  activeColony={colony}
+                  effects={effects}
+                  markets={markets}
+                  universe={universe}
+                  outposts={outposts}
+                  game={game}
+                  routes={routes}
+                  portalLinks={portalLinks}
+                  now={now}
+                  send={send}
+                />
+                <button className="action-button" onClick={() => openSystem(selectedSystem)}>
+                  Ouvrir la vue système
+                </button>
+              </>
+            ) : view.level === "universe" ? (
+              <GatewaysPanel
+                gateways={gateways}
+                universe={universe}
+                activeColony={colony}
+                routes={routes}
+                researched={game.researched}
+                now={now}
+                send={send}
+              />
+            ) : (
+              <p className="muted">
+                Sélectionnez un système (double-clic : vue système).
+              </p>
+            )}
+          </aside>
+        </main>
+      )}
+    </div>
+  );
+}

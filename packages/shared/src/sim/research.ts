@@ -1,0 +1,71 @@
+import { BASE_BUILDINGS, TECHS, type TechId } from "../content/techs.js";
+import type { BuildingId } from "../types.js";
+
+/** Effets d'empire agrégés depuis les techs recherchées. */
+export interface EmpireEffects {
+  unlockedBuildings: Set<BuildingId>;
+  outputMult: Partial<Record<BuildingId, number>>;
+  outputMultAll: number;
+  housingMult: number;
+  habitabilityBonus: number;
+  queueBonus: number;
+  probeSpeedMult: number;
+  probeCostMult: number;
+  colonyShipSpeedMult: number;
+  transferSpeedMult: number;
+  satisfactionBonus: number;
+  popGrowthMult: number;
+  goodsNeedMult: number;
+  creditsMult: number;
+}
+
+export function computeEffects(researched: readonly TechId[]): EmpireEffects {
+  const effects: EmpireEffects = {
+    unlockedBuildings: new Set(BASE_BUILDINGS),
+    outputMult: {},
+    outputMultAll: 1,
+    housingMult: 1,
+    habitabilityBonus: 0,
+    queueBonus: 0,
+    probeSpeedMult: 1,
+    probeCostMult: 1,
+    colonyShipSpeedMult: 1,
+    transferSpeedMult: 1,
+    satisfactionBonus: 0,
+    popGrowthMult: 1,
+    goodsNeedMult: 1,
+    creditsMult: 1,
+  };
+  for (const id of researched) {
+    const tech = TECHS[id];
+    if (!tech) continue;
+    const e = tech.effects;
+    for (const b of e.unlockBuildings ?? []) effects.unlockedBuildings.add(b);
+    for (const [building, mult] of Object.entries(e.outputMult ?? {}) as [BuildingId, number][]) {
+      effects.outputMult[building] = (effects.outputMult[building] ?? 1) * mult;
+    }
+    effects.outputMultAll *= e.outputMultAll ?? 1;
+    effects.housingMult *= e.housingMult ?? 1;
+    effects.habitabilityBonus += e.habitabilityBonus ?? 0;
+    effects.queueBonus += e.queueBonus ?? 0;
+    effects.probeSpeedMult *= e.probeSpeedMult ?? 1;
+    effects.probeCostMult *= e.probeCostMult ?? 1;
+    effects.colonyShipSpeedMult *= e.colonyShipSpeedMult ?? 1;
+    effects.transferSpeedMult *= e.transferSpeedMult ?? 1;
+    effects.satisfactionBonus += e.satisfactionBonus ?? 0;
+    effects.popGrowthMult *= e.popGrowthMult ?? 1;
+    effects.goodsNeedMult *= e.goodsNeedMult ?? 1;
+    effects.creditsMult *= e.creditsMult ?? 1;
+  }
+  return effects;
+}
+
+export const NO_EFFECTS: EmpireEffects = computeEffects([]);
+
+/** Une tech est-elle recherchable (prérequis satisfaits, pas déjà connue) ? */
+export function canResearch(techId: TechId, researched: readonly TechId[]): boolean {
+  const tech = TECHS[techId];
+  if (!tech) return false;
+  if (researched.includes(techId)) return false;
+  return tech.requires.every((req) => researched.includes(req));
+}
