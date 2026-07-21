@@ -29,6 +29,23 @@ pnpm typecheck     # tsc sur les 3 packages
 Les deux serveurs de dev sont aussi déclarés dans `.claude/launch.json` (noms `server` et `web`).
 La DB SQLite (`apps/server/spacesim.db`) se supprime sans risque pour repartir d'une partie neuve.
 
+## Environnement Docker (build sans Node natif)
+
+Cette machine n'a **pas Node/pnpm installés** : tout passe par Docker (Docker Desktop, backend WSL2).
+Le CLI docker n'est pas sur le PATH — il vit sous
+`C:\Users\casa2\AppData\Local\Programs\DockerDesktop\resources\bin\docker.exe`.
+
+```
+docker compose up app              # serveur (3001) + client web (5173), hot reload
+docker compose run --rm test       # tests unitaires (packages/shared)
+docker compose run --rm typecheck  # tsc sur les 3 packages
+```
+
+`Dockerfile` = toolchain (node 22 + pnpm via corepack, épinglé par `packageManager`).
+`docker-compose.yml` monte le code depuis l'hôte ; les `node_modules` vivent dans des volumes
+nommés (binaires natifs Linux isolés de l'hôte). Après un changement de dépendances, l'install
+se relance au prochain `up`/`run` (lockfile figé).
+
 Migrations drizzle-kit (`apps/server/drizzle/`), appliquées automatiquement au boot :
 après un changement de `src/db/schema.ts`, lancer `pnpm --filter @spacesim/server db:generate`
 et committer la migration générée. Ne jamais modifier une migration déjà appliquée.

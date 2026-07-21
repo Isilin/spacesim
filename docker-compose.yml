@@ -1,0 +1,49 @@
+# Environnement de dev SpaceSim conteneurisé — aucune install Node sur l'hôte.
+#
+#   docker compose up app            → serveur (3001) + client web (5173)
+#   docker compose run --rm test     → tests unitaires de la simulation
+#   docker compose run --rm typecheck→ tsc sur les 3 packages
+#
+# Le code est monté depuis l'hôte (hot reload) ; les node_modules vivent dans
+# des volumes nommés pour ne pas mélanger les binaires natifs Linux avec l'hôte.
+
+x-base: &base
+  build: .
+  working_dir: /app
+  volumes:
+    - .:/app
+    - root_modules:/app/node_modules
+    - shared_modules:/app/packages/shared/node_modules
+    - server_modules:/app/apps/server/node_modules
+    - web_modules:/app/apps/web/node_modules
+
+services:
+  # Serveur de jeu + client web (les deux dans le même conteneur : la proxy
+  # Vite pointe vers 127.0.0.1:3001, il faut donc un réseau localhost partagé).
+  app:
+    <<: *base
+    command: >
+      sh -c "pnpm install --frozen-lockfile &&
+             (pnpm --filter @spacesim/server dev &
+              pnpm --filter @spacesim/web dev --host 0.0.0.0)"
+    ports:
+      - "5173:5173"
+      - "3001:3001"
+
+  # Tests unitaires de la simulation (packages/shared).
+  test:
+    <<: *base
+    command: sh -c "pnpm install --frozen-lockfile && pnpm test"
+    profiles: ["tools"]
+
+  # Vérification de types sur les trois packages.
+  typecheck:
+    <<: *base
+    command: sh -c "pnpm install --frozen-lockfile && pnpm typecheck"
+    profiles: ["tools"]
+
+volumes:
+  root_modules:
+  shared_modules:
+  server_modules:
+  web_modules:

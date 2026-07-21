@@ -1,16 +1,24 @@
 # SpaceSim — Plan MVP
 
-> **État (13/07/2026)** : jalons 1 à 7 implémentés et vérifiés — le MVP décrit ici est jouable.
+> **État (21/07/2026)** : jalons 1 à 7 implémentés et vérifiés — le MVP décrit ici est jouable.
 > **Pivot EVE-like (13/07/2026)** : plus de niveaux de bâtiments — on empile des **instances**
 > (coût plat, contrainte = emplacements + main-d'œuvre). Univers en **3 échelles** :
 > Univers (3 galaxies) → Galaxie (graphe de systèmes) → Système (orbites, planètes, lunes
-> colonisables, ceintures d'astéroïdes). Voyage inter-galactique verrouillé (portails : v2).
-> **Chantiers v2 livrés (13/07/2026)** : 0 migrations drizzle-kit · 1 marché PNJ (factions,
+> colonisables, ceintures d'astéroïdes). Voyage inter-galactique via **portails** (chantier 5).
+> **Chantiers v2 livrés** : 0 migrations drizzle-kit · 1 marché PNJ (factions,
 > stations, prix offre/demande, ventes/achats au spot) · 2 chantier naval + routes automatiques
 > (cargos possédés, règles maintain/fixed/surplus) · 3 stations minières sur ceintures ·
 > 4 influence (monument, colonisation à coût croissant, claims +15 % prod) + réputation factions
-> (paliers Associé/Partenaire/Allié, remises commerciales).
-> Prochains chantiers : 5 portails inter-galactiques, 6 flottes + combat PvE (Endless Space-like), 7 multi territorial.
+> (paliers Associé/Partenaire/Allié, remises commerciales) · **5 portails inter-galactiques**
+> (méga-projet financé en ressources, liens de saut vers les galaxies lointaines) ·
+> **6 flottes militaires + combat PvE** (vaisseaux de guerre, directives par phase, batailles
+> Endless Space-like en 3 portées, repaires pirates PNJ, rapports de bataille archivés).
+> **Prochain chantier : 7 — multi territorial** (voir « Chantier 7 » en fin de document),
+> puis pass d'équilibrage/polish continu.
+>
+> **Build sans Node natif (21/07/2026)** : cette machine n'a pas Node/pnpm installés ;
+> le projet se build, se teste et se lance via Docker (`Dockerfile` + `docker-compose.yml`).
+> Voir la section « Environnement Docker » dans [CLAUDE.md](../CLAUDE.md).
 
 ## Contexte
 
@@ -106,3 +114,80 @@ Backlog v2 (hors MVP) : influence (design à proposer à ce moment), marché/éc
 - **Tests unitaires** sur `packages/shared` : simulation déterministe (N ticks sur un état donné → état attendu), chaînes de production, croissance de pop, résolution de timers, catch-up.
 - **Test de bout en bout manuel** à chaque jalon : lancer serveur + client (config `.claude/launch.json`), jouer la boucle dans le navigateur via le panneau Browser — fonder une colonie, construire, observer les flux sur plusieurs ticks.
 - **Script de fast-forward** (dev) : avancer le temps simulé pour valider l'équilibrage sans attendre les timers réels.
+
+## Chantier 7 — Multi territorial (planification)
+
+Objectif : passer d'**un empire implicite** à **N empires partageant un même univers** (une seed,
+une horloge de ticks), avec propriété par joueur, vues limitées par le brouillard, et **contrôle
+de territoire contesté** entre joueurs. C'est le premier pas concret vers la vision « univers unique
+persistant, multijoueur ». Le combat PvE (chantier 6) fournit déjà le moteur de bataille réutilisable.
+
+### État actuel (contrainte de départ)
+Le moteur est **strictement mono-locataire** :
+- `GameEngine.load()` prend `.limit(1)` sur `games` ; aucune notion de joueur.
+- L'état « empire » (influence, `researched`, `research`, `factionRep`, `explored`, claims) vit
+  dans `games` / dans le singleton `GameEngine` (un seul `this.effects`, une seule série de maps).
+- Le WebSocket est **sans authentification** : toute connexion voit et pilote le même empire.
+- Les repaires pirates sont déjà des entités PNJ indépendantes (`pirate_lairs`) — modèle réutilisable
+  pour « une entité appartient à X ».
+
+### Découpage proposé (sous-jalons 7a → 7e)
+
+**7a — Modèle de données : introduire le joueur.**
+- Nouvelle table `players` (id, gameId, name, couleur, joinedAt). `games` redevient le conteneur
+  d'univers partagé (seed, tick, lastTickAt).
+- Déplacer les champs *empire* de `games` vers `players` : influence, researched, research,
+  factionRep, explored.
+- Ajouter `ownerId` (FK player) sur : `colonies`, `fleets`, `claims`, `routes`, `outposts`,
+  `transfers`, `missions`. `pirate_lairs` et `station_states` restent PNJ/univers.
+- Migration drizzle-kit + backfill : une partie solo existante → 1 player propriétaire de tout.
+
+**7b — Moteur : de 1 empire à N.**
+- Extraire un objet `Empire` (par joueur) regroupant colonies/fleets/routes/outposts/influence/
+  effects/explored/factionRep/claims + helpers ; `GameEngine` détient `Map<playerId, Empire>` +
+  l'horloge et l'univers partagés.
+- Le tick avance l'horloge commune ; production/éco par colonie (déjà keyée par propriétaire),
+  recherche/influence/effects **par joueur**, brouillard **par joueur**.
+- Marchés PNJ, résolution des timers, spawn pirates : restent au niveau univers.
+
+**7c — Réseau & identité (léger, sans comptes).**
+- Handshake de connexion : `?player=<token>` rejoint un empire existant, sinon en crée un.
+  (Comptes + mots de passe = ligne v2 séparée « comptes + Postgres » ; ici, jetons légers,
+  on reste sur SQLite.)
+- `hello` et `tick` deviennent **par joueur** : seulement ses entités + l'univers redacté à son
+  brouillard + la présence étrangère visible là où il a de la visibilité.
+- Toutes les actions sont validées contre le `playerId` de la connexion (on ne pilote que le sien).
+- Broadcast : un snapshot redacté distinct par connexion.
+
+**7d — Territoire & contestation (le cœur « territorial »).**
+- Claims **exclusifs par joueur** : un système n'est revendicable que par un empire à la fois.
+- Contestation : revendiquer/rompre un claim ennemi exige une présence militaire (flotte) dans
+  le système ; notion de frontière/adjacence sur le graphe (bonus de territoire contigu,
+  points d'étranglement).
+- **PvP** : étendre l'attaque (aujourd'hui flotte → repaire pirate) à flotte → flotte et
+  flotte → colonie ennemies. `resolveBattle` est déjà agnostique attaquant/défenseur : réutilisable.
+  À définir : défense de colonie (garnison / défense orbitale), conséquences (raid de ressources,
+  rupture de claim, à terme capture de colonie).
+
+**7e — UI & polish.**
+- Carte : territoires colorés par empire, flottes étrangères dans les systèmes visibles.
+- Vue Empire : relations / classement.
+- Contrôles d'attaque ciblant des entités étrangères ; journal des batailles PvP.
+
+### Décisions à acter avant d'implémenter
+1. **Identité** : jetons de joueur légers maintenant (rester SQLite) *vs* vrais comptes tout de suite.
+   → Reco : jetons légers d'abord, comptes plus tard.
+2. **Portée du multi** : multi *local* d'abord (plusieurs onglets = plusieurs joueurs, testable en
+   dev) *vs* multi distant hébergé immédiatement.
+   → Reco : bâtir le modèle multi-locataire + multi local d'abord, différer l'hébergement.
+3. **Intensité PvP** : raid + contestation de claims d'abord *vs* conquête/capture de colonies dès
+   le départ.
+   → Reco : raid + claims d'abord, capture ensuite.
+4. **Diplomatie** : aucune (chacun pour soi) *vs* guerre/paix minimale.
+   → Reco : guerre/paix minimale.
+
+### Vérification du chantier
+- Tests unitaires `shared` : contestation de claim, résolution PvP (déjà couvert côté bataille),
+  isolation des effets par empire.
+- E2E multi local : deux onglets → deux empires sur la même seed, l'un attaque une flotte/claim
+  de l'autre, vérifier fog et snapshots distincts.
