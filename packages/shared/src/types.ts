@@ -111,6 +111,18 @@ export interface ActiveResearch {
   finishesAt: number;
 }
 
+/**
+ * Empire (joueur) partageant l'univers d'une partie (chantier 7 — multi territorial).
+ * En solo, un unique Player possède toutes les entités.
+ */
+export interface Player {
+  id: string;
+  name: string;
+  /** Couleur d'affichage du territoire sur la carte. */
+  color: string;
+  joinedAt: number;
+}
+
 export interface GameState {
   id: string;
   seed: string;
@@ -172,6 +184,8 @@ export interface BuildQueueItem {
 
 export interface Colony {
   id: string;
+  /** Empire propriétaire (chantier 7 ; optionnel pendant la transition mono→multi). */
+  ownerId?: string;
   planetId: string;
   name: string;
   resources: Record<ResourceId, number>;
@@ -228,6 +242,8 @@ export interface MiningOutpost {
 /** Flotte militaire du joueur : vaisseaux (content/warships) stationnés dans un système. */
 export interface Fleet {
   id: string;
+  /** Empire propriétaire (chantier 7 ; optionnel pendant la transition mono→multi). */
+  ownerId?: string;
   name: string;
   /** Système où la flotte est stationnée (ou d'origine pendant un déplacement). */
   systemId: string;

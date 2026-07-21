@@ -22,10 +22,27 @@ export const games = sqliteTable("games", {
   createdAt: integer("created_at").notNull(),
 });
 
-/** Systèmes revendiqués par le joueur (bonus locaux, entretien en influence). */
+/**
+ * Empires (joueurs) partageant l'univers d'une partie.
+ * Chantier 7 : socle multi-locataire. En solo, un seul player possède tout.
+ * Les champs d'empire (influence, recherche, réputation, exploration) migreront
+ * de `games` vers cette table au sous-jalon 7b (moteur multi-empire).
+ */
+export const players = sqliteTable("players", {
+  id: text("id").primaryKey(),
+  gameId: text("game_id").notNull(),
+  name: text("name").notNull(),
+  /** Couleur d'affichage du territoire sur la carte. */
+  color: text("color").notNull(),
+  joinedAt: integer("joined_at").notNull(),
+});
+
+/** Systèmes revendiqués par un joueur (bonus locaux, entretien en influence). */
 export const claims = sqliteTable("claims", {
   systemId: text("system_id").primaryKey(),
   gameId: text("game_id").notNull(),
+  /** Empire propriétaire du claim (nullable pour la migration, backfill au boot). */
+  ownerId: text("owner_id"),
   claimedAt: integer("claimed_at").notNull(),
 });
 
@@ -43,6 +60,8 @@ export const gateways = sqliteTable("gateways", {
 export const fleets = sqliteTable("fleets", {
   id: text("id").primaryKey(),
   gameId: text("game_id").notNull(),
+  /** Empire propriétaire (nullable pour la migration, backfill au boot). */
+  ownerId: text("owner_id"),
   name: text("name").notNull(),
   systemId: text("system_id").notNull(),
   homeColonyId: text("home_colony_id").notNull(),
@@ -77,6 +96,8 @@ export const battles = sqliteTable("battles", {
 export const colonies = sqliteTable("colonies", {
   id: text("id").primaryKey(),
   gameId: text("game_id").notNull(),
+  /** Empire propriétaire (nullable pour la migration, backfill au boot). */
+  ownerId: text("owner_id"),
   planetId: text("planet_id").notNull(),
   name: text("name").notNull(),
   resources: text("resources").notNull(),

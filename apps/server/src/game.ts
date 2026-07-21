@@ -92,7 +92,7 @@ import {
   type Transfer,
   type Universe,
 } from "@spacesim/shared";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { db, schema } from "./db/index.js";
 
@@ -123,6 +123,10 @@ const DEFAULT_DIRECTIVES: Record<CombatPhase, string> = {
 /** Batailles archivées conservées. */
 const MAX_BATTLES = 20;
 
+/** Empire par défaut d'une partie solo (chantier 7 — socle multi-locataire). */
+const DEFAULT_PLAYER_NAME = "Empire";
+const DEFAULT_PLAYER_COLOR = "#4fd1ff";
+
 export type StateListener = (snapshot: EngineSnapshot) => void;
 
 /**
@@ -150,6 +154,8 @@ export class GameEngine {
   private beltsById: Map<string, AsteroidBelt>;
   private listeners = new Set<StateListener>();
   private interval: NodeJS.Timeout | null = null;
+  /** Empire propriétaire par défaut (solo). Multi-empire réel : chantier 7b. */
+  private defaultPlayerId = "";
 
   private constructor(state: GameState) {
     this.state = state;
@@ -192,6 +198,7 @@ export class GameEngine {
     });
     engine.explored = new Set(JSON.parse(row.explored));
     engine.effects = computeEffects(engine.state.researched as TechId[]);
+    engine.ensureDefaultPlayer();
     if (isNew) {
       engine.createHomeColony();
       engine.initMarkets();
@@ -1107,6 +1114,7 @@ export class GameEngine {
     if (!systemId) return "Système inconnu";
     const fleet: Fleet = {
       id: randomUUID(),
+      ownerId: this.defaultPlayerId,
       name: name.trim().slice(0, 40) || "Flotte",
       systemId,
       homeColonyId: colonyId,
@@ -1362,7 +1370,9 @@ export class GameEngine {
       movement: fleet.movement ? JSON.stringify(fleet.movement) : null,
     };
     if (insert) {
-      db.insert(schema.fleets).values({ id: fleet.id, gameId: this.state.id, ...values }).run();
+      db.insert(schema.fleets)
+        .values({ id: fleet.id, gameId: this.state.id, ownerId: fleet.ownerId ?? this.defaultPlayerId, ...values })
+        .run();
     } else {
       db.update(schema.fleets).set(values).where(eq(schema.fleets.id, fleet.id)).run();
     }
@@ -1386,6 +1396,7 @@ export class GameEngine {
     for (const row of db.select().from(schema.fleets).all()) {
       this.fleetMap.set(row.id, {
         id: row.id,
+        ownerId: row.ownerId ?? this.defaultPlayerId,
         name: row.name,
         systemId: row.systemId,
         homeColonyId: row.homeColonyId,
@@ -1487,7 +1498,7 @@ export class GameEngine {
       claimedSystemIds: [...this.state.claimedSystemIds, systemId],
     };
     db.insert(schema.claims)
-      .values({ systemId, gameId: this.state.id, claimedAt: Date.now() })
+      .values({ systemId, gameId: this.state.id, ownerId: this.defaultPlayerId, claimedAt: Date.now() })
       .run();
     this.notify();
     return null;
@@ -1930,6 +1941,37 @@ export class GameEngine {
   }
 
   /** Colonie de départ : la planète la plus habitable de la galaxie d'origine. */
+  /**
+   * Garantit qu'un empire par défaut existe et adopte les entités orphelines.
+   * Socle du multi (chantier 7) : en solo, un unique player possède tout.
+   * Pour une sauvegarde mono-locataire pré-existante, backfill des `ownerId` NULL.
+   */
+  private ensureDefaultPlayer(): void {
+    let player = db
+      .select()
+      .from(schema.players)
+      .where(eq(schema.players.gameId, this.state.id))
+      .limit(1)
+      .get();
+    if (!player) {
+      player = {
+        id: randomUUID(),
+        gameId: this.state.id,
+        name: DEFAULT_PLAYER_NAME,
+        color: DEFAULT_PLAYER_COLOR,
+        joinedAt: Date.now(),
+      };
+      db.insert(schema.players).values(player).run();
+    }
+    this.defaultPlayerId = player.id;
+    for (const table of [schema.colonies, schema.fleets, schema.claims]) {
+      db.update(table)
+        .set({ ownerId: this.defaultPlayerId })
+        .where(and(eq(table.gameId, this.state.id), isNull(table.ownerId)))
+        .run();
+    }
+  }
+
   private createHomeColony(): void {
     const homeGalaxy = this.universe.galaxies[0]!;
     const planets = homeGalaxy.systems.flatMap((s) => s.planets);
@@ -1952,11 +1994,13 @@ export class GameEngine {
   }
 
   private insertColony(colony: Colony): void {
+    colony.ownerId = this.defaultPlayerId;
     this.colonyMap.set(colony.id, colony);
     db.insert(schema.colonies)
       .values({
         id: colony.id,
         gameId: this.state.id,
+        ownerId: colony.ownerId,
         planetId: colony.planetId,
         name: colony.name,
         resources: JSON.stringify(colony.resources),
@@ -1977,6 +2021,7 @@ export class GameEngine {
     for (const row of rows) {
       this.colonyMap.set(row.id, {
         id: row.id,
+        ownerId: row.ownerId ?? this.defaultPlayerId,
         planetId: row.planetId,
         name: row.name,
         resources: JSON.parse(row.resources),
