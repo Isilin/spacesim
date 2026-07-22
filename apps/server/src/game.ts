@@ -95,6 +95,7 @@ import {
 import { and, eq, isNull } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { db, schema } from "./db/index.js";
+import { Empire } from "./empire.js";
 
 export interface EngineSnapshot {
   game: GameState;
@@ -154,8 +155,10 @@ export class GameEngine {
   private beltsById: Map<string, AsteroidBelt>;
   private listeners = new Set<StateListener>();
   private interval: NodeJS.Timeout | null = null;
-  /** Empire propriétaire par défaut (solo). Multi-empire réel : chantier 7b. */
-  private defaultPlayerId = "";
+  /** Empires partageant cet univers (chantier 7b). Un seul instancié à ce stade. */
+  private empires = new Map<string, Empire>();
+  /** Empire propriétaire par défaut (solo). Posé par `ensureDefaultPlayer`. */
+  private defaultEmpire!: Empire;
 
   private constructor(state: GameState) {
     this.state = state;
@@ -955,7 +958,7 @@ export class GameEngine {
         researched: JSON.stringify(this.state.researched),
         research: this.state.research ? JSON.stringify(this.state.research) : null,
       })
-      .where(eq(schema.players.id, this.defaultPlayerId))
+      .where(eq(schema.players.id, this.defaultEmpire.id))
       .run();
   }
 
@@ -1114,7 +1117,7 @@ export class GameEngine {
     if (!systemId) return "Système inconnu";
     const fleet: Fleet = {
       id: randomUUID(),
-      ownerId: this.defaultPlayerId,
+      ownerId: this.defaultEmpire.id,
       name: name.trim().slice(0, 40) || "Flotte",
       systemId,
       homeColonyId: colonyId,
@@ -1371,7 +1374,7 @@ export class GameEngine {
     };
     if (insert) {
       db.insert(schema.fleets)
-        .values({ id: fleet.id, gameId: this.state.id, ownerId: fleet.ownerId ?? this.defaultPlayerId, ...values })
+        .values({ id: fleet.id, gameId: this.state.id, ownerId: fleet.ownerId ?? this.defaultEmpire.id, ...values })
         .run();
     } else {
       db.update(schema.fleets).set(values).where(eq(schema.fleets.id, fleet.id)).run();
@@ -1396,7 +1399,7 @@ export class GameEngine {
     for (const row of db.select().from(schema.fleets).all()) {
       this.fleetMap.set(row.id, {
         id: row.id,
-        ownerId: row.ownerId ?? this.defaultPlayerId,
+        ownerId: row.ownerId ?? this.defaultEmpire.id,
         name: row.name,
         systemId: row.systemId,
         homeColonyId: row.homeColonyId,
@@ -1498,7 +1501,7 @@ export class GameEngine {
       claimedSystemIds: [...this.state.claimedSystemIds, systemId],
     };
     db.insert(schema.claims)
-      .values({ systemId, gameId: this.state.id, ownerId: this.defaultPlayerId, claimedAt: Date.now() })
+      .values({ systemId, gameId: this.state.id, ownerId: this.defaultEmpire.id, claimedAt: Date.now() })
       .run();
     this.notify();
     return null;
@@ -1919,7 +1922,7 @@ export class GameEngine {
     this.explorationDirty = true;
     db.update(schema.players)
       .set({ explored: JSON.stringify([...this.explored]) })
-      .where(eq(schema.players.id, this.defaultPlayerId))
+      .where(eq(schema.players.id, this.defaultEmpire.id))
       .run();
   }
 
@@ -1970,10 +1973,11 @@ export class GameEngine {
       };
       db.insert(schema.players).values(player).run();
     }
-    this.defaultPlayerId = player.id;
+    this.defaultEmpire = new Empire(player.id, player.name, player.color);
+    this.empires.set(this.defaultEmpire.id, this.defaultEmpire);
     for (const table of [schema.colonies, schema.fleets, schema.claims]) {
       db.update(table)
-        .set({ ownerId: this.defaultPlayerId })
+        .set({ ownerId: this.defaultEmpire.id })
         .where(and(eq(table.gameId, this.state.id), isNull(table.ownerId)))
         .run();
     }
@@ -2010,7 +2014,7 @@ export class GameEngine {
   }
 
   private insertColony(colony: Colony): void {
-    colony.ownerId = this.defaultPlayerId;
+    colony.ownerId = this.defaultEmpire.id;
     this.colonyMap.set(colony.id, colony);
     db.insert(schema.colonies)
       .values({
@@ -2037,7 +2041,7 @@ export class GameEngine {
     for (const row of rows) {
       this.colonyMap.set(row.id, {
         id: row.id,
-        ownerId: row.ownerId ?? this.defaultPlayerId,
+        ownerId: row.ownerId ?? this.defaultEmpire.id,
         planetId: row.planetId,
         name: row.name,
         resources: JSON.parse(row.resources),
@@ -2119,7 +2123,7 @@ export class GameEngine {
       .run();
     db.update(schema.players)
       .set({ influence: this.state.influence, factionRep: JSON.stringify(this.state.factionRep) })
-      .where(eq(schema.players.id, this.defaultPlayerId))
+      .where(eq(schema.players.id, this.defaultEmpire.id))
       .run();
     for (const colony of this.colonyMap.values()) this.persistColony(colony);
     this.persistOutposts();
