@@ -6,7 +6,7 @@
   "scripts": {
     "dev:server": "pnpm --filter @spacesim/server dev",
     "dev:web": "pnpm --filter @spacesim/web dev",
-    "test": "pnpm --filter @spacesim/shared test",
+    "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
