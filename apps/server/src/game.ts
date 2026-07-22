@@ -129,6 +129,9 @@ const MAX_BATTLES = 20;
 const DEFAULT_PLAYER_NAME = "Empire";
 const DEFAULT_PLAYER_COLOR = "#4fd1ff";
 
+/** Couleurs de territoire attribuées aux empires supplémentaires (outil de dev). */
+const DEV_EMPIRE_COLORS = ["#4fd1ff", "#ff6b6b", "#ffd93d", "#6bcB77", "#c77dff", "#ff922b"];
+
 export type StateListener = (snapshot: EngineSnapshot) => void;
 
 /**
@@ -1743,6 +1746,79 @@ export class GameEngine {
     this.notify();
   }
 
+  /**
+   * Outil de dev uniquement : instancie un empire supplémentaire (nouveau player +
+   * colonie mère sur une planète habitable libre, brouillard isolé). Sert à tester
+   * en mémoire le moteur multi-empire (chantier 7b). Retourne l'id, ou `null` si
+   * aucune planète habitable n'est disponible.
+   *
+   * NB : `GameEngine.load()` reste mono-empire — les empires ainsi créés vivent le
+   * temps du process (le vrai chargement multi = chantier 7c).
+   */
+  devSpawnEmpire(name?: string): string | null {
+    const occupied = new Set<string>();
+    for (const e of this.empires.values()) {
+      for (const c of e.colonyMap.values()) occupied.add(c.planetId);
+    }
+    // Planète tellurique la plus habitable encore libre (galaxie d'origine en priorité).
+    const candidates = allPlanets(this.universe)
+      .filter((p) => p.type !== "gas" && !occupied.has(p.id))
+      .sort((a, b) => b.habitability - a.habitability);
+    const home =
+      candidates.find((p) => p.systemId.startsWith("gal-0-")) ?? candidates[0];
+    if (!home) return null;
+
+    const index = this.empires.size;
+    const id = randomUUID();
+    const empireName = (name?.trim() || `Empire ${index + 1}`).slice(0, 40);
+    const color = DEV_EMPIRE_COLORS[index % DEV_EMPIRE_COLORS.length]!;
+    db.insert(schema.players)
+      .values({
+        id,
+        gameId: this.clock.id,
+        name: empireName,
+        color,
+        joinedAt: Date.now(),
+        researched: "[]",
+        research: null,
+        influence: 0,
+        factionRep: "{}",
+        explored: "[]",
+      })
+      .run();
+    const empire = new Empire(id, empireName, color);
+    this.empires.set(id, empire);
+    this.foundHomeColony(empire, home);
+    this.notify();
+    console.log(`[game] empire « ${empireName} » instancié (${this.empires.size} au total)`);
+    return id;
+  }
+
+  /** Outil de dev uniquement : résumé par empire (état en mémoire) pour l'observation. */
+  devEmpireSummaries(): unknown {
+    return [...this.empires.values()].map((e) => ({
+      id: e.id,
+      name: e.name,
+      color: e.color,
+      isDefault: e.id === this.defaultEmpire.id,
+      influence: Math.round(e.influence * 100) / 100,
+      researched: e.researched.length,
+      claimed: e.claimedSystemIds.length,
+      exploredCount: e.explored.size,
+      exploredSystemIds: [...e.explored],
+      colonies: [...e.colonyMap.values()].map((c) => ({
+        name: c.name,
+        systemId: this.planetsById.get(c.planetId)?.systemId ?? "?",
+        population: Math.round(c.population * 100) / 100,
+        credits: Math.round(c.resources.credits),
+        ore: Math.round(c.resources.ore),
+        energy: Math.round(c.resources.energy),
+        food: Math.round(c.resources.food),
+      })),
+      fleets: e.fleetMap.size,
+    }));
+  }
+
   /** Outil de dev uniquement : injecte des ressources pour tester sans attendre. */
   devGrant(resources: Partial<Record<ResourceId, number>>): void {
     const colony = this.colonies[0];
@@ -1793,16 +1869,15 @@ export class GameEngine {
 
   /**
    * Résout les missions de l'empire arrivées à l'instant `t` : révélation, fondation,
-   * commerce. Les marchés et portails restent partagés (univers) ; les helpers
-   * `markExplored`/`insertColony`/`insertMission` ciblent encore le defaultEmpire
-   * (identité par-empire threadée en 7c).
+   * commerce. Marchés et portails restent partagés (univers) ; `insertMission` (trajet
+   * retour d'achat) reste sur le defaultEmpire — threadé en 7c.
    */
   private resolveMissions(empire: Empire, t: number): void {
     for (const [id, mission] of empire.missionMap) {
       if (mission.arrivesAt > t) continue;
       switch (mission.kind) {
         case "probe":
-          this.markExplored(mission.targetId);
+          this.markExplored(empire, mission.targetId);
           break;
         case "colonize": {
           const planet = this.planetsById.get(mission.targetId);
@@ -1810,7 +1885,7 @@ export class GameEngine {
             (c) => c.planetId === mission.targetId,
           );
           if (planet && !alreadyColonized) {
-            this.insertColony({
+            this.insertColony(empire, {
               id: randomUUID(),
               planetId: planet.id,
               name: planet.name,
@@ -1990,13 +2065,13 @@ export class GameEngine {
     }
   }
 
-  private markExplored(systemId: string): void {
-    if (this.explored.has(systemId)) return;
-    this.explored.add(systemId);
-    this.explorationDirty = true;
+  private markExplored(empire: Empire, systemId: string): void {
+    if (empire.explored.has(systemId)) return;
+    empire.explored.add(systemId);
+    empire.explorationDirty = true;
     db.update(schema.players)
-      .set({ explored: JSON.stringify([...this.explored]) })
-      .where(eq(schema.players.id, this.defaultEmpire.id))
+      .set({ explored: JSON.stringify([...empire.explored]) })
+      .where(eq(schema.players.id, empire.id))
       .run();
   }
 
@@ -2076,10 +2151,15 @@ export class GameEngine {
     const homeGalaxy = this.universe.galaxies[0]!;
     const planets = homeGalaxy.systems.flatMap((s) => s.planets);
     const home = planets.reduce((best, p) => (p.habitability > best.habitability ? p : best));
-    this.insertColony({
+    this.foundHomeColony(this.defaultEmpire, home);
+  }
+
+  /** Fonde une colonie mère pour un empire sur `planet` et révèle son système. */
+  private foundHomeColony(empire: Empire, planet: Planet): void {
+    this.insertColony(empire, {
       id: randomUUID(),
-      planetId: home.id,
-      name: `${home.name} — Colonie mère`,
+      planetId: planet.id,
+      name: `${planet.name} — Colonie mère`,
       resources: { ...emptyResources(), ore: 400, energy: 200, food: 200, credits: 50 },
       buildings: { mine: 1, power_plant: 1, farm: 1, habitat: 1, shipyard: 1 },
       queue: [],
@@ -2089,13 +2169,15 @@ export class GameEngine {
       shipsBusy: [],
       shipQueue: [],
     });
-    this.markExplored(home.systemId);
-    console.log(`[game] colonie mère fondée sur ${home.name} (habitabilité ${home.habitability})`);
+    this.markExplored(empire, planet.systemId);
+    console.log(
+      `[game] colonie mère fondée sur ${planet.name} (habitabilité ${planet.habitability}) pour « ${empire.name} »`,
+    );
   }
 
-  private insertColony(colony: Colony): void {
-    colony.ownerId = this.defaultEmpire.id;
-    this.colonyMap.set(colony.id, colony);
+  private insertColony(empire: Empire, colony: Colony): void {
+    colony.ownerId = empire.id;
+    empire.colonyMap.set(colony.id, colony);
     db.insert(schema.colonies)
       .values({
         id: colony.id,

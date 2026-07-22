@@ -34,6 +34,12 @@ if (process.env.NODE_ENV !== "production") {
     engine.devSpawnPirate(systemId ?? "", threat ?? 2);
     return { ok: true };
   });
+  app.post("/dev/spawnempire", (request) => {
+    const { name } = (request.body ?? {}) as { name?: string };
+    const empireId = engine.devSpawnEmpire(name);
+    return { ok: empireId !== null, empireId };
+  });
+  app.get("/dev/empires", () => engine.devEmpireSummaries());
 }
 
 app.get("/ws", { websocket: true }, (socket) => {
