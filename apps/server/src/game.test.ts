@@ -121,3 +121,49 @@ describe("GameEngine — isolation multi-empire (Sprint 0)", () => {
     expect(engine.exploredSystemIds).toEqual([defaultSystem]);
   });
 });
+
+describe("GameEngine — chargement multi-empire (Phase A)", () => {
+  it("recharge tous les empires, entités routées par propriétaire", () => {
+    const key = (c: { systemId: string; name: string }) => `${c.systemId}/${c.name}`;
+    const e1 = GameEngine.load();
+    const defBefore = summaries(e1)[0]!;
+    const defaultId = defBefore.id;
+    const spawnedId = e1.devSpawnEmpire("Colonia")!;
+    expect(spawnedId).not.toBeNull();
+    const colBefore = summaries(e1).find((e) => e.id === spawnedId)!;
+    // Les deux colonies mères sont sur des planètes distinctes (clé système/nom).
+    expect(defBefore.colonies.map(key)).not.toEqual(colBefore.colonies.map(key));
+
+    // Rechargement depuis la même DB en mémoire (simule un reboot serveur).
+    const e2 = GameEngine.load();
+    const reloaded = summaries(e2);
+    expect(reloaded).toHaveLength(2);
+
+    const def = reloaded.find((e) => e.id === defaultId)!;
+    const colonia = reloaded.find((e) => e.id === spawnedId)!;
+    // Chaque empire retrouve EXACTEMENT ses colonies (routées par ownerId), pas celles
+    // de l'autre : aucune contamination croisée au rechargement.
+    expect(def.colonies.map(key)).toEqual(defBefore.colonies.map(key));
+    expect(colonia.colonies.map(key)).toEqual(colBefore.colonies.map(key));
+    const colKeys = new Set(colonia.colonies.map(key));
+    expect(def.colonies.map(key).some((k) => colKeys.has(k))).toBe(false);
+    // Le premier player reste l'empire par défaut (fallback compat).
+    expect(def.isDefault).toBe(true);
+    expect(colonia.isDefault).toBe(false);
+  });
+
+  it("préserve l'état d'empire (influence, brouillard) au rechargement", () => {
+    const e1 = GameEngine.load();
+    e1.devSpawnEmpire("Colonia");
+    e1.devFastForward(50); // 10 ticks : l'influence de chaque empire progresse
+    const before = summaries(e1);
+
+    const e2 = GameEngine.load();
+    const after = summaries(e2);
+    for (const b of before) {
+      const a = after.find((e) => e.id === b.id)!;
+      expect(a.influence).toBeCloseTo(b.influence, 5);
+      expect(a.exploredCount).toBe(b.exploredCount);
+    }
+  });
+});

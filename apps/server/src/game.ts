@@ -218,7 +218,6 @@ export class GameEngine {
       };
       db.insert(schema.games).values(row).run();
     }
-    const claimRows = db.select().from(schema.claims).all();
     const engine = new GameEngine({
       id: row.id,
       seed: row.seed,
@@ -226,16 +225,15 @@ export class GameEngine {
       lastTickAt: row.lastTickAt,
     });
     // Valeurs legacy de la ligne `games` : ne servent qu'à ensemencer un player neuf
-    // (7b-données) ; la ligne `players` reste la source autoritaire de l'état d'empire.
+    // (7b-données) ; les lignes `players` restent la source autoritaire de l'état.
     engine.ensureDefaultPlayer({
       researched: JSON.parse(row.researched),
       research: row.research ? JSON.parse(row.research) : null,
       influence: row.influence,
       factionRep: JSON.parse(row.factionRep),
       explored: JSON.parse(row.explored),
-      claimedSystemIds: claimRows.map((c) => c.systemId),
     });
-    engine.effects = computeEffects(engine.defaultEmpire.researched as TechId[]);
+    engine.loadPlayers();
     if (isNew) {
       engine.createHomeColony();
       engine.initMarkets();
@@ -928,7 +926,7 @@ export class GameEngine {
 
   private loadRoutes(): void {
     for (const row of db.select().from(schema.routes).all()) {
-      this.routeMap.set(row.id, {
+      this.empireOfColony(row.ownerColonyId).routeMap.set(row.id, {
         id: row.id,
         ownerColonyId: row.ownerColonyId,
         fromId: row.fromId,
@@ -946,7 +944,7 @@ export class GameEngine {
 
   private loadOutposts(): void {
     for (const row of db.select().from(schema.outposts).all()) {
-      this.outpostMap.set(row.id, {
+      this.empireOfColony(row.ownerColonyId).outpostMap.set(row.id, {
         id: row.id,
         beltId: row.beltId,
         ownerColonyId: row.ownerColonyId,
@@ -1476,9 +1474,11 @@ export class GameEngine {
 
   private loadFleets(): void {
     for (const row of db.select().from(schema.fleets).all()) {
-      this.fleetMap.set(row.id, {
+      const ownerId = row.ownerId ?? this.defaultEmpire.id;
+      const empire = this.empires.get(ownerId) ?? this.defaultEmpire;
+      empire.fleetMap.set(row.id, {
         id: row.id,
-        ownerId: row.ownerId ?? this.defaultEmpire.id,
+        ownerId,
         name: row.name,
         systemId: row.systemId,
         homeColonyId: row.homeColonyId,
@@ -2098,13 +2098,19 @@ export class GameEngine {
    * Socle du multi (chantier 7) : en solo, un unique player possède tout.
    * Pour une sauvegarde mono-locataire pré-existante, backfill des `ownerId` NULL.
    */
+  /**
+   * Garantit qu'au moins un player (empire par défaut) existe et adopte les entités
+   * orphelines. Pour une sauvegarde pré-7b, le player neuf est ensemencé depuis les
+   * champs legacy de `games` ; sinon valeurs par défaut. Le backfill des `ownerId` NULL
+   * les rattache au player par défaut (le premier). N'instancie PAS les `Empire` :
+   * `loadPlayers()` le fait pour toutes les lignes `players` (chantier 7c — Phase A).
+   */
   private ensureDefaultPlayer(seed: {
     researched: string[];
     research: ActiveResearch | null;
     influence: number;
     factionRep: Record<string, number>;
     explored: string[];
-    claimedSystemIds: string[];
   }): void {
     let player = db
       .select()
@@ -2113,8 +2119,6 @@ export class GameEngine {
       .limit(1)
       .get();
     if (!player) {
-      // Nouveau player : on l'ensemence avec l'état d'empire legacy (issu de la
-      // ligne `games` pour une sauvegarde pré-7b, sinon les valeurs par défaut).
       player = {
         id: randomUUID(),
         gameId: this.clock.id,
@@ -2129,22 +2133,51 @@ export class GameEngine {
       };
       db.insert(schema.players).values(player).run();
     }
-    this.defaultEmpire = new Empire(player.id, player.name, player.color);
-    this.empires.set(this.defaultEmpire.id, this.defaultEmpire);
     for (const table of [schema.colonies, schema.fleets, schema.claims]) {
       db.update(table)
-        .set({ ownerId: this.defaultEmpire.id })
+        .set({ ownerId: player.id })
         .where(and(eq(table.gameId, this.clock.id), isNull(table.ownerId)))
         .run();
     }
-    // Source autoritaire de l'état d'empire = la ligne `players` (chantier 7b) ;
-    // les claims restent dans leur table (backfillée sur cet empire ci-dessus).
-    this.defaultEmpire.researched = JSON.parse(player.researched);
-    this.defaultEmpire.research = player.research ? JSON.parse(player.research) : null;
-    this.defaultEmpire.influence = player.influence;
-    this.defaultEmpire.factionRep = JSON.parse(player.factionRep);
-    this.defaultEmpire.explored = new Set(JSON.parse(player.explored));
-    this.defaultEmpire.claimedSystemIds = seed.claimedSystemIds;
+  }
+
+  /**
+   * Instancie un `Empire` par ligne `players` (Phase A du chantier 7c). Chaque empire
+   * charge son état autoritaire (recherche, influence, réputation, brouillard, effets)
+   * et ses claims (par `ownerId`). `defaultEmpire` = premier player (ordre d'insertion),
+   * fallback de compatibilité tant que l'identité de connexion (7c-B) n'existe pas.
+   */
+  private loadPlayers(): void {
+    const rows = db
+      .select()
+      .from(schema.players)
+      .where(eq(schema.players.gameId, this.clock.id))
+      .all();
+    for (const p of rows) {
+      const empire = new Empire(p.id, p.name, p.color);
+      empire.researched = JSON.parse(p.researched);
+      empire.research = p.research ? JSON.parse(p.research) : null;
+      empire.influence = p.influence;
+      empire.factionRep = JSON.parse(p.factionRep);
+      empire.explored = new Set(JSON.parse(p.explored));
+      empire.claimedSystemIds = db
+        .select()
+        .from(schema.claims)
+        .where(eq(schema.claims.ownerId, p.id))
+        .all()
+        .map((c) => c.systemId);
+      empire.effects = computeEffects(empire.researched as TechId[]);
+      this.empires.set(empire.id, empire);
+    }
+    this.defaultEmpire = this.empires.values().next().value!;
+  }
+
+  /** Empire propriétaire d'une colonie (pour router les entités dérivées au chargement). */
+  private empireOfColony(colonyId: string): Empire {
+    for (const empire of this.empires.values()) {
+      if (empire.colonyMap.has(colonyId)) return empire;
+    }
+    return this.defaultEmpire;
   }
 
   private createHomeColony(): void {
@@ -2201,9 +2234,11 @@ export class GameEngine {
   private loadColonies(): void {
     const rows = db.select().from(schema.colonies).all();
     for (const row of rows) {
-      this.colonyMap.set(row.id, {
+      const ownerId = row.ownerId ?? this.defaultEmpire.id;
+      const empire = this.empires.get(ownerId) ?? this.defaultEmpire;
+      empire.colonyMap.set(row.id, {
         id: row.id,
-        ownerId: row.ownerId ?? this.defaultEmpire.id,
+        ownerId,
         planetId: row.planetId,
         name: row.name,
         resources: JSON.parse(row.resources),
@@ -2309,7 +2344,7 @@ export class GameEngine {
 
   private loadTransfers(): void {
     for (const row of db.select().from(schema.transfers).all()) {
-      this.transferMap.set(row.id, {
+      this.empireOfColony(row.fromColonyId).transferMap.set(row.id, {
         id: row.id,
         fromColonyId: row.fromColonyId,
         toColonyId: row.toColonyId,
@@ -2322,7 +2357,7 @@ export class GameEngine {
 
   private loadMissions(): void {
     for (const row of db.select().from(schema.missions).all()) {
-      this.missionMap.set(row.id, {
+      this.empireOfColony(row.fromColonyId).missionMap.set(row.id, {
         id: row.id,
         kind: row.kind as Mission["kind"],
         fromColonyId: row.fromColonyId,
