@@ -122,14 +122,20 @@ une horloge de ticks), avec propriété par joueur, vues limitées par le brouil
 de territoire contesté** entre joueurs. C'est le premier pas concret vers la vision « univers unique
 persistant, multijoueur ». Le combat PvE (chantier 6) fournit déjà le moteur de bataille réutilisable.
 
-**Avancement (21/07/2026)** :
+**Avancement (22/07/2026)** :
 - ✅ **7a** — table `players`, `ownerId` sur colonies/fleets/claims, empire par défaut créé au
   boot + estampillage à la création (migration 0004).
 - ✅ **7b (données)** — état d'empire (influence, recherche, réputation, exploration) déplacé de
   `games` vers `players` ; persistance retargetée, copie one-shot en migration 0005. Forme externe
   (`game` envoyé au client) inchangée, encore mono-empire en mémoire.
-- ⏳ **7b (moteur)** — objet `Empire` par joueur, `Map<playerId, Empire>`, ticks/effects/fog par
-  empire. **7c** identité de connexion + snapshots par joueur. **7d** territoire & PvP. **7e** UI.
+- ✅ **7b (moteur)** — objet `Empire` (`apps/server/src/empire.ts`) portant les entités
+  (colonies/flottes/routes/avant-postes/transferts/missions) et l'état par-joueur (influence,
+  recherche, effets, brouillard, réputation, claims) ; `GameEngine` détient une `Map<playerId, Empire>`,
+  une horloge partagée `clock` et les PNJ/univers. Le tick itère sur les empires (`spawnPirates`,
+  marchés PNJ, portails restent partagés une fois par tick) ; `snapshotFor(empire)` recompose la
+  forme externe WS. **Un seul empire instancié**, comportement et messages WS inchangés.
+- ⏳ **7c** identité de connexion (`?player=`) + snapshots redactés par connexion. **7d** territoire
+  & PvP (brouillard univers pour le spawn pirate, claims exclusifs, flotte→flotte/colonie). **7e** UI.
 
 ### État actuel (contrainte de départ)
 Le moteur est **strictement mono-locataire** :
