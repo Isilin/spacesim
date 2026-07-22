@@ -597,14 +597,14 @@ export class GameEngine {
   }
 
   /** Production des avant-postes + entretien payé par la colonie propriétaire. */
-  private outpostsTick(): void {
-    for (const [id, outpost] of this.outpostMap) {
+  private outpostsTick(empire: Empire): void {
+    for (const [id, outpost] of empire.outpostMap) {
       const belt = this.beltsById.get(outpost.beltId);
       if (!belt) continue;
-      const owner = this.colonyMap.get(outpost.ownerColonyId);
+      const owner = empire.colonyMap.get(outpost.ownerColonyId);
       const upkeepPaid = !!owner && owner.resources.credits >= OUTPOST_UPKEEP_CREDITS;
       if (upkeepPaid && owner) {
-        this.colonyMap.set(owner.id, {
+        empire.colonyMap.set(owner.id, {
           ...owner,
           resources: {
             ...owner.resources,
@@ -614,7 +614,7 @@ export class GameEngine {
       }
       const oreStock = outpostTick(outpost.oreStock, beltRichness(belt), upkeepPaid);
       if (oreStock !== outpost.oreStock) {
-        this.outpostMap.set(id, { ...outpost, oreStock });
+        empire.outpostMap.set(id, { ...outpost, oreStock });
       }
     }
   }
@@ -748,41 +748,41 @@ export class GameEngine {
   }
 
   /** Ordonnanceur : départs et résolutions de cycles à l'instant `t`. */
-  private processRoutes(t: number): void {
-    for (const [id, route] of this.routeMap) {
+  private processRoutes(empire: Empire, t: number): void {
+    for (const [id, route] of empire.routeMap) {
       let current = route;
 
       // Livraison à l'arrivée (cargaison > 0), puis fin de cycle au retour.
       if (current.activeCycle) {
         const cycle = current.activeCycle;
         if (cycle.carrying > 0 && cycle.arrivesAt <= t) {
-          this.deliverRouteCargo(current, cycle.carrying);
+          this.deliverRouteCargo(empire, current, cycle.carrying);
           current = { ...current, activeCycle: { ...cycle, carrying: 0 } };
         }
         if (current.activeCycle && current.activeCycle.backAt <= t) {
           current = { ...current, activeCycle: null };
         }
         if (current !== route) {
-          this.routeMap.set(id, current);
+          empire.routeMap.set(id, current);
           this.persistRoute(current);
         }
       }
 
       // Départ d'un nouveau cycle.
       if (current.activeCycle || current.paused) continue;
-      const owner = this.colonyMap.get(current.ownerColonyId);
+      const owner = empire.colonyMap.get(current.ownerColonyId);
       if (!owner) continue;
 
       // Source : stock + système d'origine.
       let sourceStock: number;
       let fromSystemId: string | undefined;
       if (current.fromKind === "colony") {
-        const from = this.colonyMap.get(current.fromId);
+        const from = empire.colonyMap.get(current.fromId);
         if (!from) continue;
         sourceStock = from.resources[current.resource];
         fromSystemId = this.planetsById.get(from.planetId)?.systemId;
       } else {
-        const outpost = this.outpostMap.get(current.fromId);
+        const outpost = empire.outpostMap.get(current.fromId);
         if (!outpost) continue;
         sourceStock = outpost.oreStock;
         fromSystemId = this.beltsById.get(outpost.beltId)?.systemId;
@@ -791,7 +791,7 @@ export class GameEngine {
 
       const toSystemId =
         current.toKind === "colony"
-          ? this.planetsById.get(this.colonyMap.get(current.toId)?.planetId ?? "")?.systemId
+          ? this.planetsById.get(empire.colonyMap.get(current.toId)?.planetId ?? "")?.systemId
           : this.stationsById.get(current.toId)?.systemId;
       if (!toSystemId) continue;
       const jumps = jumpDistanceInUniverse(this.universe, fromSystemId, toSystemId, this.portalLinks);
@@ -799,7 +799,7 @@ export class GameEngine {
 
       const destStock =
         current.toKind === "colony"
-          ? this.colonyMap.get(current.toId)?.resources[current.resource] ?? 0
+          ? empire.colonyMap.get(current.toId)?.resources[current.resource] ?? 0
           : 0;
       const qty = routeCargoQuantity(current.rule, sourceStock, destStock, fleetCapacity(current.ships));
       if (qty <= 0) continue;
@@ -807,51 +807,51 @@ export class GameEngine {
       if (owner.resources.credits < fee) continue;
 
       // Frais payés par le propriétaire, cargaison retirée à la source.
-      this.colonyMap.set(owner.id, {
+      empire.colonyMap.set(owner.id, {
         ...owner,
         resources: { ...owner.resources, credits: owner.resources.credits - fee },
       });
       if (current.fromKind === "colony") {
-        const from = this.colonyMap.get(current.fromId)!;
-        this.colonyMap.set(from.id, {
+        const from = empire.colonyMap.get(current.fromId)!;
+        empire.colonyMap.set(from.id, {
           ...from,
           resources: {
             ...from.resources,
             [current.resource]: from.resources[current.resource] - qty,
           },
         });
-        this.persistColony(this.colonyMap.get(from.id)!);
+        this.persistColony(empire.colonyMap.get(from.id)!);
       } else {
-        const outpost = this.outpostMap.get(current.fromId)!;
-        this.outpostMap.set(outpost.id, { ...outpost, oreStock: outpost.oreStock - qty });
+        const outpost = empire.outpostMap.get(current.fromId)!;
+        empire.outpostMap.set(outpost.id, { ...outpost, oreStock: outpost.oreStock - qty });
       }
-      this.persistColony(this.colonyMap.get(owner.id)!);
+      this.persistColony(empire.colonyMap.get(owner.id)!);
 
-      const duration = transferDurationMs(jumps) * this.effects.transferSpeedMult;
+      const duration = transferDurationMs(jumps) * empire.effects.transferSpeedMult;
       const next: Route = {
         ...current,
         activeCycle: { departedAt: t, arrivesAt: t + duration, backAt: t + 2 * duration, carrying: qty },
       };
-      this.routeMap.set(id, next);
+      empire.routeMap.set(id, next);
       this.persistRoute(next);
     }
   }
 
   /** Livre la cargaison d'un cycle : stock colonie ou vente au spot en station. */
-  private deliverRouteCargo(route: Route, carrying: number): void {
+  private deliverRouteCargo(empire: Empire, route: Route, carrying: number): void {
     if (route.toKind === "colony") {
-      const to = this.colonyMap.get(route.toId);
+      const to = empire.colonyMap.get(route.toId);
       if (!to) return;
       const resources = { ...to.resources };
       resources[route.resource] = Math.min(
         resources[route.resource] + carrying,
         storageCap(to, route.resource),
       );
-      this.colonyMap.set(to.id, { ...to, resources });
-      this.persistColony(this.colonyMap.get(to.id)!);
+      empire.colonyMap.set(to.id, { ...to, resources });
+      this.persistColony(empire.colonyMap.get(to.id)!);
     } else {
       const stocks = this.marketMap.get(route.toId);
-      const owner = this.colonyMap.get(route.ownerColonyId);
+      const owner = empire.colonyMap.get(route.ownerColonyId);
       if (!stocks || !owner) return;
       const result = resolveSale(stocks, { [route.resource]: carrying });
       this.marketMap.set(route.toId, result.stocks);
@@ -859,8 +859,8 @@ export class GameEngine {
       const revenue = Math.floor(result.revenue * (1 + this.stationRepBonus(route.toId)));
       this.addFactionRep(route.toId, result.revenue);
       const resources = { ...owner.resources, credits: owner.resources.credits + revenue };
-      this.colonyMap.set(owner.id, { ...owner, resources });
-      this.persistColony(this.colonyMap.get(owner.id)!);
+      empire.colonyMap.set(owner.id, { ...owner, resources });
+      this.persistColony(empire.colonyMap.get(owner.id)!);
     }
   }
 
@@ -911,8 +911,8 @@ export class GameEngine {
     }
   }
 
-  private persistOutposts(): void {
-    for (const outpost of this.outpostMap.values()) {
+  private persistOutposts(empire: Empire): void {
+    for (const outpost of empire.outpostMap.values()) {
       db.update(schema.outposts)
         .set({ oreStock: outpost.oreStock })
         .where(eq(schema.outposts.id, outpost.id))
@@ -966,28 +966,28 @@ export class GameEngine {
       startedAt: now,
       finishesAt: now + tech.durationMs,
     };
-    this.persistResearch();
+    this.persistResearch(this.defaultEmpire);
     this.notify();
     return null;
   }
 
-  private resolveResearch(t: number): void {
-    const research = this.defaultEmpire.research;
+  private resolveResearch(empire: Empire, t: number): void {
+    const research = empire.research;
     if (!research || research.finishesAt > t) return;
-    this.defaultEmpire.researched = [...this.defaultEmpire.researched, research.techId];
-    this.defaultEmpire.research = null;
-    this.effects = computeEffects(this.defaultEmpire.researched as TechId[]);
-    this.persistResearch();
+    empire.researched = [...empire.researched, research.techId];
+    empire.research = null;
+    empire.effects = computeEffects(empire.researched as TechId[]);
+    this.persistResearch(empire);
     console.log(`[game] recherche terminée : ${research.techId}`);
   }
 
-  private persistResearch(): void {
+  private persistResearch(empire: Empire): void {
     db.update(schema.players)
       .set({
-        researched: JSON.stringify(this.defaultEmpire.researched),
-        research: this.defaultEmpire.research ? JSON.stringify(this.defaultEmpire.research) : null,
+        researched: JSON.stringify(empire.researched),
+        research: empire.research ? JSON.stringify(empire.research) : null,
       })
-      .where(eq(schema.players.id, this.defaultEmpire.id))
+      .where(eq(schema.players.id, empire.id))
       .run();
   }
 
@@ -1332,9 +1332,13 @@ export class GameEngine {
     }
   }
 
-  /** Résout production, déplacements et spawns pirates à chaque tick. */
-  private fleetsTick(t: number, tickNumber: number): void {
-    for (const [id, fleet] of this.fleetMap) {
+  /**
+   * Résout production et déplacements des flottes de l'empire, puis la ponction
+   * pirate sur ses colonies. Repaires pirates = PNJ partagés (l'apparition est
+   * résolue une fois par tick au niveau univers, cf. `advance`).
+   */
+  private fleetsTick(empire: Empire, t: number): void {
+    for (const [id, fleet] of empire.fleetMap) {
       let current = fleet;
       // Livraison des vaisseaux produits.
       const done = current.queue.filter((q) => q.finishesAt <= t);
@@ -1348,27 +1352,29 @@ export class GameEngine {
         current = { ...current, systemId: current.movement.toSystemId, movement: null };
       }
       if (current !== fleet) {
-        this.fleetMap.set(id, current);
+        empire.fleetMap.set(id, current);
         this.persistFleet(current);
       }
     }
 
     // Piraterie : ponction de crédits aux colonies partageant un système avec un repaire.
     for (const lair of this.lairMap.values()) {
-      for (const colony of this.colonyMap.values()) {
+      for (const colony of empire.colonyMap.values()) {
         if (this.planetsById.get(colony.planetId)?.systemId !== lair.systemId) continue;
         const credits = Math.max(0, colony.resources.credits - PIRATE_TAX_PER_TICK);
-        this.colonyMap.set(colony.id, {
+        empire.colonyMap.set(colony.id, {
           ...colony,
           resources: { ...colony.resources, credits },
         });
       }
     }
-
-    // Apparition de repaires au tick éco (systèmes explorés, non revendiqués, sans repaire).
-    if (tickNumber % ECONOMY_TICK_TICKS === 0) this.spawnPirates(tickNumber);
   }
 
+  /**
+   * Apparition de repaires pirates PNJ (univers partagé, une fois par tick éco).
+   * Provisoire : borné au brouillard/aux claims du defaultEmpire ; passera à un
+   * brouillard univers (union des empires) au chantier 7d.
+   */
   private spawnPirates(tickNumber: number): void {
     for (const systemId of this.explored) {
       if (this.defaultEmpire.claimedSystemIds.includes(systemId)) continue;
@@ -1639,7 +1645,7 @@ export class GameEngine {
       this.fleetMap.set(id, next);
       this.persistFleet(next);
     }
-    this.persistResearch();
+    this.persistResearch(this.defaultEmpire);
     for (const transfer of this.transferMap.values()) {
       db.update(schema.transfers)
         .set({ departedAt: transfer.departedAt, arrivesAt: transfer.arrivesAt })
@@ -1744,9 +1750,14 @@ export class GameEngine {
       .run();
   }
 
-  /** Résout les missions arrivées à l'instant `t` : révélation, fondation, commerce. */
-  private resolveMissions(t: number): void {
-    for (const [id, mission] of this.missionMap) {
+  /**
+   * Résout les missions de l'empire arrivées à l'instant `t` : révélation, fondation,
+   * commerce. Les marchés et portails restent partagés (univers) ; les helpers
+   * `markExplored`/`insertColony`/`insertMission` ciblent encore le defaultEmpire
+   * (identité par-empire threadée en 7c).
+   */
+  private resolveMissions(empire: Empire, t: number): void {
+    for (const [id, mission] of empire.missionMap) {
       if (mission.arrivesAt > t) continue;
       switch (mission.kind) {
         case "probe":
@@ -1754,7 +1765,7 @@ export class GameEngine {
           break;
         case "colonize": {
           const planet = this.planetsById.get(mission.targetId);
-          const alreadyColonized = [...this.colonyMap.values()].some(
+          const alreadyColonized = [...empire.colonyMap.values()].some(
             (c) => c.planetId === mission.targetId,
           );
           if (planet && !alreadyColonized) {
@@ -1778,7 +1789,7 @@ export class GameEngine {
         }
         case "sell": {
           const stocks = this.marketMap.get(mission.targetId);
-          const colony = this.colonyMap.get(mission.fromColonyId);
+          const colony = empire.colonyMap.get(mission.fromColonyId);
           if (stocks && colony && mission.cargo) {
             const result = resolveSale(stocks, mission.cargo);
             this.marketMap.set(mission.targetId, result.stocks);
@@ -1792,8 +1803,8 @@ export class GameEngine {
               ...colony.resources,
               credits: colony.resources.credits + revenue,
             };
-            this.colonyMap.set(colony.id, { ...colony, resources });
-            this.persistColony(this.colonyMap.get(colony.id)!);
+            empire.colonyMap.set(colony.id, { ...colony, resources });
+            this.persistColony(empire.colonyMap.get(colony.id)!);
           }
           break;
         }
@@ -1847,7 +1858,7 @@ export class GameEngine {
         }
         case "build_outpost": {
           const belt = this.beltsById.get(mission.targetId);
-          const alreadyBuilt = [...this.outpostMap.values()].some(
+          const alreadyBuilt = [...empire.outpostMap.values()].some(
             (o) => o.beltId === mission.targetId,
           );
           if (belt && !alreadyBuilt) {
@@ -1857,7 +1868,7 @@ export class GameEngine {
               ownerColonyId: mission.fromColonyId,
               oreStock: 0,
             };
-            this.outpostMap.set(outpost.id, outpost);
+            empire.outpostMap.set(outpost.id, outpost);
             db.insert(schema.outposts)
               .values({ ...outpost, gameId: this.clock.id, createdAt: Date.now() })
               .run();
@@ -1866,7 +1877,7 @@ export class GameEngine {
           break;
         }
         case "buy_return": {
-          const colony = this.colonyMap.get(mission.fromColonyId);
+          const colony = empire.colonyMap.get(mission.fromColonyId);
           if (colony) {
             const resources = { ...colony.resources };
             for (const [res, amount] of Object.entries(mission.cargo ?? {}) as [
@@ -1876,13 +1887,13 @@ export class GameEngine {
               resources[res] = Math.min(resources[res] + amount, storageCap(colony, res));
             }
             resources.credits += mission.budget ?? 0;
-            this.colonyMap.set(colony.id, { ...colony, resources });
-            this.persistColony(this.colonyMap.get(colony.id)!);
+            empire.colonyMap.set(colony.id, { ...colony, resources });
+            this.persistColony(empire.colonyMap.get(colony.id)!);
           }
           break;
         }
       }
-      this.missionMap.delete(id);
+      empire.missionMap.delete(id);
       db.delete(schema.missions).where(eq(schema.missions.id, id)).run();
     }
   }
@@ -1913,16 +1924,16 @@ export class GameEngine {
   }
 
   /** Génération d'influence ; entretien impayé = la revendication la plus récente tombe. */
-  private influenceTick(): void {
-    const net = influencePerTick(this.colonies, this.defaultEmpire.claimedSystemIds.length);
-    let influence = this.defaultEmpire.influence + net;
-    if (influence < 0 && this.defaultEmpire.claimedSystemIds.length > 0) {
-      const dropped = this.defaultEmpire.claimedSystemIds.at(-1)!;
+  private influenceTick(empire: Empire): void {
+    const net = influencePerTick([...empire.colonyMap.values()], empire.claimedSystemIds.length);
+    let influence = empire.influence + net;
+    if (influence < 0 && empire.claimedSystemIds.length > 0) {
+      const dropped = empire.claimedSystemIds.at(-1)!;
       this.dropClaim(dropped);
       influence = 0;
       console.log(`[game] revendication perdue faute d'influence : ${dropped}`);
     }
-    this.defaultEmpire.influence = Math.max(0, influence);
+    empire.influence = Math.max(0, influence);
   }
 
   /** Tick économique : les stocks PNJ de chaque station évoluent selon leur faction. */
@@ -1949,18 +1960,18 @@ export class GameEngine {
   }
 
   /** Livre les convois arrivés à l'instant `t` (surplus au-delà du stockage perdu). */
-  private deliverTransfers(t: number): void {
-    for (const [id, transfer] of this.transferMap) {
+  private deliverTransfers(empire: Empire, t: number): void {
+    for (const [id, transfer] of empire.transferMap) {
       if (transfer.arrivesAt > t) continue;
-      const to = this.colonyMap.get(transfer.toColonyId);
+      const to = empire.colonyMap.get(transfer.toColonyId);
       if (to) {
         const resources = { ...to.resources };
         for (const [res, amount] of Object.entries(transfer.resources) as [ResourceId, number][]) {
           resources[res] = Math.min(resources[res] + amount, storageCap(to, res));
         }
-        this.colonyMap.set(to.id, { ...to, resources });
+        empire.colonyMap.set(to.id, { ...to, resources });
       }
-      this.transferMap.delete(id);
+      empire.transferMap.delete(id);
       db.delete(schema.transfers).where(eq(schema.transfers.id, id)).run();
     }
   }
@@ -2117,28 +2128,27 @@ export class GameEngine {
     for (let i = 1; i <= ticks; i++) {
       const t = this.clock.lastTickAt + i * TICK_MS;
       const tickNumber = this.clock.tick + i;
-      this.deliverTransfers(t);
-      this.resolveMissions(t);
-      this.resolveResearch(t);
-      this.resolveGateways(t);
-      this.processRoutes(t);
-      this.outpostsTick();
-      this.fleetsTick(t, tickNumber);
-      this.influenceTick();
-      if (tickNumber % ECONOMY_TICK_TICKS === 0) this.economyTick(tickNumber);
-      for (const [id, colony] of this.colonyMap) {
-        const planet = this.planetsById.get(colony.planetId);
-        if (!planet) continue;
-        // Bonus territorial : système revendiqué = production boostée.
-        const claimed = this.defaultEmpire.claimedSystemIds.includes(planet.systemId);
-        const effects = claimed
-          ? { ...this.effects, outputMultAll: this.effects.outputMultAll * CLAIM_PRODUCTION_BONUS }
-          : this.effects;
-        this.colonyMap.set(
-          id,
-          applyColonyTick(resolveShips(resolveQueue(colony, t), t), planet, effects),
-        );
+      const isEconomyTick = tickNumber % ECONOMY_TICK_TICKS === 0;
+      // Étapes par empire (un seul instancié à ce stade — la boucle tourne une fois).
+      for (const empire of this.empires.values()) {
+        this.deliverTransfers(empire, t);
+        this.resolveMissions(empire, t);
+        this.resolveResearch(empire, t);
       }
+      // Portails : univers partagé, résolus une fois avant les routes qui les empruntent.
+      this.resolveGateways(t);
+      for (const empire of this.empires.values()) {
+        this.processRoutes(empire, t);
+        this.outpostsTick(empire);
+        this.fleetsTick(empire, t);
+      }
+      // Apparition de repaires (PNJ partagés) : après les mouvements de flotte, avant
+      // l'entretien d'influence — position historique (fin de `fleetsTick`), tick éco.
+      if (isEconomyTick) this.spawnPirates(tickNumber);
+      for (const empire of this.empires.values()) this.influenceTick(empire);
+      // Marchés PNJ : univers partagé, une fois par tick éco.
+      if (isEconomyTick) this.economyTick(tickNumber);
+      for (const empire of this.empires.values()) this.colonyProductionTick(empire, t);
     }
     this.clock.tick += ticks;
     this.clock.lastTickAt += ticks * TICK_MS;
@@ -2146,13 +2156,32 @@ export class GameEngine {
       .set({ tick: this.clock.tick, lastTickAt: this.clock.lastTickAt })
       .where(eq(schema.games.id, this.clock.id))
       .run();
-    db.update(schema.players)
-      .set({ influence: this.defaultEmpire.influence, factionRep: JSON.stringify(this.defaultEmpire.factionRep) })
-      .where(eq(schema.players.id, this.defaultEmpire.id))
-      .run();
-    for (const colony of this.colonyMap.values()) this.persistColony(colony);
-    this.persistOutposts();
+    for (const empire of this.empires.values()) {
+      db.update(schema.players)
+        .set({ influence: empire.influence, factionRep: JSON.stringify(empire.factionRep) })
+        .where(eq(schema.players.id, empire.id))
+        .run();
+      for (const colony of empire.colonyMap.values()) this.persistColony(colony);
+      this.persistOutposts(empire);
+    }
     this.notify();
+  }
+
+  /** Production/économie d'une colonie à chaque tick, avec bonus territorial des claims. */
+  private colonyProductionTick(empire: Empire, t: number): void {
+    for (const [id, colony] of empire.colonyMap) {
+      const planet = this.planetsById.get(colony.planetId);
+      if (!planet) continue;
+      // Bonus territorial : système revendiqué = production boostée.
+      const claimed = empire.claimedSystemIds.includes(planet.systemId);
+      const effects = claimed
+        ? { ...empire.effects, outputMultAll: empire.effects.outputMultAll * CLAIM_PRODUCTION_BONUS }
+        : empire.effects;
+      empire.colonyMap.set(
+        id,
+        applyColonyTick(resolveShips(resolveQueue(colony, t), t), planet, effects),
+      );
+    }
   }
 
   private loadTransfers(): void {
