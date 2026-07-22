@@ -253,37 +253,40 @@ export class GameEngine {
     return engine;
   }
 
+  // Accesseurs publics (message `hello` d'index.ts) : vue de l'empire par défaut.
+  // Chaque collection est celle du defaultEmpire ; les PNJ/l'univers sont redactés
+  // à son brouillard. En 7c, ce sera la vue de l'empire de la connexion.
   get game(): GameState {
     return this.defaultEmpire.toGameState(this.clock);
   }
 
   get colonies(): Colony[] {
-    return [...this.colonyMap.values()];
+    return [...this.defaultEmpire.colonyMap.values()];
   }
 
   get transfers(): Transfer[] {
-    return [...this.transferMap.values()];
+    return [...this.defaultEmpire.transferMap.values()];
   }
 
   get missions(): Mission[] {
-    return [...this.missionMap.values()];
+    return [...this.defaultEmpire.missionMap.values()];
   }
 
   get exploredSystemIds(): string[] {
-    return [...this.explored];
+    return [...this.defaultEmpire.explored];
   }
 
   /** Univers vu par le client : planètes masquées hors systèmes explorés. */
   get clientUniverse(): Universe {
-    return redactUniverse(this.universe, this.explored);
+    return this.clientUniverseFor(this.defaultEmpire);
   }
 
   get routes(): Route[] {
-    return [...this.routeMap.values()];
+    return [...this.defaultEmpire.routeMap.values()];
   }
 
   get outposts(): MiningOutpost[] {
-    return [...this.outpostMap.values()];
+    return [...this.defaultEmpire.outpostMap.values()];
   }
 
   get gateways(): Gateway[] {
@@ -291,12 +294,12 @@ export class GameEngine {
   }
 
   get fleets(): Fleet[] {
-    return [...this.fleetMap.values()];
+    return [...this.defaultEmpire.fleetMap.values()];
   }
 
   /** Repaires dans les systèmes explorés uniquement (fog). */
   get pirateLairs(): PirateLair[] {
-    return [...this.lairMap.values()].filter((l) => this.explored.has(l.systemId));
+    return this.pirateLairsFor(this.defaultEmpire);
   }
 
   get battles(): StoredBattle[] {
@@ -310,14 +313,52 @@ export class GameEngine {
 
   /** Marchés des seules stations situées dans des systèmes explorés. */
   get markets(): StationMarket[] {
+    return this.marketsFor(this.defaultEmpire);
+  }
+
+  /** Univers redacté au brouillard de l'empire (planètes masquées hors systèmes explorés). */
+  private clientUniverseFor(empire: Empire): Universe {
+    return redactUniverse(this.universe, empire.explored);
+  }
+
+  /** Marchés des stations situées dans les systèmes explorés par l'empire. */
+  private marketsFor(empire: Empire): StationMarket[] {
     const markets: StationMarket[] = [];
     for (const [stationId, stocks] of this.marketMap) {
       const station = this.stationsById.get(stationId);
-      if (station && this.explored.has(station.systemId)) {
+      if (station && empire.explored.has(station.systemId)) {
         markets.push({ stationId, stocks });
       }
     }
     return markets;
+  }
+
+  /** Repaires PNJ visibles dans le brouillard de l'empire. */
+  private pirateLairsFor(empire: Empire): PirateLair[] {
+    return [...this.lairMap.values()].filter((l) => empire.explored.has(l.systemId));
+  }
+
+  /**
+   * Compose le snapshot (forme externe WS) d'un empire : ses entités + l'horloge et
+   * les PNJ partagés, redactés à son brouillard. En 7c, un snapshot distinct sera
+   * diffusé par connexion ; ici un seul empire est instancié.
+   */
+  private snapshotFor(empire: Empire): EngineSnapshot {
+    return {
+      game: empire.toGameState(this.clock),
+      colonies: [...empire.colonyMap.values()],
+      transfers: [...empire.transferMap.values()],
+      missions: [...empire.missionMap.values()],
+      exploredSystemIds: [...empire.explored],
+      markets: this.marketsFor(empire),
+      routes: [...empire.routeMap.values()],
+      outposts: [...empire.outpostMap.values()],
+      gateways: [...this.gatewayMap.values()],
+      fleets: [...empire.fleetMap.values()],
+      pirateLairs: this.pirateLairsFor(empire),
+      battles: this.battleLog,
+      ...(empire.explorationDirty ? { universe: this.clientUniverseFor(empire) } : {}),
+    };
   }
 
   planet(planetId: string): Planet | undefined {
@@ -2215,22 +2256,10 @@ export class GameEngine {
   }
 
   private notify(): void {
-    const snapshot: EngineSnapshot = {
-      game: this.game,
-      colonies: this.colonies,
-      transfers: this.transfers,
-      missions: this.missions,
-      exploredSystemIds: this.exploredSystemIds,
-      markets: this.markets,
-      routes: this.routes,
-      outposts: this.outposts,
-      gateways: this.gateways,
-      fleets: this.fleets,
-      pirateLairs: this.pirateLairs,
-      battles: this.battles,
-      ...(this.explorationDirty ? { universe: this.clientUniverse } : {}),
-    };
-    this.explorationDirty = false;
+    // 7c : un snapshot redacté distinct sera diffusé par connexion (par empire).
+    // Ici, un seul empire — tous les listeners reçoivent sa vue.
+    const snapshot = this.snapshotFor(this.defaultEmpire);
+    this.defaultEmpire.explorationDirty = false;
     for (const listener of this.listeners) listener(snapshot);
   }
 }
