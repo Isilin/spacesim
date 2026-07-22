@@ -64,6 +64,7 @@ import {
   transferCostCredits,
   transferDurationMs,
   TECHS,
+  type ActiveResearch,
   type AsteroidBelt,
   type BuildingId,
   type Colony,
@@ -95,7 +96,7 @@ import {
 import { and, eq, isNull } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { db, schema } from "./db/index.js";
-import { Empire } from "./empire.js";
+import { Empire, type Clock } from "./empire.js";
 
 export interface EngineSnapshot {
   game: GameState;
@@ -136,10 +137,8 @@ export type StateListener = (snapshot: EngineSnapshot) => void;
  */
 export class GameEngine {
   readonly universe: Universe;
-  private state: GameState;
-  private explored = new Set<string>();
-  private explorationDirty = false;
-  private effects: EmpireEffects = computeEffects([]);
+  /** Horloge et identité de l'univers partagé. */
+  private clock: Clock;
   private planetsById: Map<string, Planet>;
   private stationsById: Map<string, TradeStation>;
   private marketMap = new Map<string, Stocks>();
@@ -154,7 +153,7 @@ export class GameEngine {
   /** Empire propriétaire par défaut (solo). Posé par `ensureDefaultPlayer`. */
   private defaultEmpire!: Empire;
 
-  // Maps d'entités portées par l'empire par défaut (délégation le temps du mono-empire).
+  // Données par-empire portées par l'empire par défaut (délégation le temps du mono-empire).
   private get colonyMap(): Map<string, Colony> {
     return this.defaultEmpire.colonyMap;
   }
@@ -173,10 +172,25 @@ export class GameEngine {
   private get fleetMap(): Map<string, Fleet> {
     return this.defaultEmpire.fleetMap;
   }
+  private get effects(): EmpireEffects {
+    return this.defaultEmpire.effects;
+  }
+  private set effects(value: EmpireEffects) {
+    this.defaultEmpire.effects = value;
+  }
+  private get explored(): Set<string> {
+    return this.defaultEmpire.explored;
+  }
+  private get explorationDirty(): boolean {
+    return this.defaultEmpire.explorationDirty;
+  }
+  private set explorationDirty(value: boolean) {
+    this.defaultEmpire.explorationDirty = value;
+  }
 
-  private constructor(state: GameState) {
-    this.state = state;
-    this.universe = generateUniverse(state.seed);
+  private constructor(clock: Clock) {
+    this.clock = { ...clock };
+    this.universe = generateUniverse(clock.seed);
     this.planetsById = new Map(allPlanets(this.universe).map((p) => [p.id, p]));
     this.stationsById = new Map(allStations(this.universe).map((s) => [s.id, s]));
     this.beltsById = new Map(allBelts(this.universe).map((b) => [b.id, b]));
@@ -207,15 +221,18 @@ export class GameEngine {
       seed: row.seed,
       tick: row.tick,
       lastTickAt: row.lastTickAt,
+    });
+    // Valeurs legacy de la ligne `games` : ne servent qu'à ensemencer un player neuf
+    // (7b-données) ; la ligne `players` reste la source autoritaire de l'état d'empire.
+    engine.ensureDefaultPlayer({
       researched: JSON.parse(row.researched),
       research: row.research ? JSON.parse(row.research) : null,
       influence: row.influence,
       factionRep: JSON.parse(row.factionRep),
+      explored: JSON.parse(row.explored),
       claimedSystemIds: claimRows.map((c) => c.systemId),
     });
-    engine.explored = new Set(JSON.parse(row.explored));
-    engine.ensureDefaultPlayer();
-    engine.effects = computeEffects(engine.state.researched as TechId[]);
+    engine.effects = computeEffects(engine.defaultEmpire.researched as TechId[]);
     if (isNew) {
       engine.createHomeColony();
       engine.initMarkets();
@@ -237,7 +254,7 @@ export class GameEngine {
   }
 
   get game(): GameState {
-    return this.state;
+    return this.defaultEmpire.toGameState(this.clock);
   }
 
   get colonies(): Colony[] {
@@ -315,7 +332,7 @@ export class GameEngine {
   start(): void {
     if (this.interval) return;
     this.interval = setInterval(() => {
-      const missed = Math.floor((Date.now() - this.state.lastTickAt) / TICK_MS);
+      const missed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);
       if (missed > 0) this.advance(missed);
     }, TICK_MS);
   }
@@ -417,7 +434,7 @@ export class GameEngine {
     db.insert(schema.transfers)
       .values({
         id: transfer.id,
-        gameId: this.state.id,
+        gameId: this.clock.id,
         fromColonyId,
         toColonyId,
         resources: JSON.stringify(cargo),
@@ -532,7 +549,7 @@ export class GameEngine {
   buildShip(colonyId: string, shipId: ShipId): string | null {
     const colony = this.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
-    const result = enqueueShip(colony, shipId, Date.now(), this.state.researched as TechId[]);
+    const result = enqueueShip(colony, shipId, Date.now(), this.defaultEmpire.researched as TechId[]);
     if (!result.ok) return result.reason;
     this.colonyMap.set(colonyId, result.colony);
     this.persistColony(result.colony);
@@ -692,7 +709,7 @@ export class GameEngine {
     db.insert(schema.routes)
       .values({
         id: route.id,
-        gameId: this.state.id,
+        gameId: this.clock.id,
         ownerColonyId,
         fromId,
         fromKind,
@@ -851,18 +868,18 @@ export class GameEngine {
   private addFactionRep(stationId: string, creditsExchanged: number): void {
     const station = this.stationsById.get(stationId);
     if (!station || creditsExchanged <= 0) return;
-    const factionRep = { ...this.state.factionRep };
+    const factionRep = { ...this.defaultEmpire.factionRep };
     factionRep[station.factionId] =
       Math.round(((factionRep[station.factionId] ?? 0) + creditsExchanged * REP_PER_CREDIT) * 10) /
       10;
-    this.state = { ...this.state, factionRep };
+    this.defaultEmpire.factionRep = factionRep;
   }
 
   /** Remise commerciale liée à la réputation auprès de la faction de la station. */
   private stationRepBonus(stationId: string): number {
     const station = this.stationsById.get(stationId);
     if (!station) return 0;
-    return repBonus(this.state.factionRep[station.factionId] ?? 0);
+    return repBonus(this.defaultEmpire.factionRep[station.factionId] ?? 0);
   }
 
   private loadRoutes(): void {
@@ -917,10 +934,10 @@ export class GameEngine {
 
   /** Action joueur : lancer une recherche (une seule à la fois, payée en science). */
   startResearch(techId: string): string | null {
-    if (this.state.research) return "Une recherche est déjà en cours";
+    if (this.defaultEmpire.research) return "Une recherche est déjà en cours";
     const tech = TECHS[techId as TechId];
     if (!tech) return "Technologie inconnue";
-    if (!canResearch(tech.id, this.state.researched as TechId[])) {
+    if (!canResearch(tech.id, this.defaultEmpire.researched as TechId[])) {
       return "Prérequis non satisfaits";
     }
     const totalScience = this.colonies.reduce((s, c) => s + c.resources.science, 0);
@@ -944,9 +961,10 @@ export class GameEngine {
     }
 
     const now = Date.now();
-    this.state = {
-      ...this.state,
-      research: { techId: tech.id, startedAt: now, finishesAt: now + tech.durationMs },
+    this.defaultEmpire.research = {
+      techId: tech.id,
+      startedAt: now,
+      finishesAt: now + tech.durationMs,
     };
     this.persistResearch();
     this.notify();
@@ -954,14 +972,11 @@ export class GameEngine {
   }
 
   private resolveResearch(t: number): void {
-    const research = this.state.research;
+    const research = this.defaultEmpire.research;
     if (!research || research.finishesAt > t) return;
-    this.state = {
-      ...this.state,
-      researched: [...this.state.researched, research.techId],
-      research: null,
-    };
-    this.effects = computeEffects(this.state.researched as TechId[]);
+    this.defaultEmpire.researched = [...this.defaultEmpire.researched, research.techId];
+    this.defaultEmpire.research = null;
+    this.effects = computeEffects(this.defaultEmpire.researched as TechId[]);
     this.persistResearch();
     console.log(`[game] recherche terminée : ${research.techId}`);
   }
@@ -969,8 +984,8 @@ export class GameEngine {
   private persistResearch(): void {
     db.update(schema.players)
       .set({
-        researched: JSON.stringify(this.state.researched),
-        research: this.state.research ? JSON.stringify(this.state.research) : null,
+        researched: JSON.stringify(this.defaultEmpire.researched),
+        research: this.defaultEmpire.research ? JSON.stringify(this.defaultEmpire.research) : null,
       })
       .where(eq(schema.players.id, this.defaultEmpire.id))
       .run();
@@ -1040,13 +1055,13 @@ export class GameEngine {
       (m) => m.kind === "colonize",
     ).length;
     const influenceCost = colonizeInfluenceCost(this.colonyMap.size + pendingColonies);
-    if (this.state.influence < influenceCost) {
-      return `Influence insuffisante (${Math.floor(this.state.influence)}/${influenceCost})`;
+    if (this.defaultEmpire.influence < influenceCost) {
+      return `Influence insuffisante (${Math.floor(this.defaultEmpire.influence)}/${influenceCost})`;
     }
     for (const [res, amount] of Object.entries(COLONY_SHIP_COST) as [ResourceId, number][]) {
       resources[res] -= amount;
     }
-    this.state = { ...this.state, influence: this.state.influence - influenceCost };
+    this.defaultEmpire.influence -= influenceCost;
     this.colonyMap.set(colony.id, { ...colony, resources });
     this.persistColony(this.colonyMap.get(colony.id)!);
     this.insertMission(
@@ -1065,7 +1080,7 @@ export class GameEngine {
     galaxyId: string,
     wanted: Partial<Record<ResourceId, number>>,
   ): string | null {
-    if (!this.state.researched.includes("gateway_engineering")) {
+    if (!this.defaultEmpire.researched.includes("gateway_engineering")) {
       return "Technologie « Ingénierie des portails » requise";
     }
     const colony = this.colonyMap.get(colonyId);
@@ -1156,7 +1171,7 @@ export class GameEngine {
     const home = this.colonyMap.get(fleet.homeColonyId);
     if (!home) return "Colonie de rattachement inconnue";
     if ((home.buildings.shipyard ?? 0) < 1) return "Chantier naval requis";
-    if (!this.state.researched.includes(def.requiresTech)) {
+    if (!this.defaultEmpire.researched.includes(def.requiresTech)) {
       return "Technologie militaire requise";
     }
     if (fleet.queue.length >= 5) return "File de production pleine";
@@ -1302,7 +1317,7 @@ export class GameEngine {
     db.insert(schema.battles)
       .values({
         id: battle.id,
-        gameId: this.state.id,
+        gameId: this.clock.id,
         at: battle.at,
         systemId,
         attackerName,
@@ -1356,9 +1371,9 @@ export class GameEngine {
 
   private spawnPirates(tickNumber: number): void {
     for (const systemId of this.explored) {
-      if (this.state.claimedSystemIds.includes(systemId)) continue;
+      if (this.defaultEmpire.claimedSystemIds.includes(systemId)) continue;
       if ([...this.lairMap.values()].some((l) => l.systemId === systemId)) continue;
-      const rng = createRng(`pirate-${this.state.seed}-${systemId}-${tickNumber}`);
+      const rng = createRng(`pirate-${this.clock.seed}-${systemId}-${tickNumber}`);
       if (rng() > PIRATE_SPAWN_CHANCE) continue;
       // Menace croissante selon l'éloignement de la galaxie d'origine.
       const galaxy = this.universe.galaxies.find((g) => g.systems.some((s) => s.id === systemId));
@@ -1388,7 +1403,7 @@ export class GameEngine {
     };
     if (insert) {
       db.insert(schema.fleets)
-        .values({ id: fleet.id, gameId: this.state.id, ownerId: fleet.ownerId ?? this.defaultEmpire.id, ...values })
+        .values({ id: fleet.id, gameId: this.clock.id, ownerId: fleet.ownerId ?? this.defaultEmpire.id, ...values })
         .run();
     } else {
       db.update(schema.fleets).set(values).where(eq(schema.fleets.id, fleet.id)).run();
@@ -1403,7 +1418,7 @@ export class GameEngine {
       bounty: lair.bounty,
     };
     if (insert) {
-      db.insert(schema.pirateLairs).values({ id: lair.id, gameId: this.state.id, ...values }).run();
+      db.insert(schema.pirateLairs).values({ id: lair.id, gameId: this.clock.id, ...values }).run();
     } else {
       db.update(schema.pirateLairs).set(values).where(eq(schema.pirateLairs.id, lair.id)).run();
     }
@@ -1459,7 +1474,7 @@ export class GameEngine {
       const gateway: Gateway = { galaxyId: galaxy.id, progress: {}, activatesAt: null, active: false };
       this.gatewayMap.set(galaxy.id, gateway);
       db.insert(schema.gateways)
-        .values({ galaxyId: galaxy.id, gameId: this.state.id, progress: "{}", activatesAt: null, active: 0 })
+        .values({ galaxyId: galaxy.id, gameId: this.clock.id, progress: "{}", activatesAt: null, active: 0 })
         .run();
     }
   }
@@ -1501,21 +1516,18 @@ export class GameEngine {
     const system = allSystems(this.universe).find((s) => s.id === systemId);
     if (!system) return "Système inconnu";
     if (!this.explored.has(systemId)) return "Système non exploré";
-    if (this.state.claimedSystemIds.includes(systemId)) return "Système déjà revendiqué";
+    if (this.defaultEmpire.claimedSystemIds.includes(systemId)) return "Système déjà revendiqué";
     const hasColony = [...this.colonyMap.values()].some(
       (c) => this.planetsById.get(c.planetId)?.systemId === systemId,
     );
     if (!hasColony) return "Une colonie sur place est requise pour revendiquer";
-    if (this.state.influence < CLAIM_COST) {
-      return `Influence insuffisante (${Math.floor(this.state.influence)}/${CLAIM_COST})`;
+    if (this.defaultEmpire.influence < CLAIM_COST) {
+      return `Influence insuffisante (${Math.floor(this.defaultEmpire.influence)}/${CLAIM_COST})`;
     }
-    this.state = {
-      ...this.state,
-      influence: this.state.influence - CLAIM_COST,
-      claimedSystemIds: [...this.state.claimedSystemIds, systemId],
-    };
+    this.defaultEmpire.influence -= CLAIM_COST;
+    this.defaultEmpire.claimedSystemIds = [...this.defaultEmpire.claimedSystemIds, systemId];
     db.insert(schema.claims)
-      .values({ systemId, gameId: this.state.id, ownerId: this.defaultEmpire.id, claimedAt: Date.now() })
+      .values({ systemId, gameId: this.clock.id, ownerId: this.defaultEmpire.id, claimedAt: Date.now() })
       .run();
     this.notify();
     return null;
@@ -1523,17 +1535,16 @@ export class GameEngine {
 
   /** Action joueur : abandonner une revendication (sans remboursement). */
   unclaimSystem(systemId: string): string | null {
-    if (!this.state.claimedSystemIds.includes(systemId)) return "Système non revendiqué";
+    if (!this.defaultEmpire.claimedSystemIds.includes(systemId)) return "Système non revendiqué";
     this.dropClaim(systemId);
     this.notify();
     return null;
   }
 
   private dropClaim(systemId: string): void {
-    this.state = {
-      ...this.state,
-      claimedSystemIds: this.state.claimedSystemIds.filter((id) => id !== systemId),
-    };
+    this.defaultEmpire.claimedSystemIds = this.defaultEmpire.claimedSystemIds.filter(
+      (id) => id !== systemId,
+    );
     db.delete(schema.claims).where(eq(schema.claims.systemId, systemId)).run();
   }
 
@@ -1545,15 +1556,12 @@ export class GameEngine {
     const delta = Math.max(0, Math.floor(seconds)) * 1000;
     if (delta <= 0) return;
 
-    this.state = { ...this.state, lastTickAt: this.state.lastTickAt - delta };
-    if (this.state.research) {
-      this.state = {
-        ...this.state,
-        research: {
-          ...this.state.research,
-          startedAt: this.state.research.startedAt - delta,
-          finishesAt: this.state.research.finishesAt - delta,
-        },
+    this.clock.lastTickAt -= delta;
+    if (this.defaultEmpire.research) {
+      this.defaultEmpire.research = {
+        ...this.defaultEmpire.research,
+        startedAt: this.defaultEmpire.research.startedAt - delta,
+        finishesAt: this.defaultEmpire.research.finishesAt - delta,
       };
     }
     for (const [id, colony] of this.colonyMap) {
@@ -1645,7 +1653,7 @@ export class GameEngine {
         .run();
     }
 
-    const missed = Math.floor((Date.now() - this.state.lastTickAt) / TICK_MS);
+    const missed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);
     if (missed > 0) this.advance(Math.min(missed, MAX_CATCHUP_TICKS));
     console.log(`[game] fast-forward de ${seconds}s (${missed} ticks)`);
   }
@@ -1722,7 +1730,7 @@ export class GameEngine {
     db.insert(schema.missions)
       .values({
         id: mission.id,
-        gameId: this.state.id,
+        gameId: this.clock.id,
         kind: mission.kind,
         fromColonyId: mission.fromColonyId,
         targetId: mission.targetId,
@@ -1851,7 +1859,7 @@ export class GameEngine {
             };
             this.outpostMap.set(outpost.id, outpost);
             db.insert(schema.outposts)
-              .values({ ...outpost, gameId: this.state.id, createdAt: Date.now() })
+              .values({ ...outpost, gameId: this.clock.id, createdAt: Date.now() })
               .run();
             console.log(`[game] avant-poste minier fondé sur ${belt.name}`);
           }
@@ -1881,10 +1889,10 @@ export class GameEngine {
 
   private initMarkets(): void {
     for (const station of this.stationsById.values()) {
-      const stocks = initialStocks(createRng(`${this.state.seed}-station-${station.id}`));
+      const stocks = initialStocks(createRng(`${this.clock.seed}-station-${station.id}`));
       this.marketMap.set(station.id, stocks);
       db.insert(schema.stationStates)
-        .values({ stationId: station.id, gameId: this.state.id, stocks: JSON.stringify(stocks) })
+        .values({ stationId: station.id, gameId: this.clock.id, stocks: JSON.stringify(stocks) })
         .run();
     }
   }
@@ -1906,15 +1914,15 @@ export class GameEngine {
 
   /** Génération d'influence ; entretien impayé = la revendication la plus récente tombe. */
   private influenceTick(): void {
-    const net = influencePerTick(this.colonies, this.state.claimedSystemIds.length);
-    let influence = this.state.influence + net;
-    if (influence < 0 && this.state.claimedSystemIds.length > 0) {
-      const dropped = this.state.claimedSystemIds.at(-1)!;
+    const net = influencePerTick(this.colonies, this.defaultEmpire.claimedSystemIds.length);
+    let influence = this.defaultEmpire.influence + net;
+    if (influence < 0 && this.defaultEmpire.claimedSystemIds.length > 0) {
+      const dropped = this.defaultEmpire.claimedSystemIds.at(-1)!;
       this.dropClaim(dropped);
       influence = 0;
       console.log(`[game] revendication perdue faute d'influence : ${dropped}`);
     }
-    this.state = { ...this.state, influence: Math.max(0, influence) };
+    this.defaultEmpire.influence = Math.max(0, influence);
   }
 
   /** Tick économique : les stocks PNJ de chaque station évoluent selon leur faction. */
@@ -1924,7 +1932,7 @@ export class GameEngine {
       if (!stocks) continue;
       const faction = FACTIONS[station.factionId as FactionId];
       if (!faction) continue;
-      const rng = createRng(`${this.state.seed}-mkt-${station.id}-${tickNumber}`);
+      const rng = createRng(`${this.clock.seed}-mkt-${station.id}-${tickNumber}`);
       this.marketMap.set(station.id, marketTick(stocks, faction, rng));
       this.persistMarket(station.id);
     }
@@ -1963,27 +1971,34 @@ export class GameEngine {
    * Socle du multi (chantier 7) : en solo, un unique player possède tout.
    * Pour une sauvegarde mono-locataire pré-existante, backfill des `ownerId` NULL.
    */
-  private ensureDefaultPlayer(): void {
+  private ensureDefaultPlayer(seed: {
+    researched: string[];
+    research: ActiveResearch | null;
+    influence: number;
+    factionRep: Record<string, number>;
+    explored: string[];
+    claimedSystemIds: string[];
+  }): void {
     let player = db
       .select()
       .from(schema.players)
-      .where(eq(schema.players.gameId, this.state.id))
+      .where(eq(schema.players.gameId, this.clock.id))
       .limit(1)
       .get();
     if (!player) {
-      // Nouveau player : on l'ensemence avec l'état d'empire courant (issu de la
-      // ligne `games` legacy pour une sauvegarde pré-7b, sinon les valeurs par défaut).
+      // Nouveau player : on l'ensemence avec l'état d'empire legacy (issu de la
+      // ligne `games` pour une sauvegarde pré-7b, sinon les valeurs par défaut).
       player = {
         id: randomUUID(),
-        gameId: this.state.id,
+        gameId: this.clock.id,
         name: DEFAULT_PLAYER_NAME,
         color: DEFAULT_PLAYER_COLOR,
         joinedAt: Date.now(),
-        researched: JSON.stringify(this.state.researched),
-        research: this.state.research ? JSON.stringify(this.state.research) : null,
-        influence: this.state.influence,
-        factionRep: JSON.stringify(this.state.factionRep),
-        explored: JSON.stringify([...this.explored]),
+        researched: JSON.stringify(seed.researched),
+        research: seed.research ? JSON.stringify(seed.research) : null,
+        influence: seed.influence,
+        factionRep: JSON.stringify(seed.factionRep),
+        explored: JSON.stringify(seed.explored),
       };
       db.insert(schema.players).values(player).run();
     }
@@ -1992,18 +2007,17 @@ export class GameEngine {
     for (const table of [schema.colonies, schema.fleets, schema.claims]) {
       db.update(table)
         .set({ ownerId: this.defaultEmpire.id })
-        .where(and(eq(table.gameId, this.state.id), isNull(table.ownerId)))
+        .where(and(eq(table.gameId, this.clock.id), isNull(table.ownerId)))
         .run();
     }
-    // Source autoritaire de l'état d'empire = la ligne `players` (chantier 7b).
-    this.state = {
-      ...this.state,
-      researched: JSON.parse(player.researched),
-      research: player.research ? JSON.parse(player.research) : null,
-      influence: player.influence,
-      factionRep: JSON.parse(player.factionRep),
-    };
-    this.explored = new Set(JSON.parse(player.explored));
+    // Source autoritaire de l'état d'empire = la ligne `players` (chantier 7b) ;
+    // les claims restent dans leur table (backfillée sur cet empire ci-dessus).
+    this.defaultEmpire.researched = JSON.parse(player.researched);
+    this.defaultEmpire.research = player.research ? JSON.parse(player.research) : null;
+    this.defaultEmpire.influence = player.influence;
+    this.defaultEmpire.factionRep = JSON.parse(player.factionRep);
+    this.defaultEmpire.explored = new Set(JSON.parse(player.explored));
+    this.defaultEmpire.claimedSystemIds = seed.claimedSystemIds;
   }
 
   private createHomeColony(): void {
@@ -2033,7 +2047,7 @@ export class GameEngine {
     db.insert(schema.colonies)
       .values({
         id: colony.id,
-        gameId: this.state.id,
+        gameId: this.clock.id,
         ownerId: colony.ownerId,
         planetId: colony.planetId,
         name: colony.name,
@@ -2087,7 +2101,7 @@ export class GameEngine {
   }
 
   private catchUp(): void {
-    const elapsed = Math.floor((Date.now() - this.state.lastTickAt) / TICK_MS);
+    const elapsed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);
     if (elapsed <= 0) return;
     const ticks = Math.min(elapsed, MAX_CATCHUP_TICKS);
     console.log(`[game] catch-up: ${ticks} ticks (${elapsed} écoulés)`);
@@ -2101,8 +2115,8 @@ export class GameEngine {
    */
   private advance(ticks: number): void {
     for (let i = 1; i <= ticks; i++) {
-      const t = this.state.lastTickAt + i * TICK_MS;
-      const tickNumber = this.state.tick + i;
+      const t = this.clock.lastTickAt + i * TICK_MS;
+      const tickNumber = this.clock.tick + i;
       this.deliverTransfers(t);
       this.resolveMissions(t);
       this.resolveResearch(t);
@@ -2116,7 +2130,7 @@ export class GameEngine {
         const planet = this.planetsById.get(colony.planetId);
         if (!planet) continue;
         // Bonus territorial : système revendiqué = production boostée.
-        const claimed = this.state.claimedSystemIds.includes(planet.systemId);
+        const claimed = this.defaultEmpire.claimedSystemIds.includes(planet.systemId);
         const effects = claimed
           ? { ...this.effects, outputMultAll: this.effects.outputMultAll * CLAIM_PRODUCTION_BONUS }
           : this.effects;
@@ -2126,17 +2140,14 @@ export class GameEngine {
         );
       }
     }
-    this.state = {
-      ...this.state,
-      tick: this.state.tick + ticks,
-      lastTickAt: this.state.lastTickAt + ticks * TICK_MS,
-    };
+    this.clock.tick += ticks;
+    this.clock.lastTickAt += ticks * TICK_MS;
     db.update(schema.games)
-      .set({ tick: this.state.tick, lastTickAt: this.state.lastTickAt })
-      .where(eq(schema.games.id, this.state.id))
+      .set({ tick: this.clock.tick, lastTickAt: this.clock.lastTickAt })
+      .where(eq(schema.games.id, this.clock.id))
       .run();
     db.update(schema.players)
-      .set({ influence: this.state.influence, factionRep: JSON.stringify(this.state.factionRep) })
+      .set({ influence: this.defaultEmpire.influence, factionRep: JSON.stringify(this.defaultEmpire.factionRep) })
       .where(eq(schema.players.id, this.defaultEmpire.id))
       .run();
     for (const colony of this.colonyMap.values()) this.persistColony(colony);
@@ -2176,7 +2187,7 @@ export class GameEngine {
 
   private notify(): void {
     const snapshot: EngineSnapshot = {
-      game: this.state,
+      game: this.game,
       colonies: this.colonies,
       transfers: this.transfers,
       missions: this.missions,
