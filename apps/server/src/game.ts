@@ -137,19 +137,13 @@ export type StateListener = (snapshot: EngineSnapshot) => void;
 export class GameEngine {
   readonly universe: Universe;
   private state: GameState;
-  private colonyMap = new Map<string, Colony>();
-  private transferMap = new Map<string, Transfer>();
-  private missionMap = new Map<string, Mission>();
   private explored = new Set<string>();
   private explorationDirty = false;
   private effects: EmpireEffects = computeEffects([]);
   private planetsById: Map<string, Planet>;
   private stationsById: Map<string, TradeStation>;
   private marketMap = new Map<string, Stocks>();
-  private routeMap = new Map<string, Route>();
-  private outpostMap = new Map<string, MiningOutpost>();
   private gatewayMap = new Map<string, Gateway>();
-  private fleetMap = new Map<string, Fleet>();
   private lairMap = new Map<string, PirateLair>();
   private battleLog: StoredBattle[] = [];
   private beltsById: Map<string, AsteroidBelt>;
@@ -159,6 +153,26 @@ export class GameEngine {
   private empires = new Map<string, Empire>();
   /** Empire propriétaire par défaut (solo). Posé par `ensureDefaultPlayer`. */
   private defaultEmpire!: Empire;
+
+  // Maps d'entités portées par l'empire par défaut (délégation le temps du mono-empire).
+  private get colonyMap(): Map<string, Colony> {
+    return this.defaultEmpire.colonyMap;
+  }
+  private get transferMap(): Map<string, Transfer> {
+    return this.defaultEmpire.transferMap;
+  }
+  private get missionMap(): Map<string, Mission> {
+    return this.defaultEmpire.missionMap;
+  }
+  private get routeMap(): Map<string, Route> {
+    return this.defaultEmpire.routeMap;
+  }
+  private get outpostMap(): Map<string, MiningOutpost> {
+    return this.defaultEmpire.outpostMap;
+  }
+  private get fleetMap(): Map<string, Fleet> {
+    return this.defaultEmpire.fleetMap;
+  }
 
   private constructor(state: GameState) {
     this.state = state;
