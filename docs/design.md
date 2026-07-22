@@ -165,29 +165,60 @@ Le moteur est **strictement mono-locataire** :
   recherche/influence/effects **par joueur**, brouillard **par joueur**.
 - Marchés PNJ, résolution des timers, spawn pirates : restent au niveau univers.
 
-**7c — Réseau & identité (léger, sans comptes).**
-- Handshake de connexion : `?player=<token>` rejoint un empire existant, sinon en crée un.
-  (Comptes + mots de passe = ligne v2 séparée « comptes + Postgres » ; ici, jetons légers,
-  on reste sur SQLite.)
-- `hello` et `tick` deviennent **par joueur** : seulement ses entités + l'univers redacté à son
-  brouillard + la présence étrangère visible là où il a de la visibilité.
-- Toutes les actions sont validées contre le `playerId` de la connexion (on ne pilote que le sien).
-- Broadcast : un snapshot redacté distinct par connexion.
+**7c — Réseau & identité (léger, sans comptes).** *La vraie bascule « en mémoire → bout-en-bout ».*
+Le moteur porte déjà N empires en mémoire (validé à 3 via `devSpawnEmpire`) ; 7c connecte ça au réseau.
+Ordre imposé par les dépendances :
+1. **Chargement multi-empire dans `load()`** *(fondation, en premier)* — instancier un `Empire` par
+   ligne `players` (fin du `defaultEmpire` unique). Router les entités : `colonies`/`fleets`/`claims`
+   par `ownerId` (direct) ; `transfers`/`missions`/`routes`/`outposts` (pas d'`ownerId`) via la colonie
+   (`ownerColonyId`/`fromColonyId`) grâce à un index `colonyId → empireId`. Testable de suite : au reboot,
+   les empires créés par `devSpawnEmpire` survivent.
+2. **Handshake de connexion** — `/ws?player=<token>` rejoint un empire existant, sinon en crée un
+   (réutiliser la logique de `devSpawnEmpire`). Jetons légers, on reste SQLite (comptes + Postgres =
+   ligne v2 séparée).
+3. **`hello` / `tick` par connexion** — chaque socket reçoit `snapshotFor(sonEmpire)` (déjà écrit en 7b) :
+   ses entités + l'univers redacté à son brouillard + la présence étrangère visible là où il voit.
+   `notify()` fan-out par connexion (map `socket → empireId`) au lieu de diffuser le seul `defaultEmpire`.
+4. **Actions validées par `playerId`** *(le gros du travail)* — les ~20 méthodes d'action (`build`,
+   `probe`, `colonize`, `moveFleet`, …) ciblent aujourd'hui `defaultEmpire` via les getters délégués :
+   les threader par empire (comme le tick en 7b) et rejeter toute action sur une entité non possédée.
+5. **Retrait de `defaultEmpire` global** — ne garder qu'un fallback de compatibilité.
+
+> **DoD 7c** : deux onglets = deux empires sur la même seed ; chacun ne voit/pilote que le sien ;
+> snapshots et brouillard distincts. `insertMission` threadé par empire au passage.
 
 **7d — Territoire & contestation (le cœur « territorial »).**
-- Claims **exclusifs par joueur** : un système n'est revendicable que par un empire à la fois.
-- Contestation : revendiquer/rompre un claim ennemi exige une présence militaire (flotte) dans
-  le système ; notion de frontière/adjacence sur le graphe (bonus de territoire contigu,
-  points d'étranglement).
-- **PvP** : étendre l'attaque (aujourd'hui flotte → repaire pirate) à flotte → flotte et
-  flotte → colonie ennemies. `resolveBattle` est déjà agnostique attaquant/défenseur : réutilisable.
-  À définir : défense de colonie (garnison / défense orbitale), conséquences (raid de ressources,
-  rupture de claim, à terme capture de colonie).
+1. **Claims exclusifs** — un système revendicable par un seul empire à la fois.
+2. **Contestation** — revendiquer/rompre un claim ennemi exige une présence militaire (flotte) dans
+   le système ; notion de frontière/adjacence sur le graphe (bonus de territoire contigu, points
+   d'étranglement).
+3. **PvP** — étendre l'attaque (aujourd'hui flotte → repaire pirate) à **flotte → flotte** et
+   **flotte → colonie** ennemies. `resolveBattle` (`packages/shared/src/sim/combat.ts`) est déjà
+   agnostique attaquant/défenseur : réutilisable tel quel.
+4. **Défense & conséquences** — défense de colonie (garnison / défense orbitale) ; raid de ressources,
+   rupture de claim, à terme capture de colonie.
+5. **Brouillard univers pour `spawnPirates`** — remplacer le provisoire (fog du `defaultEmpire`, marqué
+   en TODO dans le code) par l'union des `explored`.
+
+> **DoD 7d** : un empire attaque une flotte/colonie/claim d'un autre ; le perdant subit des conséquences
+> observables ; le spawn PNJ ne dépend plus d'un empire particulier.
 
 **7e — UI & polish.**
 - Carte : territoires colorés par empire, flottes étrangères dans les systèmes visibles.
 - Vue Empire : relations / classement.
 - Contrôles d'attaque ciblant des entités étrangères ; journal des batailles PvP.
+- Diplomatie minimale (guerre / paix).
+
+### Dette technique à solder en chemin
+- **Colonnes legacy** `games.{explored,researched,research,influence,factionRep}` : à supprimer
+  (migration) une fois 7c stable — ne servent plus qu'à l'ensemencement one-shot d'un player neuf.
+- **Aucun test unitaire serveur** : `game.ts` n'est couvert que par typecheck + vérif manuelle.
+  **Avant le PvP (7d)**, monter un harnais de test serveur (vitest + DB en mémoire) pour verrouiller
+  la non-régression. C'est le risque le plus élevé de la suite.
+- **`gatewayMap`** : décider si les méga-projets de portail restent game-scoped (actuel) ou deviennent
+  contribuables/possédés par empire.
+- **Outil de dev** `devSpawnEmpire`/`/dev/empires` : conservé pour tester 7c-1 ; à retirer ou garder
+  selon l'usage une fois le handshake réel en place.
 
 ### Décisions à acter avant d'implémenter
 1. **Identité** : jetons de joueur légers maintenant (rester SQLite) *vs* vrais comptes tout de suite.
