@@ -220,6 +220,63 @@ Ordre imposé par les dépendances :
 - **Outil de dev** `devSpawnEmpire`/`/dev/empires` : conservé pour tester 7c-1 ; à retirer ou garder
   selon l'usage une fois le handshake réel en place.
 
+### Plan d'exécution (7c → 7e)
+
+Principe repris de 7b : sous-étapes fines, chacune **compile + tests verts + committée à part**,
+comportement préservé quand c'est possible. Tailles indicatives : **S** ≈ ½j · **M** ≈ 1-2j · **L** ≈ 3j+.
+
+**⚠️ Sprint 0 — Harnais de test serveur** *(pré-requis : `game.ts` n'a aujourd'hui aucun test)*.
+- 0.1 Config vitest pour `apps/server` + helper `buildEngine(seed, {db temporaire})` — **S**.
+- 0.2 Tests socle : déterminisme du tick mono-empire (N ticks → état attendu) — **S**.
+- 0.3 Tests multi-empire : isolation (2 empires ne se contaminent pas) + redaction fog de
+  `snapshotFor` — **M**.
+- **Gate** : ces tests restent verts pour tous les commits des phases suivantes.
+
+**Phase A — 7c-1 : chargement multi-empire** *(fondation, faible risque, gros levier)*.
+- A.1 `loadPlayers()` : un `Empire` par ligne `players` ; `defaultEmpire` = 1ᵉʳ (compat) — **S**.
+- A.2 Router `colonies`/`fleets`/`claims` par `ownerId` — **M**.
+- A.3 Router `transfers`/`missions`/`routes`/`outposts` via index `colonyId → empireId` (ces tables
+  n'ont pas d'`ownerId`) — **M**.
+- **DoD** : `devSpawnEmpire` ×2 → reboot → `/dev/empires` repeuple correctement les 2 empires.
+
+**Phase B — 7c-2/3 : identité de connexion & snapshots par connexion** *(touche `apps/web`)*.
+- B.1 Registre `socket → empireId` + `createOrJoinEmpire(token)` (généralise `devSpawnEmpire`) — **M**.
+- B.2 Handshake `/ws?player=<token>` ; jeton client en `localStorage` passé dans l'URL WS — **M**.
+- B.3 `hello` par connexion = `snapshotFor(empire)` ; `notify()` fan-out par socket — **M**.
+- **DoD** : 2 onglets `?player=A`/`?player=B` → dashboards et brouillards distincts sur la même seed.
+
+**Phase C — 7c-4 : actions validées par empire** *(gros morceau, risque moyen-élevé)*. Threader
+l'empire de la connexion dans les ~20 méthodes d'action + rejeter toute action sur une entité non
+possédée. Découpé par domaine :
+- C.1 Colonie/prod (`build`, `buildShip`, `buildOutpost`, `startResearch`) — **M**.
+- C.2 Logistique (`sendTransfer`, `sell`/`buyFromStation`, routes, `contributeGateway`) — **M**.
+- C.3 Expansion/territoire (`probe`, `colonize`, `claim`/`unclaimSystem`) — **M**.
+- C.4 Flottes (`createFleet`, `buildWarship`, `moveFleet`, `attackLair`, `disband`, directives) — **M**.
+- C.5 Retrait de `defaultEmpire` global (fallback compat) + `insertMission` threadé — **S**.
+- **DoD** : un joueur n'agit que sur ses entités ; action croisée rejetée proprement. Sprint 0 crucial ici.
+
+**Phase D — dette** *(fenêtre propre après C)*.
+- D.1 Migration : supprimer colonnes legacy `games.{explored,researched,research,influence,factionRep}` — **S**.
+- D.2 Décision + implémentation `gatewayMap` (game-scoped vs par-empire) — **S/M**.
+
+**Phase E — 7d : territoire & PvP** *(logique pure dans `shared`, orchestration dans `game.ts`)*.
+- E.1 Claims **exclusifs** (un système = un empire) + validation — **S**.
+- E.2 Helpers frontière/adjacence sur le graphe (pur, `shared`, testable) + bonus territoire contigu — **M**.
+- E.3 PvP : `attackFleet`/`attackColony` via `resolveBattle` (déjà agnostique) + actions WS + contrôles
+  client — **L**.
+- E.4 Défense de colonie (garnison/orbitale) + conséquences (raid ressources, rupture de claim) — **L**.
+- E.5 `spawnPirates` sur brouillard-univers (union des `explored`) — retire le TODO 7b — **S**.
+- **DoD** : un empire attaque flotte/colonie/claim ennemi ; conséquences observables ; spawn PNJ
+  indépendant d'un empire.
+
+**Phase F — 7e : UI & polish** *(peut chevaucher E)* — **L**. Carte territoires colorés + flottes
+étrangères ; vue Empire/classement ; contrôles d'attaque + journal PvP ; diplomatie minimale.
+
+**Chemin critique** : `Sprint 0 → A → B → C → D`, puis `E → F`. E.2 (graphe, pur `shared`) est
+parallélisable dès Sprint 0 ; F peut démarrer dès que B expose des snapshots par joueur. **Point ouvert
+à trancher en B** : stockage du jeton client (reco `localStorage`). **Prochaine action recommandée** :
+Sprint 0.1 + Phase A.1 dans la même session (petit, pose le filet, validé de suite par `devSpawnEmpire`).
+
 ### Décisions à acter avant d'implémenter
 1. **Identité** : jetons de joueur légers maintenant (rester SQLite) *vs* vrais comptes tout de suite.
    → Reco : jetons légers d'abord, comptes plus tard.
