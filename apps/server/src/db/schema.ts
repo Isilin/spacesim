@@ -9,15 +9,12 @@ export const games = sqliteTable("games", {
   seed: text("seed").notNull(),
   tick: integer("tick").notNull().default(0),
   lastTickAt: integer("last_tick_at").notNull(),
-  /** JSON : ids des systèmes explorés. */
+  // Champs d'empire LEGACY (chantier 7b) : l'état vit désormais dans `players`.
+  // Conservés pour la migration des sauvegardes ; à supprimer lors d'un nettoyage ultérieur.
   explored: text("explored").notNull().default("[]"),
-  /** JSON : ids des techs acquises. */
   researched: text("researched").notNull().default("[]"),
-  /** JSON ActiveResearch ou null : recherche en cours. */
   research: text("research"),
-  /** Influence de l'empire. */
   influence: real("influence").notNull().default(0),
-  /** JSON : réputation par faction. */
   factionRep: text("faction_rep").notNull().default("{}"),
   createdAt: integer("created_at").notNull(),
 });
@@ -35,6 +32,16 @@ export const players = sqliteTable("players", {
   /** Couleur d'affichage du territoire sur la carte. */
   color: text("color").notNull(),
   joinedAt: integer("joined_at").notNull(),
+  // État d'empire, propre à chaque joueur (migré depuis `games` — chantier 7b).
+  /** JSON : ids des techs acquises. */
+  researched: text("researched").notNull().default("[]"),
+  /** JSON ActiveResearch ou null : recherche en cours. */
+  research: text("research"),
+  influence: real("influence").notNull().default(0),
+  /** JSON : réputation par faction. */
+  factionRep: text("faction_rep").notNull().default("{}"),
+  /** JSON : ids des systèmes explorés (brouillard propre au joueur). */
+  explored: text("explored").notNull().default("[]"),
 });
 
 /** Systèmes revendiqués par un joueur (bonus locaux, entretien en influence). */

@@ -122,6 +122,15 @@ une horloge de ticks), avec propriété par joueur, vues limitées par le brouil
 de territoire contesté** entre joueurs. C'est le premier pas concret vers la vision « univers unique
 persistant, multijoueur ». Le combat PvE (chantier 6) fournit déjà le moteur de bataille réutilisable.
 
+**Avancement (21/07/2026)** :
+- ✅ **7a** — table `players`, `ownerId` sur colonies/fleets/claims, empire par défaut créé au
+  boot + estampillage à la création (migration 0004).
+- ✅ **7b (données)** — état d'empire (influence, recherche, réputation, exploration) déplacé de
+  `games` vers `players` ; persistance retargetée, copie one-shot en migration 0005. Forme externe
+  (`game` envoyé au client) inchangée, encore mono-empire en mémoire.
+- ⏳ **7b (moteur)** — objet `Empire` par joueur, `Map<playerId, Empire>`, ticks/effects/fog par
+  empire. **7c** identité de connexion + snapshots par joueur. **7d** territoire & PvP. **7e** UI.
+
 ### État actuel (contrainte de départ)
 Le moteur est **strictement mono-locataire** :
 - `GameEngine.load()` prend `.limit(1)` sur `games` ; aucune notion de joueur.

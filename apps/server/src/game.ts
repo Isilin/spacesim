@@ -197,8 +197,8 @@ export class GameEngine {
       claimedSystemIds: claimRows.map((c) => c.systemId),
     });
     engine.explored = new Set(JSON.parse(row.explored));
-    engine.effects = computeEffects(engine.state.researched as TechId[]);
     engine.ensureDefaultPlayer();
+    engine.effects = computeEffects(engine.state.researched as TechId[]);
     if (isNew) {
       engine.createHomeColony();
       engine.initMarkets();
@@ -950,12 +950,12 @@ export class GameEngine {
   }
 
   private persistResearch(): void {
-    db.update(schema.games)
+    db.update(schema.players)
       .set({
         researched: JSON.stringify(this.state.researched),
         research: this.state.research ? JSON.stringify(this.state.research) : null,
       })
-      .where(eq(schema.games.id, this.state.id))
+      .where(eq(schema.players.id, this.defaultPlayerId))
       .run();
   }
 
@@ -1917,9 +1917,9 @@ export class GameEngine {
     if (this.explored.has(systemId)) return;
     this.explored.add(systemId);
     this.explorationDirty = true;
-    db.update(schema.games)
+    db.update(schema.players)
       .set({ explored: JSON.stringify([...this.explored]) })
-      .where(eq(schema.games.id, this.state.id))
+      .where(eq(schema.players.id, this.defaultPlayerId))
       .run();
   }
 
@@ -1954,12 +1954,19 @@ export class GameEngine {
       .limit(1)
       .get();
     if (!player) {
+      // Nouveau player : on l'ensemence avec l'état d'empire courant (issu de la
+      // ligne `games` legacy pour une sauvegarde pré-7b, sinon les valeurs par défaut).
       player = {
         id: randomUUID(),
         gameId: this.state.id,
         name: DEFAULT_PLAYER_NAME,
         color: DEFAULT_PLAYER_COLOR,
         joinedAt: Date.now(),
+        researched: JSON.stringify(this.state.researched),
+        research: this.state.research ? JSON.stringify(this.state.research) : null,
+        influence: this.state.influence,
+        factionRep: JSON.stringify(this.state.factionRep),
+        explored: JSON.stringify([...this.explored]),
       };
       db.insert(schema.players).values(player).run();
     }
@@ -1970,6 +1977,15 @@ export class GameEngine {
         .where(and(eq(table.gameId, this.state.id), isNull(table.ownerId)))
         .run();
     }
+    // Source autoritaire de l'état d'empire = la ligne `players` (chantier 7b).
+    this.state = {
+      ...this.state,
+      researched: JSON.parse(player.researched),
+      research: player.research ? JSON.parse(player.research) : null,
+      influence: player.influence,
+      factionRep: JSON.parse(player.factionRep),
+    };
+    this.explored = new Set(JSON.parse(player.explored));
   }
 
   private createHomeColony(): void {
@@ -2098,13 +2114,12 @@ export class GameEngine {
       lastTickAt: this.state.lastTickAt + ticks * TICK_MS,
     };
     db.update(schema.games)
-      .set({
-        tick: this.state.tick,
-        lastTickAt: this.state.lastTickAt,
-        influence: this.state.influence,
-        factionRep: JSON.stringify(this.state.factionRep),
-      })
+      .set({ tick: this.state.tick, lastTickAt: this.state.lastTickAt })
       .where(eq(schema.games.id, this.state.id))
+      .run();
+    db.update(schema.players)
+      .set({ influence: this.state.influence, factionRep: JSON.stringify(this.state.factionRep) })
+      .where(eq(schema.players.id, this.defaultPlayerId))
       .run();
     for (const colony of this.colonyMap.values()) this.persistColony(colony);
     this.persistOutposts();
