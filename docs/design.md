@@ -134,8 +134,14 @@ persistant, multijoueur ». Le combat PvE (chantier 6) fournit déjà le moteur 
   une horloge partagée `clock` et les PNJ/univers. Le tick itère sur les empires (`spawnPirates`,
   marchés PNJ, portails restent partagés une fois par tick) ; `snapshotFor(empire)` recompose la
   forme externe WS. **Un seul empire instancié**, comportement et messages WS inchangés.
-- ⏳ **7c** identité de connexion (`?player=`) + snapshots redactés par connexion. **7d** territoire
-  & PvP (brouillard univers pour le spawn pirate, claims exclusifs, flotte→flotte/colonie). **7e** UI.
+- ✅ **Sprint 0** — harnais de test serveur (vitest, DB `:memory:`, `apps/server/src/game.test.ts`) :
+  tests socle (partie neuve, déterminisme du tick) + isolation multi-empire. Filet de non-régression.
+- ✅ **7c (Phase A)** — chargement multi-empire : `load()` instancie un `Empire` par ligne `players`
+  (`loadPlayers`) et route chaque entité vers son propriétaire (colonies/fleets par `ownerId`,
+  transfers/missions/routes/outposts via `empireOfColony`). Un empire créé via `devSpawnEmpire`
+  survit au reboot. Toujours mono-empire côté réseau (`defaultEmpire` = 1er player, fallback compat).
+- ⏳ **7c (Phase B)** identité de connexion (`?player=`) + snapshots redactés par connexion ;
+  **(Phase C)** actions validées par empire. **7d** territoire & PvP. **7e** UI. *(cf. « Plan d'exécution »)*
 
 ### État actuel (contrainte de départ)
 Le moteur est **strictement mono-locataire** :
