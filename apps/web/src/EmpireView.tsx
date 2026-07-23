@@ -7,6 +7,7 @@ import {
   type Colony,
   type FactionId,
   type GameState,
+  type LeaderboardEntry,
   type MilestoneMetric,
   type Universe,
 } from "@spacesim/shared";
@@ -17,6 +18,8 @@ interface Props {
   colonies: Colony[];
   universe: Universe;
   exploredSystemIds: string[];
+  leaderboard: LeaderboardEntry[];
+  playerId: string | null;
 }
 
 const METRIC_LABELS: Record<MilestoneMetric, string> = {
@@ -26,7 +29,14 @@ const METRIC_LABELS: Record<MilestoneMetric, string> = {
   techs: "Technologies",
 };
 
-export function EmpireView({ game, colonies, universe, exploredSystemIds }: Props) {
+export function EmpireView({
+  game,
+  colonies,
+  universe,
+  exploredSystemIds,
+  leaderboard,
+  playerId,
+}: Props) {
   const metrics: Record<MilestoneMetric, number> = {
     population: Math.floor(colonies.reduce((s, c) => s + c.population, 0)),
     colonies: colonies.length,
@@ -68,6 +78,29 @@ export function EmpireView({ game, colonies, universe, exploredSystemIds }: Prop
           </span>
         </div>
       </div>
+
+      {leaderboard.length > 1 && (
+        <>
+          <h3 className="milestones-title">Classement des empires</h3>
+          <ul className="milestone-list">
+            {leaderboard.map((e, i) => (
+              <li key={e.id} className={`milestone ${e.id === playerId ? "reached" : ""}`}>
+                <div className="queue-head">
+                  <span>
+                    <span style={{ color: e.color }}>◆</span> #{i + 1} {e.name}
+                    {e.id === playerId ? " (vous)" : ""}
+                  </span>
+                  <span className="muted small">score {e.score}</span>
+                </div>
+                <span className="small muted">
+                  {e.colonies} colonie{e.colonies > 1 ? "s" : ""} · {e.claimed} système
+                  {e.claimed > 1 ? "s" : ""} · ✦ {e.influence} · pop {e.population}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       <h3 className="milestones-title">Factions</h3>
       <ul className="milestone-list">

@@ -283,6 +283,19 @@ export interface ForeignColony {
   planetId: string;
 }
 
+/** Ligne de classement d'un empire (données publiques agrégées — chantier 7e). */
+export interface LeaderboardEntry {
+  id: string;
+  name: string;
+  color: string;
+  colonies: number;
+  population: number;
+  claimed: number;
+  influence: number;
+  /** Score composite servant au tri du classement. */
+  score: number;
+}
+
 /** Repaire de pirates PNJ : menace un système, à nettoyer par une flotte. */
 export interface PirateLair {
   id: string;
@@ -373,6 +386,8 @@ export type ServerMessage =
       /** Entités étrangères visibles dans le brouillard de l'empire (chantier 7d). */
       foreignFleets: ForeignFleet[];
       foreignColonies: ForeignColony[];
+      /** Classement de tous les empires de la partie (chantier 7e). */
+      leaderboard: LeaderboardEntry[];
     }
   | {
       type: "tick";
@@ -391,6 +406,8 @@ export type ServerMessage =
       /** Entités étrangères visibles dans le brouillard de l'empire (chantier 7d). */
       foreignFleets: ForeignFleet[];
       foreignColonies: ForeignColony[];
+      /** Classement de tous les empires de la partie (chantier 7e). */
+      leaderboard: LeaderboardEntry[];
       /** Présent quand l'exploration a changé depuis le dernier message. */
       universe?: Universe;
     }

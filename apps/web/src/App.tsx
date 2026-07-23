@@ -42,6 +42,7 @@ function useNow(): number {
 
 export function App() {
   const {
+    playerId,
     universe,
     game,
     colonies,
@@ -57,6 +58,7 @@ export function App() {
     battles,
     foreignFleets,
     foreignColonies,
+    leaderboard,
     connected,
     actionError,
     send,
@@ -243,6 +245,8 @@ export function App() {
             colonies={colonies}
             universe={universe}
             exploredSystemIds={exploredSystemIds}
+            leaderboard={leaderboard}
+            playerId={playerId}
           />
         </main>
       ) : (

@@ -76,6 +76,7 @@ import {
   type FleetComposition,
   type ForeignColony,
   type ForeignFleet,
+  type LeaderboardEntry,
   type GameState,
   type Gateway,
   type PirateLair,
@@ -117,6 +118,8 @@ export interface EngineSnapshot {
   /** Entités étrangères visibles dans le brouillard de l'empire (chantier 7d). */
   foreignFleets: ForeignFleet[];
   foreignColonies: ForeignColony[];
+  /** Classement de tous les empires (chantier 7e). */
+  leaderboard: LeaderboardEntry[];
   /** Présent si l'exploration a changé depuis la dernière notification. */
   universe?: Universe;
 }
@@ -364,8 +367,32 @@ export class GameEngine {
       battles: this.battleLog,
       foreignFleets,
       foreignColonies,
+      leaderboard: this.leaderboard(),
       ...(empire.explorationDirty ? { universe: this.clientUniverseFor(empire) } : {}),
     };
+  }
+
+  /** Classement public de tous les empires, trié par score composite décroissant. */
+  private leaderboard(): LeaderboardEntry[] {
+    const rows: LeaderboardEntry[] = [];
+    for (const empire of this.empires.values()) {
+      const colonies = [...empire.colonyMap.values()];
+      const population = colonies.reduce((s, c) => s + c.population, 0);
+      const claimed = empire.claimedSystemIds.length;
+      const score =
+        colonies.length * 100 + claimed * 40 + Math.floor(population) + empire.influence / 10;
+      rows.push({
+        id: empire.id,
+        name: empire.name,
+        color: empire.color,
+        colonies: colonies.length,
+        population: Math.floor(population),
+        claimed,
+        influence: Math.floor(empire.influence),
+        score: Math.round(score),
+      });
+    }
+    return rows.sort((a, b) => b.score - a.score);
   }
 
   /**
