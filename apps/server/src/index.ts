@@ -116,6 +116,10 @@ app.get("/ws", { websocket: true }, (socket, request) => {
       error = engine.moveFleet(empire, msg.fleetId, msg.toSystemId);
     } else if (msg.type === "attackLair") {
       error = engine.attackLair(empire, msg.fleetId, msg.lairId);
+    } else if (msg.type === "attackFleet") {
+      error = engine.attackFleet(empire, msg.fleetId, msg.targetFleetId);
+    } else if (msg.type === "attackColony") {
+      error = engine.attackColony(empire, msg.fleetId, msg.targetColonyId);
     } else if (msg.type === "disbandFleet") {
       error = engine.disbandFleet(empire, msg.fleetId);
     }

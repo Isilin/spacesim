@@ -3,6 +3,8 @@ import type {
   Gateway,
   Colony,
   Fleet,
+  ForeignColony,
+  ForeignFleet,
   GameState,
   MiningOutpost,
   Mission,
@@ -42,6 +44,8 @@ export interface GameConnection {
   fleets: Fleet[];
   pirateLairs: PirateLair[];
   battles: StoredBattle[];
+  foreignFleets: ForeignFleet[];
+  foreignColonies: ForeignColony[];
   connected: boolean;
   /** Dernière erreur d'action renvoyée par le serveur (éphémère). */
   actionError: string | null;
@@ -64,6 +68,8 @@ export function useGameSocket(): GameConnection {
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [pirateLairs, setPirateLairs] = useState<PirateLair[]>([]);
   const [battles, setBattles] = useState<StoredBattle[]>([]);
+  const [foreignFleets, setForeignFleets] = useState<ForeignFleet[]>([]);
+  const [foreignColonies, setForeignColonies] = useState<ForeignColony[]>([]);
   const [connected, setConnected] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const retryRef = useRef(0);
@@ -105,6 +111,8 @@ export function useGameSocket(): GameConnection {
           setFleets(msg.fleets);
           setPirateLairs(msg.pirateLairs);
           setBattles(msg.battles);
+          setForeignFleets(msg.foreignFleets);
+          setForeignColonies(msg.foreignColonies);
         } else if (msg.type === "tick") {
           setGame(msg.game);
           setColonies(msg.colonies);
@@ -118,6 +126,8 @@ export function useGameSocket(): GameConnection {
           setFleets(msg.fleets);
           setPirateLairs(msg.pirateLairs);
           setBattles(msg.battles);
+          setForeignFleets(msg.foreignFleets);
+          setForeignColonies(msg.foreignColonies);
           if (msg.universe) setUniverse(msg.universe);
         } else if (msg.type === "actionError") {
           setActionError(msg.message);
@@ -163,6 +173,8 @@ export function useGameSocket(): GameConnection {
     fleets,
     pirateLairs,
     battles,
+    foreignFleets,
+    foreignColonies,
     connected,
     actionError,
     send,

@@ -72,6 +72,8 @@ import {
   type FactionId,
   type Fleet,
   type FleetComposition,
+  type ForeignColony,
+  type ForeignFleet,
   type GameState,
   type Gateway,
   type PirateLair,
@@ -110,6 +112,9 @@ export interface EngineSnapshot {
   fleets: Fleet[];
   pirateLairs: PirateLair[];
   battles: StoredBattle[];
+  /** Entités étrangères visibles dans le brouillard de l'empire (chantier 7d). */
+  foreignFleets: ForeignFleet[];
+  foreignColonies: ForeignColony[];
   /** Présent si l'exploration a changé depuis la dernière notification. */
   universe?: Universe;
 }
@@ -123,6 +128,12 @@ const DEFAULT_DIRECTIVES: Record<CombatPhase, string> = {
 
 /** Batailles archivées conservées. */
 const MAX_BATTLES = 20;
+
+/**
+ * Fraction des ressources d'une colonie pillée lors d'un raid PvP réussi (chantier 7d).
+ * TODO équilibrage : déplacer vers `@spacesim/shared` (constantes) lors du passage en revue.
+ */
+const RAID_FRACTION = 0.25;
 
 /** Empire par défaut d'une partie solo (chantier 7 — socle multi-locataire). */
 const DEFAULT_PLAYER_NAME = "Empire";
@@ -335,6 +346,7 @@ export class GameEngine {
    * diffusé par connexion ; ici un seul empire est instancié.
    */
   private snapshotFor(empire: Empire): EngineSnapshot {
+    const { foreignFleets, foreignColonies } = this.foreignPresenceFor(empire);
     return {
       game: empire.toGameState(this.clock),
       colonies: [...empire.colonyMap.values()],
@@ -348,8 +360,69 @@ export class GameEngine {
       fleets: [...empire.fleetMap.values()],
       pirateLairs: this.pirateLairsFor(empire),
       battles: this.battleLog,
+      foreignFleets,
+      foreignColonies,
       ...(empire.explorationDirty ? { universe: this.clientUniverseFor(empire) } : {}),
     };
+  }
+
+  /**
+   * Présence étrangère visible d'un empire : flottes et colonies des AUTRES empires
+   * situées dans un système de son brouillard (chantier 7d — cible PvP potentielle).
+   */
+  private foreignPresenceFor(empire: Empire): {
+    foreignFleets: ForeignFleet[];
+    foreignColonies: ForeignColony[];
+  } {
+    const foreignFleets: ForeignFleet[] = [];
+    const foreignColonies: ForeignColony[] = [];
+    for (const other of this.empires.values()) {
+      if (other.id === empire.id) continue;
+      for (const fleet of other.fleetMap.values()) {
+        if (!empire.explored.has(fleet.systemId)) continue;
+        foreignFleets.push({
+          id: fleet.id,
+          ownerId: other.id,
+          ownerName: other.name,
+          ownerColor: other.color,
+          name: fleet.name,
+          systemId: fleet.systemId,
+          ships: fleet.ships,
+        });
+      }
+      for (const colony of other.colonyMap.values()) {
+        const systemId = this.planetsById.get(colony.planetId)?.systemId;
+        if (!systemId || !empire.explored.has(systemId)) continue;
+        foreignColonies.push({
+          id: colony.id,
+          ownerId: other.id,
+          ownerName: other.name,
+          ownerColor: other.color,
+          name: colony.name,
+          systemId,
+          planetId: colony.planetId,
+        });
+      }
+    }
+    return { foreignFleets, foreignColonies };
+  }
+
+  /** Localise une flotte parmi tous les empires (cible PvP). */
+  private findFleet(fleetId: string): { empire: Empire; fleet: Fleet } | null {
+    for (const empire of this.empires.values()) {
+      const fleet = empire.fleetMap.get(fleetId);
+      if (fleet) return { empire, fleet };
+    }
+    return null;
+  }
+
+  /** Localise une colonie parmi tous les empires (cible PvP). */
+  private findColony(colonyId: string): { empire: Empire; colony: Colony } | null {
+    for (const empire of this.empires.values()) {
+      const colony = empire.colonyMap.get(colonyId);
+      if (colony) return { empire, colony };
+    }
+    return null;
   }
 
   planet(planetId: string): Planet | undefined {
@@ -1345,6 +1418,119 @@ export class GameEngine {
     return null;
   }
 
+  /** Retire une flotte (survivants nuls) ou la met à jour (chantier 7d — PvP). */
+  private applyFleetSurvivors(empire: Empire, fleet: Fleet, ships: FleetComposition): void {
+    if (fleetIsEmpty(ships)) {
+      empire.fleetMap.delete(fleet.id);
+      db.delete(schema.fleets).where(eq(schema.fleets.id, fleet.id)).run();
+    } else {
+      const next: Fleet = { ...fleet, ships };
+      empire.fleetMap.set(fleet.id, next);
+      this.persistFleet(next);
+    }
+  }
+
+  /** Action joueur : attaquer une flotte ennemie stationnée dans le même système (PvP). */
+  attackFleet(empire: Empire, fleetId: string, targetFleetId: string): string | null {
+    const fleet = empire.fleetMap.get(fleetId);
+    if (!fleet) return "Flotte inconnue";
+    if (fleet.movement) return "Flotte en déplacement";
+    if (fleetIsEmpty(fleet.ships)) return "Flotte sans vaisseau";
+    const target = this.findFleet(targetFleetId);
+    if (!target || target.empire.id === empire.id) return "Cible inconnue";
+    if (target.fleet.movement) return "Cible en déplacement";
+    if (target.fleet.systemId !== fleet.systemId) return "Cible hors de portée";
+    if (fleetIsEmpty(target.fleet.ships)) return "Cible sans vaisseau";
+
+    const report = resolveBattle(
+      fleet.ships as FleetComposition,
+      target.fleet.ships as FleetComposition,
+      fleet.directives as never,
+      target.fleet.directives as never,
+    );
+    this.archiveBattle(fleet.systemId, fleet.name, `${target.empire.name} — ${target.fleet.name}`, report);
+    this.applyFleetSurvivors(empire, fleet, report.attackerSurvivors as FleetComposition);
+    this.applyFleetSurvivors(target.empire, target.fleet, report.defenderSurvivors as FleetComposition);
+    this.notify();
+    return null;
+  }
+
+  /**
+   * Action joueur : attaquer une colonie ennemie (PvP — raid). La flotte ennemie la
+   * plus puissante stationnée sur zone défend d'abord ; si l'attaquant l'emporte (ou
+   * qu'il n'y a pas de défenseur), il pille une fraction des ressources et rompt le
+   * claim ennemi sur le système. Pas de capture de colonie à ce stade.
+   */
+  attackColony(empire: Empire, fleetId: string, targetColonyId: string): string | null {
+    const fleet = empire.fleetMap.get(fleetId);
+    if (!fleet) return "Flotte inconnue";
+    if (fleet.movement) return "Flotte en déplacement";
+    if (fleetIsEmpty(fleet.ships)) return "Flotte sans vaisseau";
+    const target = this.findColony(targetColonyId);
+    if (!target || target.empire.id === empire.id) return "Colonie cible inconnue";
+    const systemId = this.planetsById.get(target.colony.planetId)?.systemId;
+    if (!systemId) return "Système inconnu";
+    if (systemId !== fleet.systemId) return "Cible hors de portée";
+
+    // Défense : la flotte ennemie la plus fournie stationnée dans le système.
+    const shipCount = (ships: Fleet["ships"]): number => {
+      let total = 0;
+      for (const n of Object.values(ships)) total += n ?? 0;
+      return total;
+    };
+    const defender = [...target.empire.fleetMap.values()]
+      .filter((f) => f.systemId === systemId && !f.movement && !fleetIsEmpty(f.ships))
+      .sort((a, b) => shipCount(b.ships) - shipCount(a.ships))[0];
+
+    if (defender) {
+      const report = resolveBattle(
+        fleet.ships as FleetComposition,
+        defender.ships as FleetComposition,
+        fleet.directives as never,
+        defender.directives as never,
+      );
+      this.archiveBattle(systemId, fleet.name, `${target.empire.name} — ${defender.name}`, report);
+      this.applyFleetSurvivors(target.empire, defender, report.defenderSurvivors as FleetComposition);
+      this.applyFleetSurvivors(empire, fleet, report.attackerSurvivors as FleetComposition);
+      // Attaquant anéanti ou défense victorieuse → pas de raid.
+      if (fleetIsEmpty(report.attackerSurvivors) || report.winner !== "attacker") {
+        this.notify();
+        return null;
+      }
+    }
+
+    // Raid : pillage d'une fraction des ressources, crédité à la colonie de rattachement.
+    const home = empire.colonyMap.get(fleet.homeColonyId);
+    const victim = target.empire.colonyMap.get(targetColonyId)!;
+    const stolen: Partial<Record<ResourceId, number>> = {};
+    const victimResources = { ...victim.resources };
+    for (const res of RESOURCES) {
+      const take = Math.floor(victimResources[res] * RAID_FRACTION);
+      if (take <= 0) continue;
+      stolen[res] = take;
+      victimResources[res] -= take;
+    }
+    target.empire.colonyMap.set(victim.id, { ...victim, resources: victimResources });
+    this.persistColony(target.empire.colonyMap.get(victim.id)!);
+    if (home) {
+      const homeResources = { ...home.resources };
+      for (const [res, amount] of Object.entries(stolen) as [ResourceId, number][]) {
+        homeResources[res] = Math.min(homeResources[res] + amount, storageCap(home, res));
+      }
+      empire.colonyMap.set(home.id, { ...home, resources: homeResources });
+      this.persistColony(empire.colonyMap.get(home.id)!);
+    }
+    // Rupture du claim ennemi sur le système pillé.
+    if (target.empire.claimedSystemIds.includes(systemId)) this.dropClaim(target.empire, systemId);
+    this.archiveBattle(systemId, fleet.name, `${target.empire.name} — ${victim.name} (raid)`, {
+      raid: true,
+      stolen,
+    });
+    console.log(`[game] raid sur ${victim.name} par « ${empire.name} »`);
+    this.notify();
+    return null;
+  }
+
   private archiveBattle(
     systemId: string,
     attackerName: string,
@@ -1773,15 +1959,23 @@ export class GameEngine {
    * disponible.
    */
   private createEmpire(id: string, name?: string): Empire | null {
-    const occupied = new Set<string>();
+    const occupiedPlanets = new Set<string>();
+    const occupiedSystems = new Set<string>();
     for (const e of this.empires.values()) {
-      for (const c of e.colonyMap.values()) occupied.add(c.planetId);
+      for (const c of e.colonyMap.values()) {
+        occupiedPlanets.add(c.planetId);
+        const sys = this.planetsById.get(c.planetId)?.systemId;
+        if (sys) occupiedSystems.add(sys);
+      }
     }
     // Planète tellurique la plus habitable encore libre (galaxie d'origine en priorité).
     const candidates = allPlanets(this.universe)
-      .filter((p) => p.type !== "gas" && !occupied.has(p.id))
+      .filter((p) => p.type !== "gas" && !occupiedPlanets.has(p.id))
       .sort((a, b) => b.habitability - a.habitability);
-    const home = candidates.find((p) => p.systemId.startsWith("gal-0-")) ?? candidates[0];
+    // On préfère un système vierge de toute colonie (empires espacés, brouillards disjoints).
+    const freeSystem = candidates.filter((p) => !occupiedSystems.has(p.systemId));
+    const pool = freeSystem.length > 0 ? freeSystem : candidates;
+    const home = pool.find((p) => p.systemId.startsWith("gal-0-")) ?? pool[0];
     if (!home) return null;
 
     const index = this.empires.size;
@@ -1825,6 +2019,26 @@ export class GameEngine {
   /** Outil de dev uniquement : instancie un empire supplémentaire. Retourne son id. */
   devSpawnEmpire(name?: string): string | null {
     return this.createEmpire(randomUUID(), name)?.id ?? null;
+  }
+
+  /** Outil de dev uniquement : arme une flotte d'un empire dans un système (tests PvP). */
+  devArmFleet(empire: Empire, systemId: string, ships: Partial<Record<string, number>>): string {
+    const home = [...empire.colonyMap.values()][0];
+    const fleet: Fleet = {
+      id: randomUUID(),
+      ownerId: empire.id,
+      name: "Escadre",
+      systemId,
+      homeColonyId: home?.id ?? "",
+      ships,
+      directives: { ...DEFAULT_DIRECTIVES },
+      queue: [],
+      movement: null,
+    };
+    empire.fleetMap.set(fleet.id, fleet);
+    this.persistFleet(fleet, true);
+    this.notify();
+    return fleet.id;
   }
 
   /** Snapshot (forme externe WS) redacté au brouillard d'un empire (chantier 7c-B). */

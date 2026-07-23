@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { WARSHIPS } from "@spacesim/shared";
 import { db, schema } from "./db/index.js";
 import { GameEngine } from "./game.js";
+
+/** Un id de vaisseau de guerre valide (pour armer des flottes de test). */
+const WARSHIP = Object.keys(WARSHIPS)[0]!;
 
 /**
  * Harnais de test moteur (chantier 7 — Sprint 0).
@@ -204,6 +208,58 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const aliceFleetId = engine.snapshotForEmpire(alice).fleets[0]!.id;
     expect(engine.moveFleet(def, aliceFleetId, "gal-0-sys-0")).toBe("Flotte inconnue");
     expect(engine.snapshotForEmpire(def).fleets).toHaveLength(0);
+  });
+
+  it("attackFleet : la flotte ennemie écrasée est détruite, la bataille est archivée", () => {
+    const engine = GameEngine.load();
+    const a = engine.createOrJoinEmpire();
+    const b = engine.createOrJoinEmpire("bravo");
+    const sys = "gal-0-sys-0";
+    const fa = engine.devArmFleet(a, sys, { [WARSHIP]: 50 });
+    const fb = engine.devArmFleet(b, sys, { [WARSHIP]: 1 });
+
+    expect(engine.attackFleet(a, fa, fb)).toBeNull();
+    // La flotte faible du défenseur est anéantie (retirée de son empire).
+    expect(engine.snapshotForEmpire(b).fleets.some((f) => f.id === fb)).toBe(false);
+    // L'attaquant garde une flotte, une bataille est journalisée.
+    expect(engine.snapshotForEmpire(a).fleets.some((f) => f.id === fa)).toBe(true);
+    expect(engine.snapshotForEmpire(a).battles.length).toBeGreaterThan(0);
+  });
+
+  it("attackFleet : cible hors système ou amie rejetée", () => {
+    const engine = GameEngine.load();
+    const a = engine.createOrJoinEmpire();
+    const b = engine.createOrJoinEmpire("bravo");
+    const fa = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
+    const fb = engine.devArmFleet(b, "gal-0-sys-1", { [WARSHIP]: 5 });
+    const fa2 = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
+    expect(engine.attackFleet(a, fa, fb)).toBe("Cible hors de portée");
+    expect(engine.attackFleet(a, fa, fa2)).toBe("Cible inconnue"); // amie
+  });
+
+  it("attackColony : raid pille des ressources et rompt le claim ennemi", () => {
+    const engine = GameEngine.load();
+    const a = engine.createOrJoinEmpire();
+    const b = engine.createOrJoinEmpire("charlie");
+    const bColony = engine.snapshotForEmpire(b).colonies[0]!;
+    const bSummary = summaries(engine).find((e) => e.id === b.id)!;
+    const bSystem = bSummary.colonies[0]!.systemId;
+
+    const oreBefore = bColony.resources.ore;
+    // L'attaquant arrive sur zone ; le défenseur n'a aucune flotte → raid direct.
+    const fa = engine.devArmFleet(a, bSystem, { [WARSHIP]: 5 });
+    expect(engine.attackColony(a, fa, bColony.id)).toBeNull();
+
+    const oreAfter = engine.snapshotForEmpire(b).colonies[0]!.resources.ore;
+    expect(oreAfter).toBeLessThan(oreBefore); // 25 % du minerai pillé
+  });
+
+  it("attackColony : cible amie ou hors portée rejetée", () => {
+    const engine = GameEngine.load();
+    const a = engine.createOrJoinEmpire();
+    const own = engine.snapshotForEmpire(a).colonies[0]!;
+    const fa = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
+    expect(engine.attackColony(a, fa, own.id)).toBe("Colonie cible inconnue");
   });
 
   it("préserve l'état d'empire (influence, brouillard) au rechargement", () => {

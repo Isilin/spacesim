@@ -258,6 +258,31 @@ export interface Fleet {
   movement: { toSystemId: string; departedAt: number; arrivesAt: number } | null;
 }
 
+/**
+ * Présence étrangère visible d'un empire, là où il a de la visibilité (chantier 7d) :
+ * vue redactée d'une entité appartenant à un AUTRE empire, suffisante pour l'afficher
+ * sur la carte et la cibler en PvP.
+ */
+export interface ForeignFleet {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  ownerColor: string;
+  name: string;
+  systemId: string;
+  ships: Partial<Record<string, number>>;
+}
+
+export interface ForeignColony {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  ownerColor: string;
+  name: string;
+  systemId: string;
+  planetId: string;
+}
+
 /** Repaire de pirates PNJ : menace un système, à nettoyer par une flotte. */
 export interface PirateLair {
   id: string;
@@ -345,6 +370,9 @@ export type ServerMessage =
       fleets: Fleet[];
       pirateLairs: PirateLair[];
       battles: StoredBattle[];
+      /** Entités étrangères visibles dans le brouillard de l'empire (chantier 7d). */
+      foreignFleets: ForeignFleet[];
+      foreignColonies: ForeignColony[];
     }
   | {
       type: "tick";
@@ -360,6 +388,9 @@ export type ServerMessage =
       fleets: Fleet[];
       pirateLairs: PirateLair[];
       battles: StoredBattle[];
+      /** Entités étrangères visibles dans le brouillard de l'empire (chantier 7d). */
+      foreignFleets: ForeignFleet[];
+      foreignColonies: ForeignColony[];
       /** Présent quand l'exploration a changé depuis le dernier message. */
       universe?: Universe;
     }
@@ -407,4 +438,6 @@ export type ClientMessage =
   | { type: "setFleetDirectives"; fleetId: string; directives: Record<string, string> }
   | { type: "moveFleet"; fleetId: string; toSystemId: string }
   | { type: "attackLair"; fleetId: string; lairId: string }
+  | { type: "attackFleet"; fleetId: string; targetFleetId: string }
+  | { type: "attackColony"; fleetId: string; targetColonyId: string }
   | { type: "disbandFleet"; fleetId: string };
