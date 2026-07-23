@@ -27,6 +27,8 @@ import {
   gatewayCovered,
   gatewayLinks,
   gatewayRemaining,
+  galaxiesToAdd,
+  generateGalaxyAt,
   generateUniverse,
   idleShips,
   INITIAL_GALAXIES,
@@ -77,6 +79,7 @@ import {
   type FleetComposition,
   type ForeignColony,
   type ForeignFleet,
+  type GalaxyOccupancy,
   type LeaderboardEntry,
   type Territory,
   type GameState,
@@ -165,6 +168,8 @@ export class GameEngine {
   private clock: Clock;
   private planetsById: Map<string, Planet>;
   private stationsById: Map<string, TradeStation>;
+  /** Index de galaxie par système — sert aux règles d'expansion (chantier 9). */
+  private galaxyIndexOfSystem = new Map<string, number>();
   private marketMap = new Map<string, Stocks>();
   // Portails inter-galactiques : mégastructures d'univers PARTAGÉES (game-scoped, décision
   // Phase D). N'importe quel empire y contribue via `contributeGateway` ; une fois actif, le
@@ -231,6 +236,9 @@ export class GameEngine {
     this.planetsById = new Map(allPlanets(this.universe).map((p) => [p.id, p]));
     this.stationsById = new Map(allStations(this.universe).map((s) => [s.id, s]));
     this.beltsById = new Map(allBelts(this.universe).map((b) => [b.id, b]));
+    this.galaxyIndexOfSystem = new Map(
+      this.universe.galaxies.flatMap((g, index) => g.systems.map((s) => [s.id, index] as const)),
+    );
   }
 
   /** Charge la partie existante ou en crée une, puis rattrape le temps hors-ligne (borné). */
@@ -260,8 +268,6 @@ export class GameEngine {
     engine.loadWars();
     if (isNew) {
       engine.createHomeColony();
-      engine.initMarkets();
-      engine.initGateways();
     } else {
       engine.loadColonies();
       engine.loadTransfers();
@@ -274,6 +280,12 @@ export class GameEngine {
       engine.loadPirates();
       engine.loadBattles();
     }
+    // Équipement des galaxies (idempotent) : couvre aussi bien la partie neuve que les
+    // galaxies apparues par extension, dont le compteur seul a survécu au redémarrage.
+    engine.initMarkets();
+    engine.initGateways();
+    // L'univers doit toujours offrir de la place devant les joueurs (chantier 9).
+    engine.ensureFrontier();
     engine.catchUp();
     return engine;
   }
@@ -1841,14 +1853,81 @@ export class GameEngine {
       .slice(0, MAX_BATTLES);
   }
 
+  /**
+   * Ouvre un chantier de portail pour chaque galaxie lointaine qui n'en a pas encore.
+   * Idempotent : rejoué après chaque extension de l'univers (chantier 9).
+   */
   private initGateways(): void {
     for (const galaxy of this.universe.galaxies.slice(1)) {
+      if (this.gatewayMap.has(galaxy.id)) continue;
       const gateway: Gateway = { galaxyId: galaxy.id, progress: {}, activatesAt: null, active: false };
       this.gatewayMap.set(galaxy.id, gateway);
       db.insert(schema.gateways)
         .values({ galaxyId: galaxy.id, gameId: this.clock.id, progress: "{}", activatesAt: null, active: 0 })
         .run();
     }
+  }
+
+  // ── Extension de l'univers (chantier 9) ────────────────────────────────
+
+  /** Occupation par galaxie, matière première des règles d'expansion (`sim/expansion`). */
+  private galaxyOccupancy(): GalaxyOccupancy[] {
+    const occupiedPlanets = new Set<string>();
+    /** Empires ayant au moins une colonie, par index de galaxie. */
+    const empiresByGalaxy = new Map<number, Set<string>>();
+    for (const empire of this.empires.values()) {
+      for (const colony of empire.colonyMap.values()) {
+        occupiedPlanets.add(colony.planetId);
+        const systemId = this.planetsById.get(colony.planetId)?.systemId;
+        const index = systemId === undefined ? undefined : this.galaxyIndexOfSystem.get(systemId);
+        if (index === undefined) continue;
+        const set = empiresByGalaxy.get(index) ?? new Set<string>();
+        set.add(empire.id);
+        empiresByGalaxy.set(index, set);
+      }
+    }
+    return this.universe.galaxies.map((galaxy, index) => {
+      let colonies = 0;
+      let freeHabitable = 0;
+      for (const system of galaxy.systems) {
+        for (const planet of system.planets) {
+          if (occupiedPlanets.has(planet.id)) colonies++;
+          else if (planet.type !== "gas") freeHabitable++;
+        }
+      }
+      return { index, colonies, empires: empiresByGalaxy.get(index)?.size ?? 0, freeHabitable };
+    });
+  }
+
+  /**
+   * Déroule `count` galaxies de plus depuis la seed. Les galaxies déjà générées sont
+   * intactes (RNG dérivé par index — chantier 9.1) : on ajoute, on ne régénère pas.
+   */
+  private growUniverse(count: number): void {
+    if (count <= 0) return;
+    const from = this.universe.galaxies.length;
+    const added = Array.from({ length: count }, (_, i) =>
+      generateGalaxyAt(this.clock.seed, from + i),
+    );
+    this.universe = { ...this.universe, galaxies: [...this.universe.galaxies, ...added] };
+    this.clock.galaxyCount = this.universe.galaxies.length;
+    this.reindexUniverse();
+    // Les galaxies neuves arrivent avec leurs comptoirs et leur chantier de portail.
+    this.initMarkets();
+    this.initGateways();
+    db.update(schema.games)
+      .set({ galaxyCount: this.clock.galaxyCount })
+      .where(eq(schema.games.id, this.clock.id))
+      .run();
+    console.log(
+      `[game] univers étendu : +${count} galaxie(s) (${added.map((g) => g.name).join(", ")}) — ${this.clock.galaxyCount} au total`,
+    );
+    this.notify();
+  }
+
+  /** Maintient la frontière glissante : toujours des galaxies vierges devant les joueurs. */
+  private ensureFrontier(): void {
+    this.growUniverse(galaxiesToAdd(this.galaxyOccupancy()));
   }
 
   private loadGateways(): void {
@@ -2425,8 +2504,14 @@ export class GameEngine {
     }
   }
 
+  /**
+   * Dote de stocks les stations qui n'en ont pas encore. Appelé à la création d'une
+   * partie et après chaque extension de l'univers (les galaxies neuves arrivent avec
+   * leurs comptoirs) — d'où l'idempotence.
+   */
   private initMarkets(): void {
     for (const station of this.stationsById.values()) {
+      if (this.marketMap.has(station.id)) continue;
       const stocks = initialStocks(createRng(`${this.clock.seed}-station-${station.id}`));
       this.marketMap.set(station.id, stocks);
       db.insert(schema.stationStates)
@@ -2720,6 +2805,8 @@ export class GameEngine {
       for (const empire of this.empires.values()) this.influenceTick(empire);
       // Marchés PNJ : univers partagé, une fois par tick éco.
       if (isEconomyTick) this.economyTick(tickNumber);
+      // Front de peuplement : une colonisation a pu entamer la frontière (chantier 9).
+      if (isEconomyTick) this.ensureFrontier();
       for (const empire of this.empires.values()) this.colonyProductionTick(empire, t);
     }
     this.clock.tick += ticks;

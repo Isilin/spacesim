@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { WARSHIPS } from "@spacesim/shared";
+import { FRONTIER_GALAXIES, INITIAL_GALAXIES, WARSHIPS } from "@spacesim/shared";
 import { db, schema } from "./db/index.js";
 import { GameEngine } from "./game.js";
 
@@ -304,6 +304,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
   });
 
   it("préserve l'état d'empire (influence, brouillard) au rechargement", () => {
+
     const e1 = GameEngine.load();
     e1.devSpawnEmpire("Colonia");
     e1.devFastForward(50); // 10 ticks : l'influence de chaque empire progresse
@@ -315,6 +316,60 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
       const a = after.find((e) => e.id === b.id)!;
       expect(a.influence).toBeCloseTo(b.influence, 5);
       expect(a.exploredCount).toBe(b.exploredCount);
+    }
+  });
+});
+
+describe("GameEngine — univers extensible (chantier 9)", () => {
+  /** Galaxies sans la moindre colonie : l'invariant de frontière porte là-dessus. */
+  const emptyGalaxies = (engine: GameEngine) => {
+    const colonized = new Set(
+      summaries(engine).flatMap((e) => e.colonies.map((c) => c.systemId.split("-sys-")[0])),
+    );
+    return engine.universe.galaxies.filter((g) => !colonized.has(g.id)).length;
+  };
+
+  it("partie neuve : INITIAL_GALAXIES galaxies, frontière vierge intacte", () => {
+    const engine = GameEngine.load();
+    expect(engine.universe.galaxies).toHaveLength(INITIAL_GALAXIES);
+    expect(emptyGalaxies(engine)).toBeGreaterThanOrEqual(FRONTIER_GALAXIES);
+    // Chaque galaxie lointaine a son chantier de portail.
+    expect(engine.gateways).toHaveLength(INITIAL_GALAXIES - 1);
+  });
+
+  it("recharge l'univers à la taille persistée, galaxies connues inchangées", () => {
+    const e1 = GameEngine.load();
+    const known = e1.universe.galaxies;
+    // Simule une extension déjà survenue en partie (le compteur fait foi au boot).
+    db.update(schema.games).set({ galaxyCount: 7 }).run();
+
+    const e2 = GameEngine.load();
+    expect(e2.universe.galaxies).toHaveLength(7);
+    expect(e2.universe.galaxies.slice(0, known.length)).toEqual(known);
+    // Les galaxies apparues sont équipées : portail et comptoirs approvisionnés.
+    expect(e2.gateways).toHaveLength(6);
+    const stationIds = e2.universe.galaxies
+      .flatMap((g) => g.systems)
+      .flatMap((s) => (s.station ? [s.station.id] : []));
+    const stocked = new Set(
+      db.select().from(schema.stationStates).all().map((r) => r.stationId),
+    );
+    expect(stationIds.every((id) => stocked.has(id))).toBe(true);
+  });
+
+  it("étendre l'univers ne coûte rien aux empires en place", () => {
+    const e1 = GameEngine.load();
+    const before = summaries(e1);
+    db.update(schema.games).set({ galaxyCount: 9 }).run();
+
+    const e2 = GameEngine.load();
+    expect(e2.universe.galaxies).toHaveLength(9);
+    const after = summaries(e2);
+    expect(after.map((e) => e.id)).toEqual(before.map((e) => e.id));
+    for (const b of before) {
+      const a = after.find((e) => e.id === b.id)!;
+      expect(a.colonies.map((c) => c.systemId)).toEqual(b.colonies.map((c) => c.systemId));
+      expect(a.exploredSystemIds).toEqual(b.exploredSystemIds);
     }
   });
 });

@@ -17,8 +17,8 @@ export const UNIVERSE_CENTER_Y = MAP_HEIGHT / 2;
 /** Écart moyen entre deux galaxies voisines sur la spirale. */
 export const GALAXY_SPACING = 260;
 
-/** Galaxies générées pour une partie neuve. */
-export const INITIAL_GALAXIES = 3;
+/** Galaxies générées pour une partie neuve : la galaxie d'origine + la frontière vierge. */
+export const INITIAL_GALAXIES = 4;
 /** Galaxies vierges de toute colonie maintenues en permanence au-delà du front de peuplement. */
 export const FRONTIER_GALAXIES = 3;
 /** Empires accueillis par galaxie de départ avant d'en ouvrir une autre. */
