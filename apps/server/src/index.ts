@@ -1,17 +1,82 @@
 import websocket from "@fastify/websocket";
 import type { ClientMessage, ServerMessage } from "@spacesim/shared";
 import Fastify from "fastify";
+import {
+  bearerToken,
+  login,
+  purgeExpiredSessions,
+  register,
+  resolveSession,
+  revokeSession,
+  type AuthResult,
+} from "./auth.js";
 import { GameEngine } from "./game.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 
 const engine = GameEngine.load();
 engine.start();
+purgeExpiredSessions();
 
 const app = Fastify({ logger: { level: "warn" } });
 await app.register(websocket);
 
 app.get("/health", () => ({ ok: true, tick: engine.game.tick }));
+
+// ── Comptes (chantier 8) ─────────────────────────────────────────────────────
+
+/** Corps de réponse commun à l'inscription et à la connexion. */
+function authPayload(result: Extract<AuthResult, { ok: true }>) {
+  const empire = engine.empireForAccount(result.account.id);
+  return {
+    token: result.token,
+    expiresAt: result.expiresAt,
+    email: result.account.email,
+    empire: empire ? { id: empire.id, name: empire.name, color: empire.color } : null,
+  };
+}
+
+app.post("/auth/register", (request, reply) => {
+  const { email, password, empireName } = (request.body ?? {}) as {
+    email?: string;
+    password?: string;
+    empireName?: string;
+  };
+  const result = register(email ?? "", password ?? "", request.ip);
+  if (!result.ok) return reply.code(400).send({ error: result.error });
+  // L'empire naît avec le compte : une inscription = un empire dans l'univers partagé.
+  if (!engine.createEmpireForAccount(result.account.id, empireName)) {
+    return reply.code(503).send({ error: "Univers plein — aucune planète d'accueil disponible" });
+  }
+  return authPayload(result);
+});
+
+app.post("/auth/login", (request, reply) => {
+  const { email, password } = (request.body ?? {}) as { email?: string; password?: string };
+  const result = login(email ?? "", password ?? "", request.ip);
+  if (!result.ok) return reply.code(401).send({ error: result.error });
+  // Compte sans empire (partie réinitialisée sous lui) : on lui en refait un.
+  if (!engine.empireForAccount(result.account.id)) {
+    engine.createEmpireForAccount(result.account.id);
+  }
+  return authPayload(result);
+});
+
+app.post("/auth/logout", (request) => {
+  const token = bearerToken(request.headers.authorization);
+  if (token) revokeSession(token);
+  return { ok: true };
+});
+
+app.get("/auth/me", (request, reply) => {
+  const account = resolveSession(bearerToken(request.headers.authorization));
+  if (!account) return reply.code(401).send({ error: "Session expirée" });
+  const empire = engine.empireForAccount(account.id);
+  return {
+    email: account.email,
+    empire: empire ? { id: empire.id, name: empire.name, color: empire.color } : null,
+  };
+});
 
 // Triches de dev : injection de ressources, avance rapide. Jamais en production.
 if (process.env.NODE_ENV !== "production") {
@@ -40,23 +105,35 @@ if (process.env.NODE_ENV !== "production") {
     return { ok: empireId !== null, empireId };
   });
   app.get("/dev/empires", () => engine.devEmpireSummaries());
-  app.post("/dev/armfleet", (request) => {
-    const { player, systemId, ships } = (request.body ?? {}) as {
-      player?: string;
+  app.post("/dev/armfleet", (request, reply) => {
+    const { empireId, systemId, ships } = (request.body ?? {}) as {
+      empireId?: string;
       systemId?: string;
       ships?: Record<string, number>;
     };
-    const empire = engine.createOrJoinEmpire(player);
+    const empire = empireId ? engine.empireById(empireId) : engine.defaultEmpireForDev;
+    if (!empire) return reply.code(404).send({ error: "Empire inconnu" });
     const fleetId = engine.devArmFleet(empire, systemId ?? "", ships ?? {});
     return { ok: true, fleetId };
   });
 }
 
+/** Fermeture WS : session absente/expirée (le client renvoie alors vers l'écran de connexion). */
+const WS_UNAUTHORIZED = 4001;
+
 app.get("/ws", { websocket: true }, (socket, request) => {
   const send = (msg: ServerMessage) => socket.send(JSON.stringify(msg));
-  // Identité de connexion (chantier 7c-B) : jeton `?player=` → empire (rejoint ou créé).
-  const token = (request.query as { player?: string }).player;
-  const empire = engine.createOrJoinEmpire(token);
+  // Identité de connexion (chantier 8) : jeton de session `?session=` → compte → empire.
+  const account = resolveSession((request.query as { session?: string }).session);
+  if (!account) {
+    socket.close(WS_UNAUTHORIZED, "Session invalide");
+    return;
+  }
+  const empire = engine.empireForAccount(account.id) ?? engine.createEmpireForAccount(account.id);
+  if (!empire) {
+    socket.close(WS_UNAUTHORIZED, "Aucun empire pour ce compte");
+    return;
+  }
   send({
     type: "hello",
     playerId: empire.id,

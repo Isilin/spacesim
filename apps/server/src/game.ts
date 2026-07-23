@@ -2062,7 +2062,7 @@ export class GameEngine {
    * sinon un UUID. Retourne l'`Empire`, ou `null` si aucune planète habitable n'est
    * disponible.
    */
-  private createEmpire(id: string, name?: string): Empire | null {
+  private createEmpire(id: string, name?: string, accountId: string | null = null): Empire | null {
     const occupiedPlanets = new Set<string>();
     const occupiedSystems = new Set<string>();
     for (const e of this.empires.values()) {
@@ -2089,6 +2089,7 @@ export class GameEngine {
       .values({
         id,
         gameId: this.clock.id,
+        accountId,
         name: empireName,
         color,
         joinedAt: Date.now(),
@@ -2099,7 +2100,7 @@ export class GameEngine {
         explored: "[]",
       })
       .run();
-    const empire = new Empire(id, empireName, color);
+    const empire = new Empire(id, empireName, color, accountId);
     this.empires.set(id, empire);
     this.foundHomeColony(empire, home);
     this.notify();
@@ -2108,16 +2109,50 @@ export class GameEngine {
   }
 
   /**
-   * Résout l'empire d'une connexion (chantier 7c-B, jetons légers) :
-   * - pas de jeton → empire par défaut (compat : la partie « primaire » existante) ;
-   * - jeton connu → l'empire correspondant ;
-   * - jeton inconnu → nouvel empire dont l'`id` est le jeton (rejoint ensuite ce même
-   *   empire à chaque reconnexion). Fallback sur le defaultEmpire si l'univers est plein.
+   * Empire piloté par un compte (chantier 8). null si le compte n'a pas encore d'empire
+   * dans cette partie — l'inscription en crée un via `createEmpireForAccount`.
    */
-  createOrJoinEmpire(token?: string): Empire {
-    const t = token?.trim().slice(0, 64);
-    if (!t) return this.defaultEmpire;
-    return this.empires.get(t) ?? this.createEmpire(t) ?? this.defaultEmpire;
+  empireForAccount(accountId: string): Empire | null {
+    for (const empire of this.empires.values()) {
+      if (empire.accountId === accountId) return empire;
+    }
+    return null;
+  }
+
+  /**
+   * Rattache un empire à un compte fraîchement inscrit. Le premier compte **adopte**
+   * l'empire amorcé au boot (sa colonie mère et son brouillard) plutôt que d'en créer un
+   * second, qui laisserait un empire fantôme sur la meilleure planète. Les suivants
+   * obtiennent un empire neuf. null si l'univers n'a plus de planète d'accueil.
+   */
+  createEmpireForAccount(accountId: string, name?: string): Empire | null {
+    const existing = this.empireForAccount(accountId);
+    if (existing) return existing;
+
+    const orphan = [...this.empires.values()].find((e) => e.accountId === null);
+    if (orphan) {
+      orphan.accountId = accountId;
+      const empireName = name?.trim().slice(0, 40);
+      if (empireName) orphan.name = empireName;
+      db.update(schema.players)
+        .set({ accountId, name: orphan.name })
+        .where(eq(schema.players.id, orphan.id))
+        .run();
+      console.log(`[game] empire « ${orphan.name} » adopté par un compte`);
+      this.notify();
+      return orphan;
+    }
+    return this.createEmpire(randomUUID(), name, accountId);
+  }
+
+  /** Empire par son id (outils de dev). */
+  empireById(id: string): Empire | null {
+    return this.empires.get(id) ?? null;
+  }
+
+  /** Empire par défaut (outils de dev uniquement : `/dev/armfleet` sans `empireId`). */
+  get defaultEmpireForDev(): Empire {
+    return this.defaultEmpire;
   }
 
   /** Outil de dev uniquement : instancie un empire supplémentaire. Retourne son id. */
@@ -2521,7 +2556,7 @@ export class GameEngine {
       .where(eq(schema.players.gameId, this.clock.id))
       .all();
     for (const p of rows) {
-      const empire = new Empire(p.id, p.name, p.color);
+      const empire = new Empire(p.id, p.name, p.color, p.accountId);
       empire.researched = JSON.parse(p.researched);
       empire.research = p.research ? JSON.parse(p.research) : null;
       empire.influence = p.influence;

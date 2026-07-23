@@ -48,6 +48,13 @@ interface EmpireSummary {
 }
 const summaries = (engine: GameEngine) => engine.devEmpireSummaries() as EmpireSummary[];
 
+/**
+ * Empire d'un compte fictif (chantier 8) : le premier compte adopte l'empire amorcé au
+ * boot, les suivants en obtiennent un neuf. Rappeler avec le même id rejoint le même empire.
+ */
+const empireFor = (engine: GameEngine, accountId: string) =>
+  engine.createEmpireForAccount(accountId, accountId)!;
+
 /** Nombre de ticks avancés par `devFastForward` : delta multiple exact de TICK_MS (5s). */
 const advanceTicks = (engine: GameEngine, ticks: number) => engine.devFastForward(ticks * 5);
 
@@ -156,28 +163,35 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(colonia.isDefault).toBe(false);
   });
 
-  it("createOrJoinEmpire : jeton absent → défaut, connu → rejoint, inconnu → crée", () => {
+  it("createEmpireForAccount : le 1er compte adopte l'empire amorcé, le 2e en obtient un neuf", () => {
     const engine = GameEngine.load();
-    const def = summaries(engine)[0]!.id;
+    const seeded = summaries(engine)[0]!.id;
 
-    // Pas de jeton → empire par défaut.
-    expect(engine.createOrJoinEmpire().id).toBe(def);
-    expect(engine.createOrJoinEmpire("").id).toBe(def);
+    // Premier compte : adoption — pas de second empire fantôme sur la meilleure planète.
+    const alice = engine.createEmpireForAccount("compte-alice", "Alice")!;
+    expect(alice.id).toBe(seeded);
+    expect(alice.name).toBe("Alice");
+    expect(summaries(engine)).toHaveLength(1);
 
-    // Jeton inconnu → nouvel empire dont l'id EST le jeton.
-    const alice = engine.createOrJoinEmpire("alice");
-    expect(alice.id).toBe("alice");
+    // Même compte → même empire (inscription rejouée, reconnexion).
+    expect(engine.createEmpireForAccount("compte-alice")!.id).toBe(seeded);
+    expect(engine.empireForAccount("compte-alice")!.id).toBe(seeded);
+    expect(summaries(engine)).toHaveLength(1);
+
+    // Deuxième compte → empire neuf, avec sa propre colonie mère.
+    const bob = engine.createEmpireForAccount("compte-bob", "Bob")!;
+    expect(bob.id).not.toBe(seeded);
     expect(summaries(engine)).toHaveLength(2);
+    expect(engine.snapshotForEmpire(bob).colonies).toHaveLength(1);
 
-    // Même jeton → on rejoint le même empire (pas de doublon).
-    expect(engine.createOrJoinEmpire("alice").id).toBe("alice");
-    expect(summaries(engine)).toHaveLength(2);
+    // Compte sans empire : aucune résolution.
+    expect(engine.empireForAccount("compte-inconnu")).toBeNull();
   });
 
   it("le snapshot d'une connexion ne montre que les entités de son empire", () => {
     const engine = GameEngine.load();
-    const alice = engine.createOrJoinEmpire("alice");
-    const snapDefault = engine.snapshotForEmpire(engine.createOrJoinEmpire());
+    const alice = empireFor(engine, "alice");
+    const snapDefault = engine.snapshotForEmpire(empireFor(engine, "defaut"));
     const snapAlice = engine.snapshotForEmpire(alice);
 
     // Chaque snapshot ne contient que la (les) colonie(s) de son empire.
@@ -192,8 +206,8 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
 
   it("une action ne s'applique qu'aux entités de l'empire agissant (Phase C)", () => {
     const engine = GameEngine.load();
-    const def = engine.createOrJoinEmpire();
-    const alice = engine.createOrJoinEmpire("alice");
+    const def = empireFor(engine, "alpha");
+    const alice = empireFor(engine, "alice");
     const defColonyId = engine.snapshotForEmpire(def).colonies[0]!.id;
     const aliceColonyId = engine.snapshotForEmpire(alice).colonies[0]!.id;
 
@@ -212,8 +226,8 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
 
   it("attackFleet : la flotte ennemie écrasée est détruite, la bataille est archivée", () => {
     const engine = GameEngine.load();
-    const a = engine.createOrJoinEmpire();
-    const b = engine.createOrJoinEmpire("bravo");
+    const a = empireFor(engine, "alpha");
+    const b = empireFor(engine, "bravo");
     const sys = "gal-0-sys-0";
     const fa = engine.devArmFleet(a, sys, { [WARSHIP]: 50 });
     const fb = engine.devArmFleet(b, sys, { [WARSHIP]: 1 });
@@ -231,8 +245,8 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
 
   it("attackFleet : cible hors système ou amie rejetée", () => {
     const engine = GameEngine.load();
-    const a = engine.createOrJoinEmpire();
-    const b = engine.createOrJoinEmpire("bravo");
+    const a = empireFor(engine, "alpha");
+    const b = empireFor(engine, "bravo");
     const fa = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
     const fb = engine.devArmFleet(b, "gal-0-sys-1", { [WARSHIP]: 5 });
     const fa2 = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
@@ -243,8 +257,8 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
 
   it("attackColony : raid pille des ressources et rompt le claim ennemi", () => {
     const engine = GameEngine.load();
-    const a = engine.createOrJoinEmpire();
-    const b = engine.createOrJoinEmpire("charlie");
+    const a = empireFor(engine, "alpha");
+    const b = empireFor(engine, "charlie");
     const bColony = engine.snapshotForEmpire(b).colonies[0]!;
     const bSummary = summaries(engine).find((e) => e.id === b.id)!;
     const bSystem = bSummary.colonies[0]!.systemId;
@@ -261,7 +275,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
 
   it("attackColony : cible amie ou hors portée rejetée", () => {
     const engine = GameEngine.load();
-    const a = engine.createOrJoinEmpire();
+    const a = empireFor(engine, "alpha");
     const own = engine.snapshotForEmpire(a).colonies[0]!;
     const fa = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
     expect(engine.attackColony(a, fa, own.id)).toBe("Colonie cible inconnue");
@@ -269,8 +283,8 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
 
   it("diplomatie : declareWar/makePeace basculent l'état, reflété dans le classement", () => {
     const engine = GameEngine.load();
-    const a = engine.createOrJoinEmpire();
-    const b = engine.createOrJoinEmpire("bravo");
+    const a = empireFor(engine, "alpha");
+    const b = empireFor(engine, "bravo");
     const rowB = () =>
       (engine.snapshotForEmpire(a).leaderboard as { id: string; atWar: boolean }[]).find(
         (e) => e.id === b.id,

@@ -65,6 +65,11 @@ export class Empire {
     readonly id: string,
     public name: string,
     public color: string,
+    /**
+     * Compte propriétaire (chantier 8). null = empire non encore adopté : l'empire
+     * amorcé au boot d'une partie neuve, ou un empire d'outil de dev.
+     */
+    public accountId: string | null = null,
   ) {}
 
   /** Recompose la forme externe `GameState` : horloge partagée + état de cet empire. */

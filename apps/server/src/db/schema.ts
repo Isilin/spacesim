@@ -13,6 +13,27 @@ export const games = sqliteTable("games", {
 });
 
 /**
+ * Comptes joueurs (chantier 8). Le mot de passe est stocké en `scrypt$sel$hash`
+ * (voir `src/auth.ts`) — jamais en clair, jamais réversible.
+ */
+export const accounts = sqliteTable("accounts", {
+  id: text("id").primaryKey(),
+  /** Normalisé en minuscules, unique. */
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: integer("created_at").notNull(),
+  lastLoginAt: integer("last_login_at"),
+});
+
+/** Sessions ouvertes : jeton opaque → compte. TTL glissant, purge au boot. */
+export const sessions = sqliteTable("sessions", {
+  token: text("token").primaryKey(),
+  accountId: text("account_id").notNull(),
+  createdAt: integer("created_at").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+});
+
+/**
  * Empires (joueurs) partageant l'univers d'une partie.
  * Chantier 7 : socle multi-locataire. En solo, un seul player possède tout.
  * Les champs d'empire (influence, recherche, réputation, exploration) migreront
@@ -21,6 +42,8 @@ export const games = sqliteTable("games", {
 export const players = sqliteTable("players", {
   id: text("id").primaryKey(),
   gameId: text("game_id").notNull(),
+  /** Compte propriétaire (chantier 8). NULL = empire anonyme legacy ou outil de dev. */
+  accountId: text("account_id"),
   name: text("name").notNull(),
   /** Couleur d'affichage du territoire sur la carte. */
   color: text("color").notNull(),
