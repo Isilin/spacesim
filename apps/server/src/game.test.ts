@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { FRONTIER_GALAXIES, INITIAL_GALAXIES, WARSHIPS } from "@spacesim/shared";
+import {
+  FRONTIER_GALAXIES,
+  GATEWAY_COST,
+  gatewayCost,
+  INITIAL_GALAXIES,
+  MAX_EMPIRES_PER_GALAXY,
+  WARSHIPS,
+} from "@spacesim/shared";
 import { db, schema } from "./db/index.js";
 import { GameEngine } from "./game.js";
 
@@ -355,6 +362,37 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
       db.select().from(schema.stationStates).all().map((r) => r.stationId),
     );
     expect(stationIds.every((id) => stocked.has(id))).toBe(true);
+  });
+
+  it("les nouveaux empires naissent voisins, puis débordent en poussant la frontière", () => {
+    const engine = GameEngine.load();
+    const galaxyOf = (systemId: string) => systemId.split("-sys-")[0];
+
+    // MAX_EMPIRES_PER_GALAXY = 4 : les premiers arrivants partagent la galaxie d'origine.
+    for (let i = 1; i < MAX_EMPIRES_PER_GALAXY; i++) engine.devSpawnEmpire(`Voisin ${i}`);
+    const starters = summaries(engine).map((e) => galaxyOf(e.colonies[0]!.systemId));
+    expect(starters).toHaveLength(MAX_EMPIRES_PER_GALAXY);
+    expect(new Set(starters).size).toBe(1);
+    expect(starters[0]).toBe("gal-0");
+    // Chacun sur son propre système : brouillards disjoints.
+    const systems = summaries(engine).map((e) => e.colonies[0]!.systemId);
+    expect(new Set(systems).size).toBe(MAX_EMPIRES_PER_GALAXY);
+
+    // L'empire de trop déborde sur une autre galaxie…
+    engine.devSpawnEmpire("Débordement");
+    const spilled = summaries(engine).at(-1)!;
+    expect(galaxyOf(spilled.colonies[0]!.systemId)).not.toBe("gal-0");
+    // … qui n'était plus vierge : la frontière s'est reformée plus loin.
+    expect(engine.universe.galaxies.length).toBeGreaterThan(INITIAL_GALAXIES);
+    expect(emptyGalaxies(engine)).toBeGreaterThanOrEqual(FRONTIER_GALAXIES);
+  });
+
+  it("le portail coûte plus cher à mesure qu'on vise loin", () => {
+    const near = gatewayCost("gal-1");
+    const far = gatewayCost("gal-6");
+    expect(far.metals!).toBeGreaterThan(near.metals!);
+    // Le coût de référence est celui de la galaxie voisine.
+    expect(near).toEqual(GATEWAY_COST);
   });
 
   it("étendre l'univers ne coûte rien aux empires en place", () => {

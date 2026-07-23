@@ -1,5 +1,6 @@
 import {
   GATEWAY_COST,
+  galaxyIndexOfId,
   gatewayProgressRatio,
   gatewayRemaining,
   maxConvoyCapacity,
@@ -92,6 +93,10 @@ export function GatewaysPanel({
                   {Object.entries(remaining)
                     .map(([res, n]) => `${n} ${RESOURCE_LABELS[res as ResourceId]}`)
                     .join(" · ") || "rien"}
+                </span>
+                {/* Le coût croît avec l'éloignement : la richesse promise justifie l'effort. */}
+                <span className="small muted">
+                  Rang {galaxyIndexOfId(gateway.galaxyId)} · gisements ×{galaxy.depositBonus}
                 </span>
                 {hasTech && activeColony && (
                   <div className="transfer-form">

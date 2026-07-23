@@ -24,6 +24,7 @@ import {
   fleetIsEmpty,
   GATEWAY_BUILD_MS,
   GATEWAY_COST,
+  gatewayCost,
   gatewayCovered,
   gatewayLinks,
   gatewayRemaining,
@@ -32,6 +33,7 @@ import {
   generateUniverse,
   idleShips,
   INITIAL_GALAXIES,
+  pickStarterGalaxy,
   influencePerTick,
   jumpDistanceInUniverse,
   MARKET_RESOURCES,
@@ -2116,8 +2118,8 @@ export class GameEngine {
   devFundGateway(galaxyId: string, leave = 50): void {
     const gateway = this.gatewayMap.get(galaxyId);
     if (!gateway || gateway.active) return;
-    const progress: Partial<Record<ResourceId, number>> = { ...GATEWAY_COST };
-    progress.metals = Math.max(0, (GATEWAY_COST.metals ?? 0) - leave);
+    const progress: Partial<Record<ResourceId, number>> = { ...gatewayCost(galaxyId) };
+    progress.metals = Math.max(0, (progress.metals ?? 0) - leave);
     const next: Gateway = { ...gateway, progress };
     this.gatewayMap.set(galaxyId, next);
     this.persistGateway(next);
@@ -2148,12 +2150,24 @@ export class GameEngine {
   }
 
   /**
-   * Instancie un nouvel empire : ligne `players` + colonie mère sur une planète
-   * habitable libre (brouillard isolé). `id` fourni = jeton de connexion (7c-B) ;
-   * sinon un UUID. Retourne l'`Empire`, ou `null` si aucune planète habitable n'est
-   * disponible.
+   * Choisit la planète mère d'un empire à naître (chantier 9.4).
+   *
+   * Le nouvel arrivant est posé dans une **galaxie de départ** — la plus proche du
+   * centre ayant encore de la place, en préférant celles déjà peuplées : les joueurs
+   * se retrouvent voisins, avec commerce, frontières et PvP dès les premières heures.
+   * Dans cette galaxie, on prend la planète la plus habitable d'un système vierge
+   * (brouillards disjoints). L'univers s'étend si plus aucune galaxie n'a de place.
    */
-  private createEmpire(id: string, name?: string, accountId: string | null = null): Empire | null {
+  private pickHomePlanet(): Planet | null {
+    const starter = pickStarterGalaxy(this.galaxyOccupancy());
+    if (starter === null) {
+      // Plus une seule place : ouvrir la frontière, puis viser la première galaxie neuve.
+      const before = this.universe.galaxies.length;
+      this.growUniverse(1);
+      if (this.universe.galaxies.length === before) return null; // plafond atteint
+      return this.pickHomePlanet();
+    }
+
     const occupiedPlanets = new Set<string>();
     const occupiedSystems = new Set<string>();
     for (const e of this.empires.values()) {
@@ -2163,14 +2177,20 @@ export class GameEngine {
         if (sys) occupiedSystems.add(sys);
       }
     }
-    // Planète tellurique la plus habitable encore libre (galaxie d'origine en priorité).
-    const candidates = allPlanets(this.universe)
+    const candidates = this.universe.galaxies[starter]!.systems.flatMap((s) => s.planets)
       .filter((p) => p.type !== "gas" && !occupiedPlanets.has(p.id))
       .sort((a, b) => b.habitability - a.habitability);
-    // On préfère un système vierge de toute colonie (empires espacés, brouillards disjoints).
     const freeSystem = candidates.filter((p) => !occupiedSystems.has(p.systemId));
-    const pool = freeSystem.length > 0 ? freeSystem : candidates;
-    const home = pool.find((p) => p.systemId.startsWith("gal-0-")) ?? pool[0];
+    return (freeSystem[0] ?? candidates[0]) ?? null;
+  }
+
+  /**
+   * Instancie un nouvel empire : ligne `players` + colonie mère dans sa galaxie de
+   * départ (brouillard isolé). Retourne l'`Empire`, ou `null` si l'univers ne peut
+   * plus accueillir personne (plafond de galaxies atteint).
+   */
+  private createEmpire(id: string, name?: string, accountId: string | null = null): Empire | null {
+    const home = this.pickHomePlanet();
     if (!home) return null;
 
     const index = this.empires.size;
@@ -2194,6 +2214,8 @@ export class GameEngine {
     const empire = new Empire(id, empireName, color, accountId);
     this.empires.set(id, empire);
     this.foundHomeColony(empire, home);
+    // L'arrivant peut avoir entamé la dernière galaxie vierge : on repousse le bord.
+    this.ensureFrontier();
     this.notify();
     console.log(`[game] empire « ${empireName} » instancié (${this.empires.size} au total)`);
     return empire;
@@ -2447,8 +2469,9 @@ export class GameEngine {
           const gateway = this.gatewayMap.get(mission.targetId);
           if (gateway && !gateway.active && mission.cargo) {
             const progress = { ...gateway.progress };
+            const cost = gatewayCost(gateway.galaxyId);
             for (const [res, amount] of Object.entries(mission.cargo) as [ResourceId, number][]) {
-              const cap = GATEWAY_COST[res] ?? 0;
+              const cap = cost[res] ?? 0;
               progress[res] = Math.min(cap, (progress[res] ?? 0) + amount);
             }
             let next: Gateway = { ...gateway, progress };
