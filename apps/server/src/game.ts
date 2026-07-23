@@ -64,7 +64,6 @@ import {
   transferCostCredits,
   transferDurationMs,
   TECHS,
-  type ActiveResearch,
   type AsteroidBelt,
   type BuildingId,
   type Colony,
@@ -146,6 +145,9 @@ export class GameEngine {
   private planetsById: Map<string, Planet>;
   private stationsById: Map<string, TradeStation>;
   private marketMap = new Map<string, Stocks>();
+  // Portails inter-galactiques : mégastructures d'univers PARTAGÉES (game-scoped, décision
+  // Phase D). N'importe quel empire y contribue via `contributeGateway` ; une fois actif, le
+  // portail bénéficie à tous. Pas de portail par-empire — cohérent avec les marchés/pirates PNJ.
   private gatewayMap = new Map<string, Gateway>();
   private lairMap = new Map<string, PirateLair>();
   private battleLog: StoredBattle[] = [];
@@ -210,11 +212,6 @@ export class GameEngine {
         seed: randomUUID().slice(0, 8),
         tick: 0,
         lastTickAt: Date.now(),
-        explored: "[]",
-        researched: "[]",
-        research: null,
-        influence: 0,
-        factionRep: "{}",
         createdAt: Date.now(),
       };
       db.insert(schema.games).values(row).run();
@@ -225,15 +222,7 @@ export class GameEngine {
       tick: row.tick,
       lastTickAt: row.lastTickAt,
     });
-    // Valeurs legacy de la ligne `games` : ne servent qu'à ensemencer un player neuf
-    // (7b-données) ; les lignes `players` restent la source autoritaire de l'état.
-    engine.ensureDefaultPlayer({
-      researched: JSON.parse(row.researched),
-      research: row.research ? JSON.parse(row.research) : null,
-      influence: row.influence,
-      factionRep: JSON.parse(row.factionRep),
-      explored: JSON.parse(row.explored),
-    });
+    engine.ensureDefaultPlayer();
     engine.loadPlayers();
     if (isNew) {
       engine.createHomeColony();
@@ -2138,42 +2127,41 @@ export class GameEngine {
    */
   /**
    * Garantit qu'au moins un player (empire par défaut) existe et adopte les entités
-   * orphelines. Pour une sauvegarde pré-7b, le player neuf est ensemencé depuis les
-   * champs legacy de `games` ; sinon valeurs par défaut. Le backfill des `ownerId` NULL
-   * les rattache au player par défaut (le premier). N'instancie PAS les `Empire` :
-   * `loadPlayers()` le fait pour toutes les lignes `players` (chantier 7c — Phase A).
+   * orphelines. Un player neuf démarre à l'état vide (la colonie mère peuple ensuite son
+   * brouillard). Le backfill des `ownerId` NULL les rattache au player par défaut (le
+   * premier). N'instancie PAS les `Empire` : `loadPlayers()` le fait pour toutes les
+   * lignes `players` (chantier 7c — Phase A).
+   *
+   * NB : l'état d'empire des sauvegardes pré-7b a été copié `games`→`players` par la
+   * migration 0005 ; les colonnes legacy de `games` sont supprimées en 0006 (Phase D).
    */
-  private ensureDefaultPlayer(seed: {
-    researched: string[];
-    research: ActiveResearch | null;
-    influence: number;
-    factionRep: Record<string, number>;
-    explored: string[];
-  }): void {
-    let player = db
+  private ensureDefaultPlayer(): void {
+    const player = db
       .select()
       .from(schema.players)
       .where(eq(schema.players.gameId, this.clock.id))
       .limit(1)
       .get();
+    const defaultId = player?.id ?? randomUUID();
     if (!player) {
-      player = {
-        id: randomUUID(),
-        gameId: this.clock.id,
-        name: DEFAULT_PLAYER_NAME,
-        color: DEFAULT_PLAYER_COLOR,
-        joinedAt: Date.now(),
-        researched: JSON.stringify(seed.researched),
-        research: seed.research ? JSON.stringify(seed.research) : null,
-        influence: seed.influence,
-        factionRep: JSON.stringify(seed.factionRep),
-        explored: JSON.stringify(seed.explored),
-      };
-      db.insert(schema.players).values(player).run();
+      db.insert(schema.players)
+        .values({
+          id: defaultId,
+          gameId: this.clock.id,
+          name: DEFAULT_PLAYER_NAME,
+          color: DEFAULT_PLAYER_COLOR,
+          joinedAt: Date.now(),
+          researched: "[]",
+          research: null,
+          influence: 0,
+          factionRep: "{}",
+          explored: "[]",
+        })
+        .run();
     }
     for (const table of [schema.colonies, schema.fleets, schema.claims]) {
       db.update(table)
-        .set({ ownerId: player.id })
+        .set({ ownerId: defaultId })
         .where(and(eq(table.gameId, this.clock.id), isNull(table.ownerId)))
         .run();
     }

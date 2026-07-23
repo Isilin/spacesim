@@ -9,13 +9,6 @@ export const games = sqliteTable("games", {
   seed: text("seed").notNull(),
   tick: integer("tick").notNull().default(0),
   lastTickAt: integer("last_tick_at").notNull(),
-  // Champs d'empire LEGACY (chantier 7b) : l'état vit désormais dans `players`.
-  // Conservés pour la migration des sauvegardes ; à supprimer lors d'un nettoyage ultérieur.
-  explored: text("explored").notNull().default("[]"),
-  researched: text("researched").notNull().default("[]"),
-  research: text("research"),
-  influence: real("influence").notNull().default(0),
-  factionRep: text("faction_rep").notNull().default("{}"),
   createdAt: integer("created_at").notNull(),
 });
 
