@@ -12,6 +12,8 @@ import {
   colonizeInfluenceCost,
   colonyShipDurationMs,
   computeEffects,
+  contiguousClaims,
+  CONTIGUOUS_CLAIM_BONUS,
   createRng,
   ECONOMY_TICK_TICKS,
   emptyResources,
@@ -2300,7 +2302,11 @@ export class GameEngine {
 
   /** Génération d'influence ; entretien impayé = la revendication la plus récente tombe. */
   private influenceTick(empire: Empire): void {
-    const net = influencePerTick([...empire.colonyMap.values()], empire.claimedSystemIds.length);
+    // Bonus de territoire soudé : les claims contigus rapportent un supplément d'influence.
+    const contiguous = contiguousClaims(this.universe, empire.claimedSystemIds).size;
+    const net =
+      influencePerTick([...empire.colonyMap.values()], empire.claimedSystemIds.length) +
+      contiguous * CONTIGUOUS_CLAIM_BONUS;
     let influence = empire.influence + net;
     if (influence < 0 && empire.claimedSystemIds.length > 0) {
       const dropped = empire.claimedSystemIds.at(-1)!;
