@@ -55,6 +55,8 @@ export function App() {
     fleets,
     pirateLairs,
     battles,
+    foreignFleets,
+    foreignColonies,
     connected,
     actionError,
     send,
@@ -222,6 +224,8 @@ export function App() {
             pirateLairs={pirateLairs}
             battles={battles}
             colonies={colonies}
+            foreignFleets={foreignFleets}
+            foreignColonies={foreignColonies}
             universe={universe}
             researched={game.researched}
             now={now}

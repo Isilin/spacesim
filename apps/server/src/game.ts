@@ -1581,9 +1581,11 @@ export class GameEngine {
         for (const item of done) ships[item.warshipId] = (ships[item.warshipId] ?? 0) + 1;
         current = { ...current, ships, queue: current.queue.filter((q) => q.finishesAt > t) };
       }
-      // Arrivée d'un déplacement.
+      // Arrivée d'un déplacement : la flotte révèle son système de destination.
       if (current.movement && current.movement.arrivesAt <= t) {
-        current = { ...current, systemId: current.movement.toSystemId, movement: null };
+        const arrivedAt = current.movement.toSystemId;
+        current = { ...current, systemId: arrivedAt, movement: null };
+        this.markExplored(empire, arrivedAt);
       }
       if (current !== fleet) {
         empire.fleetMap.set(id, current);
@@ -2038,6 +2040,7 @@ export class GameEngine {
       movement: null,
     };
     empire.fleetMap.set(fleet.id, fleet);
+    this.markExplored(empire, systemId);
     this.persistFleet(fleet, true);
     this.notify();
     return fleet.id;

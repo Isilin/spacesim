@@ -10,6 +10,8 @@ import {
   type Colony,
   type Fleet,
   type FleetComposition,
+  type ForeignColony,
+  type ForeignFleet,
   type PirateLair,
   type ResourceId,
   type StoredBattle,
@@ -25,11 +27,21 @@ interface Props {
   pirateLairs: PirateLair[];
   battles: StoredBattle[];
   colonies: Colony[];
+  foreignFleets: ForeignFleet[];
+  foreignColonies: ForeignColony[];
   universe: Universe;
   researched: readonly string[];
   now: number;
   send: (msg: ClientMessage) => void;
 }
+
+/** Rapport de raid PvP (pas une bataille rangée) : { raid, stolen }. */
+interface RaidReport {
+  raid: true;
+  stolen: Partial<Record<ResourceId, number>>;
+}
+const isRaid = (r: unknown): r is RaidReport =>
+  typeof r === "object" && r !== null && (r as { raid?: unknown }).raid === true;
 
 const PHASE_LABELS: Record<string, string> = {
   long: "Longue portée",
@@ -55,6 +67,8 @@ export function FleetsView({
   pirateLairs,
   battles,
   colonies,
+  foreignFleets,
+  foreignColonies,
   universe,
   researched,
   now,
@@ -76,6 +90,10 @@ export function FleetsView({
           <ul className="route-list">
             {fleets.map((fleet) => {
               const lairsHere = pirateLairs.filter((l) => l.systemId === fleet.systemId);
+              const enemyFleetsHere = foreignFleets.filter((f) => f.systemId === fleet.systemId);
+              const enemyColoniesHere = foreignColonies.filter(
+                (c) => c.systemId === fleet.systemId,
+              );
               return (
                 <li key={fleet.id} className="route-item">
                   <div className="queue-head">
@@ -195,6 +213,45 @@ export function FleetsView({
                       </button>
                     </div>
                   ))}
+
+                  {/* PvP : flottes étrangères sur zone */}
+                  {enemyFleetsHere.map((ef) => (
+                    <div key={ef.id} className="lair-target">
+                      <span className="small ko">
+                        ⚔ Flotte {ef.name}{" "}
+                        <span style={{ color: ef.ownerColor }}>({ef.ownerName})</span> —{" "}
+                        {compositionText(ef.ships as FleetComposition)}
+                      </span>
+                      <button
+                        className="action-button"
+                        disabled={!!fleet.movement}
+                        onClick={() =>
+                          send({ type: "attackFleet", fleetId: fleet.id, targetFleetId: ef.id })
+                        }
+                      >
+                        Attaquer
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* PvP : colonies étrangères sur zone (raid) */}
+                  {enemyColoniesHere.map((ec) => (
+                    <div key={ec.id} className="lair-target">
+                      <span className="small ko">
+                        🎯 Colonie {ec.name}{" "}
+                        <span style={{ color: ec.ownerColor }}>({ec.ownerName})</span>
+                      </span>
+                      <button
+                        className="action-button"
+                        disabled={!!fleet.movement}
+                        onClick={() =>
+                          send({ type: "attackColony", fleetId: fleet.id, targetColonyId: ec.id })
+                        }
+                      >
+                        Raid
+                      </button>
+                    </div>
+                  ))}
                 </li>
               );
             })}
@@ -257,6 +314,23 @@ export function FleetsView({
           ) : (
             <ul className="queue-list">
               {battles.map((b) => {
+                if (isRaid(b.report)) {
+                  const loot = (Object.entries(b.report.stolen) as [ResourceId, number][])
+                    .filter(([, n]) => n > 0)
+                    .map(([r, n]) => `${n} ${RESOURCE_LABELS[r]}`)
+                    .join(" · ");
+                  return (
+                    <li key={b.id} className="queue-item">
+                      <div className="queue-head">
+                        <span className="ok">🎯 Raid — {systemName(b.systemId)}</span>
+                        <span className="muted small">{b.attackerName}</span>
+                      </div>
+                      <span className="small muted">
+                        Pillé : {loot || "rien"} · cible {b.defenderName}
+                      </span>
+                    </li>
+                  );
+                }
                 const report = b.report as BattleReport;
                 const won = report.winner === "attacker";
                 return (

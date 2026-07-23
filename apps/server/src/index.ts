@@ -40,6 +40,16 @@ if (process.env.NODE_ENV !== "production") {
     return { ok: empireId !== null, empireId };
   });
   app.get("/dev/empires", () => engine.devEmpireSummaries());
+  app.post("/dev/armfleet", (request) => {
+    const { player, systemId, ships } = (request.body ?? {}) as {
+      player?: string;
+      systemId?: string;
+      ships?: Record<string, number>;
+    };
+    const empire = engine.createOrJoinEmpire(player);
+    const fleetId = engine.devArmFleet(empire, systemId ?? "", ships ?? {});
+    return { ok: true, fleetId };
+  });
 }
 
 app.get("/ws", { websocket: true }, (socket, request) => {
