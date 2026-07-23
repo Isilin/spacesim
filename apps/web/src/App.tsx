@@ -14,6 +14,7 @@ import { EmpireView } from "./EmpireView.js";
 import { GalaxyMap } from "./GalaxyMap.js";
 import { FleetsView } from "./FleetsView.js";
 import { GatewaysPanel } from "./GatewaysPanel.js";
+import { MapNav, type NavTarget } from "./MapNav.js";
 import { ResearchView } from "./ResearchView.js";
 import { RoutesView } from "./RoutesView.js";
 import { SystemPanel } from "./SystemPanel.js";
@@ -35,6 +36,22 @@ type MapView =
   | { level: "universe" }
   | { level: "galaxy"; galaxyId: string }
   | { level: "system"; galaxyId: string; systemId: string };
+
+/**
+ * Historique de navigation de la carte (chantier 9.7) : `entries[cursor]` est la vue
+ * courante ; naviguer tronque le futur, comme un historique de navigateur.
+ */
+interface MapHistory {
+  entries: MapView[];
+  cursor: number;
+}
+
+const EMPTY_HISTORY: MapHistory = { entries: [], cursor: -1 };
+
+function pushView(history: MapHistory, view: MapView): MapHistory {
+  const entries = [...history.entries.slice(0, history.cursor + 1), view];
+  return { entries, cursor: entries.length - 1 };
+}
 
 /** Horloge locale pour les comptes à rebours (les timers font foi côté serveur). */
 function useNow(): number {
@@ -72,7 +89,7 @@ export function App({ auth }: Props) {
   } = useGameSocket(auth.token!, auth.sessionExpired);
   const [tab, setTab] = useState<Tab>("colony");
   const [colonyId, setColonyId] = useState<string | null>(null);
-  const [mapView, setMapView] = useState<MapView | null>(null);
+  const [history, setHistory] = useState<MapHistory>(EMPTY_HISTORY);
   const [selectedSystemId, setSelectedSystemId] = useState<string | null>(null);
   const [selectedBodyId, setSelectedBodyId] = useState<string | null>(null);
   const now = useNow();
@@ -107,7 +124,9 @@ export function App({ auth }: Props) {
   const homeGalaxy = colonyPlanet
     ? findGalaxyOfSystem(universe, colonyPlanet.systemId)
     : universe.galaxies[0];
+  const mapView = history.entries[history.cursor] ?? null;
   const view: MapView = mapView ?? { level: "galaxy", galaxyId: homeGalaxy?.id ?? "gal-0" };
+  const setMapView = (next: MapView) => setHistory((h) => pushView(h, next));
 
   const viewGalaxy =
     view.level !== "universe"
@@ -130,6 +149,23 @@ export function App({ auth }: Props) {
   };
 
   const selectBody = (planet: Planet) => setSelectedBodyId(planet.id);
+
+  /** Saut direct depuis la recherche ou un raccourci (chantier 9.7). */
+  const goTo = (target: NavTarget) => {
+    if (target.kind === "universe") {
+      setMapView({ level: "universe" });
+      return;
+    }
+    if (target.kind === "galaxy") {
+      setMapView({ level: "galaxy", galaxyId: target.galaxyId });
+      return;
+    }
+    setMapView({ level: "system", galaxyId: target.galaxyId, systemId: target.systemId });
+    setSelectedSystemId(target.systemId);
+    setSelectedBodyId(null);
+  };
+
+  const fleetSystemIds = fleets.map((f) => f.systemId);
 
   return (
     <div className="layout">
@@ -270,6 +306,23 @@ export function App({ auth }: Props) {
       ) : (
         <main className="content">
           <section className="map-panel">
+            <MapNav
+              universe={universe}
+              colonies={colonies}
+              exploredSystemIds={exploredSystemIds}
+              fleetSystemIds={fleetSystemIds}
+              homeSystemId={colonyPlanet?.systemId ?? null}
+              canGoBack={history.cursor > 0}
+              canGoForward={history.cursor < history.entries.length - 1}
+              onBack={() => setHistory((h) => ({ ...h, cursor: Math.max(0, h.cursor - 1) }))}
+              onForward={() =>
+                setHistory((h) => ({
+                  ...h,
+                  cursor: Math.min(h.entries.length - 1, h.cursor + 1),
+                }))
+              }
+              onGo={goTo}
+            />
             <nav className="breadcrumb">
               <button onClick={() => setMapView({ level: "universe" })}>Univers</button>
               {viewGalaxy && (

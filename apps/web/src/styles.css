@@ -951,3 +951,97 @@ body {
   stroke-dasharray: 6 6;
   opacity: 0.5;
 }
+
+/* ── Navigation de carte (chantier 9.7) ──────────────────────────────────── */
+
+.map-nav {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.map-nav-history {
+  display: flex;
+  gap: 4px;
+}
+
+.map-nav button {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--muted);
+  font: inherit;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.map-nav button:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.map-nav button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.map-search {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.map-search input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font: inherit;
+  padding: 5px 10px;
+}
+
+.map-search input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.map-suggestions {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  list-style: none;
+  padding: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.map-suggestions button {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border: none;
+  border-radius: 0;
+  text-align: left;
+  background: none;
+}
+
+.map-suggestions button:hover {
+  background: var(--bg);
+}
+
+.map-no-match {
+  padding: 6px 10px;
+}
+
+.map-shortcuts {
+  display: flex;
+  gap: 4px;
+}
