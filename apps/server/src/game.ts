@@ -1416,14 +1416,30 @@ export class GameEngine {
     }
   }
 
+  /** Empire propriétaire du claim d'un système, ou null (claims exclusifs — Phase E). */
+  private claimOwner(systemId: string): Empire | null {
+    for (const empire of this.empires.values()) {
+      if (empire.claimedSystemIds.includes(systemId)) return empire;
+    }
+    return null;
+  }
+
+  /** Union des systèmes explorés par tous les empires (brouillard univers — Phase E). */
+  private universeExplored(): Set<string> {
+    const explored = new Set<string>();
+    for (const empire of this.empires.values()) {
+      for (const systemId of empire.explored) explored.add(systemId);
+    }
+    return explored;
+  }
+
   /**
    * Apparition de repaires pirates PNJ (univers partagé, une fois par tick éco).
-   * Provisoire : borné au brouillard/aux claims du defaultEmpire ; passera à un
-   * brouillard univers (union des empires) au chantier 7d.
+   * Brouillard univers (union des empires) ; jamais dans un système revendiqué.
    */
   private spawnPirates(tickNumber: number): void {
-    for (const systemId of this.explored) {
-      if (this.defaultEmpire.claimedSystemIds.includes(systemId)) continue;
+    for (const systemId of this.universeExplored()) {
+      if (this.claimOwner(systemId)) continue;
       if ([...this.lairMap.values()].some((l) => l.systemId === systemId)) continue;
       const rng = createRng(`pirate-${this.clock.seed}-${systemId}-${tickNumber}`);
       if (rng() > PIRATE_SPAWN_CHANCE) continue;
@@ -1571,6 +1587,8 @@ export class GameEngine {
     if (!system) return "Système inconnu";
     if (!empire.explored.has(systemId)) return "Système non exploré";
     if (empire.claimedSystemIds.includes(systemId)) return "Système déjà revendiqué";
+    // Claims exclusifs (Phase E) : un système n'appartient qu'à un empire à la fois.
+    if (this.claimOwner(systemId)) return "Système revendiqué par un autre empire";
     const hasColony = [...empire.colonyMap.values()].some(
       (c) => this.planetsById.get(c.planetId)?.systemId === systemId,
     );
