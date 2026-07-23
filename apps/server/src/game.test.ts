@@ -218,6 +218,9 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const fa = engine.devArmFleet(a, sys, { [WARSHIP]: 50 });
     const fb = engine.devArmFleet(b, sys, { [WARSHIP]: 1 });
 
+    // En paix par défaut : l'attaque est refusée tant que la guerre n'est pas déclarée.
+    expect(engine.attackFleet(a, fa, fb)).toBe("En paix — déclarez la guerre d'abord");
+    expect(engine.declareWar(a, b.id)).toBeNull();
     expect(engine.attackFleet(a, fa, fb)).toBeNull();
     // La flotte faible du défenseur est anéantie (retirée de son empire).
     expect(engine.snapshotForEmpire(b).fleets.some((f) => f.id === fb)).toBe(false);
@@ -233,6 +236,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const fa = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
     const fb = engine.devArmFleet(b, "gal-0-sys-1", { [WARSHIP]: 5 });
     const fa2 = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
+    engine.declareWar(a, b.id);
     expect(engine.attackFleet(a, fa, fb)).toBe("Cible hors de portée");
     expect(engine.attackFleet(a, fa, fa2)).toBe("Cible inconnue"); // amie
   });
@@ -248,6 +252,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const oreBefore = bColony.resources.ore;
     // L'attaquant arrive sur zone ; le défenseur n'a aucune flotte → raid direct.
     const fa = engine.devArmFleet(a, bSystem, { [WARSHIP]: 5 });
+    engine.declareWar(a, b.id);
     expect(engine.attackColony(a, fa, bColony.id)).toBeNull();
 
     const oreAfter = engine.snapshotForEmpire(b).colonies[0]!.resources.ore;
@@ -260,6 +265,28 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const own = engine.snapshotForEmpire(a).colonies[0]!;
     const fa = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
     expect(engine.attackColony(a, fa, own.id)).toBe("Colonie cible inconnue");
+  });
+
+  it("diplomatie : declareWar/makePeace basculent l'état, reflété dans le classement", () => {
+    const engine = GameEngine.load();
+    const a = engine.createOrJoinEmpire();
+    const b = engine.createOrJoinEmpire("bravo");
+    const rowB = () =>
+      (engine.snapshotForEmpire(a).leaderboard as { id: string; atWar: boolean }[]).find(
+        (e) => e.id === b.id,
+      )!;
+
+    expect(rowB().atWar).toBe(false);
+    expect(engine.declareWar(a, b.id)).toBeNull();
+    expect(rowB().atWar).toBe(true);
+    // La relation est symétrique : b voit aussi la guerre.
+    const rowAfromB = (engine.snapshotForEmpire(b).leaderboard as { id: string; atWar: boolean }[]).find(
+      (e) => e.id === a.id,
+    )!;
+    expect(rowAfromB.atWar).toBe(true);
+    expect(engine.declareWar(a, b.id)).toBe("Déjà en guerre");
+    expect(engine.makePeace(a, b.id)).toBeNull();
+    expect(rowB().atWar).toBe(false);
   });
 
   it("préserve l'état d'empire (influence, brouillard) au rechargement", () => {

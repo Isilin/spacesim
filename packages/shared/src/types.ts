@@ -301,6 +301,8 @@ export interface LeaderboardEntry {
   influence: number;
   /** Score composite servant au tri du classement. */
   score: number;
+  /** L'empire qui reçoit ce classement est-il en guerre avec celui-ci ? (chantier 7e) */
+  atWar: boolean;
 }
 
 /** Repaire de pirates PNJ : menace un système, à nettoyer par une flotte. */
@@ -468,4 +470,6 @@ export type ClientMessage =
   | { type: "attackLair"; fleetId: string; lairId: string }
   | { type: "attackFleet"; fleetId: string; targetFleetId: string }
   | { type: "attackColony"; fleetId: string; targetColonyId: string }
+  | { type: "declareWar"; targetEmpireId: string }
+  | { type: "makePeace"; targetEmpireId: string }
   | { type: "disbandFleet"; fleetId: string };

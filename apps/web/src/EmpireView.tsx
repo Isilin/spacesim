@@ -4,6 +4,7 @@ import {
   influencePerTick,
   MILESTONES,
   REP_TIERS,
+  type ClientMessage,
   type Colony,
   type FactionId,
   type GameState,
@@ -20,6 +21,7 @@ interface Props {
   exploredSystemIds: string[];
   leaderboard: LeaderboardEntry[];
   playerId: string | null;
+  send: (msg: ClientMessage) => void;
 }
 
 const METRIC_LABELS: Record<MilestoneMetric, string> = {
@@ -36,6 +38,7 @@ export function EmpireView({
   exploredSystemIds,
   leaderboard,
   playerId,
+  send,
 }: Props) {
   const metrics: Record<MilestoneMetric, number> = {
     population: Math.floor(colonies.reduce((s, c) => s + c.population, 0)),
@@ -88,7 +91,7 @@ export function EmpireView({
                 <div className="queue-head">
                   <span>
                     <span style={{ color: e.color }}>◆</span> #{i + 1} {e.name}
-                    {e.id === playerId ? " (vous)" : ""}
+                    {e.id === playerId ? " (vous)" : e.atWar ? " ⚔ en guerre" : ""}
                   </span>
                   <span className="muted small">score {e.score}</span>
                 </div>
@@ -96,6 +99,25 @@ export function EmpireView({
                   {e.colonies} colonie{e.colonies > 1 ? "s" : ""} · {e.claimed} système
                   {e.claimed > 1 ? "s" : ""} · ✦ {e.influence} · pop {e.population}
                 </span>
+                {e.id !== playerId && (
+                  <div className="route-actions">
+                    {e.atWar ? (
+                      <button
+                        className="action-button small"
+                        onClick={() => send({ type: "makePeace", targetEmpireId: e.id })}
+                      >
+                        Faire la paix
+                      </button>
+                    ) : (
+                      <button
+                        className="action-button small"
+                        onClick={() => send({ type: "declareWar", targetEmpireId: e.id })}
+                      >
+                        Déclarer la guerre
+                      </button>
+                    )}
+                  </div>
+                )}
               </li>
             ))}
           </ul>

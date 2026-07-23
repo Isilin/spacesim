@@ -37,6 +37,16 @@ export const players = sqliteTable("players", {
   explored: text("explored").notNull().default("[]"),
 });
 
+/**
+ * États de guerre entre empires (chantier 7e — diplomatie minimale). Absence de ligne
+ * = paix. Paire canonique (`empireA` < `empireB`) pour une relation symétrique unique.
+ */
+export const wars = sqliteTable("wars", {
+  gameId: text("game_id").notNull(),
+  empireA: text("empire_a").notNull(),
+  empireB: text("empire_b").notNull(),
+});
+
 /** Systèmes revendiqués par un joueur (bonus locaux, entretien en influence). */
 export const claims = sqliteTable("claims", {
   systemId: text("system_id").primaryKey(),

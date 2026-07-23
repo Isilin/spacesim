@@ -170,6 +170,8 @@ export class GameEngine {
   private gatewayMap = new Map<string, Gateway>();
   private lairMap = new Map<string, PirateLair>();
   private battleLog: StoredBattle[] = [];
+  /** Guerres en cours (paires canoniques `a|b`, a<b) ; absence = paix (chantier 7e). */
+  private warKeys = new Set<string>();
   private beltsById: Map<string, AsteroidBelt>;
   private listeners = new Set<StateListener>();
   private interval: NodeJS.Timeout | null = null;
@@ -243,6 +245,7 @@ export class GameEngine {
     });
     engine.ensureDefaultPlayer();
     engine.loadPlayers();
+    engine.loadWars();
     if (isNew) {
       engine.createHomeColony();
       engine.initMarkets();
@@ -370,7 +373,7 @@ export class GameEngine {
       battles: this.battleLog,
       foreignFleets,
       foreignColonies,
-      leaderboard: this.leaderboard(),
+      leaderboard: this.leaderboard(empire),
       territories: this.territoriesFor(empire),
       ...(empire.explorationDirty ? { universe: this.clientUniverseFor(empire) } : {}),
     };
@@ -393,7 +396,7 @@ export class GameEngine {
   }
 
   /** Classement public de tous les empires, trié par score composite décroissant. */
-  private leaderboard(): LeaderboardEntry[] {
+  private leaderboard(viewer: Empire): LeaderboardEntry[] {
     const rows: LeaderboardEntry[] = [];
     for (const empire of this.empires.values()) {
       const colonies = [...empire.colonyMap.values()];
@@ -410,6 +413,7 @@ export class GameEngine {
         claimed,
         influence: Math.floor(empire.influence),
         score: Math.round(score),
+        atWar: empire.id !== viewer.id && this.atWar(viewer.id, empire.id),
       });
     }
     return rows.sort((a, b) => b.score - a.score);
@@ -1467,6 +1471,53 @@ export class GameEngine {
     return null;
   }
 
+  // ─────────────────────────── Diplomatie (7e) ───────────────────────────
+
+  /** Clé canonique d'une relation (paire ordonnée). */
+  private warKey(a: string, b: string): string {
+    return a < b ? `${a}|${b}` : `${b}|${a}`;
+  }
+
+  /** Deux empires sont-ils en guerre ? (absence de relation = paix). */
+  private atWar(a: string, b: string): boolean {
+    return this.warKeys.has(this.warKey(a, b));
+  }
+
+  private loadWars(): void {
+    for (const row of db.select().from(schema.wars).all()) {
+      this.warKeys.add(this.warKey(row.empireA, row.empireB));
+    }
+  }
+
+  /** Action joueur : déclarer la guerre à un empire (relation symétrique). */
+  declareWar(empire: Empire, targetEmpireId: string): string | null {
+    if (targetEmpireId === empire.id) return "Cible invalide";
+    const target = this.empires.get(targetEmpireId);
+    if (!target) return "Empire inconnu";
+    const key = this.warKey(empire.id, targetEmpireId);
+    if (this.warKeys.has(key)) return "Déjà en guerre";
+    this.warKeys.add(key);
+    const [a, b] = key.split("|") as [string, string];
+    db.insert(schema.wars).values({ gameId: this.clock.id, empireA: a, empireB: b }).run();
+    console.log(`[game] « ${empire.name} » déclare la guerre à « ${target.name} »`);
+    this.notify();
+    return null;
+  }
+
+  /** Action joueur : faire la paix avec un empire (rompt l'état de guerre). */
+  makePeace(empire: Empire, targetEmpireId: string): string | null {
+    if (targetEmpireId === empire.id) return "Cible invalide";
+    const key = this.warKey(empire.id, targetEmpireId);
+    if (!this.warKeys.has(key)) return "Déjà en paix";
+    this.warKeys.delete(key);
+    const [a, b] = key.split("|") as [string, string];
+    db.delete(schema.wars)
+      .where(and(eq(schema.wars.empireA, a), eq(schema.wars.empireB, b)))
+      .run();
+    this.notify();
+    return null;
+  }
+
   /** Retire une flotte (survivants nuls) ou la met à jour (chantier 7d — PvP). */
   private applyFleetSurvivors(empire: Empire, fleet: Fleet, ships: FleetComposition): void {
     if (fleetIsEmpty(ships)) {
@@ -1487,6 +1538,7 @@ export class GameEngine {
     if (fleetIsEmpty(fleet.ships)) return "Flotte sans vaisseau";
     const target = this.findFleet(targetFleetId);
     if (!target || target.empire.id === empire.id) return "Cible inconnue";
+    if (!this.atWar(empire.id, target.empire.id)) return "En paix — déclarez la guerre d'abord";
     if (target.fleet.movement) return "Cible en déplacement";
     if (target.fleet.systemId !== fleet.systemId) return "Cible hors de portée";
     if (fleetIsEmpty(target.fleet.ships)) return "Cible sans vaisseau";
@@ -1517,6 +1569,7 @@ export class GameEngine {
     if (fleetIsEmpty(fleet.ships)) return "Flotte sans vaisseau";
     const target = this.findColony(targetColonyId);
     if (!target || target.empire.id === empire.id) return "Colonie cible inconnue";
+    if (!this.atWar(empire.id, target.empire.id)) return "En paix — déclarez la guerre d'abord";
     const systemId = this.planetsById.get(target.colony.planetId)?.systemId;
     if (!systemId) return "Système inconnu";
     if (systemId !== fleet.systemId) return "Cible hors de portée";

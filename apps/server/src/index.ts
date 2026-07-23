@@ -130,6 +130,10 @@ app.get("/ws", { websocket: true }, (socket, request) => {
       error = engine.attackFleet(empire, msg.fleetId, msg.targetFleetId);
     } else if (msg.type === "attackColony") {
       error = engine.attackColony(empire, msg.fleetId, msg.targetColonyId);
+    } else if (msg.type === "declareWar") {
+      error = engine.declareWar(empire, msg.targetEmpireId);
+    } else if (msg.type === "makePeace") {
+      error = engine.makePeace(empire, msg.targetEmpireId);
     } else if (msg.type === "disbandFleet") {
       error = engine.disbandFleet(empire, msg.fleetId);
     }

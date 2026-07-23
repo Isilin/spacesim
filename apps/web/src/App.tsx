@@ -248,6 +248,7 @@ export function App() {
             exploredSystemIds={exploredSystemIds}
             leaderboard={leaderboard}
             playerId={playerId}
+            send={send}
           />
         </main>
       ) : (
