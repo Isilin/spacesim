@@ -5,6 +5,7 @@ import {
   type Galaxy,
   type Mission,
   type StarSystem,
+  type Territory,
 } from "@spacesim/shared";
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
   missions: Mission[];
   exploredSystemIds: string[];
   claimedSystemIds: string[];
+  territories: Territory[];
   selectedId: string | null;
   onSelect: (system: StarSystem) => void;
   onOpenSystem: (system: StarSystem) => void;
@@ -25,11 +27,13 @@ export function GalaxyMap({
   missions,
   exploredSystemIds,
   claimedSystemIds,
+  territories,
   selectedId,
   onSelect,
   onOpenSystem,
 }: Props) {
   const byId = new Map(galaxy.systems.map((s) => [s.id, s]));
+  const territoryColor = new Map(territories.map((t) => [t.systemId, t.ownerColor]));
   const explored = new Set(exploredSystemIds);
   const planetToSystem = new Map(
     galaxy.systems.flatMap((s) => s.planets.map((p) => [p.id, s.id] as const)),
@@ -95,7 +99,15 @@ export function GalaxyMap({
             {galaxy.anchorSystemId === sys.id && (
               <rect x={-11} y={-11} width={22} height={22} className="anchor-ring" transform="rotate(45)" />
             )}
-            {claimedSystemIds.includes(sys.id) && <circle r={14} className="claim-ring" />}
+            {territoryColor.has(sys.id) ? (
+              <circle
+                r={14}
+                className="claim-ring"
+                style={{ stroke: territoryColor.get(sys.id), color: territoryColor.get(sys.id) }}
+              />
+            ) : (
+              claimedSystemIds.includes(sys.id) && <circle r={14} className="claim-ring" />
+            )}
             {hasColony && <circle r={9} className="colony-ring" />}
             <circle r={5} className="system-star" />
             {sys.station && isExplored && (

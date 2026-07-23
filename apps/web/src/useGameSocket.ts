@@ -14,6 +14,7 @@ import type {
   ServerMessage,
   StationMarket,
   StoredBattle,
+  Territory,
   Transfer,
   Universe,
 } from "@spacesim/shared";
@@ -48,6 +49,7 @@ export interface GameConnection {
   foreignFleets: ForeignFleet[];
   foreignColonies: ForeignColony[];
   leaderboard: LeaderboardEntry[];
+  territories: Territory[];
   connected: boolean;
   /** Dernière erreur d'action renvoyée par le serveur (éphémère). */
   actionError: string | null;
@@ -73,6 +75,7 @@ export function useGameSocket(): GameConnection {
   const [foreignFleets, setForeignFleets] = useState<ForeignFleet[]>([]);
   const [foreignColonies, setForeignColonies] = useState<ForeignColony[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [territories, setTerritories] = useState<Territory[]>([]);
   const [connected, setConnected] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const retryRef = useRef(0);
@@ -117,6 +120,7 @@ export function useGameSocket(): GameConnection {
           setForeignFleets(msg.foreignFleets);
           setForeignColonies(msg.foreignColonies);
           setLeaderboard(msg.leaderboard);
+          setTerritories(msg.territories);
         } else if (msg.type === "tick") {
           setGame(msg.game);
           setColonies(msg.colonies);
@@ -133,6 +137,7 @@ export function useGameSocket(): GameConnection {
           setForeignFleets(msg.foreignFleets);
           setForeignColonies(msg.foreignColonies);
           setLeaderboard(msg.leaderboard);
+          setTerritories(msg.territories);
           if (msg.universe) setUniverse(msg.universe);
         } else if (msg.type === "actionError") {
           setActionError(msg.message);
@@ -181,6 +186,7 @@ export function useGameSocket(): GameConnection {
     foreignFleets,
     foreignColonies,
     leaderboard,
+    territories,
     connected,
     actionError,
     send,

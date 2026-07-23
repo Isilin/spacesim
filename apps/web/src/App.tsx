@@ -59,6 +59,7 @@ export function App() {
     foreignFleets,
     foreignColonies,
     leaderboard,
+    territories,
     connected,
     actionError,
     send,
@@ -286,6 +287,7 @@ export function App() {
                 missions={missions}
                 exploredSystemIds={exploredSystemIds}
                 claimedSystemIds={game.claimedSystemIds}
+                territories={territories}
                 selectedId={selectedSystemId}
                 onSelect={(s) => setSelectedSystemId(s.id)}
                 onOpenSystem={openSystem}

@@ -77,6 +77,7 @@ import {
   type ForeignColony,
   type ForeignFleet,
   type LeaderboardEntry,
+  type Territory,
   type GameState,
   type Gateway,
   type PirateLair,
@@ -120,6 +121,8 @@ export interface EngineSnapshot {
   foreignColonies: ForeignColony[];
   /** Classement de tous les empires (chantier 7e). */
   leaderboard: LeaderboardEntry[];
+  /** Systèmes revendiqués visibles, colorés par empire (chantier 7e). */
+  territories: Territory[];
   /** Présent si l'exploration a changé depuis la dernière notification. */
   universe?: Universe;
 }
@@ -368,8 +371,25 @@ export class GameEngine {
       foreignFleets,
       foreignColonies,
       leaderboard: this.leaderboard(),
+      territories: this.territoriesFor(empire),
       ...(empire.explorationDirty ? { universe: this.clientUniverseFor(empire) } : {}),
     };
+  }
+
+  /**
+   * Systèmes revendiqués visibles d'un empire (chantier 7e) : ses propres claims + ceux
+   * des autres empires situés dans son brouillard, colorés par propriétaire.
+   */
+  private territoriesFor(empire: Empire): Territory[] {
+    const out: Territory[] = [];
+    for (const other of this.empires.values()) {
+      const own = other.id === empire.id;
+      for (const systemId of other.claimedSystemIds) {
+        if (!own && !empire.explored.has(systemId)) continue;
+        out.push({ systemId, ownerId: other.id, ownerColor: other.color });
+      }
+    }
+    return out;
   }
 
   /** Classement public de tous les empires, trié par score composite décroissant. */

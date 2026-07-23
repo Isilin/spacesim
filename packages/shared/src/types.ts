@@ -283,6 +283,13 @@ export interface ForeignColony {
   planetId: string;
 }
 
+/** Système revendiqué visible d'un empire, avec la couleur du propriétaire (chantier 7e). */
+export interface Territory {
+  systemId: string;
+  ownerId: string;
+  ownerColor: string;
+}
+
 /** Ligne de classement d'un empire (données publiques agrégées — chantier 7e). */
 export interface LeaderboardEntry {
   id: string;
@@ -388,6 +395,8 @@ export type ServerMessage =
       foreignColonies: ForeignColony[];
       /** Classement de tous les empires de la partie (chantier 7e). */
       leaderboard: LeaderboardEntry[];
+      /** Systèmes revendiqués visibles, colorés par empire propriétaire (chantier 7e). */
+      territories: Territory[];
     }
   | {
       type: "tick";
@@ -408,6 +417,8 @@ export type ServerMessage =
       foreignColonies: ForeignColony[];
       /** Classement de tous les empires de la partie (chantier 7e). */
       leaderboard: LeaderboardEntry[];
+      /** Systèmes revendiqués visibles, colorés par empire propriétaire (chantier 7e). */
+      territories: Territory[];
       /** Présent quand l'exploration a changé depuis le dernier message. */
       universe?: Universe;
     }
