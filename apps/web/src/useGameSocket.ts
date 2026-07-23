@@ -16,7 +16,19 @@ import type {
 } from "@spacesim/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+/** Clé de persistance du jeton de joueur (identité de connexion, chantier 7c). */
+const PLAYER_TOKEN_KEY = "spacesim.player";
+
+/** Jeton initial : `?player=` dans l'URL (force une identité) > localStorage > aucun. */
+function initialToken(): string | undefined {
+  const fromUrl = new URLSearchParams(location.search).get("player");
+  if (fromUrl) return fromUrl;
+  return localStorage.getItem(PLAYER_TOKEN_KEY) ?? undefined;
+}
+
 export interface GameConnection {
+  /** Identité de l'empire piloté (renvoyée par le serveur au `hello`). */
+  playerId: string | null;
   universe: Universe | null;
   game: GameState | null;
   colonies: Colony[];
@@ -38,6 +50,7 @@ export interface GameConnection {
 
 /** Connexion WS au serveur de jeu, avec reconnexion automatique. */
 export function useGameSocket(): GameConnection {
+  const [playerId, setPlayerId] = useState<string | null>(null);
   const [universe, setUniverse] = useState<Universe | null>(null);
   const [game, setGame] = useState<GameState | null>(null);
   const [colonies, setColonies] = useState<Colony[]>([]);
@@ -60,10 +73,14 @@ export function useGameSocket(): GameConnection {
   useEffect(() => {
     let disposed = false;
     let retryTimer: number | undefined;
+    // Jeton d'identité : lu au montage, puis mis à jour par le `hello` du serveur
+    // (les reconnexions réutilisent alors l'empire appris).
+    let token = initialToken();
 
     const connect = () => {
       const protocol = location.protocol === "https:" ? "wss" : "ws";
-      const socket = new WebSocket(`${protocol}://${location.host}/ws`);
+      const query = token ? `?player=${encodeURIComponent(token)}` : "";
+      const socket = new WebSocket(`${protocol}://${location.host}/ws${query}`);
       socketRef.current = socket;
       socket.onopen = () => {
         retryRef.current = 0;
@@ -72,6 +89,9 @@ export function useGameSocket(): GameConnection {
       socket.onmessage = (event) => {
         const msg = JSON.parse(event.data) as ServerMessage;
         if (msg.type === "hello") {
+          token = msg.playerId;
+          localStorage.setItem(PLAYER_TOKEN_KEY, msg.playerId);
+          setPlayerId(msg.playerId);
           setUniverse(msg.universe);
           setGame(msg.game);
           setColonies(msg.colonies);
@@ -129,6 +149,7 @@ export function useGameSocket(): GameConnection {
   }, []);
 
   return {
+    playerId,
     universe,
     game,
     colonies,

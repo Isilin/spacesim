@@ -42,25 +42,20 @@ if (process.env.NODE_ENV !== "production") {
   app.get("/dev/empires", () => engine.devEmpireSummaries());
 }
 
-app.get("/ws", { websocket: true }, (socket) => {
+app.get("/ws", { websocket: true }, (socket, request) => {
   const send = (msg: ServerMessage) => socket.send(JSON.stringify(msg));
+  // Identité de connexion (chantier 7c-B) : jeton `?player=` → empire (rejoint ou créé).
+  const token = (request.query as { player?: string }).player;
+  const empire = engine.createOrJoinEmpire(token);
   send({
     type: "hello",
-    universe: engine.clientUniverse,
-    game: engine.game,
-    colonies: engine.colonies,
-    transfers: engine.transfers,
-    missions: engine.missions,
-    exploredSystemIds: engine.exploredSystemIds,
-    markets: engine.markets,
-    routes: engine.routes,
-    outposts: engine.outposts,
-    gateways: engine.gateways,
-    fleets: engine.fleets,
-    pirateLairs: engine.pirateLairs,
-    battles: engine.battles,
+    playerId: empire.id,
+    universe: engine.clientUniverseForEmpire(empire),
+    ...engine.snapshotForEmpire(empire),
   });
-  const unsubscribe = engine.onChange((snapshot) => send({ type: "tick", ...snapshot }));
+  const unsubscribe = engine.onChange(() =>
+    send({ type: "tick", ...engine.snapshotForEmpire(empire) }),
+  );
 
   socket.on("message", (raw: Buffer) => {
     let msg: ClientMessage;

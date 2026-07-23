@@ -152,6 +152,40 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(colonia.isDefault).toBe(false);
   });
 
+  it("createOrJoinEmpire : jeton absent → défaut, connu → rejoint, inconnu → crée", () => {
+    const engine = GameEngine.load();
+    const def = summaries(engine)[0]!.id;
+
+    // Pas de jeton → empire par défaut.
+    expect(engine.createOrJoinEmpire().id).toBe(def);
+    expect(engine.createOrJoinEmpire("").id).toBe(def);
+
+    // Jeton inconnu → nouvel empire dont l'id EST le jeton.
+    const alice = engine.createOrJoinEmpire("alice");
+    expect(alice.id).toBe("alice");
+    expect(summaries(engine)).toHaveLength(2);
+
+    // Même jeton → on rejoint le même empire (pas de doublon).
+    expect(engine.createOrJoinEmpire("alice").id).toBe("alice");
+    expect(summaries(engine)).toHaveLength(2);
+  });
+
+  it("le snapshot d'une connexion ne montre que les entités de son empire", () => {
+    const engine = GameEngine.load();
+    const alice = engine.createOrJoinEmpire("alice");
+    const snapDefault = engine.snapshotForEmpire(engine.createOrJoinEmpire());
+    const snapAlice = engine.snapshotForEmpire(alice);
+
+    // Chaque snapshot ne contient que la (les) colonie(s) de son empire.
+    expect(snapAlice.colonies).toHaveLength(1);
+    expect(snapDefault.colonies).toHaveLength(1);
+    const aliceColonyIds = new Set(snapAlice.colonies.map((c) => c.id));
+    expect(snapDefault.colonies.some((c) => aliceColonyIds.has(c.id))).toBe(false);
+    // Brouillards (systèmes explorés) disjoints.
+    const aliceFog = new Set(snapAlice.exploredSystemIds);
+    expect(snapDefault.exploredSystemIds.some((s) => aliceFog.has(s))).toBe(false);
+  });
+
   it("préserve l'état d'empire (influence, brouillard) au rechargement", () => {
     const e1 = GameEngine.load();
     e1.devSpawnEmpire("Colonia");

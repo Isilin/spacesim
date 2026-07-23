@@ -132,7 +132,8 @@ const DEFAULT_PLAYER_COLOR = "#4fd1ff";
 /** Couleurs de territoire attribuées aux empires supplémentaires (outil de dev). */
 const DEV_EMPIRE_COLORS = ["#4fd1ff", "#ff6b6b", "#ffd93d", "#6bcB77", "#c77dff", "#ff922b"];
 
-export type StateListener = (snapshot: EngineSnapshot) => void;
+/** Signal « l'état a changé » : chaque connexion recompose alors le snapshot de son empire. */
+export type StateListener = () => void;
 
 /**
  * Détient l'état de la partie et fait avancer la simulation.
@@ -1747,15 +1748,12 @@ export class GameEngine {
   }
 
   /**
-   * Outil de dev uniquement : instancie un empire supplémentaire (nouveau player +
-   * colonie mère sur une planète habitable libre, brouillard isolé). Sert à tester
-   * en mémoire le moteur multi-empire (chantier 7b). Retourne l'id, ou `null` si
-   * aucune planète habitable n'est disponible.
-   *
-   * NB : `GameEngine.load()` reste mono-empire — les empires ainsi créés vivent le
-   * temps du process (le vrai chargement multi = chantier 7c).
+   * Instancie un nouvel empire : ligne `players` + colonie mère sur une planète
+   * habitable libre (brouillard isolé). `id` fourni = jeton de connexion (7c-B) ;
+   * sinon un UUID. Retourne l'`Empire`, ou `null` si aucune planète habitable n'est
+   * disponible.
    */
-  devSpawnEmpire(name?: string): string | null {
+  private createEmpire(id: string, name?: string): Empire | null {
     const occupied = new Set<string>();
     for (const e of this.empires.values()) {
       for (const c of e.colonyMap.values()) occupied.add(c.planetId);
@@ -1764,12 +1762,10 @@ export class GameEngine {
     const candidates = allPlanets(this.universe)
       .filter((p) => p.type !== "gas" && !occupied.has(p.id))
       .sort((a, b) => b.habitability - a.habitability);
-    const home =
-      candidates.find((p) => p.systemId.startsWith("gal-0-")) ?? candidates[0];
+    const home = candidates.find((p) => p.systemId.startsWith("gal-0-")) ?? candidates[0];
     if (!home) return null;
 
     const index = this.empires.size;
-    const id = randomUUID();
     const empireName = (name?.trim() || `Empire ${index + 1}`).slice(0, 40);
     const color = DEV_EMPIRE_COLORS[index % DEV_EMPIRE_COLORS.length]!;
     db.insert(schema.players)
@@ -1791,7 +1787,35 @@ export class GameEngine {
     this.foundHomeColony(empire, home);
     this.notify();
     console.log(`[game] empire « ${empireName} » instancié (${this.empires.size} au total)`);
-    return id;
+    return empire;
+  }
+
+  /**
+   * Résout l'empire d'une connexion (chantier 7c-B, jetons légers) :
+   * - pas de jeton → empire par défaut (compat : la partie « primaire » existante) ;
+   * - jeton connu → l'empire correspondant ;
+   * - jeton inconnu → nouvel empire dont l'`id` est le jeton (rejoint ensuite ce même
+   *   empire à chaque reconnexion). Fallback sur le defaultEmpire si l'univers est plein.
+   */
+  createOrJoinEmpire(token?: string): Empire {
+    const t = token?.trim().slice(0, 64);
+    if (!t) return this.defaultEmpire;
+    return this.empires.get(t) ?? this.createEmpire(t) ?? this.defaultEmpire;
+  }
+
+  /** Outil de dev uniquement : instancie un empire supplémentaire. Retourne son id. */
+  devSpawnEmpire(name?: string): string | null {
+    return this.createEmpire(randomUUID(), name)?.id ?? null;
+  }
+
+  /** Snapshot (forme externe WS) redacté au brouillard d'un empire (chantier 7c-B). */
+  snapshotForEmpire(empire: Empire): EngineSnapshot {
+    return this.snapshotFor(empire);
+  }
+
+  /** Univers redacté au brouillard d'un empire — payload initial du message `hello`. */
+  clientUniverseForEmpire(empire: Empire): Universe {
+    return this.clientUniverseFor(empire);
   }
 
   /** Outil de dev uniquement : résumé par empire (état en mémoire) pour l'observation. */
@@ -2373,10 +2397,9 @@ export class GameEngine {
   }
 
   private notify(): void {
-    // 7c : un snapshot redacté distinct sera diffusé par connexion (par empire).
-    // Ici, un seul empire — tous les listeners reçoivent sa vue.
-    const snapshot = this.snapshotFor(this.defaultEmpire);
-    this.defaultEmpire.explorationDirty = false;
-    for (const listener of this.listeners) listener(snapshot);
+    // Signal seul : chaque connexion recompose le snapshot redacté de son empire
+    // (7c-B). Le marqueur d'exploration se réarme par empire après diffusion.
+    for (const listener of this.listeners) listener();
+    for (const empire of this.empires.values()) empire.explorationDirty = false;
   }
 }

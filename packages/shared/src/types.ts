@@ -329,6 +329,8 @@ export interface StationMarket {
 export type ServerMessage =
   | {
       type: "hello";
+      /** Identité de l'empire piloté par cette connexion (jeton à persister côté client). */
+      playerId: string;
       universe: Universe;
       game: GameState;
       colonies: Colony[];
