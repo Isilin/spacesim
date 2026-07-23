@@ -13,6 +13,10 @@ Monorepo pnpm workspaces, TypeScript partout :
 
 Principes :
 - L'univers n'est **pas stocké en DB** : régénéré depuis la seed (générateur déterministe, `packages/shared/src/universe.ts`). La DB ne contient que l'état dynamique.
+- L'univers est **extensible à l'infini** (chantier 9) : chaque galaxie se génère seule depuis
+  `seed:galaxy:<index>` et se place sur une spirale d'angle d'or. Seul `games.galaxyCount` est
+  persisté ; `ensureFrontier()` l'incrémente pour garder des galaxies vierges devant les joueurs.
+  Toute modification du générateur invalide les parties existantes (supprimer `spacesim.db`).
 - Temps hybride : tick serveur (5 s, `TICK_MS`) pour la production ; timers réels absolus (timestamps en DB) pour constructions/trajets/recherche, résolus par le tick qui les dépasse. Catch-up hors-ligne borné (`MAX_CATCHUP_TICKS`).
 - Toute règle de simulation = fonction pure dans `shared`, appelée par le serveur. Les constantes d'équilibrage vivent dans `shared` (fichiers `constants.ts` / `content/`).
 - Code en anglais, UI en français (labels dans le client ou fichiers de contenu).

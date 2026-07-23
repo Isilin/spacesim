@@ -401,7 +401,11 @@ export class GameEngine {
       foreignColonies,
       leaderboard: this.leaderboard(empire),
       territories: this.territoriesFor(empire),
-      ...(empire.explorationDirty ? { universe: this.clientUniverseFor(empire) } : {}),
+      // L'univers n'est réémis qu'en cas de changement : nouvelle exploration (brouillard
+      // levé) ou extension de l'univers (galaxies apparues).
+      ...(empire.explorationDirty || empire.universeDirty
+        ? { universe: this.clientUniverseFor(empire) }
+        : {}),
     };
   }
 
@@ -1921,6 +1925,9 @@ export class GameEngine {
       .set({ galaxyCount: this.clock.galaxyCount })
       .where(eq(schema.games.id, this.clock.id))
       .run();
+    // Tous les clients doivent recevoir la nouvelle carte, y compris ceux qui n'ont
+    // rien exploré depuis leur dernier message.
+    for (const empire of this.empires.values()) empire.universeDirty = true;
     console.log(
       `[game] univers étendu : +${count} galaxie(s) (${added.map((g) => g.name).join(", ")}) — ${this.clock.galaxyCount} au total`,
     );
@@ -2900,6 +2907,9 @@ export class GameEngine {
     // Signal seul : chaque connexion recompose le snapshot redacté de son empire
     // (7c-B). Le marqueur d'exploration se réarme par empire après diffusion.
     for (const listener of this.listeners) listener();
-    for (const empire of this.empires.values()) empire.explorationDirty = false;
+    for (const empire of this.empires.values()) {
+      empire.explorationDirty = false;
+      empire.universeDirty = false;
+    }
   }
 }

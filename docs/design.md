@@ -4,6 +4,7 @@
 > + carte navigable · vue planète/lune · vrai arbre de recherche · logistique (stock orbital,
 > transport, prix régionaux). Voir « Chantiers 8 → 12 » en fin de document.
 > **8 livré** : comptes e-mail + mot de passe, sessions, WS authentifié.
+> **9 livré** : univers extensible à l'infini (frontière glissante) + cartes zoomables et navigables.
 >
 > **État (21/07/2026)** : jalons 1 à 7 implémentés et vérifiés — le MVP décrit ici est jouable.
 > **Pivot EVE-like (13/07/2026)** : plus de niveaux de bâtiments — on empile des **instances**
@@ -364,3 +365,38 @@ Le plan détaillé (écart avec l'existant, sous-étapes, fichiers, vérificatio
   authentification. Empire et déconnexion dans la barre supérieure.
 - Vérifié au navigateur : inscription, adoption de l'empire existant, second compte sur une autre
   planète, rechargement, déconnexion (session révoquée côté serveur), reconnexion, refus WS 4001.
+
+### Chantier 9 — Univers extensible + carte navigable ✅ (23/07/2026)
+
+**Génération.** `GALAXY_DEFS` (3 galaxies en dur, RNG séquentiel unique, pool de noms partagé
+et mutable) laisse place à `generateGalaxyAt(seed, index)` : chaque galaxie a son RNG dérivé et
+naît sans les précédentes. `galaxyDefAt` déduit du seul index le nom, la taille, la richesse et
+la position — spirale d'angle d'or `r = ESPACEMENT × √index`, densité constante et extension
+sans borne, galaxie 0 au centre. Les noms se composent par syllabes indexées avec un pas premier
+avec l'espace de noms : bijection, donc aucun doublon sans mémoire des noms déjà tirés.
+
+**Frontière glissante.** `shared/sim/expansion.ts` (pur, testé) tient l'invariant : il reste
+toujours `FRONTIER_GALAXIES` (3) galaxies sans la moindre colonie devant les joueurs. Coloniser
+la dernière vierge pousse le bord. `growUniverse` déroule les indices suivants, réindexe
+l'univers, équipe les galaxies neuves (comptoirs, chantier de portail) et persiste
+`games.galaxyCount` (migration 0009). Appelé au boot, à chaque arrivée d'empire et à chaque tick
+économique. Plafond de sécurité : `MAX_GALAXIES`.
+
+**Placement.** `pickStarterGalaxy` pose les arrivants dans la galaxie peuplée la plus proche du
+centre ayant encore de la place (`MAX_EMPIRES_PER_GALAXY` = 4), sur un système vierge : les
+joueurs naissent voisins — commerce, frontières et PvP dès le début — au lieu d'être éparpillés.
+Le coût d'un portail croît de 35 % par rang d'éloignement (`gatewayCost`), sinon les anneaux
+lointains, plus riches, seraient aussi accessibles que les proches.
+
+**Carte.** `ZoomableSvg` (molette, glisser, recentrage, zoom borné) équipe les trois niveaux.
+`UniverseMap` calcule son cadrage d'accueil pour contenir l'amas connu, ne dessine que les
+galaxies dans le cadre et allège l'affichage au dézoom (halo → nom → statistiques). `MapNav`
+ajoute recherche (galaxies, systèmes explorés, colonies — jamais au-delà du brouillard),
+raccourcis et historique avant/arrière.
+
+**Bug trouvé à la vérification** : le serveur étendait l'univers sans que le client le reçoive —
+l'univers n'était réémis que si le *brouillard* du joueur avait changé. D'où `universeDirty`,
+distinct de `explorationDirty`, avec test de non-régression sur le chemin de notification.
+
+> ⚠️ La génération ayant changé pour une seed donnée, les parties antérieures ne sont pas
+> migrables : `apps/server/spacesim.db` a été supprimé au passage.

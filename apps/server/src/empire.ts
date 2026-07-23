@@ -52,6 +52,11 @@ export class Empire {
   explored = new Set<string>();
   /** Marqueur : l'exploration a changé depuis la dernière notification. */
   explorationDirty = false;
+  /**
+   * Marqueur : l'univers lui-même a changé (extension — chantier 9). Distinct du
+   * brouillard : une galaxie neuve doit parvenir au client même s'il n'a rien exploré.
+   */
+  universeDirty = false;
   /** Ids des techs acquises. */
   researched: string[] = [];
   /** Recherche en cours (une seule à la fois), timer réel. */

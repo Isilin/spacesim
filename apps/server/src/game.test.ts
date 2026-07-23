@@ -387,6 +387,26 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
     expect(emptyGalaxies(engine)).toBeGreaterThanOrEqual(FRONTIER_GALAXIES);
   });
 
+  it("une extension pousse la nouvelle carte à tous les clients", () => {
+    const engine = GameEngine.load();
+    const alice = empireFor(engine, "alice");
+    // Abonnement d'une connexion, comme le fait le WebSocket : chaque notification
+    // recompose le snapshot de l'empire.
+    const pushes: (number | undefined)[] = [];
+    engine.onChange(() => pushes.push(engine.snapshotForEmpire(alice).universe?.galaxies.length));
+
+    // Un tick ordinaire ne réémet pas l'univers (payload lourd, inchangé).
+    engine.devFastForward(5);
+    expect(pushes.every((p) => p === undefined)).toBe(true);
+
+    // L'univers grandit sous l'effet des nouveaux arrivants : même un empire qui n'a
+    // rien exploré doit recevoir la carte étendue, sinon sa carte reste tronquée.
+    const sizeBefore = engine.universe.galaxies.length;
+    for (let i = 0; i < MAX_EMPIRES_PER_GALAXY + 1; i++) engine.devSpawnEmpire(`Voisin ${i}`);
+    expect(engine.universe.galaxies.length).toBeGreaterThan(sizeBefore);
+    expect(pushes).toContain(engine.universe.galaxies.length);
+  });
+
   it("le portail coûte plus cher à mesure qu'on vise loin", () => {
     const near = gatewayCost("gal-1");
     const far = gatewayCost("gal-6");
