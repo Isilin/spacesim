@@ -139,9 +139,22 @@ persistant, multijoueur ». Le combat PvE (chantier 6) fournit déjà le moteur 
 - ✅ **7c (Phase A)** — chargement multi-empire : `load()` instancie un `Empire` par ligne `players`
   (`loadPlayers`) et route chaque entité vers son propriétaire (colonies/fleets par `ownerId`,
   transfers/missions/routes/outposts via `empireOfColony`). Un empire créé via `devSpawnEmpire`
-  survit au reboot. Toujours mono-empire côté réseau (`defaultEmpire` = 1er player, fallback compat).
-- ⏳ **7c (Phase B)** identité de connexion (`?player=`) + snapshots redactés par connexion ;
-  **(Phase C)** actions validées par empire. **7d** territoire & PvP. **7e** UI. *(cf. « Plan d'exécution »)*
+  survit au reboot.
+- ✅ **7c (Phase B)** — identité de connexion : `/ws?player=<token>` → `createOrJoinEmpire` (absent →
+  défaut, connu → rejoint, inconnu → nouvel empire). `hello`/`tick` composés par connexion via
+  `snapshotForEmpire` ; `notify()` = signal, chaque socket recompose sa vue. Jeton client en `localStorage`.
+- ✅ **7c (Phase C)** — actions validées par empire : les ~20 méthodes d'action prennent l'empire de la
+  connexion et n'opèrent que sur ses entités (rejet « inconnue » sinon). `defaultEmpire` = fallback compat.
+- ✅ **Phase D (dette)** — colonnes legacy `games.*` supprimées (migration 0006) ; portails = mégastructures
+  d'univers partagées (décision actée).
+- ✅ **7d (Phase E)** — territoire & PvP : claims exclusifs ; `spawnPirates` sur brouillard-union ;
+  helpers d'adjacence/frontière + bonus de territoire contigu (`shared/sim/territory.ts`) ;
+  **PvP** `attackFleet` / `attackColony` (raid : pillage 25 % + rupture de claim) via `resolveBattle` ;
+  présence étrangère (`foreignFleets`/`foreignColonies`) dans les snapshots ; une flotte révèle son
+  système à l'arrivée.
+- ✅ **7e (Phase F, cœur)** — contrôles PvP dans l'UI (boutons Attaquer/Raid sur les entités étrangères
+  sur zone) + journal des raids. *Reste en polish* : coloration des territoires sur la carte, vue
+  Empire/classement (leaderboard serveur), diplomatie minimale.
 
 ### État actuel (contrainte de départ)
 Le moteur est **strictement mono-locataire** :
