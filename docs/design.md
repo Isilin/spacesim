@@ -152,9 +152,16 @@ persistant, multijoueur ». Le combat PvE (chantier 6) fournit déjà le moteur 
   **PvP** `attackFleet` / `attackColony` (raid : pillage 25 % + rupture de claim) via `resolveBattle` ;
   présence étrangère (`foreignFleets`/`foreignColonies`) dans les snapshots ; une flotte révèle son
   système à l'arrivée.
-- ✅ **7e (Phase F, cœur)** — contrôles PvP dans l'UI (boutons Attaquer/Raid sur les entités étrangères
-  sur zone) + journal des raids. *Reste en polish* : coloration des territoires sur la carte, vue
-  Empire/classement (leaderboard serveur), diplomatie minimale.
+- ✅ **7e (Phase F)** — UI complète : contrôles PvP (Attaquer/Raid sur entités étrangères sur zone) +
+  journal des raids ; **classement des empires** dans la vue Empire (leaderboard serveur) ;
+  **territoires colorés par empire** sur la carte (systèmes revendiqués visibles) ; **diplomatie
+  minimale** (table `wars`, migration 0007) : Déclarer la guerre / Faire la paix, le PvP exigeant
+  l'état de guerre. Vérifié end-to-end au navigateur.
+
+**Chantier 7 (multi territorial) : terminé.** N empires partagent l'univers/l'horloge, se voient dans
+le brouillard, se raident sous condition de guerre ; classement, territoires colorés, diplomatie.
+Prochaines pistes (hors chantier 7) : proposition de paix mutuelle, capture de colonie, comptes
+persistants (Postgres), hébergement distant.
 
 ### État actuel (contrainte de départ)
 Le moteur est **strictement mono-locataire** :
