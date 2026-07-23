@@ -4,9 +4,27 @@ export const TICK_MS = 5000;
 /** Catch-up hors-ligne borné : au-delà, le temps est perdu (évite de rejouer des semaines). */
 export const MAX_CATCHUP_TICKS = (24 * 3600 * 1000) / TICK_MS;
 
-/** Dimensions des cartes galaxie et univers (viewBox SVG). */
+/** Dimensions de la carte galaxie (viewBox SVG) — espace de coordonnées interne à une galaxie. */
 export const MAP_WIDTH = 1000;
 export const MAP_HEIGHT = 700;
+
+/**
+ * Carte univers (chantier 9) : les galaxies sont posées sur une spirale d'angle d'or
+ * autour de ce centre, sans borne — la vue se déplace et se zoome (`ZoomableSvg`).
+ */
+export const UNIVERSE_CENTER_X = MAP_WIDTH / 2;
+export const UNIVERSE_CENTER_Y = MAP_HEIGHT / 2;
+/** Écart moyen entre deux galaxies voisines sur la spirale. */
+export const GALAXY_SPACING = 260;
+
+/** Galaxies générées pour une partie neuve. */
+export const INITIAL_GALAXIES = 3;
+/** Galaxies vierges de toute colonie maintenues en permanence au-delà du front de peuplement. */
+export const FRONTIER_GALAXIES = 3;
+/** Empires accueillis par galaxie de départ avant d'en ouvrir une autre. */
+export const MAX_EMPIRES_PER_GALAXY = 4;
+/** Garde-fou : au-delà, on cesse d'étendre l'univers (mémoire du serveur). */
+export const MAX_GALAXIES = 200;
 
 /** Dimension de la vue système (viewBox SVG carré, étoile au centre). */
 export const SYSTEM_VIEW_SIZE = 900;

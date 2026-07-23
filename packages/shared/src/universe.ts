@@ -1,6 +1,13 @@
-import { MAP_HEIGHT, MAP_WIDTH } from "./constants.js";
+import {
+  GALAXY_SPACING,
+  INITIAL_GALAXIES,
+  MAP_HEIGHT,
+  MAP_WIDTH,
+  UNIVERSE_CENTER_X,
+  UNIVERSE_CENTER_Y,
+} from "./constants.js";
 import { FACTION_IDS } from "./content/factions.js";
-import { createRng, pick, pickWeighted, randInt, type Rng } from "./rng.js";
+import { createRng, hashSeed, pick, pickWeighted, randInt, type Rng } from "./rng.js";
 import type {
   AsteroidBelt,
   Deposits,
@@ -15,24 +22,63 @@ import type {
 /** Part des systèmes accueillant une station de commerce PNJ. */
 const STATION_PROBABILITY = 0.35;
 
-/**
- * La première galaxie est celle du joueur ; les autres s'ouvrent par portail.
- * Les galaxies lointaines ont des gisements plus riches — la récompense de l'end-game.
- */
-const GALAXY_DEFS = [
-  { name: "Elyssia", systems: 14, x: 300, y: 380, depositBonus: 1 },
-  { name: "Kharon", systems: 8, x: 640, y: 180, depositBonus: 1.5 },
-  { name: "Vestige", systems: 8, x: 760, y: 520, depositBonus: 1.5 },
+/** Systèmes de la galaxie d'origine (index 0) : plus vaste, c'est le berceau des empires. */
+const HOME_GALAXY_SYSTEMS = 14;
+
+/** Angle d'or : pose les galaxies en spirale de tournesol (densité constante, extension infinie). */
+const GOLDEN_ANGLE = 2.399963229728653;
+
+// ── Noms procéduraux ─────────────────────────────────────────────────────────
+// L'univers est extensible à l'infini : plus de pool de noms partagé et mutable
+// (il imposait de générer les galaxies dans l'ordre). Les noms se calculent par
+// combinaison de syllabes, indexée de façon bijective — deux indices distincts
+// donnent deux noms distincts, sans consulter les galaxies déjà générées.
+
+const NAME_HEADS = [
+  "Al", "Bac", "Cyg", "Dre", "Elo", "Fer", "Ghe", "Hya", "Il", "Jar",
+  "Kae", "Lor", "Mer", "Nyx", "Ost", "Pel", "Quor", "Rha", "Sel", "Tal",
+  "Umb", "Vens", "Wre", "Xan", "Yso", "Zer", "Aph", "Bor", "Cin", "Dag",
+  "Ere", "Fom", "Gal", "Hes", "Ith", "Jor", "Kres", "Lum", "Mor", "Nad",
+  "Oph", "Pyr", "Quil", "Rhes", "Sar", "Tyb", "Ull", "Ves", "Kha", "Ely",
 ] as const;
 
-const SYSTEM_NAMES = [
-  "Aldera", "Bactria", "Cygnis", "Drenn", "Eloran", "Ferros", "Ghesa", "Hyadum",
-  "Ilion", "Jarnis", "Kaelun", "Lorvath", "Meridia", "Nyx Prime", "Ostara",
-  "Pellae", "Quorren", "Rhagan", "Selvane", "Talos", "Umbra", "Vensk", "Wrenn",
-  "Xanthe", "Ysolde", "Zerath", "Aphel", "Boreas", "Cinder", "Dagon", "Erebos",
-  "Fomor", "Gallien", "Hesper", "Ithil", "Jorun", "Kressa", "Lumen", "Morvan",
-  "Nadir", "Ophion", "Pyrrhus", "Quilla", "Rhessa", "Sarnak", "Tyburn", "Ullis",
+const NAME_JOINTS = ["", "d", "l", "n", "r", "s", "th", "v", "m", "st", "rn"] as const;
+
+const NAME_TAILS = [
+  "a", "is", "us", "on", "ar", "en", "or", "ia", "yn", "ess", "um", "ae", "os", "ix",
 ] as const;
+
+/** Nombre de noms distincts formables (50 × 11 × 14). */
+const NAME_SPACE = NAME_HEADS.length * NAME_JOINTS.length * NAME_TAILS.length;
+
+/**
+ * Pas de parcours de l'espace de noms : premier avec `NAME_SPACE` (2117 = 29 × 73),
+ * donc `i ↦ i × STRIDE` est une bijection modulo `NAME_SPACE` — aucun doublon, sans
+ * garder mémoire des noms déjà tirés. Le pas est choisi grand devant le nombre de
+ * syllabes initiales pour que deux noms consécutifs ne se ressemblent pas.
+ */
+const NAME_STRIDE = 2117;
+
+/** Nom composé à partir d'un index — injectif sur [0, NAME_SPACE). */
+function syllabicName(index: number): string {
+  const n = ((index % NAME_SPACE) + NAME_SPACE) % NAME_SPACE;
+  const head = NAME_HEADS[n % NAME_HEADS.length]!;
+  const joint = NAME_JOINTS[Math.floor(n / NAME_HEADS.length) % NAME_JOINTS.length]!;
+  const tail = NAME_TAILS[Math.floor(n / (NAME_HEADS.length * NAME_JOINTS.length)) % NAME_TAILS.length]!;
+  const name = `${head}${joint}${tail}`;
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+/**
+ * Nom d'une suite d'éléments (galaxies, ou systèmes d'une même galaxie) : le pas
+ * bijectif évite tout doublon à l'intérieur de la suite. Au-delà de `NAME_SPACE`
+ * éléments, un numéro de catalogue prend le relais.
+ */
+function seriesName(offset: number, index: number): string {
+  const name = syllabicName(offset + index * NAME_STRIDE);
+  const lap = Math.floor(index / NAME_SPACE);
+  return lap === 0 ? name : `${name} ${lap + 1}`;
+}
 
 const TYPE_WEIGHTS: readonly (readonly [PlanetType, number])[] = [
   ["telluric", 3],
@@ -219,19 +265,58 @@ function generateLinks(systems: StarSystem[]): [string, string][] {
   return [...links].map((l) => l.split("|") as [string, string]);
 }
 
-function generateGalaxy(
-  rng: Rng,
-  index: number,
-  def: (typeof GALAXY_DEFS)[number],
-  namePool: string[],
-): Galaxy {
+/** Définition d'une galaxie : ce qui se déduit de sa seule position dans l'univers. */
+export interface GalaxyDef {
+  index: number;
+  name: string;
+  /** Position sur la spirale d'univers. */
+  x: number;
+  y: number;
+  systems: number;
+  depositBonus: number;
+}
+
+/**
+ * Décrit la galaxie `index` sans la générer (nom, position, taille, richesse).
+ *
+ * Position : spirale d'angle d'or `r = ESPACEMENT × √index`, qui garde une densité
+ * constante et s'étend sans borne — la galaxie 0 est au centre.
+ * Richesse : croît avec l'éloignement (les anneaux lointains sont la récompense).
+ */
+export function galaxyDefAt(seed: string, index: number): GalaxyDef {
+  const radius = GALAXY_SPACING * Math.sqrt(index);
+  const angle = index * GOLDEN_ANGLE;
+  // Décalage de nommage propre à la seed : deux parties ne nomment pas pareil.
+  const nameOffset = hashSeed(`${seed}:galaxies`) % NAME_SPACE;
+  return {
+    index,
+    name: seriesName(nameOffset, index),
+    x: Math.round(UNIVERSE_CENTER_X + Math.cos(angle) * radius),
+    y: Math.round(UNIVERSE_CENTER_Y + Math.sin(angle) * radius),
+    systems:
+      index === 0
+        ? HOME_GALAXY_SYSTEMS
+        : randInt(createRng(`${seed}:galaxy-size:${index}`), 7, 13),
+    depositBonus: index === 0 ? 1 : Math.round(Math.min(3, 1 + 0.5 * Math.sqrt(index)) * 100) / 100,
+  };
+}
+
+/**
+ * Génère la galaxie `index` **indépendamment des autres** : son RNG dérive de la seed
+ * et de l'index, jamais d'un flux séquentiel partagé. C'est ce qui permet d'étendre
+ * l'univers à la demande sans régénérer (ni décaler) les galaxies existantes.
+ */
+export function generateGalaxyAt(seed: string, index: number): Galaxy {
+  return generateGalaxy(createRng(`${seed}:galaxy:${index}`), galaxyDefAt(seed, index));
+}
+
+function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
+  const index = def.index;
   const galaxyId = `gal-${index}`;
   const positions = generatePositions(rng, def.systems);
+  const nameOffset = Math.floor(rng() * NAME_SPACE);
   const systems: StarSystem[] = positions.map((pos, i) => {
-    const name =
-      namePool.length > 0
-        ? namePool.splice(Math.floor(rng() * namePool.length), 1)[0]!
-        : `SX-${index}${100 + i}`;
+    const name = seriesName(nameOffset, i);
     const id = `${galaxyId}-sys-${i}`;
     const system: StarSystem = { id, name, x: pos.x, y: pos.y, planets: [], belts: [] };
     const bodies = generateBodies(rng, system, def.depositBonus);
@@ -277,10 +362,15 @@ function makeStation(rng: Rng, system: Pick<StarSystem, "id" | "name">): TradeSt
   };
 }
 
-export function generateUniverse(seed: string): Universe {
-  const rng = createRng(seed);
-  const namePool = [...SYSTEM_NAMES];
-  const galaxies = GALAXY_DEFS.map((def, i) => generateGalaxy(rng, i, def, namePool));
+/**
+ * Univers = les `galaxyCount` premières galaxies de la suite infinie de la seed.
+ * Étendre l'univers, c'est simplement générer les indices suivants : les précédents
+ * sont inchangés (chaque galaxie a son propre RNG dérivé).
+ */
+export function generateUniverse(seed: string, galaxyCount = INITIAL_GALAXIES): Universe {
+  const count = Math.max(1, Math.floor(galaxyCount));
+  const galaxies: Galaxy[] = [];
+  for (let i = 0; i < count; i++) galaxies.push(generateGalaxyAt(seed, i));
   return { seed, galaxies };
 }
 
