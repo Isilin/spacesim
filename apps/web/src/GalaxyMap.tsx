@@ -7,6 +7,8 @@ import {
   type StarSystem,
   type Territory,
 } from "@spacesim/shared";
+import { useMemo } from "react";
+import { ZoomableSvg, type ViewBox } from "./ZoomableSvg.js";
 
 interface Props {
   galaxy: Galaxy;
@@ -42,6 +44,8 @@ export function GalaxyMap({
     colonies.map((c) => planetToSystem.get(c.planetId)).filter(Boolean),
   );
 
+  const home = useMemo<ViewBox>(() => ({ x: 0, y: 0, width: MAP_WIDTH, height: MAP_HEIGHT }), []);
+
   const missionLines = missions
     .map((m) => {
       const fromColony = colonies.find((c) => c.id === m.fromColonyId);
@@ -53,12 +57,7 @@ export function GalaxyMap({
     .filter((l): l is NonNullable<typeof l> => l !== null);
 
   return (
-    <svg
-      className="galaxy-map"
-      viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
-      role="img"
-      aria-label={`Galaxie ${galaxy.name}`}
-    >
+    <ZoomableSvg className="galaxy-map" home={home} ariaLabel={`Galaxie ${galaxy.name}`}>
       {galaxy.links.map(([a, b]) => {
         const sa = byId.get(a);
         const sb = byId.get(b);
@@ -119,6 +118,6 @@ export function GalaxyMap({
           </g>
         );
       })}
-    </svg>
+    </ZoomableSvg>
   );
 }

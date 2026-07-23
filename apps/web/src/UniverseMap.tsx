@@ -7,27 +7,85 @@ import {
   type Gateway,
   type Universe,
 } from "@spacesim/shared";
+import { useMemo, useState } from "react";
+import { ZoomableSvg, type ViewBox } from "./ZoomableSvg.js";
 
 interface Props {
   universe: Universe;
   colonies: Colony[];
   exploredSystemIds: string[];
   gateways: Gateway[];
+  /** Cadrage imposé par la navigation (recherche, « ma capitale »). */
+  focus?: ViewBox | null;
   onSelect: (galaxy: Galaxy) => void;
 }
 
-/** Niveau univers : les galaxies comme nœuds, drill-down au clic. */
-export function UniverseMap({ universe, colonies, exploredSystemIds, gateways, onSelect }: Props) {
+/** Rayon du halo d'une galaxie sur la carte d'univers. */
+const HALO = 90;
+
+/** Marge autour de l'amas lors du cadrage d'accueil. */
+const PADDING = 160;
+
+/**
+ * Seuils de niveau de détail, exprimés en largeur de vue : plus la vue est large,
+ * plus on est loin, moins on affiche. Sans cela, un univers de 200 galaxies
+ * dégénère en bouillie de texte.
+ */
+const LABEL_MAX_WIDTH = 4200;
+const STATS_MAX_WIDTH = 2400;
+
+/** Niveau univers : les galaxies comme nœuds sur une spirale sans bord, drill-down au clic. */
+export function UniverseMap({
+  universe,
+  colonies,
+  exploredSystemIds,
+  gateways,
+  focus,
+  onSelect,
+}: Props) {
   const explored = new Set(exploredSystemIds);
   const colonyPlanetIds = new Set(colonies.map((c) => c.planetId));
   const home = universe.galaxies[0];
 
+  // Cadrage d'accueil : tout l'amas connu tient dans la vue, quel que soit son étalement.
+  const homeView = useMemo<ViewBox>(() => {
+    const xs = universe.galaxies.map((g) => g.x);
+    const ys = universe.galaxies.map((g) => g.y);
+    const minX = Math.min(...xs) - PADDING;
+    const maxX = Math.max(...xs) + PADDING;
+    const minY = Math.min(...ys) - PADDING;
+    const maxY = Math.max(...ys) + PADDING;
+    // On conserve le rapport d'aspect de la carte pour ne pas déformer les halos.
+    const width = Math.max(maxX - minX, ((maxY - minY) * MAP_WIDTH) / MAP_HEIGHT);
+    const height = (width * MAP_HEIGHT) / MAP_WIDTH;
+    return {
+      x: (minX + maxX) / 2 - width / 2,
+      y: (minY + maxY) / 2 - height / 2,
+      width,
+      height,
+    };
+  }, [universe.galaxies]);
+
+  const [view, setView] = useState<ViewBox>(homeView);
+  const showLabels = view.width < LABEL_MAX_WIDTH;
+  const showStats = view.width < STATS_MAX_WIDTH;
+
+  /** Ne dessiner que les galaxies dans le cadre (marge d'un halo). */
+  const visible = universe.galaxies.filter(
+    (g) =>
+      g.x + HALO >= view.x &&
+      g.x - HALO <= view.x + view.width &&
+      g.y + HALO >= view.y &&
+      g.y - HALO <= view.y + view.height,
+  );
+
   return (
-    <svg
+    <ZoomableSvg
       className="galaxy-map"
-      viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
-      role="img"
-      aria-label="Carte de l'univers"
+      home={homeView}
+      focus={focus}
+      ariaLabel="Carte de l'univers"
+      onViewChange={setView}
     >
       {gateways
         .filter((g) => g.active)
@@ -45,7 +103,8 @@ export function UniverseMap({ universe, colonies, exploredSystemIds, gateways, o
             />
           );
         })}
-      {universe.galaxies.map((galaxy, gi) => {
+      {visible.map((galaxy) => {
+        const gi = universe.galaxies.indexOf(galaxy);
         const exploredCount = galaxy.systems.filter((s) => explored.has(s.id)).length;
         const colonyCount = galaxy.systems
           .flatMap((s) => s.planets)
@@ -55,11 +114,15 @@ export function UniverseMap({ universe, colonies, exploredSystemIds, gateways, o
         return (
           <g
             key={galaxy.id}
-            className={`galaxy-node ${reachable ? "reachable" : "far"}`}
+            className={[
+              "galaxy-node",
+              reachable ? "reachable" : "far",
+              colonyCount > 0 ? "settled" : "",
+            ].join(" ")}
             transform={`translate(${galaxy.x}, ${galaxy.y})`}
             onClick={() => onSelect(galaxy)}
           >
-            <circle r={90} className="galaxy-halo" />
+            <circle r={HALO} className="galaxy-halo" />
             {/* Amas d'étoiles décoratif, déterministe par index. */}
             {galaxy.systems.slice(0, 12).map((s, i) => {
               const angle = (i / 12) * Math.PI * 2 + gi;
@@ -74,21 +137,26 @@ export function UniverseMap({ universe, colonies, exploredSystemIds, gateways, o
                 />
               );
             })}
-            <text y={-100} textAnchor="middle" className="galaxy-label">
-              {galaxy.name}
-            </text>
-            <text y={118} textAnchor="middle" className="galaxy-sub">
-              {galaxy.systems.length} systèmes · {exploredCount} explorés
-              {colonyCount > 0 ? ` · ${colonyCount} colonies` : ""}
-            </text>
-            {!reachable && gateway && (
+            {colonyCount > 0 && <circle r={HALO - 6} className="galaxy-owned" />}
+            {showLabels && (
+              <text y={-100} textAnchor="middle" className="galaxy-label">
+                {galaxy.name}
+              </text>
+            )}
+            {showStats && (
+              <text y={118} textAnchor="middle" className="galaxy-sub">
+                {galaxy.systems.length} systèmes · {exploredCount} explorés
+                {colonyCount > 0 ? ` · ${colonyCount} colonies` : ""}
+              </text>
+            )}
+            {showStats && !reachable && gateway && (
               <text y={136} textAnchor="middle" className="galaxy-sub muted">
                 {gateway.activatesAt
                   ? "Portail : chantier final…"
                   : `Portail : ${Math.round(gatewayProgressRatio(gateway) * 100)} % financé`}
               </text>
             )}
-            {gateway?.active && (
+            {showStats && gateway?.active && (
               <text y={136} textAnchor="middle" className="galaxy-sub gateway-active">
                 ◈ Portail actif — gisements ×{galaxy.depositBonus}
               </text>
@@ -96,6 +164,6 @@ export function UniverseMap({ universe, colonies, exploredSystemIds, gateways, o
           </g>
         );
       })}
-    </svg>
+    </ZoomableSvg>
   );
 }

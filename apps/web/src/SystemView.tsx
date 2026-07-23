@@ -4,6 +4,8 @@ import {
   type Planet,
   type StarSystem,
 } from "@spacesim/shared";
+import { useMemo } from "react";
+import { ZoomableSvg, type ViewBox } from "./ZoomableSvg.js";
 
 interface Props {
   system: StarSystem;
@@ -34,6 +36,10 @@ const PLANET_RADIUS: Record<string, number> = {
 /** Niveau système : étoile au centre, orbites, planètes, lunes, ceintures. */
 export function SystemView({ system, colonies, explored, selectedBodyId, onSelectBody }: Props) {
   const c = SYSTEM_VIEW_SIZE / 2;
+  const home = useMemo<ViewBox>(
+    () => ({ x: 0, y: 0, width: SYSTEM_VIEW_SIZE, height: SYSTEM_VIEW_SIZE }),
+    [],
+  );
   const colonyPlanetIds = new Set(colonies.map((col) => col.planetId));
   const planets = system.planets.filter((p) => p.kind === "planet");
   const moonsOf = (planetId: string) =>
@@ -53,12 +59,7 @@ export function SystemView({ system, colonies, explored, selectedBodyId, onSelec
   });
 
   return (
-    <svg
-      className="galaxy-map"
-      viewBox={`0 0 ${SYSTEM_VIEW_SIZE} ${SYSTEM_VIEW_SIZE}`}
-      role="img"
-      aria-label={`Système ${system.name}`}
-    >
+    <ZoomableSvg className="galaxy-map" home={home} ariaLabel={`Système ${system.name}`}>
       <circle cx={c} cy={c} r={18} className="star-core" />
       <text x={c} y={c - 28} textAnchor="middle" className="system-label">
         {system.name}
@@ -147,6 +148,6 @@ export function SystemView({ system, colonies, explored, selectedBodyId, onSelec
           </g>
         );
       })}
-    </svg>
+    </ZoomableSvg>
   );
 }
