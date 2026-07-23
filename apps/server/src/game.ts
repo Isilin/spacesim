@@ -386,14 +386,14 @@ export class GameEngine {
   }
 
   /** Action joueur : lancer une construction. Retourne un message d'erreur ou null. */
-  build(colonyId: string, buildingId: BuildingId): string | null {
-    const colony = this.colonyMap.get(colonyId);
+  build(empire: Empire, colonyId: string, buildingId: BuildingId): string | null {
+    const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
     const planet = this.planetsById.get(colony.planetId);
     if (!planet) return "Planète inconnue";
-    const result = enqueueBuilding(colony, planet, buildingId, Date.now(), this.effects);
+    const result = enqueueBuilding(colony, planet, buildingId, Date.now(), empire.effects);
     if (!result.ok) return result.reason;
-    this.colonyMap.set(colonyId, result.colony);
+    empire.colonyMap.set(colonyId, result.colony);
     this.persistColony(result.colony);
     this.notify();
     return null;
@@ -404,10 +404,11 @@ export class GameEngine {
    * Retourne null si aucun vaisseau libre.
    */
   private reserveShip(
+    empire: Empire,
     colony: Colony,
     busyUntil: number,
   ): { colony: Colony; shipId: ShipId; capacity: number } | null {
-    const idle = idleShips(colony, this.routes);
+    const idle = idleShips(colony, [...empire.routeMap.values()]);
     const shipId = pickShip(idle);
     if (!shipId) return null;
     return {
@@ -419,12 +420,13 @@ export class GameEngine {
 
   /** Action joueur : envoyer un convoi cargo. Retourne un message d'erreur ou null. */
   sendTransfer(
+    empire: Empire,
     fromColonyId: string,
     toColonyId: string,
     wanted: Partial<Record<ResourceId, number>>,
   ): string | null {
-    const from = this.colonyMap.get(fromColonyId);
-    const to = this.colonyMap.get(toColonyId);
+    const from = empire.colonyMap.get(fromColonyId);
+    const to = empire.colonyMap.get(toColonyId);
     if (!from || !to) return "Colonie inconnue";
     if (from.id === to.id) return "Origine et destination identiques";
 
@@ -450,8 +452,8 @@ export class GameEngine {
       if (resources[res] < amount) return `Stock insuffisant : ${res}`;
     }
     const now = Date.now();
-    const duration = transferDurationMs(jumps) * this.effects.transferSpeedMult;
-    const reserved = this.reserveShip(from, now + 2 * duration);
+    const duration = transferDurationMs(jumps) * empire.effects.transferSpeedMult;
+    const reserved = this.reserveShip(empire, from, now + 2 * duration);
     if (!reserved) return "Aucun cargo disponible";
     const total = Object.values(cargo).reduce((s, n) => s + n, 0);
     if (total > reserved.capacity) {
@@ -471,9 +473,9 @@ export class GameEngine {
       departedAt: now,
       arrivesAt: now + duration,
     };
-    this.colonyMap.set(from.id, { ...reserved.colony, resources });
-    this.transferMap.set(transfer.id, transfer);
-    this.persistColony(this.colonyMap.get(from.id)!);
+    empire.colonyMap.set(from.id, { ...reserved.colony, resources });
+    empire.transferMap.set(transfer.id, transfer);
+    this.persistColony(empire.colonyMap.get(from.id)!);
     db.insert(schema.transfers)
       .values({
         id: transfer.id,
@@ -491,15 +493,16 @@ export class GameEngine {
 
   /** Action joueur : vendre une cargaison à une station (créditée au spot d'arrivée). */
   sellToStation(
+    empire: Empire,
     colonyId: string,
     stationId: string,
     wanted: Partial<Record<ResourceId, number>>,
   ): string | null {
-    const colony = this.colonyMap.get(colonyId);
+    const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
     const station = this.stationsById.get(stationId);
     if (!station) return "Station inconnue";
-    if (!this.explored.has(station.systemId)) return "Station non découverte";
+    if (!empire.explored.has(station.systemId)) return "Station non découverte";
 
     const cargo: Partial<Record<ResourceId, number>> = {};
     for (const [res, raw] of Object.entries(wanted) as [ResourceId, number][]) {
@@ -524,8 +527,8 @@ export class GameEngine {
       if (resources[res] < amount) return `Stock insuffisant : ${res}`;
     }
 
-    const duration = transferDurationMs(jumps) * this.effects.transferSpeedMult;
-    const reserved = this.reserveShip(colony, Date.now() + 2 * duration);
+    const duration = transferDurationMs(jumps) * empire.effects.transferSpeedMult;
+    const reserved = this.reserveShip(empire, colony, Date.now() + 2 * duration);
     if (!reserved) return "Aucun cargo disponible";
     const total = Object.values(cargo).reduce((s, n) => s + n, 0);
     if (total > reserved.capacity) {
@@ -536,25 +539,26 @@ export class GameEngine {
     for (const [res, amount] of Object.entries(cargo) as [ResourceId, number][]) {
       resources[res] -= amount;
     }
-    this.colonyMap.set(colony.id, { ...reserved.colony, resources });
-    this.persistColony(this.colonyMap.get(colony.id)!);
-    this.insertMission("sell", colonyId, stationId, duration, { cargo });
+    empire.colonyMap.set(colony.id, { ...reserved.colony, resources });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
+    this.insertMission(empire, "sell", colonyId, stationId, duration, { cargo });
     this.notify();
     return null;
   }
 
   /** Action joueur : acheter au spot (le convoi part avec un budget, revient chargé). */
   buyFromStation(
+    empire: Empire,
     colonyId: string,
     stationId: string,
     resource: ResourceId,
     budgetRaw: number,
   ): string | null {
-    const colony = this.colonyMap.get(colonyId);
+    const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
     const station = this.stationsById.get(stationId);
     if (!station) return "Station inconnue";
-    if (!this.explored.has(station.systemId)) return "Station non découverte";
+    if (!empire.explored.has(station.systemId)) return "Station non découverte";
     if (!(MARKET_RESOURCES as readonly string[]).includes(resource)) {
       return `Ressource non échangeable : ${resource}`;
     }
@@ -571,15 +575,15 @@ export class GameEngine {
       return `Crédits insuffisants (budget ${budget} + frais ${fee})`;
     }
 
-    const duration = transferDurationMs(jumps) * this.effects.transferSpeedMult;
-    const reserved = this.reserveShip(colony, Date.now() + 2 * duration);
+    const duration = transferDurationMs(jumps) * empire.effects.transferSpeedMult;
+    const reserved = this.reserveShip(empire, colony, Date.now() + 2 * duration);
     if (!reserved) return "Aucun cargo disponible";
 
     const resources = { ...colony.resources, credits: colony.resources.credits - budget - fee };
-    this.colonyMap.set(colony.id, { ...reserved.colony, resources });
-    this.persistColony(this.colonyMap.get(colony.id)!);
+    empire.colonyMap.set(colony.id, { ...reserved.colony, resources });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
     // La capacité du cargo réservé borne l'achat à l'arrivée.
-    this.insertMission("buy", colonyId, stationId, duration, {
+    this.insertMission(empire, "buy", colonyId, stationId, duration, {
       budget,
       buyResource: resource,
       capacity: reserved.capacity,
@@ -589,29 +593,29 @@ export class GameEngine {
   }
 
   /** Action joueur : produire un vaisseau au chantier naval. */
-  buildShip(colonyId: string, shipId: ShipId): string | null {
-    const colony = this.colonyMap.get(colonyId);
+  buildShip(empire: Empire, colonyId: string, shipId: ShipId): string | null {
+    const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
-    const result = enqueueShip(colony, shipId, Date.now(), this.defaultEmpire.researched as TechId[]);
+    const result = enqueueShip(colony, shipId, Date.now(), empire.researched as TechId[]);
     if (!result.ok) return result.reason;
-    this.colonyMap.set(colonyId, result.colony);
+    empire.colonyMap.set(colonyId, result.colony);
     this.persistColony(result.colony);
     this.notify();
     return null;
   }
 
   /** Action joueur : fonder un avant-poste minier sur une ceinture. */
-  buildOutpost(colonyId: string, beltId: string): string | null {
-    const colony = this.colonyMap.get(colonyId);
+  buildOutpost(empire: Empire, colonyId: string, beltId: string): string | null {
+    const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
     const belt = this.beltsById.get(beltId);
     if (!belt) return "Ceinture inconnue";
-    if (!this.explored.has(belt.systemId)) return "Système non exploré";
-    if ([...this.outpostMap.values()].some((o) => o.beltId === beltId)) {
+    if (!empire.explored.has(belt.systemId)) return "Système non exploré";
+    if ([...empire.outpostMap.values()].some((o) => o.beltId === beltId)) {
       return "Ceinture déjà exploitée";
     }
     if (
-      [...this.missionMap.values()].some((m) => m.kind === "build_outpost" && m.targetId === beltId)
+      [...empire.missionMap.values()].some((m) => m.kind === "build_outpost" && m.targetId === beltId)
     ) {
       return "Un chantier est déjà en route";
     }
@@ -627,13 +631,14 @@ export class GameEngine {
     for (const [res, amount] of Object.entries(OUTPOST_COST) as [ResourceId, number][]) {
       resources[res] -= amount;
     }
-    this.colonyMap.set(colony.id, { ...colony, resources });
-    this.persistColony(this.colonyMap.get(colony.id)!);
+    empire.colonyMap.set(colony.id, { ...colony, resources });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
     this.insertMission(
+      empire,
       "build_outpost",
       colonyId,
       beltId,
-      transferDurationMs(jumps) * this.effects.transferSpeedMult,
+      transferDurationMs(jumps) * empire.effects.transferSpeedMult,
     );
     this.notify();
     return null;
@@ -664,6 +669,7 @@ export class GameEngine {
 
   /** Action joueur : créer une route logistique automatique. */
   createRoute(
+    empire: Empire,
     ownerColonyId: string,
     fromId: string,
     fromKind: "colony" | "outpost",
@@ -673,16 +679,16 @@ export class GameEngine {
     rule: RouteRule,
     ships: Partial<Record<ShipId, number>>,
   ): string | null {
-    const owner = this.colonyMap.get(ownerColonyId);
+    const owner = empire.colonyMap.get(ownerColonyId);
     if (!owner) return "Colonie propriétaire inconnue";
 
     let fromSystemId: string;
     if (fromKind === "colony") {
-      const from = this.colonyMap.get(fromId);
+      const from = empire.colonyMap.get(fromId);
       if (!from) return "Colonie source inconnue";
       fromSystemId = this.planetsById.get(from.planetId)?.systemId ?? "";
     } else {
-      const outpost = this.outpostMap.get(fromId);
+      const outpost = empire.outpostMap.get(fromId);
       if (!outpost) return "Avant-poste inconnu";
       if (resource !== "ore") return "Un avant-poste n'exporte que du minerai";
       fromSystemId = this.beltsById.get(outpost.beltId)?.systemId ?? "";
@@ -690,7 +696,7 @@ export class GameEngine {
 
     let toSystemId: string;
     if (toKind === "colony") {
-      const to = this.colonyMap.get(toId);
+      const to = empire.colonyMap.get(toId);
       if (!to) return "Colonie destination inconnue";
       if (fromKind === "colony" && to.id === fromId) return "Origine et destination identiques";
       if (!(RESOURCES as readonly string[]).includes(resource)) return "Ressource inconnue";
@@ -698,7 +704,7 @@ export class GameEngine {
     } else {
       const station = this.stationsById.get(toId);
       if (!station) return "Station inconnue";
-      if (!this.explored.has(station.systemId)) return "Station non découverte";
+      if (!empire.explored.has(station.systemId)) return "Station non découverte";
       if (!(MARKET_RESOURCES as readonly string[]).includes(resource)) {
         return "Ressource non échangeable en station";
       }
@@ -724,7 +730,7 @@ export class GameEngine {
     // Vaisseaux demandés disponibles chez la colonie propriétaire ?
     const requested: Partial<Record<ShipId, number>> = {};
     let anyShip = false;
-    const idle = idleShips(owner, this.routes);
+    const idle = idleShips(owner, [...empire.routeMap.values()]);
     for (const [shipId, raw] of Object.entries(ships) as [ShipId, number][]) {
       const count = Math.floor(Number(raw));
       if (!Number.isFinite(count) || count <= 0) continue;
@@ -748,7 +754,7 @@ export class GameEngine {
       activeCycle: null,
       paused: false,
     };
-    this.routeMap.set(route.id, route);
+    empire.routeMap.set(route.id, route);
     db.insert(schema.routes)
       .values({
         id: route.id,
@@ -770,21 +776,21 @@ export class GameEngine {
   }
 
   /** Action joueur : suspendre/reprendre une route (le cycle en cours se termine). */
-  setRoutePaused(routeId: string, paused: boolean): string | null {
-    const route = this.routeMap.get(routeId);
+  setRoutePaused(empire: Empire, routeId: string, paused: boolean): string | null {
+    const route = empire.routeMap.get(routeId);
     if (!route) return "Route inconnue";
-    this.routeMap.set(routeId, { ...route, paused });
-    this.persistRoute(this.routeMap.get(routeId)!);
+    empire.routeMap.set(routeId, { ...route, paused });
+    this.persistRoute(empire.routeMap.get(routeId)!);
     this.notify();
     return null;
   }
 
   /** Action joueur : supprimer une route au repos (les vaisseaux redeviennent libres). */
-  deleteRoute(routeId: string): string | null {
-    const route = this.routeMap.get(routeId);
+  deleteRoute(empire: Empire, routeId: string): string | null {
+    const route = empire.routeMap.get(routeId);
     if (!route) return "Route inconnue";
     if (route.activeCycle) return "Cycle en cours : suspendez la route et attendez le retour";
-    this.routeMap.delete(routeId);
+    empire.routeMap.delete(routeId);
     db.delete(schema.routes).where(eq(schema.routes.id, routeId)).run();
     this.notify();
     return null;
@@ -899,8 +905,8 @@ export class GameEngine {
       const result = resolveSale(stocks, { [route.resource]: carrying });
       this.marketMap.set(route.toId, result.stocks);
       this.persistMarket(route.toId);
-      const revenue = Math.floor(result.revenue * (1 + this.stationRepBonus(route.toId)));
-      this.addFactionRep(route.toId, result.revenue);
+      const revenue = Math.floor(result.revenue * (1 + this.stationRepBonus(empire, route.toId)));
+      this.addFactionRep(empire, route.toId, result.revenue);
       const resources = { ...owner.resources, credits: owner.resources.credits + revenue };
       empire.colonyMap.set(owner.id, { ...owner, resources });
       this.persistColony(empire.colonyMap.get(owner.id)!);
@@ -908,21 +914,21 @@ export class GameEngine {
   }
 
   /** Réputation gagnée auprès de la faction de la station, au volume de crédits échangé. */
-  private addFactionRep(stationId: string, creditsExchanged: number): void {
+  private addFactionRep(empire: Empire, stationId: string, creditsExchanged: number): void {
     const station = this.stationsById.get(stationId);
     if (!station || creditsExchanged <= 0) return;
-    const factionRep = { ...this.defaultEmpire.factionRep };
+    const factionRep = { ...empire.factionRep };
     factionRep[station.factionId] =
       Math.round(((factionRep[station.factionId] ?? 0) + creditsExchanged * REP_PER_CREDIT) * 10) /
       10;
-    this.defaultEmpire.factionRep = factionRep;
+    empire.factionRep = factionRep;
   }
 
   /** Remise commerciale liée à la réputation auprès de la faction de la station. */
-  private stationRepBonus(stationId: string): number {
+  private stationRepBonus(empire: Empire, stationId: string): number {
     const station = this.stationsById.get(stationId);
     if (!station) return 0;
-    return repBonus(this.defaultEmpire.factionRep[station.factionId] ?? 0);
+    return repBonus(empire.factionRep[station.factionId] ?? 0);
   }
 
   private loadRoutes(): void {
@@ -976,21 +982,22 @@ export class GameEngine {
   }
 
   /** Action joueur : lancer une recherche (une seule à la fois, payée en science). */
-  startResearch(techId: string): string | null {
-    if (this.defaultEmpire.research) return "Une recherche est déjà en cours";
+  startResearch(empire: Empire, techId: string): string | null {
+    if (empire.research) return "Une recherche est déjà en cours";
     const tech = TECHS[techId as TechId];
     if (!tech) return "Technologie inconnue";
-    if (!canResearch(tech.id, this.defaultEmpire.researched as TechId[])) {
+    if (!canResearch(tech.id, empire.researched as TechId[])) {
       return "Prérequis non satisfaits";
     }
-    const totalScience = this.colonies.reduce((s, c) => s + c.resources.science, 0);
+    const colonies = [...empire.colonyMap.values()];
+    const totalScience = colonies.reduce((s, c) => s + c.resources.science, 0);
     if (totalScience < tech.cost) {
       return `Science insuffisante (${Math.floor(totalScience)}/${tech.cost})`;
     }
 
     // Paiement réparti : on ponctionne les colonies dans l'ordre jusqu'à couvrir le coût.
     let remaining = tech.cost;
-    for (const colony of this.colonies) {
+    for (const colony of colonies) {
       if (remaining <= 0) break;
       const take = Math.min(remaining, colony.resources.science);
       if (take <= 0) continue;
@@ -999,17 +1006,17 @@ export class GameEngine {
         ...colony,
         resources: { ...colony.resources, science: colony.resources.science - take },
       };
-      this.colonyMap.set(colony.id, updated);
+      empire.colonyMap.set(colony.id, updated);
       this.persistColony(updated);
     }
 
     const now = Date.now();
-    this.defaultEmpire.research = {
+    empire.research = {
       techId: tech.id,
       startedAt: now,
       finishesAt: now + tech.durationMs,
     };
-    this.persistResearch(this.defaultEmpire);
+    this.persistResearch(empire);
     this.notify();
     return null;
   }
@@ -1035,18 +1042,18 @@ export class GameEngine {
   }
 
   /** Action joueur : envoyer une sonde révéler un système. */
-  probe(colonyId: string, systemId: string): string | null {
-    const colony = this.colonyMap.get(colonyId);
+  probe(empire: Empire, colonyId: string, systemId: string): string | null {
+    const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
-    if (this.explored.has(systemId)) return "Système déjà exploré";
+    if (empire.explored.has(systemId)) return "Système déjà exploré";
     const system = allSystems(this.universe).find((s) => s.id === systemId);
     if (!system) return "Système inconnu";
-    if ([...this.missionMap.values()].some((m) => m.kind === "probe" && m.targetId === systemId)) {
+    if ([...empire.missionMap.values()].some((m) => m.kind === "probe" && m.targetId === systemId)) {
       return "Une sonde est déjà en route";
     }
     const fromPlanet = this.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const cost = Math.round(PROBE_COST_CREDITS * this.effects.probeCostMult);
+    const cost = Math.round(PROBE_COST_CREDITS * empire.effects.probeCostMult);
     if (colony.resources.credits < cost) {
       return `Crédits insuffisants (coût : ${cost})`;
     }
@@ -1054,31 +1061,32 @@ export class GameEngine {
     if (jumps < 0) return "Système inaccessible";
 
     const resources = { ...colony.resources, credits: colony.resources.credits - cost };
-    this.colonyMap.set(colony.id, { ...colony, resources });
-    this.persistColony(this.colonyMap.get(colony.id)!);
+    empire.colonyMap.set(colony.id, { ...colony, resources });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
     this.insertMission(
+      empire,
       "probe",
       colonyId,
       systemId,
-      probeDurationMs(jumps) * this.effects.probeSpeedMult,
+      probeDurationMs(jumps) * empire.effects.probeSpeedMult,
     );
     this.notify();
     return null;
   }
 
   /** Action joueur : envoyer un vaisseau colonial fonder une colonie. */
-  colonize(colonyId: string, planetId: string): string | null {
-    const colony = this.colonyMap.get(colonyId);
+  colonize(empire: Empire, colonyId: string, planetId: string): string | null {
+    const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
     const target = this.planetsById.get(planetId);
     if (!target) return "Planète inconnue";
-    if (!this.explored.has(target.systemId)) return "Système non exploré";
+    if (!empire.explored.has(target.systemId)) return "Système non exploré";
     if (target.type === "gas") return "Impossible de coloniser une géante gazeuse";
-    if ([...this.colonyMap.values()].some((c) => c.planetId === planetId)) {
+    if ([...empire.colonyMap.values()].some((c) => c.planetId === planetId)) {
       return "Planète déjà colonisée";
     }
     if (
-      [...this.missionMap.values()].some((m) => m.kind === "colonize" && m.targetId === planetId)
+      [...empire.missionMap.values()].some((m) => m.kind === "colonize" && m.targetId === planetId)
     ) {
       return "Un vaisseau colonial est déjà en route";
     }
@@ -1094,24 +1102,25 @@ export class GameEngine {
       }
     }
     // Frein politique : chaque colonie supplémentaire coûte de l'influence.
-    const pendingColonies = [...this.missionMap.values()].filter(
+    const pendingColonies = [...empire.missionMap.values()].filter(
       (m) => m.kind === "colonize",
     ).length;
-    const influenceCost = colonizeInfluenceCost(this.colonyMap.size + pendingColonies);
-    if (this.defaultEmpire.influence < influenceCost) {
-      return `Influence insuffisante (${Math.floor(this.defaultEmpire.influence)}/${influenceCost})`;
+    const influenceCost = colonizeInfluenceCost(empire.colonyMap.size + pendingColonies);
+    if (empire.influence < influenceCost) {
+      return `Influence insuffisante (${Math.floor(empire.influence)}/${influenceCost})`;
     }
     for (const [res, amount] of Object.entries(COLONY_SHIP_COST) as [ResourceId, number][]) {
       resources[res] -= amount;
     }
-    this.defaultEmpire.influence -= influenceCost;
-    this.colonyMap.set(colony.id, { ...colony, resources });
-    this.persistColony(this.colonyMap.get(colony.id)!);
+    empire.influence -= influenceCost;
+    empire.colonyMap.set(colony.id, { ...colony, resources });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
     this.insertMission(
+      empire,
       "colonize",
       colonyId,
       planetId,
-      colonyShipDurationMs(jumps) * this.effects.colonyShipSpeedMult,
+      colonyShipDurationMs(jumps) * empire.effects.colonyShipSpeedMult,
     );
     this.notify();
     return null;
@@ -1119,14 +1128,15 @@ export class GameEngine {
 
   /** Action joueur : livrer des ressources au chantier de portail (tech requise). */
   contributeGateway(
+    empire: Empire,
     colonyId: string,
     galaxyId: string,
     wanted: Partial<Record<ResourceId, number>>,
   ): string | null {
-    if (!this.defaultEmpire.researched.includes("gateway_engineering")) {
+    if (!empire.researched.includes("gateway_engineering")) {
       return "Technologie « Ingénierie des portails » requise";
     }
-    const colony = this.colonyMap.get(colonyId);
+    const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
     const gateway = this.gatewayMap.get(galaxyId);
     if (!gateway) return "Aucun chantier de portail vers cette galaxie";
@@ -1158,8 +1168,8 @@ export class GameEngine {
       if (resources[res] < amount) return `Stock insuffisant : ${res}`;
     }
 
-    const duration = transferDurationMs(jumps) * this.effects.transferSpeedMult;
-    const reserved = this.reserveShip(colony, Date.now() + 2 * duration);
+    const duration = transferDurationMs(jumps) * empire.effects.transferSpeedMult;
+    const reserved = this.reserveShip(empire, colony, Date.now() + 2 * duration);
     if (!reserved) return "Aucun cargo disponible";
     const physical = Object.entries(cargo)
       .filter(([res]) => res !== "credits")
@@ -1172,9 +1182,9 @@ export class GameEngine {
     for (const [res, amount] of Object.entries(cargo) as [ResourceId, number][]) {
       resources[res] -= amount;
     }
-    this.colonyMap.set(colony.id, { ...reserved.colony, resources });
-    this.persistColony(this.colonyMap.get(colony.id)!);
-    this.insertMission("contribute_gateway", colonyId, galaxyId, duration, { cargo });
+    empire.colonyMap.set(colony.id, { ...reserved.colony, resources });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
+    this.insertMission(empire, "contribute_gateway", colonyId, galaxyId, duration, { cargo });
     this.notify();
     return null;
   }
@@ -1182,14 +1192,14 @@ export class GameEngine {
   // ─────────────────────────── Flottes & combat ───────────────────────────
 
   /** Action joueur : créer une flotte vide rattachée à une colonie. */
-  createFleet(colonyId: string, name: string): string | null {
-    const colony = this.colonyMap.get(colonyId);
+  createFleet(empire: Empire, colonyId: string, name: string): string | null {
+    const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
     const systemId = this.planetsById.get(colony.planetId)?.systemId;
     if (!systemId) return "Système inconnu";
     const fleet: Fleet = {
       id: randomUUID(),
-      ownerId: this.defaultEmpire.id,
+      ownerId: empire.id,
       name: name.trim().slice(0, 40) || "Flotte",
       systemId,
       homeColonyId: colonyId,
@@ -1198,23 +1208,23 @@ export class GameEngine {
       queue: [],
       movement: null,
     };
-    this.fleetMap.set(fleet.id, fleet);
+    empire.fleetMap.set(fleet.id, fleet);
     this.persistFleet(fleet, true);
     this.notify();
     return null;
   }
 
   /** Action joueur : produire un vaisseau de guerre (file de la flotte, tech requise). */
-  buildWarship(fleetId: string, warshipId: string): string | null {
-    const fleet = this.fleetMap.get(fleetId);
+  buildWarship(empire: Empire, fleetId: string, warshipId: string): string | null {
+    const fleet = empire.fleetMap.get(fleetId);
     if (!fleet) return "Flotte inconnue";
     if (fleet.movement) return "Flotte en déplacement";
     const def = WARSHIPS[warshipId as WarshipId];
     if (!def) return "Vaisseau inconnu";
-    const home = this.colonyMap.get(fleet.homeColonyId);
+    const home = empire.colonyMap.get(fleet.homeColonyId);
     if (!home) return "Colonie de rattachement inconnue";
     if ((home.buildings.shipyard ?? 0) < 1) return "Chantier naval requis";
-    if (!this.defaultEmpire.researched.includes(def.requiresTech)) {
+    if (!empire.researched.includes(def.requiresTech)) {
       return "Technologie militaire requise";
     }
     if (fleet.queue.length >= 5) return "File de production pleine";
@@ -1225,8 +1235,8 @@ export class GameEngine {
     for (const [res, amount] of Object.entries(def.cost) as [ResourceId, number][]) {
       resources[res] -= amount;
     }
-    this.colonyMap.set(home.id, { ...home, resources });
-    this.persistColony(this.colonyMap.get(home.id)!);
+    empire.colonyMap.set(home.id, { ...home, resources });
+    this.persistColony(empire.colonyMap.get(home.id)!);
     const now = Date.now();
     const lastFinish = fleet.queue.at(-1)?.finishesAt ?? now;
     const startedAt = Math.max(now, lastFinish);
@@ -1234,14 +1244,18 @@ export class GameEngine {
       ...fleet,
       queue: [...fleet.queue, { warshipId, startedAt, finishesAt: startedAt + def.buildMs }],
     };
-    this.fleetMap.set(fleetId, next);
+    empire.fleetMap.set(fleetId, next);
     this.persistFleet(next);
     this.notify();
     return null;
   }
 
-  setFleetDirectives(fleetId: string, directives: Record<string, string>): string | null {
-    const fleet = this.fleetMap.get(fleetId);
+  setFleetDirectives(
+    empire: Empire,
+    fleetId: string,
+    directives: Record<string, string>,
+  ): string | null {
+    const fleet = empire.fleetMap.get(fleetId);
     if (!fleet) return "Flotte inconnue";
     const next: Fleet = {
       ...fleet,
@@ -1251,15 +1265,15 @@ export class GameEngine {
         short: directives.short ?? fleet.directives.short ?? "focus_fire",
       },
     };
-    this.fleetMap.set(fleetId, next);
+    empire.fleetMap.set(fleetId, next);
     this.persistFleet(next);
     this.notify();
     return null;
   }
 
   /** Action joueur : déplacer une flotte vers un système accessible. */
-  moveFleet(fleetId: string, toSystemId: string): string | null {
-    const fleet = this.fleetMap.get(fleetId);
+  moveFleet(empire: Empire, fleetId: string, toSystemId: string): string | null {
+    const fleet = empire.fleetMap.get(fleetId);
     if (!fleet) return "Flotte inconnue";
     if (fleet.movement) return "Flotte déjà en déplacement";
     if (fleet.queue.length > 0) return "Production en cours au chantier";
@@ -1272,18 +1286,18 @@ export class GameEngine {
       movement: {
         toSystemId,
         departedAt: now,
-        arrivesAt: now + transferDurationMs(jumps) * this.effects.transferSpeedMult,
+        arrivesAt: now + transferDurationMs(jumps) * empire.effects.transferSpeedMult,
       },
     };
-    this.fleetMap.set(fleetId, next);
+    empire.fleetMap.set(fleetId, next);
     this.persistFleet(next);
     this.notify();
     return null;
   }
 
   /** Action joueur : attaquer un repaire pirate présent dans le système de la flotte. */
-  attackLair(fleetId: string, lairId: string): string | null {
-    const fleet = this.fleetMap.get(fleetId);
+  attackLair(empire: Empire, fleetId: string, lairId: string): string | null {
+    const fleet = empire.fleetMap.get(fleetId);
     if (!fleet) return "Flotte inconnue";
     if (fleet.movement) return "Flotte en déplacement";
     const lair = this.lairMap.get(lairId);
@@ -1301,18 +1315,18 @@ export class GameEngine {
 
     // Mise à jour de la flotte (survivants).
     const updatedFleet: Fleet = { ...fleet, ships: report.attackerSurvivors };
-    this.fleetMap.set(fleetId, updatedFleet);
+    empire.fleetMap.set(fleetId, updatedFleet);
     this.persistFleet(updatedFleet);
 
     if (report.winner === "attacker") {
       // Butin crédité à la colonie de rattachement, repaire détruit.
-      const home = this.colonyMap.get(fleet.homeColonyId);
+      const home = empire.colonyMap.get(fleet.homeColonyId);
       if (home) {
-        this.colonyMap.set(home.id, {
+        empire.colonyMap.set(home.id, {
           ...home,
           resources: { ...home.resources, credits: home.resources.credits + lair.bounty },
         });
-        this.persistColony(this.colonyMap.get(home.id)!);
+        this.persistColony(empire.colonyMap.get(home.id)!);
       }
       this.lairMap.delete(lairId);
       db.delete(schema.pirateLairs).where(eq(schema.pirateLairs.id, lairId)).run();
@@ -1332,11 +1346,11 @@ export class GameEngine {
     return null;
   }
 
-  disbandFleet(fleetId: string): string | null {
-    const fleet = this.fleetMap.get(fleetId);
+  disbandFleet(empire: Empire, fleetId: string): string | null {
+    const fleet = empire.fleetMap.get(fleetId);
     if (!fleet) return "Flotte inconnue";
     if (fleet.movement) return "Flotte en déplacement";
-    this.fleetMap.delete(fleetId);
+    empire.fleetMap.delete(fleetId);
     db.delete(schema.fleets).where(eq(schema.fleets.id, fleetId)).run();
     this.notify();
     return null;
@@ -1563,39 +1577,37 @@ export class GameEngine {
   }
 
   /** Action joueur : revendiquer un système (colonie sur place requise). */
-  claimSystem(systemId: string): string | null {
+  claimSystem(empire: Empire, systemId: string): string | null {
     const system = allSystems(this.universe).find((s) => s.id === systemId);
     if (!system) return "Système inconnu";
-    if (!this.explored.has(systemId)) return "Système non exploré";
-    if (this.defaultEmpire.claimedSystemIds.includes(systemId)) return "Système déjà revendiqué";
-    const hasColony = [...this.colonyMap.values()].some(
+    if (!empire.explored.has(systemId)) return "Système non exploré";
+    if (empire.claimedSystemIds.includes(systemId)) return "Système déjà revendiqué";
+    const hasColony = [...empire.colonyMap.values()].some(
       (c) => this.planetsById.get(c.planetId)?.systemId === systemId,
     );
     if (!hasColony) return "Une colonie sur place est requise pour revendiquer";
-    if (this.defaultEmpire.influence < CLAIM_COST) {
-      return `Influence insuffisante (${Math.floor(this.defaultEmpire.influence)}/${CLAIM_COST})`;
+    if (empire.influence < CLAIM_COST) {
+      return `Influence insuffisante (${Math.floor(empire.influence)}/${CLAIM_COST})`;
     }
-    this.defaultEmpire.influence -= CLAIM_COST;
-    this.defaultEmpire.claimedSystemIds = [...this.defaultEmpire.claimedSystemIds, systemId];
+    empire.influence -= CLAIM_COST;
+    empire.claimedSystemIds = [...empire.claimedSystemIds, systemId];
     db.insert(schema.claims)
-      .values({ systemId, gameId: this.clock.id, ownerId: this.defaultEmpire.id, claimedAt: Date.now() })
+      .values({ systemId, gameId: this.clock.id, ownerId: empire.id, claimedAt: Date.now() })
       .run();
     this.notify();
     return null;
   }
 
   /** Action joueur : abandonner une revendication (sans remboursement). */
-  unclaimSystem(systemId: string): string | null {
-    if (!this.defaultEmpire.claimedSystemIds.includes(systemId)) return "Système non revendiqué";
-    this.dropClaim(systemId);
+  unclaimSystem(empire: Empire, systemId: string): string | null {
+    if (!empire.claimedSystemIds.includes(systemId)) return "Système non revendiqué";
+    this.dropClaim(empire, systemId);
     this.notify();
     return null;
   }
 
-  private dropClaim(systemId: string): void {
-    this.defaultEmpire.claimedSystemIds = this.defaultEmpire.claimedSystemIds.filter(
-      (id) => id !== systemId,
-    );
+  private dropClaim(empire: Empire, systemId: string): void {
+    empire.claimedSystemIds = empire.claimedSystemIds.filter((id) => id !== systemId);
     db.delete(schema.claims).where(eq(schema.claims.systemId, systemId)).run();
   }
 
@@ -1857,6 +1869,7 @@ export class GameEngine {
   }
 
   private insertMission(
+    empire: Empire,
     kind: Mission["kind"],
     fromColonyId: string,
     targetId: string,
@@ -1873,7 +1886,7 @@ export class GameEngine {
       arrivesAt: departedAt + durationMs,
       ...extras,
     };
-    this.missionMap.set(mission.id, mission);
+    empire.missionMap.set(mission.id, mission);
     db.insert(schema.missions)
       .values({
         id: mission.id,
@@ -1936,9 +1949,9 @@ export class GameEngine {
             this.persistMarket(mission.targetId);
             // Bonus de réputation : la faction paie mieux ses partenaires.
             const revenue = Math.floor(
-              result.revenue * (1 + this.stationRepBonus(mission.targetId)),
+              result.revenue * (1 + this.stationRepBonus(empire, mission.targetId)),
             );
-            this.addFactionRep(mission.targetId, result.revenue);
+            this.addFactionRep(empire, mission.targetId, result.revenue);
             const resources = {
               ...colony.resources,
               credits: colony.resources.credits + revenue,
@@ -1960,10 +1973,11 @@ export class GameEngine {
             this.marketMap.set(mission.targetId, result.stocks);
             this.persistMarket(mission.targetId);
             // Remise de réputation : une part du prix payé est restituée.
-            const rebate = Math.floor(result.spent * this.stationRepBonus(mission.targetId));
-            this.addFactionRep(mission.targetId, result.spent);
+            const rebate = Math.floor(result.spent * this.stationRepBonus(empire, mission.targetId));
+            this.addFactionRep(empire, mission.targetId, result.spent);
             // Trajet retour, chargé + reliquat de budget (et remise) à rembourser.
             this.insertMission(
+              empire,
               "buy_return",
               mission.fromColonyId,
               mission.targetId,
@@ -2069,7 +2083,7 @@ export class GameEngine {
     let influence = empire.influence + net;
     if (influence < 0 && empire.claimedSystemIds.length > 0) {
       const dropped = empire.claimedSystemIds.at(-1)!;
-      this.dropClaim(dropped);
+      this.dropClaim(empire, dropped);
       influence = 0;
       console.log(`[game] revendication perdue faute d'influence : ${dropped}`);
     }

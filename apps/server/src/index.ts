@@ -67,25 +67,26 @@ app.get("/ws", { websocket: true }, (socket, request) => {
     }
     let error: string | null = null;
     if (msg.type === "build") {
-      error = engine.build(msg.colonyId, msg.buildingId);
+      error = engine.build(empire, msg.colonyId, msg.buildingId);
     } else if (msg.type === "transfer") {
-      error = engine.sendTransfer(msg.fromColonyId, msg.toColonyId, msg.resources);
+      error = engine.sendTransfer(empire, msg.fromColonyId, msg.toColonyId, msg.resources);
     } else if (msg.type === "probe") {
-      error = engine.probe(msg.colonyId, msg.systemId);
+      error = engine.probe(empire, msg.colonyId, msg.systemId);
     } else if (msg.type === "colonize") {
-      error = engine.colonize(msg.colonyId, msg.planetId);
+      error = engine.colonize(empire, msg.colonyId, msg.planetId);
     } else if (msg.type === "research") {
-      error = engine.startResearch(msg.techId);
+      error = engine.startResearch(empire, msg.techId);
     } else if (msg.type === "sell") {
-      error = engine.sellToStation(msg.colonyId, msg.stationId, msg.resources);
+      error = engine.sellToStation(empire, msg.colonyId, msg.stationId, msg.resources);
     } else if (msg.type === "buy") {
-      error = engine.buyFromStation(msg.colonyId, msg.stationId, msg.resource, msg.budget);
+      error = engine.buyFromStation(empire, msg.colonyId, msg.stationId, msg.resource, msg.budget);
     } else if (msg.type === "buildShip") {
-      error = engine.buildShip(msg.colonyId, msg.shipId);
+      error = engine.buildShip(empire, msg.colonyId, msg.shipId);
     } else if (msg.type === "buildOutpost") {
-      error = engine.buildOutpost(msg.colonyId, msg.beltId);
+      error = engine.buildOutpost(empire, msg.colonyId, msg.beltId);
     } else if (msg.type === "createRoute") {
       error = engine.createRoute(
+        empire,
         msg.ownerColonyId,
         msg.fromId,
         msg.fromKind,
@@ -96,27 +97,27 @@ app.get("/ws", { websocket: true }, (socket, request) => {
         msg.ships,
       );
     } else if (msg.type === "setRoutePaused") {
-      error = engine.setRoutePaused(msg.routeId, msg.paused);
+      error = engine.setRoutePaused(empire, msg.routeId, msg.paused);
     } else if (msg.type === "deleteRoute") {
-      error = engine.deleteRoute(msg.routeId);
+      error = engine.deleteRoute(empire, msg.routeId);
     } else if (msg.type === "claimSystem") {
-      error = engine.claimSystem(msg.systemId);
+      error = engine.claimSystem(empire, msg.systemId);
     } else if (msg.type === "unclaimSystem") {
-      error = engine.unclaimSystem(msg.systemId);
+      error = engine.unclaimSystem(empire, msg.systemId);
     } else if (msg.type === "contributeGateway") {
-      error = engine.contributeGateway(msg.colonyId, msg.galaxyId, msg.resources);
+      error = engine.contributeGateway(empire, msg.colonyId, msg.galaxyId, msg.resources);
     } else if (msg.type === "createFleet") {
-      error = engine.createFleet(msg.colonyId, msg.name);
+      error = engine.createFleet(empire, msg.colonyId, msg.name);
     } else if (msg.type === "buildWarship") {
-      error = engine.buildWarship(msg.fleetId, msg.warshipId);
+      error = engine.buildWarship(empire, msg.fleetId, msg.warshipId);
     } else if (msg.type === "setFleetDirectives") {
-      error = engine.setFleetDirectives(msg.fleetId, msg.directives);
+      error = engine.setFleetDirectives(empire, msg.fleetId, msg.directives);
     } else if (msg.type === "moveFleet") {
-      error = engine.moveFleet(msg.fleetId, msg.toSystemId);
+      error = engine.moveFleet(empire, msg.fleetId, msg.toSystemId);
     } else if (msg.type === "attackLair") {
-      error = engine.attackLair(msg.fleetId, msg.lairId);
+      error = engine.attackLair(empire, msg.fleetId, msg.lairId);
     } else if (msg.type === "disbandFleet") {
-      error = engine.disbandFleet(msg.fleetId);
+      error = engine.disbandFleet(empire, msg.fleetId);
     }
     if (error) send({ type: "actionError", message: error });
   });

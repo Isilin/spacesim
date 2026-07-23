@@ -186,6 +186,26 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(snapDefault.exploredSystemIds.some((s) => aliceFog.has(s))).toBe(false);
   });
 
+  it("une action ne s'applique qu'aux entités de l'empire agissant (Phase C)", () => {
+    const engine = GameEngine.load();
+    const def = engine.createOrJoinEmpire();
+    const alice = engine.createOrJoinEmpire("alice");
+    const defColonyId = engine.snapshotForEmpire(def).colonies[0]!.id;
+    const aliceColonyId = engine.snapshotForEmpire(alice).colonies[0]!.id;
+
+    // Colonie possédée : l'action passe la validation de propriété (pas d'erreur « inconnue »).
+    expect(engine.build(alice, aliceColonyId, "mine")).not.toBe("Colonie inconnue");
+    // Colonie d'un autre empire : rejetée dans les deux sens.
+    expect(engine.build(alice, defColonyId, "mine")).toBe("Colonie inconnue");
+    expect(engine.build(def, aliceColonyId, "mine")).toBe("Colonie inconnue");
+
+    // Flotte : alice en crée une ; l'empire par défaut ne peut pas la piloter.
+    expect(engine.createFleet(alice, aliceColonyId, "Garde")).toBeNull();
+    const aliceFleetId = engine.snapshotForEmpire(alice).fleets[0]!.id;
+    expect(engine.moveFleet(def, aliceFleetId, "gal-0-sys-0")).toBe("Flotte inconnue");
+    expect(engine.snapshotForEmpire(def).fleets).toHaveLength(0);
+  });
+
   it("préserve l'état d'empire (influence, brouillard) au rechargement", () => {
     const e1 = GameEngine.load();
     e1.devSpawnEmpire("Colonia");
