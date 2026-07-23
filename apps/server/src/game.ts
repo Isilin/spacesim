@@ -29,6 +29,7 @@ import {
   gatewayRemaining,
   generateUniverse,
   idleShips,
+  INITIAL_GALAXIES,
   influencePerTick,
   jumpDistanceInUniverse,
   MARKET_RESOURCES,
@@ -158,7 +159,8 @@ export type StateListener = () => void;
  * Serveur autoritaire : le client ne fait qu'afficher.
  */
 export class GameEngine {
-  readonly universe: Universe;
+  /** Non figé : `growUniverse` le remplace quand de nouvelles galaxies s'ouvrent (chantier 9). */
+  universe: Universe;
   /** Horloge et identité de l'univers partagé. */
   private clock: Clock;
   private planetsById: Map<string, Planet>;
@@ -217,7 +219,15 @@ export class GameEngine {
 
   private constructor(clock: Clock) {
     this.clock = { ...clock };
-    this.universe = generateUniverse(clock.seed);
+    this.universe = generateUniverse(clock.seed, clock.galaxyCount);
+    this.planetsById = new Map();
+    this.stationsById = new Map();
+    this.beltsById = new Map();
+    this.reindexUniverse();
+  }
+
+  /** (Ré)indexe les entités d'univers — appelé à la construction et après chaque extension. */
+  private reindexUniverse(): void {
     this.planetsById = new Map(allPlanets(this.universe).map((p) => [p.id, p]));
     this.stationsById = new Map(allStations(this.universe).map((s) => [s.id, s]));
     this.beltsById = new Map(allBelts(this.universe).map((b) => [b.id, b]));
@@ -234,6 +244,7 @@ export class GameEngine {
         tick: 0,
         lastTickAt: Date.now(),
         createdAt: Date.now(),
+        galaxyCount: INITIAL_GALAXIES,
       };
       db.insert(schema.games).values(row).run();
     }
@@ -242,6 +253,7 @@ export class GameEngine {
       seed: row.seed,
       tick: row.tick,
       lastTickAt: row.lastTickAt,
+      galaxyCount: row.galaxyCount,
     });
     engine.ensureDefaultPlayer();
     engine.loadPlayers();

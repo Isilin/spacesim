@@ -10,6 +10,11 @@ export const games = sqliteTable("games", {
   tick: integer("tick").notNull().default(0),
   lastTickAt: integer("last_tick_at").notNull(),
   createdAt: integer("created_at").notNull(),
+  /**
+   * Nombre de galaxies générées (chantier 9). L'univers est la suite infinie de la
+   * seed tronquée ici ; ce compteur croît quand le front de peuplement avance.
+   */
+  galaxyCount: integer("galaxy_count").notNull().default(3),
 });
 
 /**

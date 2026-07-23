@@ -18,6 +18,8 @@ export interface Clock {
   seed: string;
   tick: number;
   lastTickAt: number;
+  /** Galaxies générées : l'univers grandit avec le front de peuplement (chantier 9). */
+  galaxyCount: number;
 }
 
 /**
