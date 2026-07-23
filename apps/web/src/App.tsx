@@ -21,6 +21,12 @@ import { SystemView } from "./SystemView.js";
 import { UniverseMap } from "./UniverseMap.js";
 import { useGameSocket } from "./useGameSocket.js";
 import { useNotifications } from "./useNotifications.js";
+import type { Auth } from "./useAuth.js";
+
+interface Props {
+  /** Session validée par `AuthGate` : `token` est garanti non nul ici. */
+  auth: Auth;
+}
 
 type Tab = "map" | "colony" | "logistics" | "fleets" | "research" | "empire";
 
@@ -40,7 +46,7 @@ function useNow(): number {
   return now;
 }
 
-export function App() {
+export function App({ auth }: Props) {
   const {
     playerId,
     universe,
@@ -63,7 +69,7 @@ export function App() {
     connected,
     actionError,
     send,
-  } = useGameSocket();
+  } = useGameSocket(auth.token!, auth.sessionExpired);
   const [tab, setTab] = useState<Tab>("colony");
   const [colonyId, setColonyId] = useState<string | null>(null);
   const [mapView, setMapView] = useState<MapView | null>(null);
@@ -175,6 +181,16 @@ export function App() {
         <span className={`stat ${connected ? "ok" : "ko"}`}>
           {connected ? "● LIAISON ÉTABLIE" : "○ LIAISON PERDUE"}
         </span>
+        <span className="stat empire-badge" title={auth.email ?? ""}>
+          <span
+            className="empire-dot"
+            style={{ background: auth.empire?.color ?? "var(--accent)" }}
+          />
+          {auth.empire?.name ?? "Empire"}
+        </span>
+        <button className="link-button" onClick={() => void auth.logout()}>
+          Déconnexion
+        </button>
       </header>
 
       {actionError && <div className="toast-error">{actionError}</div>}

@@ -50,6 +50,22 @@ Migrations drizzle-kit (`apps/server/drizzle/`), appliquées automatiquement au 
 après un changement de `src/db/schema.ts`, lancer `pnpm --filter @spacesim/server db:generate`
 et committer la migration générée. Ne jamais modifier une migration déjà appliquée.
 
+## Comptes joueurs (chantier 8)
+
+Chaque joueur a un compte (e-mail + mot de passe) ; un compte possède un empire dans l'univers
+partagé. Hash scrypt via `node:crypto` (aucune dépendance d'auth), sessions à jeton opaque en DB
+(`apps/server/src/auth.ts`), jeton client en `localStorage`.
+
+```
+POST /auth/register  {"email", "password", "empireName"}  # crée le compte ET son empire
+POST /auth/login     {"email", "password"}
+POST /auth/logout                                          # en-tête Authorization: Bearer <token>
+GET  /auth/me                                              # idem — session + empire courants
+```
+Le WebSocket exige une session : `/ws?session=<token>`, sinon fermeture avec le code `4001`
+(le client repasse alors par l'écran de connexion). Le **premier** compte inscrit sur une base
+neuve adopte l'empire amorcé au boot ; les suivants reçoivent un empire neuf.
+
 ## Outils de dev (hors production)
 
 ```
@@ -57,5 +73,9 @@ POST /dev/grant        {"ore": 100, "science": 500}     # injecte des ressources
 POST /dev/fastforward  {"seconds": 3600}                # avance le temps simulé (décale les timers, rejoue les ticks)
 POST /dev/fundgateway  {"galaxyId": "gal-1", "leave": 40} # pré-finance un portail (reste `leave` métaux à livrer)
 POST /dev/spawnpirate  {"systemId": "gal-0-sys-3", "threat": 2} # fait apparaître un repaire pirate
+POST /dev/spawnempire  {"name": "Colonia"}              # instancie un empire supplémentaire
+GET  /dev/empires                                        # résumé de tous les empires en mémoire
+POST /dev/armfleet     {"empireId": "…", "systemId": "gal-0-sys-3", "ships": {…}} # arme une flotte (tests PvP)
 ```
 `systemId` vide (`{}`) → repaire dans le système de la colonie mère. `threat` 1–3 (défaut 2).
+`/dev/armfleet` sans `empireId` cible l'empire par défaut.

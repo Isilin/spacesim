@@ -1,5 +1,10 @@
 # SpaceSim — Plan MVP
 
+> **Chantiers 8 → 12 planifiés (23/07/2026)** : comptes joueurs · univers extensible à l'infini
+> + carte navigable · vue planète/lune · vrai arbre de recherche · logistique (stock orbital,
+> transport, prix régionaux). Voir « Chantiers 8 → 12 » en fin de document.
+> **8 livré** : comptes e-mail + mot de passe, sessions, WS authentifié.
+>
 > **État (21/07/2026)** : jalons 1 à 7 implémentés et vérifiés — le MVP décrit ici est jouable.
 > **Pivot EVE-like (13/07/2026)** : plus de niveaux de bâtiments — on empile des **instances**
 > (coût plat, contrainte = emplacements + main-d'œuvre). Univers en **3 échelles** :
@@ -320,3 +325,42 @@ Sprint 0.1 + Phase A.1 dans la même session (petit, pose le filet, validé de s
   isolation des effets par empire.
 - E2E multi local : deux onglets → deux empires sur la même seed, l'un attaque une flotte/claim
   de l'autre, vérifier fog et snapshots distincts.
+
+## Chantiers 8 → 12 (planification 23/07/2026)
+
+Cinq chantiers séquentiels, décidés avec l'utilisateur, qui prolongent le multi territorial
+(chantier 7) vers un univers persistant réellement partagé :
+
+| # | Chantier | Cible |
+|---|---|---|
+| 8 | **Comptes joueurs** | e-mail + mot de passe (scrypt maison, zéro dépendance), sessions à jeton, WS authentifié |
+| 9 | **Univers infini + carte** | génération par galaxie indépendante, frontière glissante, spirale d'angle d'or, pan/zoom sur les 3 niveaux |
+| 10 | **Vue corps** | niveau planète/lune : orbite, fiche physique dérivée de l'id, grille d'emplacements |
+| 11 | **Arbre de recherche** | DAG rendu en SVG, ~35–40 techs, file de recherche planifiable |
+| 12 | **Logistique** | stock sol + stock orbital, carburant/masse/classes de vaisseaux, convois, prix régionaux |
+
+Décisions actées : comptes maison (pas d'OAuth) · logistique **complète** (couche orbitale) ·
+expansion par **frontière glissante** avec galaxie de départ partagée (les nouveaux joueurs
+naissent au voisinage des anciens) · ordre de livraison 8 → 12.
+
+Le plan détaillé (écart avec l'existant, sous-étapes, fichiers, vérification) vit hors dépôt :
+`~/.claude/plans/ok-il-y-a-cosmic-peach.md`.
+
+### Chantier 8 — Comptes joueurs ✅ (23/07/2026)
+
+- Tables `accounts` (e-mail unique, hash `scrypt$sel$hash`) et `sessions` (jeton opaque de
+  32 octets, TTL 30 jours glissant), colonne `players.accountId` — migration 0008.
+- `apps/server/src/auth.ts` : hachage/vérification à temps constant, cycle de vie des sessions,
+  validation des saisies, anti-force brute par IP. Aucune dépendance ajoutée (`node:crypto`).
+- REST `/auth/register|login|logout|me`, jeton en `Authorization: Bearer`. La connexion ne
+  distingue jamais « e-mail inconnu » de « mot de passe faux » (pas d'énumération de comptes).
+- `/ws?session=<token>` : session invalide → fermeture `4001`, le client repasse par l'écran de
+  connexion. `createOrJoinEmpire` (jetons 7c) est remplacé par `empireForAccount` /
+  `createEmpireForAccount`.
+- **Adoption** : le premier compte inscrit reprend l'empire amorcé au boot au lieu d'en créer un
+  second — sans quoi un empire fantôme resterait posé sur la meilleure planète de la galaxie.
+- Client : `useAuth` (session en `localStorage`, revalidée contre `/auth/me` au montage),
+  `AuthView` (connexion/inscription), `AuthGate` dans `main.tsx` — rien du jeu n'est monté avant
+  authentification. Empire et déconnexion dans la barre supérieure.
+- Vérifié au navigateur : inscription, adoption de l'empire existant, second compte sur une autre
+  planète, rechargement, déconnexion (session révoquée côté serveur), reconnexion, refus WS 4001.
