@@ -9,6 +9,10 @@
 > **11 livré** : arbre de recherche en graphe, 35 techs, chaînes planifiables.
 > **12 livré** : logistique — stock orbital, transport réel (carburant/classes/convois), prix régionaux.
 > **Chantiers 8 → 12 : terminés.**
+> **Polish carte (24/07/2026)** : double-clic réservé à l'ouverture des sous-cartes (plus de
+> zoom parasite), galaxies rendues en spirales, et **réseau inter-galactique de voisinage** —
+> chaque galaxie ne s'ouvre un trou de ver que vers sa plus proche voisine (arbre couvrant
+> enraciné sur la mère), les chemins découverts (chaîne de portails active) sont mis en valeur.
 >
 > **État (21/07/2026)** : jalons 1 à 7 implémentés et vérifiés — le MVP décrit ici est jouable.
 > **Pivot EVE-like (13/07/2026)** : plus de niveaux de bâtiments — on empile des **instances**
