@@ -28,9 +28,14 @@ export function buildingBuildMs(def: BuildingDef): number {
   return def.buildMs;
 }
 
-export function storageCap(colony: Colony, resource: ResourceId): number {
+export function storageCap(
+  colony: Colony,
+  resource: ResourceId,
+  effects: EmpireEffects = NO_EFFECTS,
+): number {
   if ((UNCAPPED_RESOURCES as readonly string[]).includes(resource)) return Infinity;
-  return BASE_STORAGE + (colony.buildings.storage_depot ?? 0) * STORAGE_PER_DEPOT;
+  const base = BASE_STORAGE + (colony.buildings.storage_depot ?? 0) * STORAGE_PER_DEPOT;
+  return Math.floor(base * effects.storageMult);
 }
 
 /** Instances construites + en file : consomme les emplacements de la planète. */
@@ -73,7 +78,7 @@ export function enqueueBuilding(
 
   const lastFinish = colony.queue.at(-1)?.finishesAt ?? now;
   const startedAt = Math.max(now, lastFinish);
-  const finishesAt = startedAt + buildingBuildMs(def);
+  const finishesAt = startedAt + Math.round(buildingBuildMs(def) * effects.buildSpeedMult);
 
   return {
     ok: true,
@@ -206,7 +211,7 @@ export function applyColonyTick(
   }
 
   // Besoins : la population mange et consomme des biens, paie l'impôt selon sa satisfaction.
-  const foodNeed = colony.population * FOOD_PER_COLONIST;
+  const foodNeed = colony.population * FOOD_PER_COLONIST * effects.foodNeedMult;
   const eaten = Math.min(foodNeed, resources.food);
   resources.food -= eaten;
   const foodRatio = foodNeed <= 0 ? 1 : eaten / foodNeed;
@@ -228,7 +233,7 @@ export function applyColonyTick(
   );
 
   for (const res of RESOURCES) {
-    resources[res] = Math.min(resources[res], storageCap(colony, res));
+    resources[res] = Math.min(resources[res], storageCap(colony, res, effects));
   }
 
   return { ...colony, resources, population, satisfaction };
@@ -258,7 +263,7 @@ export function colonyRates(
       rates[res] += rate * level * modifier * staffing * outputBoost;
     }
   }
-  rates.food -= colony.population * FOOD_PER_COLONIST;
+  rates.food -= colony.population * FOOD_PER_COLONIST * effects.foodNeedMult;
   rates.goods -= colony.population * GOODS_PER_COLONIST * effects.goodsNeedMult;
   rates.credits +=
     colony.population * CREDITS_PER_COLONIST * (colony.satisfaction / 100) * effects.creditsMult;

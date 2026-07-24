@@ -10,6 +10,10 @@ export const TECH_IDS = [
   "fusion_power",
   "automation",
   "orbital_logistics",
+  "ore_processing",
+  "modular_construction",
+  "heavy_industry",
+  "nanofabrication",
   // Colonisation
   "astro_cartography",
   "autonomous_probes",
@@ -18,6 +22,9 @@ export const TECH_IDS = [
   "light_terraforming",
   "orbital_construction",
   "gateway_engineering",
+  "deep_survey",
+  "arcology_design",
+  "deep_terraforming",
   // Société
   "civic_planning",
   "education_networks",
@@ -25,10 +32,16 @@ export const TECH_IDS = [
   "cultural_media",
   "tax_reform",
   "governance_ai",
+  "agro_synthesis",
+  "civic_archives",
+  "trade_charters",
   // Militaire
   "military_doctrine",
   "fleet_logistics",
   "capital_ships",
+  "point_defense",
+  "strike_doctrine",
+  "dreadnoughts",
 ] as const;
 
 export type TechId = (typeof TECH_IDS)[number];
@@ -53,6 +66,18 @@ export interface TechEffects {
   popGrowthMult?: number;
   goodsNeedMult?: number;
   creditsMult?: number;
+  /** Besoin en nourriture par colon (chantier 11). */
+  foodNeedMult?: number;
+  /** Capacité de stockage des colonies. */
+  storageMult?: number;
+  /** Durée de construction des bâtiments (< 1 = plus rapide). */
+  buildSpeedMult?: number;
+  /** Durée de production des vaisseaux civils. */
+  shipBuildSpeedMult?: number;
+  /** Rendement des avant-postes miniers. */
+  outpostYieldMult?: number;
+  /** Influence générée par tick. */
+  influenceMult?: number;
 }
 
 export interface TechDef {
@@ -116,6 +141,38 @@ export const TECHS: Record<TechId, TechDef> = {
     requires: ["industrial_chains"],
     effects: { transferSpeedMult: 0.7 },
   },
+  ore_processing: {
+    id: "ore_processing",
+    branch: "industry",
+    cost: 200,
+    durationMs: 210_000,
+    requires: ["advanced_mining"],
+    effects: { outputMult: { mine: 1.15 }, outpostYieldMult: 1.4, storageMult: 1.25 },
+  },
+  modular_construction: {
+    id: "modular_construction",
+    branch: "industry",
+    cost: 260,
+    durationMs: 240_000,
+    requires: ["industrial_chains", "orbital_construction"],
+    effects: { buildSpeedMult: 0.75, shipBuildSpeedMult: 0.8 },
+  },
+  heavy_industry: {
+    id: "heavy_industry",
+    branch: "industry",
+    cost: 480,
+    durationMs: 420_000,
+    requires: ["automation", "fusion_power"],
+    effects: { outputMult: { smelter: 1.3, component_factory: 1.25 }, storageMult: 1.25 },
+  },
+  nanofabrication: {
+    id: "nanofabrication",
+    branch: "industry",
+    cost: 900,
+    durationMs: 600_000,
+    requires: ["heavy_industry", "governance_ai"],
+    effects: { outputMultAll: 1.15, buildSpeedMult: 0.85 },
+  },
   // ─── Colonisation ───
   astro_cartography: {
     id: "astro_cartography",
@@ -174,6 +231,30 @@ export const TECHS: Record<TechId, TechDef> = {
     // Pas d'effet passif : débloque les contributions au méga-projet de portail.
     effects: {},
   },
+  deep_survey: {
+    id: "deep_survey",
+    branch: "colonization",
+    cost: 210,
+    durationMs: 210_000,
+    requires: ["autonomous_probes"],
+    effects: { probeSpeedMult: 0.7, probeCostMult: 0.7 },
+  },
+  arcology_design: {
+    id: "arcology_design",
+    branch: "colonization",
+    cost: 380,
+    durationMs: 330_000,
+    requires: ["habitat_engineering", "civic_planning"],
+    effects: { housingMult: 1.3, satisfactionBonus: 3 },
+  },
+  deep_terraforming: {
+    id: "deep_terraforming",
+    branch: "colonization",
+    cost: 850,
+    durationMs: 540_000,
+    requires: ["light_terraforming", "heavy_industry"],
+    effects: { habitabilityBonus: 12, popGrowthMult: 1.1 },
+  },
   // ─── Société ───
   civic_planning: {
     id: "civic_planning",
@@ -223,6 +304,30 @@ export const TECHS: Record<TechId, TechDef> = {
     requires: ["cultural_media", "tax_reform"],
     effects: { outputMultAll: 1.1, popGrowthMult: 1.1 },
   },
+  agro_synthesis: {
+    id: "agro_synthesis",
+    branch: "society",
+    cost: 240,
+    durationMs: 240_000,
+    requires: ["colonial_medicine"],
+    effects: { foodNeedMult: 0.7, outputMult: { farm: 1.2 } },
+  },
+  civic_archives: {
+    id: "civic_archives",
+    branch: "society",
+    cost: 300,
+    durationMs: 270_000,
+    requires: ["education_networks"],
+    effects: { influenceMult: 1.4 },
+  },
+  trade_charters: {
+    id: "trade_charters",
+    branch: "society",
+    cost: 420,
+    durationMs: 330_000,
+    requires: ["tax_reform", "orbital_logistics"],
+    effects: { creditsMult: 1.2, transferSpeedMult: 0.85 },
+  },
   // ─── Militaire ─── (débloque les classes de vaisseaux de guerre, content/warships)
   military_doctrine: {
     id: "military_doctrine",
@@ -246,6 +351,33 @@ export const TECHS: Record<TechId, TechDef> = {
     cost: 350,
     durationMs: 360_000,
     requires: ["fleet_logistics"],
+    effects: {},
+  },
+  point_defense: {
+    id: "point_defense",
+    branch: "military",
+    cost: 200,
+    durationMs: 210_000,
+    requires: ["military_doctrine", "metallurgy"],
+    // Débloque la corvette d'escorte (content/warships).
+    effects: {},
+  },
+  strike_doctrine: {
+    id: "strike_doctrine",
+    branch: "military",
+    cost: 360,
+    durationMs: 300_000,
+    requires: ["point_defense", "fleet_logistics"],
+    // Débloque le bombardier de ligne.
+    effects: {},
+  },
+  dreadnoughts: {
+    id: "dreadnoughts",
+    branch: "military",
+    cost: 950,
+    durationMs: 660_000,
+    requires: ["capital_ships", "heavy_industry"],
+    // Débloque le cuirassé.
     effects: {},
   },
 };

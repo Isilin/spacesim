@@ -741,7 +741,7 @@ export class GameEngine {
   buildShip(empire: Empire, colonyId: string, shipId: ShipId): string | null {
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
-    const result = enqueueShip(colony, shipId, Date.now(), empire.researched as TechId[]);
+    const result = enqueueShip(colony, shipId, Date.now(), empire.researched as TechId[], empire.effects);
     if (!result.ok) return result.reason;
     empire.colonyMap.set(colonyId, result.colony);
     this.persistColony(result.colony);
@@ -805,7 +805,7 @@ export class GameEngine {
           },
         });
       }
-      const oreStock = outpostTick(outpost.oreStock, beltRichness(belt), upkeepPaid);
+      const oreStock = outpostTick(outpost.oreStock, beltRichness(belt), upkeepPaid, empire.effects.outpostYieldMult);
       if (oreStock !== outpost.oreStock) {
         empire.outpostMap.set(id, { ...outpost, oreStock });
       }
@@ -1039,7 +1039,7 @@ export class GameEngine {
       const resources = { ...to.resources };
       resources[route.resource] = Math.min(
         resources[route.resource] + carrying,
-        storageCap(to, route.resource),
+        storageCap(to, route.resource, empire.effects),
       );
       empire.colonyMap.set(to.id, { ...to, resources });
       this.persistColony(empire.colonyMap.get(to.id)!);
@@ -1647,7 +1647,7 @@ export class GameEngine {
     if (home) {
       const homeResources = { ...home.resources };
       for (const [res, amount] of Object.entries(stolen) as [ResourceId, number][]) {
-        homeResources[res] = Math.min(homeResources[res] + amount, storageCap(home, res));
+        homeResources[res] = Math.min(homeResources[res] + amount, storageCap(home, res, empire.effects));
       }
       empire.colonyMap.set(home.id, { ...home, resources: homeResources });
       this.persistColony(empire.colonyMap.get(home.id)!);
@@ -2520,7 +2520,7 @@ export class GameEngine {
               ResourceId,
               number,
             ][]) {
-              resources[res] = Math.min(resources[res] + amount, storageCap(colony, res));
+              resources[res] = Math.min(resources[res] + amount, storageCap(colony, res, empire.effects));
             }
             resources.credits += mission.budget ?? 0;
             empire.colonyMap.set(colony.id, { ...colony, resources });
@@ -2570,7 +2570,7 @@ export class GameEngine {
     // Bonus de territoire soudé : les claims contigus rapportent un supplément d'influence.
     const contiguous = contiguousClaims(this.universe, empire.claimedSystemIds).size;
     const net =
-      influencePerTick([...empire.colonyMap.values()], empire.claimedSystemIds.length) +
+      influencePerTick([...empire.colonyMap.values()], empire.claimedSystemIds.length, empire.effects.influenceMult) +
       contiguous * CONTIGUOUS_CLAIM_BONUS;
     let influence = empire.influence + net;
     if (influence < 0 && empire.claimedSystemIds.length > 0) {
@@ -2613,7 +2613,7 @@ export class GameEngine {
       if (to) {
         const resources = { ...to.resources };
         for (const [res, amount] of Object.entries(transfer.resources) as [ResourceId, number][]) {
-          resources[res] = Math.min(resources[res] + amount, storageCap(to, res));
+          resources[res] = Math.min(resources[res] + amount, storageCap(to, res, empire.effects));
         }
         empire.colonyMap.set(to.id, { ...to, resources });
       }

@@ -146,7 +146,7 @@ export function ColonyView({
           </span>
         </div>
         {SHOWN_RESOURCES.map((res) => {
-          const cap = storageCap(colony, res);
+          const cap = storageCap(colony, res, effects);
           const rate = rates[res];
           return (
             <div key={res} className="resource-cell">

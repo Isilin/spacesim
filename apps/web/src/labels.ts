@@ -94,6 +94,18 @@ export const WARSHIP_LABELS: Record<WarshipId, { name: string; description: stri
   frigate: { name: "Frégate", description: "Polyvalente à moyenne portée. Domine les chasseurs." },
   cruiser: { name: "Croiseur", description: "Lourd, longue portée. Domine les frégates." },
   support: { name: "Vaisseau de soutien", description: "Boucliers épais, +12 % dégâts de flotte." },
+  corvette: {
+    name: "Corvette d'escorte",
+    description: "Vive et bon marché. Harcèle croiseurs et cuirassés.",
+  },
+  bomber: {
+    name: "Bombardier de ligne",
+    description: "Frappe très loin, fragile de près. Éventre les frégates.",
+  },
+  dreadnought: {
+    name: "Cuirassé",
+    description: "Coque colossale, feu écrasant. Craint les nuées légères.",
+  },
 };
 
 export const DIRECTIVE_LABELS: Record<CombatDirective, { name: string; hint: string }> = {
@@ -192,5 +204,58 @@ export const TECH_LABELS: Record<TechId, { name: string; description: string }> 
   capital_ships: {
     name: "Vaisseaux capitaux",
     description: "Les chantiers assemblent des croiseurs lourds.",
+  },
+  ore_processing: {
+    name: "Traitement du minerai",
+    description:
+      "Concassage et tri sur site. Mines +15 %, avant-postes +40 %, stockage +25 %.",
+  },
+  modular_construction: {
+    name: "Construction modulaire",
+    description: "Des modules préfabriqués en orbite. Chantiers 25 % plus rapides, navals 20 %.",
+  },
+  heavy_industry: {
+    name: "Industrie lourde",
+    description: "Complexes métallurgiques intégrés. Fonderies +30 %, composants +25 %.",
+  },
+  nanofabrication: {
+    name: "Nanofabrication",
+    description: "L'assemblage atome par atome. Toute production +15 %, chantiers −15 %.",
+  },
+  deep_survey: {
+    name: "Sondage profond",
+    description: "Balises jetables en essaim. Sondes 30 % plus rapides et 30 % moins chères.",
+  },
+  arcology_design: {
+    name: "Arcologies",
+    description: "Des villes-mondes verticales et vivables. Logements +30 %, satisfaction +3.",
+  },
+  deep_terraforming: {
+    name: "Terraformation profonde",
+    description: "Remodeler une biosphère entière. Habitabilité +12, croissance +10 %.",
+  },
+  agro_synthesis: {
+    name: "Agro-synthèse",
+    description: "Protéines cultivées en cuve. Besoin en nourriture −30 %, fermes +20 %.",
+  },
+  civic_archives: {
+    name: "Archives civiques",
+    description: "Une mémoire commune qui fait nation. Influence +40 %.",
+  },
+  trade_charters: {
+    name: "Chartes commerciales",
+    description: "Des couloirs marchands protégés. Crédits +20 %, convois 15 % plus rapides.",
+  },
+  point_defense: {
+    name: "Défense rapprochée",
+    description: "Tourelles à tir rapide. Débloque la corvette d'escorte.",
+  },
+  strike_doctrine: {
+    name: "Doctrine de frappe",
+    description: "Frapper loin, avant d'être vu. Débloque le bombardier de ligne.",
+  },
+  dreadnoughts: {
+    name: "Cuirassés",
+    description: "Des forteresses mobiles qui décident d'une guerre. Débloque le cuirassé.",
   },
 };

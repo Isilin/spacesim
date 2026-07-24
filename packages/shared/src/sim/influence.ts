@@ -45,11 +45,16 @@ export function colonizeInfluenceCost(existingColonies: number): number {
  * Influence nette générée par tick : population satisfaite + monuments,
  * moins l'entretien des revendications.
  */
-export function influencePerTick(colonies: readonly Colony[], claimCount: number): number {
+export function influencePerTick(
+  colonies: readonly Colony[],
+  claimCount: number,
+  influenceMult = 1,
+): number {
   let influence = 0;
   for (const colony of colonies) {
     influence += colony.population * (colony.satisfaction / 100) * INFLUENCE_PER_COLONIST;
     influence += (colony.buildings.monument ?? 0) * MONUMENT_INFLUENCE;
   }
-  return influence - claimCount * CLAIM_UPKEEP;
+  // L'entretien des revendications n'est pas allégé par la tech : seul le rayonnement l'est.
+  return influence * influenceMult - claimCount * CLAIM_UPKEEP;
 }

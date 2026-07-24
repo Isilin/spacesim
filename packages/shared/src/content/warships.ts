@@ -1,7 +1,15 @@
 import type { TechId } from "./techs.js";
 import type { ResourceId } from "../types.js";
 
-export const WARSHIP_IDS = ["fighter", "frigate", "cruiser", "support"] as const;
+export const WARSHIP_IDS = [
+  "fighter",
+  "frigate",
+  "cruiser",
+  "support",
+  "corvette",
+  "bomber",
+  "dreadnought",
+] as const;
 
 export type WarshipId = (typeof WARSHIP_IDS)[number];
 
@@ -74,6 +82,37 @@ export const WARSHIPS: Record<WarshipId, WarshipDef> = {
     requiresTech: "fleet_logistics",
     fleetDamageBonus: 0.12,
   },
+  // ── Classes avancées (chantier 11) : chacune prolonge un rôle existant ──
+  corvette: {
+    id: "corvette",
+    hull: 60,
+    shield: 30,
+    weapons: { long: 6, medium: 12, short: 14 },
+    initiative: 26,
+    cost: { metals: 90, components: 25 },
+    buildMs: 55_000,
+    requiresTech: "point_defense",
+  },
+  bomber: {
+    id: "bomber",
+    hull: 110,
+    shield: 20,
+    weapons: { long: 30, medium: 12, short: 4 },
+    initiative: 8,
+    cost: { metals: 220, components: 80 },
+    buildMs: 110_000,
+    requiresTech: "strike_doctrine",
+  },
+  dreadnought: {
+    id: "dreadnought",
+    hull: 480,
+    shield: 140,
+    weapons: { long: 44, medium: 34, short: 20 },
+    initiative: 10,
+    cost: { metals: 700, components: 220 },
+    buildMs: 260_000,
+    requiresTech: "dreadnoughts",
+  },
 };
 
 /**
@@ -81,10 +120,15 @@ export const WARSHIPS: Record<WarshipId, WarshipDef> = {
  * par [attaquant][défenseur]. > 1 = avantage.
  */
 export const CLASS_ADVANTAGE: Record<WarshipId, Partial<Record<WarshipId, number>>> = {
-  fighter: { cruiser: 1.5, frigate: 0.7 },
-  frigate: { fighter: 1.5, cruiser: 0.7 },
-  cruiser: { frigate: 1.5, fighter: 0.7 },
+  fighter: { cruiser: 1.5, frigate: 0.7, dreadnought: 1.3 },
+  frigate: { fighter: 1.5, cruiser: 0.7, corvette: 1.3 },
+  cruiser: { frigate: 1.5, fighter: 0.7, bomber: 1.3 },
   support: {},
+  // La corvette prolonge le rôle du chasseur, le bombardier celui du croiseur,
+  // le cuirassé écrase tout sauf les nuées légères.
+  corvette: { cruiser: 1.4, dreadnought: 1.4, frigate: 0.7 },
+  bomber: { frigate: 1.4, dreadnought: 1.2, fighter: 0.6 },
+  dreadnought: { frigate: 1.3, cruiser: 1.2, fighter: 0.7, corvette: 0.6 },
 };
 
 export const COMBAT_DIRECTIVES = ["barrage", "shields", "evasive", "focus_fire"] as const;

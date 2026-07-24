@@ -1,6 +1,7 @@
 import { MAX_SHIP_QUEUE_LENGTH, SHIPS } from "../content/ships.js";
 import type { TechId } from "../content/techs.js";
 import { canAfford } from "./colony.js";
+import { NO_EFFECTS, type EmpireEffects } from "./research.js";
 import type { Colony, ResourceId, Route, ShipId } from "../types.js";
 
 /** Vaisseaux disponibles à la colonie : possédés − occupés − réservés aux routes. */
@@ -54,6 +55,7 @@ export function enqueueShip(
   shipId: ShipId,
   now: number,
   researched: readonly TechId[],
+  effects: EmpireEffects = NO_EFFECTS,
 ): ShipEnqueueResult {
   const def = SHIPS[shipId];
   if (!def) return { ok: false, reason: `Vaisseau inconnu : ${shipId}` };
@@ -74,12 +76,13 @@ export function enqueueShip(
   }
   const lastFinish = colony.shipQueue.at(-1)?.finishesAt ?? now;
   const startedAt = Math.max(now, lastFinish);
+  const finishesAt = startedAt + Math.round(def.buildMs * effects.shipBuildSpeedMult);
   return {
     ok: true,
     colony: {
       ...colony,
       resources,
-      shipQueue: [...colony.shipQueue, { shipId, startedAt, finishesAt: startedAt + def.buildMs }],
+      shipQueue: [...colony.shipQueue, { shipId, startedAt, finishesAt }],
     },
   };
 }

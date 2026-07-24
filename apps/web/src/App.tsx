@@ -318,6 +318,7 @@ export function App({ auth }: Props) {
             exploredSystemIds={exploredSystemIds}
             leaderboard={leaderboard}
             playerId={playerId}
+            effects={effects}
             send={send}
           />
         </main>

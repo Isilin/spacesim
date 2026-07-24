@@ -7,6 +7,7 @@ import {
   type ClientMessage,
   type Colony,
   type FactionId,
+  type EmpireEffects,
   type GameState,
   type LeaderboardEntry,
   type MilestoneMetric,
@@ -21,6 +22,7 @@ interface Props {
   exploredSystemIds: string[];
   leaderboard: LeaderboardEntry[];
   playerId: string | null;
+  effects: EmpireEffects;
   send: (msg: ClientMessage) => void;
 }
 
@@ -38,6 +40,7 @@ export function EmpireView({
   exploredSystemIds,
   leaderboard,
   playerId,
+  effects,
   send,
 }: Props) {
   const metrics: Record<MilestoneMetric, number> = {
@@ -66,8 +69,8 @@ export function EmpireView({
           <span className="resource-name">Influence</span>
           <span className="resource-stock">✦ {Math.floor(game.influence)}</span>
           <span className="resource-rate ok">
-            {(influencePerTick(colonies, game.claimedSystemIds.length) >= 0 ? "+" : "") +
-              (Math.round(influencePerTick(colonies, game.claimedSystemIds.length) * 1000) / 1000)}
+            {(influencePerTick(colonies, game.claimedSystemIds.length, effects.influenceMult) >= 0 ? "+" : "") +
+              (Math.round(influencePerTick(colonies, game.claimedSystemIds.length, effects.influenceMult) * 1000) / 1000)}
             /tick
           </span>
         </div>

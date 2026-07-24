@@ -17,6 +17,12 @@ export interface EmpireEffects {
   popGrowthMult: number;
   goodsNeedMult: number;
   creditsMult: number;
+  foodNeedMult: number;
+  storageMult: number;
+  buildSpeedMult: number;
+  shipBuildSpeedMult: number;
+  outpostYieldMult: number;
+  influenceMult: number;
 }
 
 export function computeEffects(researched: readonly TechId[]): EmpireEffects {
@@ -35,6 +41,12 @@ export function computeEffects(researched: readonly TechId[]): EmpireEffects {
     popGrowthMult: 1,
     goodsNeedMult: 1,
     creditsMult: 1,
+    foodNeedMult: 1,
+    storageMult: 1,
+    buildSpeedMult: 1,
+    shipBuildSpeedMult: 1,
+    outpostYieldMult: 1,
+    influenceMult: 1,
   };
   for (const id of researched) {
     const tech = TECHS[id];
@@ -56,6 +68,12 @@ export function computeEffects(researched: readonly TechId[]): EmpireEffects {
     effects.popGrowthMult *= e.popGrowthMult ?? 1;
     effects.goodsNeedMult *= e.goodsNeedMult ?? 1;
     effects.creditsMult *= e.creditsMult ?? 1;
+    effects.foodNeedMult *= e.foodNeedMult ?? 1;
+    effects.storageMult *= e.storageMult ?? 1;
+    effects.buildSpeedMult *= e.buildSpeedMult ?? 1;
+    effects.shipBuildSpeedMult *= e.shipBuildSpeedMult ?? 1;
+    effects.outpostYieldMult *= e.outpostYieldMult ?? 1;
+    effects.influenceMult *= e.influenceMult ?? 1;
   }
   return effects;
 }

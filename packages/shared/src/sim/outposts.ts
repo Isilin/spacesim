@@ -25,7 +25,12 @@ export function beltRichness(belt: AsteroidBelt): number {
  * Un tick d'extraction : retourne le nouveau stock local.
  * `upkeepPaid` = false (colonie propriétaire à sec) → l'extraction s'arrête.
  */
-export function outpostTick(oreStock: number, richness: number, upkeepPaid: boolean): number {
+export function outpostTick(
+  oreStock: number,
+  richness: number,
+  upkeepPaid: boolean,
+  yieldMult = 1,
+): number {
   if (!upkeepPaid) return oreStock;
-  return Math.min(OUTPOST_STOCK_CAP, oreStock + MINING_RATE * richness);
+  return Math.min(OUTPOST_STOCK_CAP, oreStock + MINING_RATE * richness * yieldMult);
 }
