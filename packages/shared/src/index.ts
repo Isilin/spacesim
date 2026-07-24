@@ -16,6 +16,7 @@ export * from "./sim/routes.js";
 export * from "./sim/outposts.js";
 export * from "./sim/influence.js";
 export * from "./sim/expansion.js";
+export * from "./sim/bodies.js";
 export * from "./sim/gateways.js";
 export * from "./sim/research.js";
 export * from "./sim/colony.js";
