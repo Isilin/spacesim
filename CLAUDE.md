@@ -19,6 +19,12 @@ Principes :
   Toute modification du générateur invalide les parties existantes (supprimer `spacesim.db`).
 - Temps hybride : tick serveur (5 s, `TICK_MS`) pour la production ; timers réels absolus (timestamps en DB) pour constructions/trajets/recherche, résolus par le tick qui les dépasse. Catch-up hors-ligne borné (`MAX_CATCHUP_TICKS`).
 - Toute règle de simulation = fonction pure dans `shared`, appelée par le serveur. Les constantes d'équilibrage vivent dans `shared` (fichiers `constants.ts` / `content/`).
+- **Logistique en deux stocks** (chantier 12) : chaque colonie a un stock **au sol**
+  (`resources`, produit/consommé par les bâtiments) et un stock **en orbite**
+  (`orbitalResources`, la seule soute chargeable par un vaisseau). Le `orbital_dock` fixe
+  capacité et débit de l'ascenseur ; `liftRules` décide de ce qui monte/descend. Tout ce qui
+  embarque (convois, routes, ventes) passe par `takeFromOrbit`/`deliverToOrbit` — sans dock, une
+  colonie ne peut rien exporter. Prix de station **régionaux** (`stationPrice(res, stock, ctx)`).
 - Code en anglais, UI en français (labels dans le client ou fichiers de contenu).
 
 ## Commandes

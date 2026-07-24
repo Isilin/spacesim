@@ -7,6 +7,8 @@
 > **9 livré** : univers extensible à l'infini (frontière glissante) + cartes zoomables et navigables.
 > **10 livré** : vue planète/lune (schéma orbital, fiche physique, emplacements).
 > **11 livré** : arbre de recherche en graphe, 35 techs, chaînes planifiables.
+> **12 livré** : logistique — stock orbital, transport réel (carburant/classes/convois), prix régionaux.
+> **Chantiers 8 → 12 : terminés.**
 >
 > **État (21/07/2026)** : jalons 1 à 7 implémentés et vérifiés — le MVP décrit ici est jouable.
 > **Pivot EVE-like (13/07/2026)** : plus de niveaux de bâtiments — on empile des **instances**
@@ -434,3 +436,31 @@ dessinée à droite de tous ses prérequis), `techLayout`, `researchPath`, `path
 états, survol qui éclaire la chaîne. Une tech verrouillée se **planifie en un clic** :
 `players.researchQueue` (migration 0010) enchaîne les recherches seules, patiente si la science
 manque, et abandonne les techs acquises entre-temps par un autre chemin.
+
+### Chantier 12 — Logistique ✅ (24/07/2026)
+
+Trois couches qui transforment l'acheminement en pilier de jeu.
+
+**Orbite.** `Colony` porte désormais `orbitalResources` et `liftRules` (migration 0011) ; le
+bâtiment `orbital_dock` fixe la capacité de stockage orbital et le débit de l'ascenseur.
+`sim/orbital.ts` (`applyLift`) déplace les ressources sol↔orbite selon les consignes, débit
+**partagé** entre ressources, en consommant de l'énergie au sol pour monter. **Les vaisseaux ne
+chargent que l'orbite** : `sendTransfer`, routes, ventes et achats puisent et livrent via
+`takeFromOrbit`/`deliverToOrbit`. Sans dock, une colonie ne peut rien exporter — d'où un dock
+amorcé à la fondation. UI : `OrbitPanel` (état du dock, tableau sol/orbite, consignes) et anneau
+de soute sur la vue corps.
+
+**Transport.** `ShipDef` gagne `speedMult` et `fuelPerJump` ; deux classes qui posent un choix
+(transporteur lourd et lent, courrier léger et rapide). `travel.ts` : `convoyDurationMs` (allure
+du plus lent), `convoyFuel` (par vaisseau, par saut, par masse — prélevé en orbite), `convoyFees`
+(distance + péage de portail). Les convois manuels deviennent multi-vaisseaux, avec devis en
+direct dans `TransferPanel`.
+
+**Prix régionaux.** `stationPrice(resource, stock, ctx)` applique un multiplicateur déterministe
+(biais propre à la station × éloignement de la galaxie) : les anneaux lointains paient cher le
+manufacturé et bradent le brut. `MarketsView` compare les comptoirs explorés (prix, écart,
+distance, marge nette) — l'outil qui rend l'arbitrage jouable. Toute la logistique se regroupe
+dans `LogisticsView` (Routes / Convois / Orbite / Marchés).
+
+**Techs dédiées** : `space_elevator` (débit, capacité, carburant −20 %, débloque le transporteur),
+`trade_charters` (marge en station, cumulée à la réputation).
