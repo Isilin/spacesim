@@ -1,18 +1,24 @@
 import {
   allSystems,
+  convoyCapacity,
+  convoyDurationMs,
+  convoyFees,
+  convoyFuel,
+  findGalaxyOfSystem,
+  idleShips,
   jumpDistanceInUniverse,
   maxConvoyCapacity,
-  transferCostCredits,
-  transferDurationMs,
+  SHIP_IDS,
   type ClientMessage,
   type Colony,
   type ResourceId,
   type Route,
+  type ShipId,
   type Transfer,
   type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
-import { RESOURCE_LABELS } from "./labels.js";
+import { RESOURCE_LABELS, SHIP_LABELS } from "./labels.js";
 
 interface Props {
   colony: Colony;
@@ -54,6 +60,18 @@ export function TransferPanel({
   const others = colonies.filter((c) => c.id !== colony.id);
   const [destinationId, setDestinationId] = useState("");
   const [amounts, setAmounts] = useState<Partial<Record<ResourceId, string>>>({});
+  const [shipCounts, setShipCounts] = useState<Partial<Record<ShipId, string>>>({});
+
+  /**
+   * Portails empruntés : tous partent de l'ancrage de la galaxie d'origine, donc
+   * rejoindre une galaxie lointaine en traverse un, en relier deux en traverse deux.
+   */
+  const portalsBetween = (fromSystemId: string, toSystemId: string): number => {
+    const a = findGalaxyOfSystem(universe, fromSystemId)?.id;
+    const b = findGalaxyOfSystem(universe, toSystemId)?.id;
+    if (!a || !b || a === b) return 0;
+    return a === "gal-0" || b === "gal-0" ? 1 : 2;
+  };
 
   const related = transfers.filter(
     (t) => t.fromColonyId === colony.id || t.toColonyId === colony.id,
@@ -75,8 +93,25 @@ export function TransferPanel({
   }
   const hasCargo = Object.keys(cargo).length > 0;
   const totalCargo = Object.values(cargo).reduce((s, n) => s + n, 0);
-  const convoyCapacity = maxConvoyCapacity(colony, routes);
-  const overCapacity = totalCargo > convoyCapacity;
+
+  // Convoi choisi (chantier 12) : chaque classe arbitre volume, vitesse et carburant.
+  const idle: Partial<Record<ShipId, number>> = idleShips(colony, routes);
+  const convoy: Partial<Record<ShipId, number>> = {};
+  for (const shipId of SHIP_IDS) {
+    const n = Math.floor(Number(shipCounts[shipId] ?? ""));
+    if (Number.isFinite(n) && n > 0) convoy[shipId] = n;
+  }
+  const hasConvoy = Object.keys(convoy).length > 0;
+  const capacity = hasConvoy ? convoyCapacity(convoy) : maxConvoyCapacity(colony, routes);
+  const overCapacity = totalCargo > capacity;
+
+  // Devis du voyage : durée du plus lent, carburant pris en orbite, frais et péages.
+  const portals = jumps > 0 && fromSystem && toSystem ? portalsBetween(fromSystem, toSystem) : 0;
+  const eta = jumps >= 0 ? convoyDurationMs(jumps, convoy) * transferSpeedMult : 0;
+  const fuel = jumps >= 0 && hasConvoy ? convoyFuel(jumps, convoy, totalCargo) : 0;
+  const fees = jumps >= 0 ? convoyFees(jumps, portals) : 0;
+  const orbitalEnergy = Math.floor(colony.orbitalResources.energy ?? 0);
+  const missingFuel = fuel > orbitalEnergy;
 
   return (
     <section className="transfer-panel">
@@ -122,32 +157,57 @@ export function TransferPanel({
               ))}
             </select>
           </label>
+          {/* La cargaison part de l'orbite : c'est ce stock-là qui borne la saisie. */}
           {CARGO_RESOURCES.map((res) => (
             <label key={res} className="small muted transfer-amount">
-              {RESOURCE_LABELS[res]}
+              {RESOURCE_LABELS[res]} (orbite : {Math.floor(colony.orbitalResources[res] ?? 0)})
               <input
                 type="number"
                 min={0}
-                max={Math.floor(colony.resources[res])}
+                max={Math.floor(colony.orbitalResources[res] ?? 0)}
                 value={amounts[res] ?? ""}
                 placeholder="0"
                 onChange={(e) => setAmounts({ ...amounts, [res]: e.target.value })}
               />
             </label>
           ))}
+
+          <span className="small muted">Convoi</span>
+          {SHIP_IDS.map((shipId) => (
+            <label key={shipId} className="small muted transfer-amount">
+              {SHIP_LABELS[shipId].name} (dispo : {idle[shipId] ?? 0})
+              <input
+                type="number"
+                min={0}
+                max={idle[shipId] ?? 0}
+                value={shipCounts[shipId] ?? ""}
+                placeholder="0"
+                onChange={(e) => setShipCounts({ ...shipCounts, [shipId]: e.target.value })}
+              />
+            </label>
+          ))}
+
           {jumps >= 0 && (
             <span className="small muted">
-              {jumps} saut{jumps > 1 ? "s" : ""} —{" "}
-              {formatEta(transferDurationMs(jumps) * transferSpeedMult)} —{" "}
-              {transferCostCredits(jumps)} crédits
+              {jumps} saut{jumps > 1 ? "s" : ""}
+              {portals > 0 ? ` · ${portals} portail${portals > 1 ? "s" : ""}` : ""} —{" "}
+              {formatEta(eta)} — {fees} crédits
+              {hasConvoy ? ` · ${fuel} énergie` : ""}
             </span>
           )}
           <span className={`small ${overCapacity ? "ko" : "muted"}`}>
-            Soute disponible : {convoyCapacity}
+            Soute {hasConvoy ? "du convoi" : "disponible"} : {capacity}
             {overCapacity ? ` — cargaison trop lourde (${totalCargo})` : ""}
           </span>
+          {hasConvoy && missingFuel && (
+            <span className="small ko">
+              Carburant insuffisant en orbite : {fuel} requis, {orbitalEnergy} disponible.
+            </span>
+          )}
           <button
-            disabled={!hasCargo || !destination || overCapacity || convoyCapacity === 0}
+            disabled={
+              !hasCargo || !destination || overCapacity || capacity === 0 || (hasConvoy && missingFuel)
+            }
             onClick={() => {
               if (!destination) return;
               send({
@@ -155,8 +215,10 @@ export function TransferPanel({
                 fromColonyId: colony.id,
                 toColonyId: destination.id,
                 resources: cargo,
+                ...(hasConvoy ? { ships: convoy } : {}),
               });
               setAmounts({});
+              setShipCounts({});
             }}
           >
             Envoyer le convoi

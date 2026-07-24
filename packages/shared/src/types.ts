@@ -160,7 +160,7 @@ export const BUILDING_IDS = [
 
 export type BuildingId = (typeof BUILDING_IDS)[number];
 
-export const SHIP_IDS = ["cargo_small", "cargo_large"] as const;
+export const SHIP_IDS = ["cargo_small", "cargo_large", "hauler", "courier"] as const;
 
 export type ShipId = (typeof SHIP_IDS)[number];
 
@@ -456,6 +456,8 @@ export type ClientMessage =
       fromColonyId: string;
       toColonyId: string;
       resources: Partial<Record<ResourceId, number>>;
+      /** Convoi choisi (chantier 12) ; omis = le plus gros cargo disponible. */
+      ships?: Partial<Record<ShipId, number>>;
     }
   | { type: "probe"; colonyId: string; systemId: string }
   | { type: "colonize"; colonyId: string; planetId: string }

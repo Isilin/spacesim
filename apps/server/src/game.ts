@@ -14,6 +14,10 @@ import {
   colonyShipDurationMs,
   computeEffects,
   contiguousClaims,
+  convoyCapacity,
+  convoyDurationMs,
+  convoyFees,
+  convoyFuel,
   CONTIGUOUS_CLAIM_BONUS,
   createRng,
   ECONOMY_TICK_TICKS,
@@ -357,6 +361,18 @@ export class GameEngine {
     return gatewayLinks(this.universe, this.gateways);
   }
 
+  /**
+   * Nombre de portails empruntés entre deux systèmes (chantier 12). Tous les portails
+   * partent de l'ancrage de la galaxie d'origine : rejoindre une galaxie lointaine en
+   * traverse un, passer d'une lointaine à une autre en traverse deux.
+   */
+  private portalsCrossed(fromSystemId: string, toSystemId: string): number {
+    const from = this.galaxyIndexOfSystem.get(fromSystemId);
+    const to = this.galaxyIndexOfSystem.get(toSystemId);
+    if (from === undefined || to === undefined || from === to) return 0;
+    return from === 0 || to === 0 ? 1 : 2;
+  }
+
   /** Marchés des seules stations situées dans des systèmes explorés. */
   get markets(): StationMarket[] {
     return this.marketsFor(this.defaultEmpire);
@@ -570,6 +586,38 @@ export class GameEngine {
     };
   }
 
+  /**
+   * Réserve un convoi précis (chantier 12). Retourne null si la colonie ne dispose pas
+   * de tous les vaisseaux demandés — on ne part jamais avec un convoi incomplet.
+   */
+  private reserveConvoy(
+    empire: Empire,
+    colony: Colony,
+    ships: Partial<Record<ShipId, number>>,
+    busyUntil: number,
+  ): { colony: Colony; ships: Partial<Record<ShipId, number>>; capacity: number } | null {
+    const idle = idleShips(colony, [...empire.routeMap.values()]);
+    const wanted: Partial<Record<ShipId, number>> = {};
+    for (const [shipId, raw] of Object.entries(ships) as [ShipId, number][]) {
+      const count = Math.floor(Number(raw));
+      if (!Number.isFinite(count) || count <= 0) continue;
+      if (!SHIPS[shipId]) return null;
+      if ((idle[shipId] ?? 0) < count) return null;
+      wanted[shipId] = count;
+    }
+    if (Object.keys(wanted).length === 0) return null;
+
+    const busy = [...colony.shipsBusy];
+    for (const [shipId, count] of Object.entries(wanted) as [ShipId, number][]) {
+      for (let i = 0; i < count; i++) busy.push({ shipId, freeAt: busyUntil });
+    }
+    return {
+      colony: { ...colony, shipsBusy: busy },
+      ships: wanted,
+      capacity: convoyCapacity(wanted),
+    };
+  }
+
   /** Action joueur : régler (ou retirer) la consigne d'ascension d'une ressource. */
   setLiftRule(
     empire: Empire,
@@ -602,6 +650,7 @@ export class GameEngine {
     fromColonyId: string,
     toColonyId: string,
     wanted: Partial<Record<ResourceId, number>>,
+    convoy?: Partial<Record<ShipId, number>>,
   ): string | null {
     const from = empire.colonyMap.get(fromColonyId);
     const to = empire.colonyMap.get(toColonyId);
@@ -622,7 +671,7 @@ export class GameEngine {
     if (!fromPlanet || !toPlanet) return "Planète inconnue";
     const jumps = jumpDistanceInUniverse(this.universe, fromPlanet.systemId, toPlanet.systemId, this.portalLinks);
     if (jumps < 0) return "Destination inaccessible";
-    const cost = transferCostCredits(jumps);
+    const portals = this.portalsCrossed(fromPlanet.systemId, toPlanet.systemId);
 
     // La cargaison se prend en ORBITE : le stock au sol ne peut pas se substituer
     // (chantier 12). Sans dock ni ascenseur, la colonie ne peut rien exporter.
@@ -633,17 +682,35 @@ export class GameEngine {
       );
       return `Stock orbital insuffisant : ${missing?.[0] ?? "cargaison"}`;
     }
-    const resources = { ...loaded.resources };
-    if (resources.credits < cost) return `Crédits insuffisants (coût : ${cost})`;
 
     const now = Date.now();
-    const duration = transferDurationMs(jumps) * empire.effects.transferSpeedMult;
-    const reserved = this.reserveShip(empire, loaded, now + 2 * duration);
-    if (!reserved) return "Aucun cargo disponible";
     const total = Object.values(cargo).reduce((s, n) => s + n, 0);
+    // Convoi explicite (chantier 12) ou repli sur le plus gros cargo disponible.
+    const speed = empire.effects.transferSpeedMult;
+    const reserved = convoy
+      ? this.reserveConvoy(
+          empire,
+          loaded,
+          convoy,
+          now + 2 * convoyDurationMs(jumps, convoy) * speed,
+        )
+      : (() => {
+          const one = this.reserveShip(empire, loaded, now + 2 * transferDurationMs(jumps) * speed);
+          return one ? { colony: one.colony, ships: { [one.shipId]: 1 }, capacity: one.capacity } : null;
+        })();
+    if (!reserved) return "Convoi indisponible : vaisseaux manquants";
     if (total > reserved.capacity) {
-      return `Cargaison trop lourde pour le ${reserved.shipId === "cargo_large" ? "grand cargo" : "cargo"} (${reserved.capacity} max)`;
+      return `Cargaison trop lourde pour ce convoi (soute : ${reserved.capacity})`;
     }
+
+    const duration = convoyDurationMs(jumps, reserved.ships) * speed;
+    const cost = convoyFees(jumps, portals);
+    const fuel = convoyFuel(jumps, reserved.ships, total);
+    const resources = { ...reserved.colony.resources };
+    if (resources.credits < cost) return `Crédits insuffisants (frais : ${cost})`;
+    // Le carburant se soutire en orbite : un convoi ne fait pas le plein au sol.
+    const fueled = takeFromOrbit(reserved.colony, { energy: fuel });
+    if (!fueled) return `Carburant insuffisant en orbite (${fuel} énergie)`;
 
     resources.credits -= cost;
 
@@ -655,7 +722,7 @@ export class GameEngine {
       departedAt: now,
       arrivesAt: now + duration,
     };
-    empire.colonyMap.set(from.id, { ...reserved.colony, resources });
+    empire.colonyMap.set(from.id, { ...fueled, resources });
     empire.transferMap.set(transfer.id, transfer);
     this.persistColony(empire.colonyMap.get(from.id)!);
     db.insert(schema.transfers)

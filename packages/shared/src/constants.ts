@@ -69,6 +69,11 @@ export const TRANSFER_MS_PER_JUMP = 60_000;
 export const TRANSFER_BASE_CREDITS = 5;
 export const TRANSFER_CREDITS_PER_JUMP = 5;
 
+/** Carburant lié à la masse transportée, par unité et par saut (chantier 12). */
+export const FUEL_PER_MASS_JUMP = 0.03;
+/** Péage prélevé à chaque portail inter-galactique emprunté par un convoi. */
+export const GATEWAY_TOLL_CREDITS = 60;
+
 /** Sonde : révèle les planètes d'un système. */
 export const PROBE_COST_CREDITS = 25;
 export const PROBE_BASE_MS = 20_000;

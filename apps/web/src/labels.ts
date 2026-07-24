@@ -70,6 +70,14 @@ export const SHIP_LABELS: Record<ShipId, { name: string; description: string }> 
     name: "Cargo lourd",
     description: "Soute de 600. Requiert la logistique orbitale.",
   },
+  hauler: {
+    name: "Transporteur",
+    description: "Soute de 1800, lent et gourmand. Requiert l'ascenseur spatial.",
+  },
+  courier: {
+    name: "Courrier",
+    description: "Soute de 80, presque deux fois plus rapide et sobre en carburant.",
+  },
 };
 
 export const FACTION_LABELS: Record<FactionId, { name: string; description: string }> = {

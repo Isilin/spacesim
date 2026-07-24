@@ -156,7 +156,13 @@ app.get("/ws", { websocket: true }, (socket, request) => {
     if (msg.type === "build") {
       error = engine.build(empire, msg.colonyId, msg.buildingId);
     } else if (msg.type === "transfer") {
-      error = engine.sendTransfer(empire, msg.fromColonyId, msg.toColonyId, msg.resources);
+      error = engine.sendTransfer(
+        empire,
+        msg.fromColonyId,
+        msg.toColonyId,
+        msg.resources,
+        msg.ships,
+      );
     } else if (msg.type === "probe") {
       error = engine.probe(empire, msg.colonyId, msg.systemId);
     } else if (msg.type === "colonize") {

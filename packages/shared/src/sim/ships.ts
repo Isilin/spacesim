@@ -2,11 +2,11 @@ import { MAX_SHIP_QUEUE_LENGTH, SHIPS } from "../content/ships.js";
 import type { TechId } from "../content/techs.js";
 import { canAfford } from "./colony.js";
 import { NO_EFFECTS, type EmpireEffects } from "./research.js";
-import type { Colony, ResourceId, Route, ShipId } from "../types.js";
+import { SHIP_IDS, type Colony, type ResourceId, type Route, type ShipId } from "../types.js";
 
 /** Vaisseaux disponibles à la colonie : possédés − occupés − réservés aux routes. */
 export function idleShips(colony: Colony, routes: readonly Route[]): Record<ShipId, number> {
-  const idle: Record<ShipId, number> = { cargo_small: 0, cargo_large: 0 };
+  const idle = Object.fromEntries(SHIP_IDS.map((id) => [id, 0])) as Record<ShipId, number>;
   for (const [shipId, count] of Object.entries(colony.ships) as [ShipId, number][]) {
     idle[shipId] = count ?? 0;
   }
@@ -34,11 +34,11 @@ export function fleetCapacity(ships: Partial<Record<ShipId, number>>): number {
   return capacity;
 }
 
-/** Le plus gros vaisseau disponible (pour les convois manuels : un vaisseau par convoi). */
-export function pickShip(idle: Record<ShipId, number>): ShipId | null {
-  if (idle.cargo_large > 0) return "cargo_large";
-  if (idle.cargo_small > 0) return "cargo_small";
-  return null;
+/** Le plus gros vaisseau disponible (repli quand aucun convoi n'est précisé). */
+export function pickShip(idle: Partial<Record<ShipId, number>>): ShipId | null {
+  const available = SHIP_IDS.filter((id) => (idle[id] ?? 0) > 0);
+  if (available.length === 0) return null;
+  return available.reduce((best, id) => (SHIPS[id].capacity > SHIPS[best].capacity ? id : best));
 }
 
 /** Soute du plus gros cargo disponible (0 si aucun) — borne des convois manuels. */

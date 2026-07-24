@@ -1,10 +1,13 @@
 import {
+  FUEL_PER_MASS_JUMP,
+  GATEWAY_TOLL_CREDITS,
   TRANSFER_BASE_CREDITS,
   TRANSFER_BASE_MS,
   TRANSFER_CREDITS_PER_JUMP,
   TRANSFER_MS_PER_JUMP,
 } from "../constants.js";
-import type { Galaxy, Universe } from "../types.js";
+import { SHIPS } from "../content/ships.js";
+import type { Galaxy, ShipId, Universe } from "../types.js";
 import { findGalaxyOfSystem } from "../universe.js";
 
 /** Distance en sauts entre deux systèmes d'une galaxie (BFS), -1 si inaccessible. */
@@ -88,4 +91,50 @@ export function transferDurationMs(jumps: number): number {
 
 export function transferCostCredits(jumps: number): number {
   return TRANSFER_BASE_CREDITS + jumps * TRANSFER_CREDITS_PER_JUMP;
+}
+
+// ── Convois (chantier 12) : le vaisseau employé compte enfin ──────────────────
+
+/** Composition d'un convoi : nombre de vaisseaux par classe. */
+export type ConvoyShips = Partial<Record<ShipId, number>>;
+
+function convoyEntries(ships: ConvoyShips): [ShipId, number][] {
+  return (Object.entries(ships) as [ShipId, number][]).filter(([, n]) => (n ?? 0) > 0);
+}
+
+/**
+ * Durée d'un convoi : celle du vaisseau le **plus lent**, un convoi ne se sépare pas.
+ * Sans vaisseau précisé, on retombe sur le barème abstrait d'avant le chantier 12.
+ */
+export function convoyDurationMs(jumps: number, ships: ConvoyShips = {}): number {
+  const entries = convoyEntries(ships);
+  const slowest = entries.reduce((max, [id]) => Math.max(max, SHIPS[id].speedMult), 0);
+  return transferDurationMs(jumps) * (slowest || 1);
+}
+
+/**
+ * Énergie brûlée par un convoi : chaque vaisseau paie ses sauts, plus une part liée à
+ * la masse embarquée. Prélevée en orbite au départ — voyager coûte, et voyager chargé
+ * coûte davantage.
+ */
+export function convoyFuel(jumps: number, ships: ConvoyShips, cargoMass = 0): number {
+  const perShip = convoyEntries(ships).reduce(
+    (sum, [id, count]) => sum + SHIPS[id].fuelPerJump * count,
+    0,
+  );
+  const massPart = cargoMass * FUEL_PER_MASS_JUMP;
+  return Math.ceil((perShip + massPart) * Math.max(1, jumps));
+}
+
+/**
+ * Frais d'un convoi : frais de base par saut + péage par portail emprunté. Traverser
+ * une galaxie n'est pas gratuit, sinon les anneaux lointains n'auraient pas de prix.
+ */
+export function convoyFees(jumps: number, portalsCrossed = 0): number {
+  return transferCostCredits(jumps) + portalsCrossed * GATEWAY_TOLL_CREDITS;
+}
+
+/** Capacité totale d'un convoi. */
+export function convoyCapacity(ships: ConvoyShips): number {
+  return convoyEntries(ships).reduce((sum, [id, count]) => sum + SHIPS[id].capacity * count, 0);
 }

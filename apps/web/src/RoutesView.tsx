@@ -95,7 +95,7 @@ export function RoutesView({
     ? resource
     : (availableResources[0] as ResourceId);
 
-  const idle = owner ? idleShips(owner, routes) : { cargo_small: 0, cargo_large: 0 };
+  const idle: Partial<Record<ShipId, number>> = owner ? idleShips(owner, routes) : {};
   const ships: Partial<Record<ShipId, number>> = {};
   for (const shipId of SHIP_IDS) {
     const n = Math.floor(Number(shipCounts[shipId] ?? ""));
@@ -270,11 +270,11 @@ export function RoutesView({
         )}
         {SHIP_IDS.map((shipId) => (
           <label key={shipId} className="small muted transfer-amount">
-            {SHIP_LABELS[shipId].name} (dispo : {idle[shipId]})
+            {SHIP_LABELS[shipId].name} (dispo : {idle[shipId] ?? 0})
             <input
               type="number"
               min={0}
-              max={idle[shipId]}
+              max={idle[shipId] ?? 0}
               value={shipCounts[shipId] ?? ""}
               placeholder="0"
               onChange={(e) => setShipCounts({ ...shipCounts, [shipId]: e.target.value })}
