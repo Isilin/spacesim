@@ -98,6 +98,7 @@ import {
   type GameState,
   type Gateway,
   type PirateLair,
+  type PriceContext,
   type StoredBattle,
   type WarshipId,
   type MarketResource,
@@ -705,7 +706,7 @@ export class GameEngine {
 
     const duration = convoyDurationMs(jumps, reserved.ships) * speed;
     const cost = convoyFees(jumps, portals);
-    const fuel = convoyFuel(jumps, reserved.ships, total);
+    const fuel = Math.ceil(convoyFuel(jumps, reserved.ships, total) * empire.effects.fuelMult);
     const resources = { ...reserved.colony.resources };
     if (resources.credits < cost) return `Crédits insuffisants (frais : ${cost})`;
     // Le carburant se soutire en orbite : un convoi ne fait pas le plein au sol.
@@ -1148,7 +1149,7 @@ export class GameEngine {
       const stocks = this.marketMap.get(route.toId);
       const owner = empire.colonyMap.get(route.ownerColonyId);
       if (!stocks || !owner) return;
-      const result = resolveSale(stocks, { [route.resource]: carrying });
+      const result = resolveSale(stocks, { [route.resource]: carrying }, this.priceContextOf(route.toId));
       this.marketMap.set(route.toId, result.stocks);
       this.persistMarket(route.toId);
       const revenue = Math.floor(result.revenue * (1 + this.stationRepBonus(empire, route.toId)));
@@ -1157,6 +1158,20 @@ export class GameEngine {
       empire.colonyMap.set(owner.id, { ...owner, resources });
       this.persistColony(empire.colonyMap.get(owner.id)!);
     }
+  }
+
+  /**
+   * Contexte de prix d'une station (chantier 12) : son biais propre et l'éloignement de
+   * sa galaxie. C'est ce qui fait diverger les prix d'un comptoir à l'autre.
+   */
+  priceContextOf(stationId: string): PriceContext | undefined {
+    const station = this.stationsById.get(stationId);
+    if (!station) return undefined;
+    return {
+      stationId,
+      galaxyIndex: this.galaxyIndexOfSystem.get(station.systemId) ?? 0,
+      factionId: station.factionId,
+    };
   }
 
   /** Réputation gagnée auprès de la faction de la station, au volume de crédits échangé. */
@@ -1170,11 +1185,14 @@ export class GameEngine {
     empire.factionRep = factionRep;
   }
 
-  /** Remise commerciale liée à la réputation auprès de la faction de la station. */
+  /**
+   * Bonus commercial appliqué en station : remise de réputation + marge des chartes
+   * commerciales (chantier 12). Majore les ventes, réduit les achats.
+   */
   private stationRepBonus(empire: Empire, stationId: string): number {
     const station = this.stationsById.get(stationId);
-    if (!station) return 0;
-    return repBonus(empire.factionRep[station.factionId] ?? 0);
+    const rep = station ? repBonus(empire.factionRep[station.factionId] ?? 0) : 0;
+    return rep + empire.effects.tradeMargin;
   }
 
   private loadRoutes(): void {
@@ -2586,7 +2604,7 @@ export class GameEngine {
           const stocks = this.marketMap.get(mission.targetId);
           const colony = empire.colonyMap.get(mission.fromColonyId);
           if (stocks && colony && mission.cargo) {
-            const result = resolveSale(stocks, mission.cargo);
+            const result = resolveSale(stocks, mission.cargo, this.priceContextOf(mission.targetId));
             this.marketMap.set(mission.targetId, result.stocks);
             this.persistMarket(mission.targetId);
             // Bonus de réputation : la faction paie mieux ses partenaires.
@@ -2611,6 +2629,7 @@ export class GameEngine {
               mission.buyResource as MarketResource,
               mission.budget,
               mission.capacity ?? Infinity,
+              this.priceContextOf(mission.targetId),
             );
             this.marketMap.set(mission.targetId, result.stocks);
             this.persistMarket(mission.targetId);

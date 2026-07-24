@@ -27,6 +27,10 @@ export interface EmpireEffects {
   liftCapacityMult: number;
   /** Débit de l'ascenseur orbital. */
   liftThroughputMult: number;
+  /** Carburant des convois (chantier 12). */
+  fuelMult: number;
+  /** Marge commerciale en station : ventes majorées, achats minorés. */
+  tradeMargin: number;
 }
 
 export function computeEffects(researched: readonly TechId[]): EmpireEffects {
@@ -53,6 +57,8 @@ export function computeEffects(researched: readonly TechId[]): EmpireEffects {
     influenceMult: 1,
     liftCapacityMult: 1,
     liftThroughputMult: 1,
+    fuelMult: 1,
+    tradeMargin: 0,
   };
   for (const id of researched) {
     const tech = TECHS[id];
@@ -82,6 +88,8 @@ export function computeEffects(researched: readonly TechId[]): EmpireEffects {
     effects.influenceMult *= e.influenceMult ?? 1;
     effects.liftCapacityMult *= e.liftCapacityMult ?? 1;
     effects.liftThroughputMult *= e.liftThroughputMult ?? 1;
+    effects.fuelMult *= e.fuelMult ?? 1;
+    effects.tradeMargin += e.tradeMargin ?? 0;
   }
   return effects;
 }

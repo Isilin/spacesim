@@ -83,6 +83,10 @@ export interface TechEffects {
   liftCapacityMult?: number;
   /** Débit de l'ascenseur orbital. */
   liftThroughputMult?: number;
+  /** Carburant consommé par les convois (< 1 = plus sobre). */
+  fuelMult?: number;
+  /** Prix obtenus en station : ventes mieux payées, achats moins chers. */
+  tradeMargin?: number;
 }
 
 export interface TechDef {
@@ -152,7 +156,7 @@ export const TECHS: Record<TechId, TechDef> = {
     cost: 340,
     durationMs: 300_000,
     requires: ["orbital_logistics", "modular_construction"],
-    effects: { liftThroughputMult: 1.8, liftCapacityMult: 1.4 },
+    effects: { liftThroughputMult: 1.8, liftCapacityMult: 1.4, fuelMult: 0.8 },
   },
   ore_processing: {
     id: "ore_processing",
@@ -339,7 +343,7 @@ export const TECHS: Record<TechId, TechDef> = {
     cost: 420,
     durationMs: 330_000,
     requires: ["tax_reform", "orbital_logistics"],
-    effects: { creditsMult: 1.2, transferSpeedMult: 0.85 },
+    effects: { creditsMult: 1.2, transferSpeedMult: 0.85, tradeMargin: 0.08 },
   },
   // ─── Militaire ─── (débloque les classes de vaisseaux de guerre, content/warships)
   military_doctrine: {

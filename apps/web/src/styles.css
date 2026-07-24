@@ -1357,3 +1357,26 @@ body {
   transform-origin: center;
   transform: rotate(-90deg);
 }
+
+/* ── Vue logistique unifiée (chantier 12) ────────────────────────────────── */
+
+.logistics-tabs {
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.markets-table {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.markets-table tr.best td {
+  background: #101c26;
+}
+
+.colony-logistics-hint {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}

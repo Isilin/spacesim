@@ -10,6 +10,7 @@ import {
   PRICE_MULT_MIN,
   resolvePurchase,
   resolveSale,
+  regionalMultiplier,
   stationPrice,
   TARGET_STOCK,
   type Stocks,
@@ -133,5 +134,57 @@ describe("initialStocks", () => {
     expect(a).toEqual(b);
     expect(a.ore).toBeGreaterThanOrEqual(TARGET_STOCK * 0.6);
     expect(a.ore).toBeLessThanOrEqual(TARGET_STOCK * 1.4);
+  });
+});
+
+describe("prix régionaux (chantier 12)", () => {
+  const ctx = (stationId: string, galaxyIndex: number) => ({ stationId, galaxyIndex });
+
+  it("sans contexte, le barème d'origine est inchangé", () => {
+    expect(stationPrice("metals", TARGET_STOCK)).toBe(BASE_PRICES.metals);
+  });
+
+  it("deux comptoirs n'affichent pas le même prix au même stock", () => {
+    const a = stationPrice("metals", TARGET_STOCK, ctx("gal-0-sys-1-st", 0));
+    const b = stationPrice("metals", TARGET_STOCK, ctx("gal-0-sys-7-st", 0));
+    expect(a).not.toBe(b);
+  });
+
+  it("est déterministe : même station, même prix", () => {
+    const price = () => stationPrice("goods", 500, ctx("gal-2-sys-3-st", 2));
+    expect(price()).toBe(price());
+  });
+
+  it("les anneaux lointains paient cher le manufacturé et bradent le brut", () => {
+    const proche = ctx("comptoir", 0);
+    const lointain = ctx("comptoir", 6);
+    expect(stationPrice("components", 800, lointain)).toBeGreaterThan(
+      stationPrice("components", 800, proche),
+    );
+    expect(stationPrice("ore", 800, lointain)).toBeLessThan(stationPrice("ore", 800, proche));
+  });
+
+  it("l'écart entre galaxies est assez net pour justifier un voyage", () => {
+    const proche = stationPrice("components", 800, ctx("comptoir", 0));
+    const lointain = stationPrice("components", 800, ctx("comptoir", 6));
+    expect(lointain / proche).toBeGreaterThan(1.3);
+  });
+
+  it("le multiplicateur régional reste borné même très loin", () => {
+    const mult = regionalMultiplier("components", ctx("comptoir", 500));
+    expect(mult).toBeLessThan(2);
+    expect(regionalMultiplier("ore", ctx("comptoir", 500))).toBeGreaterThan(0.3);
+  });
+
+  it("ventes et achats appliquent le contexte régional", () => {
+    const stocks = initialStocks(() => 0.5);
+    const local = resolveSale(stocks, { components: 50 }, ctx("comptoir", 0));
+    const distant = resolveSale(stocks, { components: 50 }, ctx("comptoir", 6));
+    expect(distant.revenue).toBeGreaterThan(local.revenue);
+
+    const buyLocal = resolvePurchase(stocks, "components", 1000, Infinity, ctx("comptoir", 0));
+    const buyDistant = resolvePurchase(stocks, "components", 1000, Infinity, ctx("comptoir", 6));
+    // Plus cher au loin : le même budget achète moins.
+    expect(buyDistant.bought).toBeLessThan(buyLocal.bought);
   });
 });

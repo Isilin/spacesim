@@ -17,7 +17,7 @@ import { FleetsView } from "./FleetsView.js";
 import { GatewaysPanel } from "./GatewaysPanel.js";
 import { MapNav, type NavTarget } from "./MapNav.js";
 import { ResearchView } from "./ResearchView.js";
-import { RoutesView } from "./RoutesView.js";
+import { LogisticsView } from "./LogisticsView.js";
 import { SystemPanel } from "./SystemPanel.js";
 import { SystemView } from "./SystemView.js";
 import { UniverseMap } from "./UniverseMap.js";
@@ -280,12 +280,17 @@ export function App({ auth }: Props) {
         </main>
       ) : tab === "logistics" ? (
         <main className="content-single">
-          <RoutesView
+          <LogisticsView
             routes={routes}
             colonies={colonies}
+            colony={colony}
+            transfers={transfers}
             universe={universe}
             exploredSystemIds={exploredSystemIds}
             outposts={outposts}
+            markets={markets}
+            effects={effects}
+            portalLinks={portalLinks}
             now={now}
             send={send}
           />

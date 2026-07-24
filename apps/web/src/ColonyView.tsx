@@ -6,6 +6,8 @@ import {
   canAfford,
   colonyRates,
   colonyShortages,
+  orbitalCap,
+  orbitalUsed,
   housing,
   MAX_QUEUE_LENGTH,
   popCap,
@@ -26,9 +28,9 @@ import {
 } from "@spacesim/shared";
 import { useEffect, useState } from "react";
 import { BUILDING_LABELS, PLANET_TYPE_LABELS, RESOURCE_LABELS, TECH_LABELS } from "./labels.js";
-import { OrbitPanel } from "./OrbitPanel.js";
+
 import { ShipyardPanel } from "./ShipyardPanel.js";
-import { TransferPanel } from "./TransferPanel.js";
+
 
 interface Props {
   colony: Colony;
@@ -267,8 +269,6 @@ export function ColonyView({
             </ul>
           )}
 
-          <OrbitPanel colony={colony} effects={effects} send={send} />
-
           <ShipyardPanel
             colony={colony}
             routes={routes}
@@ -277,17 +277,12 @@ export function ColonyView({
             send={send}
           />
 
-          <TransferPanel
-            colony={colony}
-            colonies={colonies}
-            transfers={transfers}
-            universe={universe}
-            transferSpeedMult={effects.transferSpeedMult}
-            routes={routes}
-            portalLinks={portalLinks}
-            now={now}
-            send={send}
-          />
+          {/* Convois, ascenseur orbital et marchés vivent dans l'onglet Logistique
+              (chantier 12D) : cette vue reste centrée sur la production au sol. */}
+          <p className="small muted colony-logistics-hint">
+            Soute orbitale : {Math.floor(orbitalUsed(colony))}/{orbitalCap(colony, effects)} —
+            réglages et convois dans l'onglet Logistique.
+          </p>
         </section>
       </div>
     </div>

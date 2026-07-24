@@ -66,6 +66,16 @@ export function StationPanel({
   const [buyBudget, setBuyBudget] = useState("");
   const faction = FACTION_LABELS[station.factionId as FactionId];
 
+  // Contexte régional (chantier 12) : le comptoir a son propre barème selon son
+  // éloignement — c'est ce qui fait qu'un aller-retour peut valoir le carburant.
+  const priceContext = {
+    stationId: station.id,
+    galaxyIndex: universe.galaxies.findIndex((g) =>
+      g.systems.some((s) => s.id === station.systemId),
+    ),
+    factionId: station.factionId,
+  };
+
   const fromSystem = activeColony ? systemIdOf(universe, activeColony.planetId) : undefined;
   const jumps = fromSystem
     ? jumpDistanceInUniverse(universe, fromSystem, station.systemId, portalLinks)
@@ -86,12 +96,12 @@ export function StationPanel({
   const totalCargo = Object.values(cargo).reduce((s, n) => s + n, 0);
   const convoyCapacity = activeColony ? maxConvoyCapacity(activeColony, routes) : 0;
   const overCapacity = totalCargo > convoyCapacity;
-  const estimatedRevenue = market && hasCargo ? resolveSale(market.stocks, cargo).revenue : 0;
+  const estimatedRevenue = market && hasCargo ? resolveSale(market.stocks, cargo, priceContext).revenue : 0;
 
   const budget = Math.floor(Number(buyBudget));
   const validBudget = Number.isFinite(budget) && budget > 0;
   const estimatedPurchase =
-    market && validBudget ? resolvePurchase(market.stocks, buyResource, budget) : null;
+    market && validBudget ? resolvePurchase(market.stocks, buyResource, budget, Infinity, priceContext) : null;
 
   const canTrade = activeColony && jumps >= 0;
 
@@ -132,14 +142,21 @@ export function StationPanel({
           <tbody>
             {MARKET_RESOURCES.map((res) => {
               const stock = market.stocks[res];
-              const price = stationPrice(res, stock);
-              const trend = price > BASE_PRICES[res] * 1.15 ? "high" : price < BASE_PRICES[res] * 0.85 ? "low" : "";
+              const price = stationPrice(res, stock, priceContext);
+              // Écart au prix de référence : c'est lui qui signale une occasion.
+              const gap = price / BASE_PRICES[res] - 1;
+              const trend = gap > 0.15 ? "high" : gap < -0.15 ? "low" : "";
               return (
                 <tr key={res}>
                   <td>{RESOURCE_LABELS[res]}</td>
                   <td className="muted">{Math.floor(stock)}</td>
                   <td className={trend === "high" ? "ok" : trend === "low" ? "ko" : ""}>
                     {price.toFixed(2)}
+                    <span className="muted small">
+                      {" "}
+                      ({gap >= 0 ? "+" : ""}
+                      {Math.round(gap * 100)} %)
+                    </span>
                     {trend === "high" ? " ▲" : trend === "low" ? " ▼" : ""}
                   </td>
                 </tr>
@@ -170,13 +187,14 @@ export function StationPanel({
         <>
           <div className="transfer-form">
             <strong className="small">Vendre</strong>
+            {/* On ne vend que ce qui est déjà en orbite (chantier 12). */}
             {MARKET_RESOURCES.map((res) => (
               <label key={res} className="small muted transfer-amount">
-                {RESOURCE_LABELS[res]}
+                {RESOURCE_LABELS[res]} (orbite : {Math.floor(activeColony.orbitalResources[res] ?? 0)})
                 <input
                   type="number"
                   min={0}
-                  max={Math.floor(activeColony.resources[res])}
+                  max={Math.floor(activeColony.orbitalResources[res] ?? 0)}
                   value={sellAmounts[res] ?? ""}
                   placeholder="0"
                   onChange={(e) => setSellAmounts({ ...sellAmounts, [res]: e.target.value })}

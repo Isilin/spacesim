@@ -155,7 +155,8 @@ export const TECH_LABELS: Record<TechId, { name: string; description: string }> 
   },
   space_elevator: {
     name: "Ascenseur spatial",
-    description: "Un ruban jusqu'à l'orbite. Débit d'ascension +80 %, capacité orbitale +40 %.",
+    description:
+      "Un ruban jusqu'à l'orbite. Débit +80 %, capacité +40 %, carburant des convois −20 %. Débloque le transporteur.",
   },
   astro_cartography: {
     name: "Cartographie stellaire",
@@ -261,7 +262,8 @@ export const TECH_LABELS: Record<TechId, { name: string; description: string }> 
   },
   trade_charters: {
     name: "Chartes commerciales",
-    description: "Des couloirs marchands protégés. Crédits +20 %, convois 15 % plus rapides.",
+    description:
+      "Des couloirs marchands protégés. Crédits +20 %, convois 15 % plus rapides, marge en station +8 %.",
   },
   point_defense: {
     name: "Défense rapprochée",
