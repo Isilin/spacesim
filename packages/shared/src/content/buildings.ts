@@ -103,4 +103,12 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     jobsPerInstance: 4,
     // Génère de l'influence (sim/influence.ts), pas de production matérielle.
   },
+  orbital_dock: {
+    id: "orbital_dock",
+    cost: { ore: 220, metals: 90 },
+    buildMs: 60_000,
+    jobsPerInstance: 4,
+    // Capacité de stockage orbital et débit de l'ascenseur (sim/orbital.ts) :
+    // sans dock, une colonie ne peut rien charger à bord d'un vaisseau.
+  },
 };

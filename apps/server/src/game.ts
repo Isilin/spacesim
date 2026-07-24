@@ -4,6 +4,7 @@ import {
   allStations,
   allSystems,
   applyColonyTick,
+  applyLift,
   beltRichness,
   canResearch,
   CLAIM_COST,
@@ -16,6 +17,7 @@ import {
   CONTIGUOUS_CLAIM_BONUS,
   createRng,
   ECONOMY_TICK_TICKS,
+  emptyOrbital,
   emptyResources,
   enqueueBuilding,
   enqueueShip,
@@ -41,6 +43,7 @@ import {
   marketTick,
   initialStocks,
   MAX_CATCHUP_TICKS,
+  NEW_COLONY_ORBITAL,
   NEW_COLONY_POPULATION,
   NEW_COLONY_RESOURCES,
   OUTPOST_COST,
@@ -2465,7 +2468,11 @@ export class GameEngine {
               planetId: planet.id,
               name: planet.name,
               resources: { ...emptyResources(), ...NEW_COLONY_RESOURCES },
-              buildings: { habitat: 1 },
+              // Le vaisseau colonial laisse sur place un dock sommaire : sans lui, la
+              // colonie neuve ne pourrait jamais rien réexporter (chantier 12).
+              orbitalResources: { ...emptyOrbital(), ...NEW_COLONY_ORBITAL },
+              liftRules: {},
+              buildings: { habitat: 1, orbital_dock: 1 },
               queue: [],
               population: NEW_COLONY_POPULATION,
               satisfaction: 60,
@@ -2782,7 +2789,11 @@ export class GameEngine {
       planetId: planet.id,
       name: `${planet.name} — Colonie mère`,
       resources: { ...emptyResources(), ore: 400, energy: 200, food: 200, credits: 50 },
-      buildings: { mine: 1, power_plant: 1, farm: 1, habitat: 1, shipyard: 1 },
+      // La colonie mère naît avec son dock et une soute orbitale amorcée : le premier
+      // convoi doit rester possible sans attendre l'ascenseur (chantier 12).
+      orbitalResources: { ...emptyOrbital(), ore: 150, food: 50 },
+      liftRules: { ore: { keepGround: 250, direction: "up" } },
+      buildings: { mine: 1, power_plant: 1, farm: 1, habitat: 1, shipyard: 1, orbital_dock: 1 },
       queue: [],
       population: 12,
       satisfaction: 80,
@@ -2807,6 +2818,8 @@ export class GameEngine {
         planetId: colony.planetId,
         name: colony.name,
         resources: JSON.stringify(colony.resources),
+        orbitalResources: JSON.stringify(colony.orbitalResources),
+        liftRules: JSON.stringify(colony.liftRules),
         buildings: JSON.stringify(colony.buildings),
         queue: JSON.stringify(colony.queue),
         population: colony.population,
@@ -2830,6 +2843,8 @@ export class GameEngine {
         planetId: row.planetId,
         name: row.name,
         resources: JSON.parse(row.resources),
+        orbitalResources: { ...emptyOrbital(), ...JSON.parse(row.orbitalResources) },
+        liftRules: JSON.parse(row.liftRules),
         buildings: JSON.parse(row.buildings),
         queue: JSON.parse(row.queue),
         population: row.population,
@@ -2845,6 +2860,8 @@ export class GameEngine {
     db.update(schema.colonies)
       .set({
         resources: JSON.stringify(colony.resources),
+        orbitalResources: JSON.stringify(colony.orbitalResources),
+        liftRules: JSON.stringify(colony.liftRules),
         buildings: JSON.stringify(colony.buildings),
         queue: JSON.stringify(colony.queue),
         population: colony.population,
@@ -2925,9 +2942,10 @@ export class GameEngine {
       const effects = claimed
         ? { ...empire.effects, outputMultAll: empire.effects.outputMultAll * CLAIM_PRODUCTION_BONUS }
         : empire.effects;
+      // L'ascenseur tourne après la production : ce qui vient d'être produit peut monter.
       empire.colonyMap.set(
         id,
-        applyColonyTick(resolveShips(resolveQueue(colony, t), t), planet, effects),
+        applyLift(applyColonyTick(resolveShips(resolveQueue(colony, t), t), planet, effects), effects),
       );
     }
   }

@@ -82,3 +82,15 @@ export const COLONY_SHIP_MS_PER_JUMP = 90_000;
 /** Dotation d'une colonie fondée par vaisseau colonial. */
 export const NEW_COLONY_POPULATION = 10;
 export const NEW_COLONY_RESOURCES = { ore: 100, energy: 50, food: 100 } as const;
+/** Soute orbitale léguée par le vaisseau colonial démantelé (chantier 12). */
+export const NEW_COLONY_ORBITAL = { ore: 40 } as const;
+
+/**
+ * Couche orbitale (chantier 12) : les vaisseaux ne chargent qu'en orbite. Le dock
+ * orbital fixe à la fois ce qu'on peut y entreposer et le débit de l'ascenseur.
+ */
+export const ORBITAL_CAP_PER_DOCK = 600;
+/** Unités hissées (ou redescendues) par tick et par dock. */
+export const LIFT_PER_DOCK = 15;
+/** Énergie consommée au sol par unité hissée — monter coûte, redescendre est gratuit. */
+export const LIFT_ENERGY_PER_UNIT = 0.04;

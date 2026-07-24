@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BASE_STORAGE, MAX_QUEUE_LENGTH } from "../constants.js";
 import { BUILDINGS } from "../content/buildings.js";
+import { emptyOrbital } from "./orbital.js";
 import { computeEffects } from "./research.js";
 import type { Colony, Planet } from "../types.js";
 import {
@@ -36,6 +37,8 @@ function makeColony(overrides: Partial<Colony> = {}): Colony {
     planetId: planet.id,
     name: "Base",
     resources: { ...emptyResources(), ore: 500, energy: 200, food: 100 },
+    orbitalResources: emptyOrbital(),
+    liftRules: {},
     buildings: {},
     queue: [],
     population: 100,

@@ -23,6 +23,10 @@ export interface EmpireEffects {
   shipBuildSpeedMult: number;
   outpostYieldMult: number;
   influenceMult: number;
+  /** Capacité du stock orbital (chantier 12). */
+  liftCapacityMult: number;
+  /** Débit de l'ascenseur orbital. */
+  liftThroughputMult: number;
 }
 
 export function computeEffects(researched: readonly TechId[]): EmpireEffects {
@@ -47,6 +51,8 @@ export function computeEffects(researched: readonly TechId[]): EmpireEffects {
     shipBuildSpeedMult: 1,
     outpostYieldMult: 1,
     influenceMult: 1,
+    liftCapacityMult: 1,
+    liftThroughputMult: 1,
   };
   for (const id of researched) {
     const tech = TECHS[id];
@@ -74,6 +80,8 @@ export function computeEffects(researched: readonly TechId[]): EmpireEffects {
     effects.shipBuildSpeedMult *= e.shipBuildSpeedMult ?? 1;
     effects.outpostYieldMult *= e.outpostYieldMult ?? 1;
     effects.influenceMult *= e.influenceMult ?? 1;
+    effects.liftCapacityMult *= e.liftCapacityMult ?? 1;
+    effects.liftThroughputMult *= e.liftThroughputMult ?? 1;
   }
   return effects;
 }

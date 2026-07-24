@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Colony } from "../types.js";
 import { emptyResources } from "./colony.js";
+import { emptyOrbital } from "./orbital.js";
 import {
   CLAIM_UPKEEP,
   colonizeInfluenceCost,
@@ -16,6 +17,8 @@ function makeColony(overrides: Partial<Colony> = {}): Colony {
     planetId: "p1",
     name: "Base",
     resources: emptyResources(),
+    orbitalResources: emptyOrbital(),
+    liftRules: {},
     buildings: {},
     queue: [],
     population: 100,

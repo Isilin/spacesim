@@ -10,6 +10,7 @@ export const TECH_IDS = [
   "fusion_power",
   "automation",
   "orbital_logistics",
+  "space_elevator",
   "ore_processing",
   "modular_construction",
   "heavy_industry",
@@ -78,6 +79,10 @@ export interface TechEffects {
   outpostYieldMult?: number;
   /** Influence générée par tick. */
   influenceMult?: number;
+  /** Capacité du stock orbital (chantier 12). */
+  liftCapacityMult?: number;
+  /** Débit de l'ascenseur orbital. */
+  liftThroughputMult?: number;
 }
 
 export interface TechDef {
@@ -139,7 +144,15 @@ export const TECHS: Record<TechId, TechDef> = {
     cost: 150,
     durationMs: 180_000,
     requires: ["industrial_chains"],
-    effects: { transferSpeedMult: 0.7 },
+    effects: { transferSpeedMult: 0.7, unlockBuildings: ["orbital_dock"] },
+  },
+  space_elevator: {
+    id: "space_elevator",
+    branch: "industry",
+    cost: 340,
+    durationMs: 300_000,
+    requires: ["orbital_logistics", "modular_construction"],
+    effects: { liftThroughputMult: 1.8, liftCapacityMult: 1.4 },
   },
   ore_processing: {
     id: "ore_processing",

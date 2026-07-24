@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SHIPS } from "../content/ships.js";
 import type { Colony, Route } from "../types.js";
 import { emptyResources } from "./colony.js";
+import { emptyOrbital } from "./orbital.js";
 import { enqueueShip, fleetCapacity, idleShips, pickShip, resolveShips } from "./ships.js";
 import { routeCargoQuantity } from "./routes.js";
 
@@ -11,6 +12,8 @@ function makeColony(overrides: Partial<Colony> = {}): Colony {
     planetId: "p1",
     name: "Base",
     resources: { ...emptyResources(), metals: 500, components: 100 },
+    orbitalResources: emptyOrbital(),
+    liftRules: {},
     buildings: { shipyard: 1 },
     queue: [],
     population: 100,

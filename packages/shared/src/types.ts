@@ -155,6 +155,7 @@ export const BUILDING_IDS = [
   "goods_factory",
   "shipyard",
   "monument",
+  "orbital_dock",
 ] as const;
 
 export type BuildingId = (typeof BUILDING_IDS)[number];
@@ -184,13 +185,32 @@ export interface BuildQueueItem {
   finishesAt: number;
 }
 
+/**
+ * Règle d'ascension d'une ressource (chantier 12) : ce qu'on garde au sol et dans
+ * quel sens le surplus circule entre la surface et l'orbite.
+ */
+export interface LiftRule {
+  /** Quantité conservée au sol (sens `up`) ou visée au sol (sens `down`). */
+  keepGround: number;
+  /** `up` : monter le surplus en orbite. `down` : redescendre l'orbite vers le sol. */
+  direction: "up" | "down";
+}
+
 export interface Colony {
   id: string;
   /** Empire propriétaire (chantier 7 ; optionnel pendant la transition mono→multi). */
   ownerId?: string;
   planetId: string;
   name: string;
+  /** Stock au sol : ce que produisent et consomment les bâtiments. */
   resources: Record<ResourceId, number>;
+  /**
+   * Stock en orbite (chantier 12) : la seule soute que les vaisseaux savent charger.
+   * Alimenté depuis le sol par le dock orbital, selon `liftRules`.
+   */
+  orbitalResources: Record<ResourceId, number>;
+  /** Consignes d'ascension par ressource ; absente = ressource laissée au sol. */
+  liftRules: Partial<Record<ResourceId, LiftRule>>;
   /** Nombre d'instances par type de bâtiment (0 = absent). */
   buildings: Partial<Record<BuildingId, number>>;
   queue: BuildQueueItem[];

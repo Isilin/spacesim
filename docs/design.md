@@ -5,6 +5,8 @@
 > transport, prix régionaux). Voir « Chantiers 8 → 12 » en fin de document.
 > **8 livré** : comptes e-mail + mot de passe, sessions, WS authentifié.
 > **9 livré** : univers extensible à l'infini (frontière glissante) + cartes zoomables et navigables.
+> **10 livré** : vue planète/lune (schéma orbital, fiche physique, emplacements).
+> **11 livré** : arbre de recherche en graphe, 35 techs, chaînes planifiables.
 >
 > **État (21/07/2026)** : jalons 1 à 7 implémentés et vérifiés — le MVP décrit ici est jouable.
 > **Pivot EVE-like (13/07/2026)** : plus de niveaux de bâtiments — on empile des **instances**

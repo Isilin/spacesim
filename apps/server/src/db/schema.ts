@@ -141,6 +141,10 @@ export const colonies = sqliteTable("colonies", {
   planetId: text("planet_id").notNull(),
   name: text("name").notNull(),
   resources: text("resources").notNull(),
+  /** JSON : stock en orbite — la seule soute chargeable par un vaisseau (chantier 12). */
+  orbitalResources: text("orbital_resources").notNull().default("{}"),
+  /** JSON : consignes d'ascension sol↔orbite par ressource. */
+  liftRules: text("lift_rules").notNull().default("{}"),
   buildings: text("buildings").notNull(),
   queue: text("queue").notNull(),
   population: real("population").notNull().default(0),

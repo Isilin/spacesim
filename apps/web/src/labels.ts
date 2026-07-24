@@ -45,6 +45,11 @@ export const BUILDING_LABELS: Record<BuildingId, { name: string; description: st
     name: "Monument",
     description: "Rayonnement culturel : +0,5 influence par tick.",
   },
+  orbital_dock: {
+    name: "Dock orbital",
+    description:
+      "Entrepôt en orbite et ascenseur vers le sol. Indispensable : les vaisseaux ne chargent que ce qui est en orbite.",
+  },
 };
 
 /** Paliers de réputation, du plus haut au plus bas (aligné sur REP_TIERS). */
@@ -138,7 +143,11 @@ export const TECH_LABELS: Record<TechId, { name: string; description: string }> 
   },
   orbital_logistics: {
     name: "Logistique orbitale",
-    description: "Élévateurs et docks en orbite basse. Convois 30 % plus rapides.",
+    description: "Docks en orbite basse. Débloque le dock orbital, convois 30 % plus rapides.",
+  },
+  space_elevator: {
+    name: "Ascenseur spatial",
+    description: "Un ruban jusqu'à l'orbite. Débit d'ascension +80 %, capacité orbitale +40 %.",
   },
   astro_cartography: {
     name: "Cartographie stellaire",
