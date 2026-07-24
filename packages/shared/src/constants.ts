@@ -63,6 +63,9 @@ export const SATISFACTION_GROWTH_THRESHOLD = 50;
 /** Biens de consommation par colon et par tick (manque toléré : pèse sur la satisfaction). */
 export const GOODS_PER_COLONIST = 0.02;
 
+/** Fraction des ressources d'une colonie pillée lors d'un raid PvP réussi (chantier 7d). */
+export const RAID_FRACTION = 0.25;
+
 /** Convois cargo : temps et coût selon la distance en sauts. */
 export const TRANSFER_BASE_MS = 30_000;
 export const TRANSFER_MS_PER_JUMP = 60_000;

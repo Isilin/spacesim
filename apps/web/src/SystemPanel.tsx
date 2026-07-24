@@ -16,7 +16,8 @@ import {
   type StationMarket,
   type Universe,
 } from "@spacesim/shared";
-import { BodyActions, COLONY_SHIP_COST_TEXT, formatEta } from "./BodyActions.js";
+import { BodyActions, COLONY_SHIP_COST_TEXT } from "./BodyActions.js";
+import { formatDuration } from "./format.js";
 import { PLANET_TYPE_LABELS, RESOURCE_LABELS } from "./labels.js";
 import { StationPanel } from "./StationPanel.js";
 
@@ -70,7 +71,7 @@ export function SystemPanel({
         <h2>{system.name}</h2>
         <p className="muted">Système non exploré.</p>
         {probeMission ? (
-          <p className="small ok">Sonde en route — {formatEta(probeMission.arrivesAt - now)}</p>
+          <p className="small ok">Sonde en route — {formatDuration(probeMission.arrivesAt - now)}</p>
         ) : (
           <button
             className="action-button"
@@ -223,7 +224,7 @@ export function SystemPanel({
                 </p>
               ) : buildMission ? (
                 <p className="small ok">
-                  Chantier en route — {formatEta(buildMission.arrivesAt - now)}
+                  Chantier en route — {formatDuration(buildMission.arrivesAt - now)}
                 </p>
               ) : (
                 <button

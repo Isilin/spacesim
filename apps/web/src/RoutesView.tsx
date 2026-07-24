@@ -17,6 +17,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
+import { formatDuration } from "./format.js";
 import { RESOURCE_LABELS, SHIP_LABELS } from "./labels.js";
 
 interface Props {
@@ -37,11 +38,6 @@ const RULE_LABELS: Record<RuleType, string> = {
   surplus: "Exporter le surplus",
 };
 
-function formatEta(ms: number): string {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(s / 60);
-  return m > 0 ? `${m}m${String(s % 60).padStart(2, "0")}s` : `${s}s`;
-}
 
 export function RoutesView({
   routes,
@@ -144,8 +140,8 @@ export function RoutesView({
               ? "en pause"
               : cycle
                 ? cycle.carrying > 0
-                  ? `en route (${cycle.carrying} ${RESOURCE_LABELS[route.resource]}) — livraison ${formatEta(cycle.arrivesAt - now)}`
-                  : `retour — ${formatEta(cycle.backAt - now)}`
+                  ? `en route (${cycle.carrying} ${RESOURCE_LABELS[route.resource]}) — livraison ${formatDuration(cycle.arrivesAt - now)}`
+                  : `retour — ${formatDuration(cycle.backAt - now)}`
                 : "au repos (règle non déclenchée)";
             return (
               <li key={route.id} className="route-item">

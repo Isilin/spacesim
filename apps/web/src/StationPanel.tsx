@@ -1,5 +1,4 @@
 import {
-  allSystems,
   BASE_PRICES,
   jumpDistanceInUniverse,
   MARKET_RESOURCES,
@@ -22,6 +21,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
+import { formatDuration, systemIdOf } from "./format.js";
 import { FACTION_LABELS, RESOURCE_LABELS, repTierName } from "./labels.js";
 
 interface Props {
@@ -38,15 +38,7 @@ interface Props {
   send: (msg: ClientMessage) => void;
 }
 
-function formatEta(ms: number): string {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(s / 60);
-  return m > 0 ? `${m}m${String(s % 60).padStart(2, "0")}s` : `${s}s`;
-}
 
-function systemIdOf(universe: Universe, planetId: string): string | undefined {
-  return allSystems(universe).find((s) => s.planets.some((p) => p.id === planetId))?.id;
-}
 
 export function StationPanel({
   station,
@@ -113,7 +105,7 @@ export function StationPanel({
       </p>
       {jumps >= 0 && (
         <p className="small muted">
-          {jumps} saut{jumps > 1 ? "s" : ""} — {formatEta(eta)} — frais {fee} crédits par convoi
+          {jumps} saut{jumps > 1 ? "s" : ""} — {formatDuration(eta)} — frais {fee} crédits par convoi
         </p>
       )}
       {(() => {
@@ -176,7 +168,7 @@ export function StationPanel({
                 <span>
                   {m.kind === "sell" ? "Vente" : m.kind === "buy" ? "Achat (aller)" : "Achat (retour)"}
                 </span>
-                <span className="muted">{formatEta(m.arrivesAt - now)}</span>
+                <span className="muted">{formatDuration(m.arrivesAt - now)}</span>
               </div>
             </li>
           ))}

@@ -1,5 +1,4 @@
 import {
-  allSystems,
   convoyCapacity,
   convoyDurationMs,
   convoyFees,
@@ -18,6 +17,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
+import { formatDuration, systemIdOf } from "./format.js";
 import { RESOURCE_LABELS, SHIP_LABELS } from "./labels.js";
 
 interface Props {
@@ -36,15 +36,7 @@ interface Props {
 
 const CARGO_RESOURCES: ResourceId[] = ["ore", "metals", "components", "food", "goods"];
 
-function systemIdOf(universe: Universe, planetId: string): string | undefined {
-  return allSystems(universe).find((s) => s.planets.some((p) => p.id === planetId))?.id;
-}
 
-function formatEta(ms: number): string {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(s / 60);
-  return m > 0 ? `${m}m${String(s % 60).padStart(2, "0")}s` : `${s}s`;
-}
 
 export function TransferPanel({
   colony,
@@ -130,7 +122,7 @@ export function TransferPanel({
                   <span>
                     {outgoing ? "→" : "←"} {other?.name ?? "?"}
                   </span>
-                  <span className="muted">{formatEta(t.arrivesAt - now)}</span>
+                  <span className="muted">{formatDuration(t.arrivesAt - now)}</span>
                 </div>
                 <span className="small muted">
                   {Object.entries(t.resources)
@@ -191,7 +183,7 @@ export function TransferPanel({
             <span className="small muted">
               {jumps} saut{jumps > 1 ? "s" : ""}
               {portals > 0 ? ` · ${portals} portail${portals > 1 ? "s" : ""}` : ""} —{" "}
-              {formatEta(eta)} — {fees} crédits
+              {formatDuration(eta)} — {fees} crédits
               {hasConvoy ? ` · ${fuel} énergie` : ""}
             </span>
           )}

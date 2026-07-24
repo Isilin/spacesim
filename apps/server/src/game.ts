@@ -56,6 +56,7 @@ import {
   outpostTick,
   PIRATE_SPAWN_CHANCE,
   PIRATE_TAX_PER_TICK,
+  RAID_FRACTION,
   pirateBounty,
   pirateComposition,
   pirateDirectives,
@@ -154,12 +155,6 @@ const DEFAULT_DIRECTIVES: Record<CombatPhase, string> = {
 
 /** Batailles archivées conservées. */
 const MAX_BATTLES = 20;
-
-/**
- * Fraction des ressources d'une colonie pillée lors d'un raid PvP réussi (chantier 7d).
- * TODO équilibrage : déplacer vers `@spacesim/shared` (constantes) lors du passage en revue.
- */
-const RAID_FRACTION = 0.25;
 
 /** Empire par défaut d'une partie solo (chantier 7 — socle multi-locataire). */
 const DEFAULT_PLAYER_NAME = "Empire";

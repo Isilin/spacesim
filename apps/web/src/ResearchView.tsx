@@ -12,6 +12,7 @@ import {
   type TechId,
 } from "@spacesim/shared";
 import { useMemo, useState } from "react";
+import { formatDuration } from "./format.js";
 import { BRANCH_LABELS, TECH_LABELS } from "./labels.js";
 import { ZoomableSvg, type ViewBox } from "./ZoomableSvg.js";
 
@@ -33,13 +34,6 @@ const BAND_PADDING = 26;
 const MARGIN_X = 30;
 const MARGIN_Y = 20;
 
-function formatDuration(ms: number): string {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(s / 60);
-  if (m >= 60) return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
-  if (m > 0) return `${m}m${String(s % 60).padStart(2, "0")}s`;
-  return `${s}s`;
-}
 
 /** Arbre de recherche en graphe : nœuds par branche et profondeur, arêtes de prérequis. */
 export function ResearchView({ game, colonies, now, send }: Props) {

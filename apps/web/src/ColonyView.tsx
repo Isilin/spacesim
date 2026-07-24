@@ -27,6 +27,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useEffect, useState } from "react";
+import { formatDuration } from "./format.js";
 import { BUILDING_LABELS, PLANET_TYPE_LABELS, RESOURCE_LABELS, TECH_LABELS } from "./labels.js";
 
 import { ShipyardPanel } from "./ShipyardPanel.js";
@@ -64,13 +65,6 @@ const SHOWN_RESOURCES: ResourceId[] = [
   "science",
 ];
 
-function formatDuration(ms: number): string {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(s / 60);
-  if (m >= 60) return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
-  if (m > 0) return `${m}m${String(s % 60).padStart(2, "0")}s`;
-  return `${s}s`;
-}
 
 function formatCost(cost: Partial<Record<ResourceId, number>>): string {
   return Object.entries(cost)

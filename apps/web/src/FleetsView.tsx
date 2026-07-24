@@ -20,6 +20,7 @@ import {
   type WarshipId,
 } from "@spacesim/shared";
 import { useState } from "react";
+import { formatDuration } from "./format.js";
 import { DIRECTIVE_LABELS, RESOURCE_LABELS, WARSHIP_LABELS } from "./labels.js";
 
 interface Props {
@@ -49,11 +50,6 @@ const PHASE_LABELS: Record<string, string> = {
   short: "Mêlée",
 };
 
-function formatEta(ms: number): string {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(s / 60);
-  return m > 0 ? `${m}m${String(s % 60).padStart(2, "0")}s` : `${s}s`;
-}
 
 function compositionText(comp: FleetComposition): string {
   const parts = (Object.entries(comp) as [WarshipId, number][])
@@ -100,7 +96,7 @@ export function FleetsView({
                     <strong>{fleet.name}</strong>
                     <span className="muted small">
                       {fleet.movement
-                        ? `→ ${systemName(fleet.movement.toSystemId)} (${formatEta(fleet.movement.arrivesAt - now)})`
+                        ? `→ ${systemName(fleet.movement.toSystemId)} (${formatDuration(fleet.movement.arrivesAt - now)})`
                         : systemName(fleet.systemId)}
                     </span>
                   </div>
@@ -111,7 +107,7 @@ export function FleetsView({
                   {fleet.queue.length > 0 && (
                     <span className="small muted">
                       Production : {WARSHIP_LABELS[fleet.queue[0]!.warshipId as WarshipId].name} —{" "}
-                      {formatEta(fleet.queue[0]!.finishesAt - now)}
+                      {formatDuration(fleet.queue[0]!.finishesAt - now)}
                       {fleet.queue.length > 1 ? ` (+${fleet.queue.length - 1})` : ""}
                     </span>
                   )}

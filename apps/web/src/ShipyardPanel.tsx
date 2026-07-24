@@ -10,6 +10,7 @@ import {
   type Route,
   type TechId,
 } from "@spacesim/shared";
+import { formatDuration } from "./format.js";
 import { RESOURCE_LABELS, SHIP_LABELS, TECH_LABELS } from "./labels.js";
 
 interface Props {
@@ -20,11 +21,6 @@ interface Props {
   send: (msg: ClientMessage) => void;
 }
 
-function formatDuration(ms: number): string {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(s / 60);
-  return m > 0 ? `${m}m${String(s % 60).padStart(2, "0")}s` : `${s}s`;
-}
 
 function formatCost(cost: Partial<Record<ResourceId, number>>): string {
   return Object.entries(cost)

@@ -8,6 +8,7 @@ import {
   type Planet,
   type ResourceId,
 } from "@spacesim/shared";
+import { formatDuration } from "./format.js";
 import { RESOURCE_LABELS } from "./labels.js";
 
 interface Props {
@@ -26,11 +27,6 @@ export const COLONY_SHIP_COST_TEXT = Object.entries(COLONY_SHIP_COST)
   .map(([res, n]) => `${n} ${RESOURCE_LABELS[res as ResourceId]}`)
   .join(" · ");
 
-export function formatEta(ms: number): string {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(s / 60);
-  return m > 0 ? `${m}m${String(s % 60).padStart(2, "0")}s` : `${s}s`;
-}
 
 /**
  * Actions possibles sur un corps (chantier 10) : colonisation, ou état en cours.
@@ -43,7 +39,7 @@ export function BodyActions({ body, colonies, missions, activeColony, game, now,
   if (colony) return <p className="small ok">● {colony.name}</p>;
   if (incoming) {
     return (
-      <p className="small ok">Vaisseau colonial en route — {formatEta(incoming.arrivesAt - now)}</p>
+      <p className="small ok">Vaisseau colonial en route — {formatDuration(incoming.arrivesAt - now)}</p>
     );
   }
   if (body.type === "gas") {
