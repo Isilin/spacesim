@@ -177,6 +177,22 @@ export interface BusyShip {
   freeAt: number;
 }
 
+/**
+ * Plan de vaisseau (chantier 13) : un châssis garni de modules, propre à un empire.
+ * Les ids restent `string` ici (types.ts est la base, importée par `content/*`) ;
+ * le typage fort (ChassisId/ModuleId) et la validation vivent dans `sim/design`.
+ */
+export interface Blueprint {
+  id: string;
+  /** Empire propriétaire du plan. */
+  ownerId: string;
+  name: string;
+  chassisId: string;
+  /** Un module par emplacement rempli (validé contre les slots + budgets du châssis). */
+  modules: string[];
+  createdAt: number;
+}
+
 /** Une instance de bâtiment en construction (pas de niveaux : on empile les instances). */
 export interface BuildQueueItem {
   buildingId: BuildingId;
