@@ -1,4 +1,6 @@
 import {
+  galaxyLinks,
+  galaxyParentIndex,
   gatewayProgressRatio,
   MAP_HEIGHT,
   MAP_WIDTH,
@@ -20,21 +22,61 @@ interface Props {
   onSelect: (galaxy: Galaxy) => void;
 }
 
-/** Rayon du halo d'une galaxie sur la carte d'univers. */
-const HALO = 90;
+/** Rayon de la zone de clic / d'espacement d'une galaxie. */
+const HALO = 96;
+/** Rayon du disque visible d'une galaxie (le glyphe tient dedans). */
+const DISC = 60;
 
 /** Marge autour de l'amas lors du cadrage d'accueil. */
-const PADDING = 160;
+const PADDING = 180;
 
 /**
  * Seuils de niveau de détail, exprimés en largeur de vue : plus la vue est large,
- * plus on est loin, moins on affiche. Sans cela, un univers de 200 galaxies
- * dégénère en bouillie de texte.
+ * plus on est loin, moins on affiche.
  */
-const LABEL_MAX_WIDTH = 4200;
-const STATS_MAX_WIDTH = 2400;
+const LABEL_MAX_WIDTH = 4600;
+const STATS_MAX_WIDTH = 2600;
 
-/** Niveau univers : les galaxies comme nœuds sur une spirale sans bord, drill-down au clic. */
+/** Points d'un bras spiral, déterministes par galaxie. */
+interface GlyphDot {
+  x: number;
+  y: number;
+  r: number;
+  o: number;
+}
+
+/**
+ * Glyphe d'une galaxie spirale, entièrement déterministe (index + richesse) : cœur
+ * lumineux, bras logarithmiques, disque incliné. Remplace l'ancien semis de points
+ * qui ne « parlait » pas.
+ */
+function galaxyGlyph(index: number, depositBonus: number) {
+  const arms = 2 + (index % 2); // 2 ou 3 bras
+  const rotationDeg = (index * 57) % 360;
+  const tilt = 0.42 + (index % 4) * 0.07; // aplatissement du disque (vue inclinée)
+  // Teinte : bleu près de la mère, ambre pour les anneaux lointains (plus riches).
+  const hue = Math.round(210 - Math.min(1, (depositBonus - 1) / 2) * 168);
+  const perArm = 26;
+  const spread = 3.0; // enroulement d'un bras (radians)
+  const dots: GlyphDot[] = [];
+  for (let a = 0; a < arms; a++) {
+    const base = (a / arms) * Math.PI * 2;
+    for (let i = 0; i < perArm; i++) {
+      const t = i / (perArm - 1);
+      const theta = base + t * spread;
+      const rad = 7 + t * (DISC - 7);
+      dots.push({
+        x: Math.cos(theta) * rad,
+        y: Math.sin(theta) * rad,
+        r: 2.7 * (1 - t) + 0.5,
+        o: 0.85 * (1 - t * 0.55),
+      });
+    }
+  }
+  return { arms, rotationDeg, tilt, hue, dots };
+}
+
+/** Niveau univers : galaxies spirales sur la toile, réseau de trous de ver de proche en proche. */
 export function UniverseMap({
   universe,
   colonies,
@@ -45,9 +87,36 @@ export function UniverseMap({
 }: Props) {
   const explored = new Set(exploredSystemIds);
   const colonyPlanetIds = new Set(colonies.map((c) => c.planetId));
-  const home = universe.galaxies[0];
 
-  // Cadrage d'accueil : tout l'amas connu tient dans la vue, quel que soit son étalement.
+  const links = useMemo(() => galaxyLinks(universe), [universe]);
+  const gatewayByGalaxy = useMemo(
+    () => new Map(gateways.map((g) => [g.galaxyId, g])),
+    [gateways],
+  );
+
+  /**
+   * Galaxies atteignables : la mère, plus toute galaxie dont le portail est actif ET
+   * dont la parente est elle-même atteignable (chaîne complète depuis la mère).
+   */
+  const reachable = useMemo(() => {
+    const set = new Set<number>([0]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let i = 1; i < universe.galaxies.length; i++) {
+        if (set.has(i)) continue;
+        const parent = galaxyParentIndex(universe, i);
+        const active = gatewayByGalaxy.get(universe.galaxies[i]!.id)?.active;
+        if (active && parent !== null && set.has(parent)) {
+          set.add(i);
+          changed = true;
+        }
+      }
+    }
+    return set;
+  }, [universe, gatewayByGalaxy]);
+
+  // Cadrage d'accueil : tout l'amas connu tient dans la vue.
   const homeView = useMemo<ViewBox>(() => {
     const xs = universe.galaxies.map((g) => g.x);
     const ys = universe.galaxies.map((g) => g.y);
@@ -55,7 +124,6 @@ export function UniverseMap({
     const maxX = Math.max(...xs) + PADDING;
     const minY = Math.min(...ys) - PADDING;
     const maxY = Math.max(...ys) + PADDING;
-    // On conserve le rapport d'aspect de la carte pour ne pas déformer les halos.
     const width = Math.max(maxX - minX, ((maxY - minY) * MAP_WIDTH) / MAP_HEIGHT);
     const height = (width * MAP_HEIGHT) / MAP_WIDTH;
     return {
@@ -70,95 +138,115 @@ export function UniverseMap({
   const showLabels = view.width < LABEL_MAX_WIDTH;
   const showStats = view.width < STATS_MAX_WIDTH;
 
-  /** Ne dessiner que les galaxies dans le cadre (marge d'un halo). */
-  const visible = universe.galaxies.filter(
-    (g) =>
-      g.x + HALO >= view.x &&
-      g.x - HALO <= view.x + view.width &&
-      g.y + HALO >= view.y &&
-      g.y - HALO <= view.y + view.height,
-  );
+  const inView = (g: Galaxy) =>
+    g.x + HALO >= view.x &&
+    g.x - HALO <= view.x + view.width &&
+    g.y + HALO >= view.y &&
+    g.y - HALO <= view.y + view.height;
+  const visible = universe.galaxies.filter(inView);
 
   return (
     <ZoomableSvg
-      className="galaxy-map"
+      className="galaxy-map universe-map"
       home={homeView}
       focus={focus}
       ariaLabel="Carte de l'univers"
       onViewChange={setView}
     >
-      {gateways
-        .filter((g) => g.active)
-        .map((g) => {
-          const target = universe.galaxies.find((gal) => gal.id === g.galaxyId);
-          if (!target || !home) return null;
-          return (
+      <defs>
+        <radialGradient id="galaxy-core" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+          <stop offset="35%" stopColor="#e6efff" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="#e6efff" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+
+      {/* Réseau inter-galactique : arêtes de l'arbre de voisinage. */}
+      {links.map((link) => {
+        const gw = gatewayByGalaxy.get(link.child.id);
+        const discovered =
+          !!gw?.active && reachable.has(link.parentIndex) && reachable.has(link.childIndex);
+        const building = !discovered && reachable.has(link.parentIndex) && !!gw && !gw.active;
+        const cls = discovered ? "discovered" : building ? "building" : "potential";
+        const mx = (link.parent.x + link.child.x) / 2;
+        const my = (link.parent.y + link.child.y) / 2;
+        return (
+          <g key={`${link.parentIndex}-${link.childIndex}`}>
             <line
-              key={g.galaxyId}
-              x1={home.x}
-              y1={home.y}
-              x2={target.x}
-              y2={target.y}
-              className="gateway-line"
+              x1={link.parent.x}
+              y1={link.parent.y}
+              x2={link.child.x}
+              y2={link.child.y}
+              className={`wormhole ${cls}`}
             />
-          );
-        })}
+            {discovered && <circle cx={mx} cy={my} r={4} className="wormhole-node" />}
+            {building && showStats && (
+              <text x={mx} y={my - 8} textAnchor="middle" className="galaxy-sub muted">
+                {gw!.activatesAt
+                  ? "chantier final…"
+                  : `${Math.round(gatewayProgressRatio(gw!) * 100)} %`}
+              </text>
+            )}
+          </g>
+        );
+      })}
+
       {visible.map((galaxy) => {
         const gi = universe.galaxies.indexOf(galaxy);
         const exploredCount = galaxy.systems.filter((s) => explored.has(s.id)).length;
         const colonyCount = galaxy.systems
           .flatMap((s) => s.planets)
           .filter((p) => colonyPlanetIds.has(p.id)).length;
-        const gateway = gateways.find((g) => g.galaxyId === galaxy.id);
-        const reachable = gi === 0 || !!gateway?.active;
+        const isReachable = reachable.has(gi);
+        const glyph = galaxyGlyph(gi, galaxy.depositBonus);
+        const dotColor = `hsl(${glyph.hue} 72% 74%)`;
         return (
           <g
             key={galaxy.id}
             className={[
               "galaxy-node",
-              reachable ? "reachable" : "far",
+              isReachable ? "reachable" : "far",
               colonyCount > 0 ? "settled" : "",
             ].join(" ")}
             transform={`translate(${galaxy.x}, ${galaxy.y})`}
             onClick={() => onSelect(galaxy)}
           >
-            <circle r={HALO} className="galaxy-halo" />
-            {/* Amas d'étoiles décoratif, déterministe par index. */}
-            {galaxy.systems.slice(0, 12).map((s, i) => {
-              const angle = (i / 12) * Math.PI * 2 + gi;
-              const dist = 15 + ((i * 37) % 55);
-              return (
-                <circle
-                  key={s.id}
-                  cx={Math.cos(angle) * dist}
-                  cy={Math.sin(angle) * dist * 0.6}
-                  r={i % 3 === 0 ? 2.5 : 1.5}
-                  className="galaxy-star"
-                />
-              );
-            })}
-            {colonyCount > 0 && <circle r={HALO - 6} className="galaxy-owned" />}
+            {/* Cercle de clic invisible. */}
+            <circle r={HALO} className="galaxy-hit" />
+
+            <g
+              className="galaxy-glyph"
+              transform={`rotate(${glyph.rotationDeg}) scale(1 ${glyph.tilt})`}
+            >
+              <ellipse
+                rx={DISC * 1.1}
+                ry={DISC * 1.1}
+                className="galaxy-disc"
+                style={{ fill: `hsl(${glyph.hue} 60% 52%)` }}
+              />
+              {glyph.dots.map((d, i) => (
+                <circle key={i} cx={d.x} cy={d.y} r={d.r} fill={dotColor} opacity={d.o} />
+              ))}
+            </g>
+            {/* Cœur lumineux, non incliné pour rester net au centre. */}
+            <circle r={20} fill="url(#galaxy-core)" />
+
+            {colonyCount > 0 && <circle r={DISC + 10} className="galaxy-owned" />}
+
             {showLabels && (
-              <text y={-100} textAnchor="middle" className="galaxy-label">
+              <text y={-DISC - 16} textAnchor="middle" className="galaxy-label">
                 {galaxy.name}
               </text>
             )}
             {showStats && (
-              <text y={118} textAnchor="middle" className="galaxy-sub">
+              <text y={DISC + 26} textAnchor="middle" className="galaxy-sub">
                 {galaxy.systems.length} systèmes · {exploredCount} explorés
                 {colonyCount > 0 ? ` · ${colonyCount} colonies` : ""}
               </text>
             )}
-            {showStats && !reachable && gateway && (
-              <text y={136} textAnchor="middle" className="galaxy-sub muted">
-                {gateway.activatesAt
-                  ? "Portail : chantier final…"
-                  : `Portail : ${Math.round(gatewayProgressRatio(gateway) * 100)} % financé`}
-              </text>
-            )}
-            {showStats && gateway?.active && (
-              <text y={136} textAnchor="middle" className="galaxy-sub gateway-active">
-                ◈ Portail actif — gisements ×{galaxy.depositBonus}
+            {showStats && isReachable && gi > 0 && (
+              <text y={DISC + 42} textAnchor="middle" className="galaxy-sub gateway-active">
+                ◈ Relié — gisements ×{galaxy.depositBonus}
               </text>
             )}
           </g>

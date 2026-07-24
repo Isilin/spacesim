@@ -2305,7 +2305,12 @@ export class GameEngine {
     if (!gateway || gateway.active) return;
     const progress: Partial<Record<ResourceId, number>> = { ...gatewayCost(galaxyId) };
     progress.metals = Math.max(0, (progress.metals ?? 0) - leave);
-    const next: Gateway = { ...gateway, progress };
+    let next: Gateway = { ...gateway, progress };
+    // Coût entièrement couvert (`leave` = 0) : on lance le chantier final tout de suite,
+    // pour qu'un `/dev/fastforward` suffise à ouvrir le portail bout en bout.
+    if (gatewayCovered(next) && !next.activatesAt) {
+      next = { ...next, activatesAt: Date.now() + GATEWAY_BUILD_MS };
+    }
     this.gatewayMap.set(galaxyId, next);
     this.persistGateway(next);
     this.notify();

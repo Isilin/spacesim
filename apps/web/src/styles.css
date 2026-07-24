@@ -564,20 +564,48 @@ body {
 }
 
 .galaxy-node { cursor: pointer; }
-.galaxy-halo {
-  fill: rgba(79, 193, 255, 0.05);
-  stroke: var(--border);
-  stroke-dasharray: 3 5;
-}
-.galaxy-node:hover .galaxy-halo { stroke: var(--accent); }
-.galaxy-node.far .galaxy-star { fill: #46586e; }
-.galaxy-star { fill: #d8e6f5; }
+.galaxy-hit { fill: transparent; }
+
+/* Glyphe de galaxie spirale (chantier 12 — refonte carte). */
+.galaxy-glyph { transition: opacity 0.2s; }
+.galaxy-disc { opacity: 0.07; }
+.galaxy-node:hover .galaxy-glyph { opacity: 1; }
+.galaxy-node:hover .galaxy-disc { opacity: 0.14; }
+/* Galaxie non encore reliée : glyphe assourdi. */
+.galaxy-node.far .galaxy-glyph { opacity: 0.5; }
+.galaxy-node.far .galaxy-disc { opacity: 0.04; }
+
 .galaxy-label {
   fill: var(--text);
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: 3px;
 }
+.galaxy-node.far .galaxy-label { fill: var(--muted); }
 .galaxy-sub { fill: var(--muted); font-size: 11px; }
+
+/* Réseau inter-galactique : arêtes de l'arbre de voisinage. */
+.wormhole { fill: none; }
+.wormhole.potential {
+  stroke: #223148;
+  stroke-width: 1;
+  stroke-dasharray: 3 7;
+  opacity: 0.6;
+}
+.wormhole.building {
+  stroke: #b48fe0;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  opacity: 0.7;
+}
+.wormhole.discovered {
+  stroke: var(--accent);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 3px rgba(79, 193, 255, 0.6));
+}
+.wormhole-node {
+  fill: var(--accent);
+  filter: drop-shadow(0 0 4px rgba(79, 193, 255, 0.8));
+}
 
 .star-core { fill: #ffd27f; }
 .orbit-ring {
@@ -687,14 +715,7 @@ body {
   stroke-dasharray: 4 3;
 }
 
-.gateway-line {
-  stroke: #b48fe0;
-  stroke-width: 1.5;
-  stroke-dasharray: 6 4;
-  opacity: 0.8;
-}
-
-.gateway-active { fill: #b48fe0; }
+.gateway-active { fill: var(--accent); }
 
 .gateways-panel h2 {
   color: #b48fe0;
