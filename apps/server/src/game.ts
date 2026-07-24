@@ -89,6 +89,7 @@ import {
   type ForeignFleet,
   type GalaxyOccupancy,
   type LeaderboardEntry,
+  type LiftRule,
   type Territory,
   type GameState,
   type Gateway,
@@ -567,6 +568,32 @@ export class GameEngine {
       shipId,
       capacity: SHIPS[shipId].capacity,
     };
+  }
+
+  /** Action joueur : régler (ou retirer) la consigne d'ascension d'une ressource. */
+  setLiftRule(
+    empire: Empire,
+    colonyId: string,
+    resource: ResourceId,
+    rule: LiftRule | null,
+  ): string | null {
+    const colony = empire.colonyMap.get(colonyId);
+    if (!colony) return "Colonie inconnue";
+    if (!(RESOURCES as readonly string[]).includes(resource)) return `Ressource inconnue : ${resource}`;
+    const liftRules = { ...colony.liftRules };
+    if (rule === null) {
+      delete liftRules[resource];
+    } else {
+      if (rule.direction !== "up" && rule.direction !== "down") return "Consigne invalide";
+      const keepGround = Math.max(0, Math.floor(Number(rule.keepGround)));
+      if (!Number.isFinite(keepGround)) return "Seuil invalide";
+      liftRules[resource] = { keepGround, direction: rule.direction };
+    }
+    const updated = { ...colony, liftRules };
+    empire.colonyMap.set(colonyId, updated);
+    this.persistColony(updated);
+    this.notify();
+    return null;
   }
 
   /** Action joueur : envoyer un convoi cargo. Retourne un message d'erreur ou null. */

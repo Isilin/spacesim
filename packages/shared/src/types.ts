@@ -462,6 +462,8 @@ export type ClientMessage =
   | { type: "research"; techId: string }
   | { type: "queueResearch"; techId: string }
   | { type: "clearResearchQueue" }
+  /** Consigne d'ascension sol↔orbite ; `rule: null` retire la consigne (chantier 12). */
+  | { type: "setLiftRule"; colonyId: string; resource: ResourceId; rule: LiftRule | null }
   | { type: "sell"; colonyId: string; stationId: string; resources: Partial<Record<ResourceId, number>> }
   | { type: "buy"; colonyId: string; stationId: string; resource: ResourceId; budget: number }
   | { type: "buildShip"; colonyId: string; shipId: ShipId }

@@ -167,6 +167,8 @@ app.get("/ws", { websocket: true }, (socket, request) => {
       error = engine.queueResearch(empire, msg.techId);
     } else if (msg.type === "clearResearchQueue") {
       error = engine.clearResearchQueue(empire);
+    } else if (msg.type === "setLiftRule") {
+      error = engine.setLiftRule(empire, msg.colonyId, msg.resource, msg.rule);
     } else if (msg.type === "sell") {
       error = engine.sellToStation(empire, msg.colonyId, msg.stationId, msg.resources);
     } else if (msg.type === "buy") {

@@ -26,6 +26,7 @@ import {
 } from "@spacesim/shared";
 import { useEffect, useState } from "react";
 import { BUILDING_LABELS, PLANET_TYPE_LABELS, RESOURCE_LABELS, TECH_LABELS } from "./labels.js";
+import { OrbitPanel } from "./OrbitPanel.js";
 import { ShipyardPanel } from "./ShipyardPanel.js";
 import { TransferPanel } from "./TransferPanel.js";
 
@@ -265,6 +266,8 @@ export function ColonyView({
               })}
             </ul>
           )}
+
+          <OrbitPanel colony={colony} effects={effects} send={send} />
 
           <ShipyardPanel
             colony={colony}

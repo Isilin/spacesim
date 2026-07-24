@@ -1,6 +1,8 @@
 import {
   bodyPhysicals,
   isBreathable,
+  orbitalCap,
+  orbitalUsed,
   popCap,
   usedSlots,
   type Atmosphere,
@@ -119,6 +121,17 @@ export function BodyView({
           ))}
           <circle cx={c} cy={c} r={bodyRadius} fill={color} className="body-dot" />
           {colony && <circle cx={c} cy={c} r={bodyRadius + 7} className="colony-ring" />}
+          {/* Anneau de soute orbitale : son remplissage dit ce qui est prêt à partir. */}
+          {colony && orbitalCap(colony, effects) > 0 && (
+            <circle
+              cx={c}
+              cy={c}
+              r={bodyRadius + 14}
+              className="orbital-ring"
+              pathLength={100}
+              strokeDasharray={`${Math.min(100, (orbitalUsed(colony) / orbitalCap(colony, effects)) * 100)} 100`}
+            />
+          )}
           {moons.map((moon, i) => {
             const angle = moon.orbitAngle;
             const x = c + Math.cos(angle) * moonOrbit(i);
@@ -221,6 +234,9 @@ export function BodyView({
               <p className="small muted">
                 Population {Math.floor(colony.population)}/{popCap(colony, body, effects)} ·
                 satisfaction {Math.round(colony.satisfaction)}
+                {orbitalCap(colony, effects) > 0
+                  ? ` · soute orbitale ${Math.floor(orbitalUsed(colony))}/${orbitalCap(colony, effects)}`
+                  : " · aucun dock orbital"}
               </p>
             ) : (
               <p className="small muted">Aucune implantation.</p>
