@@ -36,6 +36,7 @@ import {
   gatewayLinks,
   gatewayRemaining,
   galaxiesToAdd,
+  galaxyParentIndex,
   researchPath,
   generateGalaxyAt,
   generateUniverse,
@@ -1469,9 +1470,17 @@ export class GameEngine {
 
     const fromPlanet = this.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const anchorId = this.universe.galaxies[0]!.anchorSystemId;
+    // Le chantier se mène depuis l'ancrage de la galaxie PARENTE (le versant proche du
+    // trou de ver) : on ne peut donc financer un portail que si l'on atteint déjà sa
+    // voisine — l'expansion se fait de proche en proche.
+    const childIndex = this.universe.galaxies.findIndex((g) => g.id === galaxyId);
+    const parentIndex = galaxyParentIndex(this.universe, childIndex);
+    const anchorId =
+      parentIndex === null
+        ? this.universe.galaxies[0]!.anchorSystemId
+        : this.universe.galaxies[parentIndex]!.anchorSystemId;
     const jumps = jumpDistanceInUniverse(this.universe, fromPlanet.systemId, anchorId, this.portalLinks);
-    if (jumps < 0) return "Ancrage inaccessible";
+    if (jumps < 0) return "Galaxie voisine encore inaccessible";
     const fee = transferCostCredits(jumps);
 
     const resources = { ...colony.resources };

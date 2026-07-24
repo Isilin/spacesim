@@ -157,12 +157,8 @@ export function ZoomableSvg({
           movedRef.current = false;
           event.stopPropagation();
         }}
-        // Le double-clic d'ouverture (vue système) reste géré par les nœuds enfants :
-        // ici on ne zoome que sur le fond de carte.
-        onDoubleClick={(event) => {
-          const anchor = event.target === svgRef.current ? worldAt(event, view) : null;
-          if (anchor) zoomAround(1.8, anchor);
-        }}
+        // Le double-clic est réservé aux nœuds (ouvrir la sous-carte) : le zoom passe par
+        // la molette et les boutons, sans quoi les deux gestes entraient en conflit.
       >
         {children}
       </svg>

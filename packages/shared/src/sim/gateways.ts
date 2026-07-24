@@ -1,4 +1,4 @@
-import type { Gateway, ResourceId, Universe } from "../types.js";
+import type { Galaxy, Gateway, ResourceId, Universe } from "../types.js";
 
 /** Coût de référence d'un portail (galaxie voisine) — pharaonique, couvert par convois. */
 export const GATEWAY_COST: Partial<Record<ResourceId, number>> = {
@@ -63,19 +63,72 @@ export function gatewayProgressRatio(gateway: Gateway): number {
 }
 
 /**
- * Liaisons inter-galactiques offertes par les portails actifs :
- * chaque portail relie l'ancrage de la galaxie d'origine (index 0) à celui de sa cible.
- * Les portails actifs forment un réseau via l'ancrage d'origine.
+ * Galaxie « parente » d'une galaxie : sa plus proche voisine d'index inférieur.
+ *
+ * En remontant les parents on atteint toujours la galaxie mère (index 0), donc les
+ * parents forment un **arbre couvrant** enraciné sur la mère. Une galaxie ne s'ouvre
+ * ainsi qu'un seul trou de ver vers sa voisine, et non vers toutes les autres — le
+ * réseau se déploie de proche en proche, comme les liaisons entre systèmes.
+ */
+export function galaxyParentIndex(universe: Universe, index: number): number | null {
+  if (index <= 0 || index >= universe.galaxies.length) return null;
+  const g = universe.galaxies[index]!;
+  let best = 0;
+  let bestDist = Infinity;
+  for (let k = 0; k < index; k++) {
+    const o = universe.galaxies[k]!;
+    const d = Math.hypot(g.x - o.x, g.y - o.y);
+    if (d < bestDist) {
+      bestDist = d;
+      best = k;
+    }
+  }
+  return best;
+}
+
+/** Arête de l'arbre inter-galactique : un trou de ver potentiel entre deux voisines. */
+export interface GalaxyLink {
+  parentIndex: number;
+  childIndex: number;
+  parent: Galaxy;
+  child: Galaxy;
+}
+
+/** Arbre inter-galactique complet (toutes les arêtes potentielles, actives ou non). */
+export function galaxyLinks(universe: Universe): GalaxyLink[] {
+  const links: GalaxyLink[] = [];
+  for (let i = 1; i < universe.galaxies.length; i++) {
+    const parentIndex = galaxyParentIndex(universe, i);
+    if (parentIndex === null) continue;
+    links.push({
+      parentIndex,
+      childIndex: i,
+      parent: universe.galaxies[parentIndex]!,
+      child: universe.galaxies[i]!,
+    });
+  }
+  return links;
+}
+
+/**
+ * Liaisons de saut offertes par les portails **actifs** : chaque portail relie l'ancrage
+ * de la galaxie à celui de sa parente (arête de l'arbre), et non plus à la mère. Le
+ * réseau de voyage épouse donc l'arbre de voisinage : atteindre une galaxie lointaine
+ * exige que toute la chaîne de portails jusqu'à elle soit active.
  */
 export function gatewayLinks(universe: Universe, gateways: readonly Gateway[]): [string, string][] {
-  const home = universe.galaxies[0];
-  if (!home) return [];
+  const indexById = new Map(universe.galaxies.map((g, i) => [g.id, i] as const));
   const links: [string, string][] = [];
   for (const gateway of gateways) {
     if (!gateway.active) continue;
-    const target = universe.galaxies.find((g) => g.id === gateway.galaxyId);
-    if (!target) continue;
-    links.push([home.anchorSystemId, target.anchorSystemId]);
+    const childIndex = indexById.get(gateway.galaxyId);
+    if (childIndex === undefined) continue;
+    const parentIndex = galaxyParentIndex(universe, childIndex);
+    if (parentIndex === null) continue;
+    links.push([
+      universe.galaxies[parentIndex]!.anchorSystemId,
+      universe.galaxies[childIndex]!.anchorSystemId,
+    ]);
   }
   return links;
 }
