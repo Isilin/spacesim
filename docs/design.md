@@ -400,3 +400,35 @@ distinct de `explorationDirty`, avec test de non-régression sur le chemin de no
 
 > ⚠️ La génération ayant changé pour une seed donnée, les parties antérieures ne sont pas
 > migrables : `apps/server/spacesim.db` a été supprimé au passage.
+
+### Chantier 10 — Vue planète / lune ✅ (23/07/2026)
+
+`MapView` gagne un quatrième niveau `body`. `BodyView` montre le schéma orbital (corps au centre,
+lunes cliquables, encart de sa propre orbite), une fiche physique, les gisements et la **grille
+des emplacements** (occupés par type, en chantier, libres). Les actions de colonisation sont
+extraites dans `BodyActions`, partagé avec le `SystemPanel` — lui-même réduit à des lignes
+compactes cliquables.
+
+`sim/bodies.ts` calcule la fiche (rayon, gravité, température, atmosphère, jour, révolution)
+**depuis l'id du corps**, non depuis le générateur d'univers : aucune partie invalidée, même
+résultat client et serveur. Deux corrections issues de la vérification : l'écart de température
+dû à la distance est borné (une glacée proche restait affichée à +42 °C) et la fiche est
+corrélée à l'habitabilité (un monde à 90 s'annonçait « toxique »).
+
+### Chantier 11 — Arbre de recherche ✅ (23/07/2026)
+
+**Contenu.** 22 → 35 techs, profondeur 5-6, avec des prérequis **croisés entre branches**
+(nanofabrication = industrie + société, deep_terraforming = colonisation + industrie,
+dreadnoughts = militaire + industrie) : les branches ne se parcourent plus en silos. Six
+nouveaux leviers d'effet, tous câblés dans la simulation — besoins alimentaires, stockage,
+vitesse des chantiers civils et navals, rendement des avant-postes, rayonnement — plus trois
+classes de vaisseaux (corvette, bombardier, cuirassé).
+
+**Outils purs** (`sim/techtree.ts`) : `techDepth` (plus long chemin, pour que chaque tech soit
+dessinée à droite de tous ses prérequis), `techLayout`, `researchPath`, `pathCost`,
+`validateTree` (cycles et prérequis inconnus, vérifiés en CI).
+
+**UI.** `ResearchView` devient un graphe SVG : bandes par branche, arêtes de prérequis, cinq
+états, survol qui éclaire la chaîne. Une tech verrouillée se **planifie en un clic** :
+`players.researchQueue` (migration 0010) enchaîne les recherches seules, patiente si la science
+manque, et abandonne les techs acquises entre-temps par un autre chemin.
