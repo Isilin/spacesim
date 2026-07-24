@@ -163,6 +163,10 @@ app.get("/ws", { websocket: true }, (socket, request) => {
       error = engine.colonize(empire, msg.colonyId, msg.planetId);
     } else if (msg.type === "research") {
       error = engine.startResearch(empire, msg.techId);
+    } else if (msg.type === "queueResearch") {
+      error = engine.queueResearch(empire, msg.techId);
+    } else if (msg.type === "clearResearchQueue") {
+      error = engine.clearResearchQueue(empire);
     } else if (msg.type === "sell") {
       error = engine.sellToStation(empire, msg.colonyId, msg.stationId, msg.resources);
     } else if (msg.type === "buy") {

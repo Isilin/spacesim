@@ -61,6 +61,8 @@ export class Empire {
   researched: string[] = [];
   /** Recherche en cours (une seule à la fois), timer réel. */
   research: ActiveResearch | null = null;
+  /** Chaîne planifiée : les techs s'enchaînent seules (chantier 11). */
+  researchQueue: string[] = [];
   /** Influence de l'empire (population satisfaite + monuments). */
   influence = 0;
   /** Réputation par faction (gagnée en commerçant). */
@@ -88,6 +90,7 @@ export class Empire {
       lastTickAt: clock.lastTickAt,
       researched: this.researched,
       research: this.research,
+      researchQueue: this.researchQueue,
       influence: this.influence,
       factionRep: this.factionRep,
       claimedSystemIds: this.claimedSystemIds,

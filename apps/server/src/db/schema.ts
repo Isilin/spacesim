@@ -58,6 +58,8 @@ export const players = sqliteTable("players", {
   researched: text("researched").notNull().default("[]"),
   /** JSON ActiveResearch ou null : recherche en cours. */
   research: text("research"),
+  /** JSON : chaîne de techs planifiées, lancées l'une après l'autre (chantier 11). */
+  researchQueue: text("research_queue").notNull().default("[]"),
   influence: real("influence").notNull().default(0),
   /** JSON : réputation par faction. */
   factionRep: text("faction_rep").notNull().default("{}"),

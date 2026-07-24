@@ -5,6 +5,7 @@ import {
   gatewayCost,
   INITIAL_GALAXIES,
   MAX_EMPIRES_PER_GALAXY,
+  TECHS,
   WARSHIPS,
 } from "@spacesim/shared";
 import { db, schema } from "./db/index.js";
@@ -324,6 +325,64 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
       expect(a.influence).toBeCloseTo(b.influence, 5);
       expect(a.exploredCount).toBe(b.exploredCount);
     }
+  });
+});
+
+describe("GameEngine — file de recherche (chantier 11)", () => {
+  /** Science offerte à la colonie mère pour dérouler une chaîne sans attendre. */
+  const grantScience = (engine: GameEngine, amount: number) => engine.devGrant({ science: amount });
+
+  it("planifie une chaîne et l'enchaîne recherche après recherche", () => {
+    const engine = GameEngine.load();
+    const empire = empireFor(engine, "alice");
+    grantScience(engine, 5000);
+
+    // fusion_power exige metallurgy → advanced_mining : trois recherches successives.
+    expect(engine.queueResearch(empire, "fusion_power")).toBeNull();
+    expect(engine.snapshotForEmpire(empire).game.research?.techId).toBe("metallurgy");
+    expect(engine.snapshotForEmpire(empire).game.researchQueue).toEqual([
+      "advanced_mining",
+      "fusion_power",
+    ]);
+
+    // Le temps passe : chaque tech terminée laisse la place à la suivante, sans clic.
+    engine.devFastForward(3600);
+    const state = engine.snapshotForEmpire(empire).game;
+    expect(state.researched).toContain("metallurgy");
+    expect(state.researched).toContain("advanced_mining");
+    expect(state.researched).toContain("fusion_power");
+    expect(state.researchQueue).toEqual([]);
+    expect(state.research).toBeNull();
+  });
+
+  it("refuse une chaîne déjà acquise et sait se vider", () => {
+    const engine = GameEngine.load();
+    const empire = empireFor(engine, "alice");
+    grantScience(engine, 5000);
+
+    expect(engine.queueResearch(empire, "inconnue")).toBe("Technologie inconnue");
+    expect(engine.queueResearch(empire, "fusion_power")).toBeNull();
+    expect(engine.clearResearchQueue(empire)).toBeNull();
+    expect(engine.snapshotForEmpire(empire).game.researchQueue).toEqual([]);
+    // La recherche déjà lancée n'est pas annulée par le vidage de la file.
+    expect(engine.snapshotForEmpire(empire).game.research).not.toBeNull();
+
+    engine.devFastForward(3600);
+    expect(engine.queueResearch(empire, "metallurgy")).toBe("Technologie déjà acquise");
+  });
+
+  it("la file patiente au lieu de se vider quand la science manque", () => {
+    const engine = GameEngine.load();
+    const empire = empireFor(engine, "alice");
+    // Juste de quoi payer la première tech de la chaîne.
+    grantScience(engine, TECHS.metallurgy.cost);
+
+    expect(engine.queueResearch(empire, "fusion_power")).toBeNull();
+    engine.devFastForward(600);
+    const state = engine.snapshotForEmpire(empire).game;
+    expect(state.researched).toContain("metallurgy");
+    // La suite reste en attente, prête à repartir dès que la science rentre.
+    expect(state.researchQueue).toContain("fusion_power");
   });
 });
 

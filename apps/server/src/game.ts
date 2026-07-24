@@ -29,6 +29,7 @@ import {
   gatewayLinks,
   gatewayRemaining,
   galaxiesToAdd,
+  researchPath,
   generateGalaxyAt,
   generateUniverse,
   idleShips,
@@ -1134,11 +1135,26 @@ export class GameEngine {
     if (!canResearch(tech.id, empire.researched as TechId[])) {
       return "Prérequis non satisfaits";
     }
-    const colonies = [...empire.colonyMap.values()];
-    const totalScience = colonies.reduce((s, c) => s + c.resources.science, 0);
-    if (totalScience < tech.cost) {
+    if (!this.beginResearch(empire, tech.id)) {
+      const totalScience = [...empire.colonyMap.values()].reduce(
+        (s, c) => s + c.resources.science,
+        0,
+      );
       return `Science insuffisante (${Math.floor(totalScience)}/${tech.cost})`;
     }
+    this.notify();
+    return null;
+  }
+
+  /**
+   * Débite la science et démarre une recherche. Retourne false si la science manque —
+   * la file (11.4) réessaiera au tick suivant plutôt que d'être vidée.
+   */
+  private beginResearch(empire: Empire, techId: TechId, now = Date.now()): boolean {
+    const tech = TECHS[techId];
+    const colonies = [...empire.colonyMap.values()];
+    const totalScience = colonies.reduce((s, c) => s + c.resources.science, 0);
+    if (totalScience < tech.cost) return false;
 
     // Paiement réparti : on ponctionne les colonies dans l'ordre jusqu'à couvrir le coût.
     let remaining = tech.cost;
@@ -1155,25 +1171,64 @@ export class GameEngine {
       this.persistColony(updated);
     }
 
-    const now = Date.now();
-    empire.research = {
-      techId: tech.id,
-      startedAt: now,
-      finishesAt: now + tech.durationMs,
-    };
+    empire.research = { techId: tech.id, startedAt: now, finishesAt: now + tech.durationMs };
+    this.persistResearch(empire);
+    return true;
+  }
+
+  /**
+   * Action joueur : planifier la chaîne menant à une tech (chantier 11.4).
+   * La file remplace la précédente ; sa tête démarre dès que la science suffit.
+   */
+  queueResearch(empire: Empire, techId: string): string | null {
+    const tech = TECHS[techId as TechId];
+    if (!tech) return "Technologie inconnue";
+    const path = researchPath(tech.id, empire.researched as TechId[]);
+    if (path.length === 0) return "Technologie déjà acquise";
+    // La recherche en cours n'est pas interrompue : elle sort simplement de la file.
+    empire.researchQueue = path.filter((id) => id !== empire.research?.techId);
+    this.advanceResearchQueue(empire);
     this.persistResearch(empire);
     this.notify();
     return null;
   }
 
-  private resolveResearch(empire: Empire, t: number): void {
-    const research = empire.research;
-    if (!research || research.finishesAt > t) return;
-    empire.researched = [...empire.researched, research.techId];
-    empire.research = null;
-    empire.effects = computeEffects(empire.researched as TechId[]);
+  /** Action joueur : vider la file planifiée (la recherche en cours continue). */
+  clearResearchQueue(empire: Empire): string | null {
+    empire.researchQueue = [];
     this.persistResearch(empire);
-    console.log(`[game] recherche terminée : ${research.techId}`);
+    this.notify();
+    return null;
+  }
+
+  /**
+   * Lance la première tech de la file dont les prérequis sont satisfaits. Appelée à la
+   * planification et après chaque recherche terminée : la chaîne s'enchaîne seule.
+   */
+  private advanceResearchQueue(empire: Empire, now = Date.now()): void {
+    if (empire.research || empire.researchQueue.length === 0) return;
+    // Les techs déjà acquises entre-temps (autre chemin) sont retirées silencieusement.
+    empire.researchQueue = empire.researchQueue.filter((id) => !empire.researched.includes(id));
+    const next = empire.researchQueue[0] as TechId | undefined;
+    if (!next) return;
+    if (!canResearch(next, empire.researched as TechId[])) return;
+    if (this.beginResearch(empire, next, now)) {
+      empire.researchQueue = empire.researchQueue.slice(1);
+    }
+  }
+
+  private resolveResearch(empire: Empire, t: number): void {
+    const finished = empire.research && empire.research.finishesAt <= t ? empire.research : null;
+    if (finished) {
+      empire.researched = [...empire.researched, finished.techId];
+      empire.research = null;
+      empire.effects = computeEffects(empire.researched as TechId[]);
+      console.log(`[game] recherche terminée : ${finished.techId}`);
+    }
+    // Enchaînement de la file, y compris quand la science manquait au tick précédent.
+    const beforeQueue = empire.research;
+    this.advanceResearchQueue(empire, t);
+    if (finished || beforeQueue !== empire.research) this.persistResearch(empire);
   }
 
   private persistResearch(empire: Empire): void {
@@ -1181,6 +1236,7 @@ export class GameEngine {
       .set({
         researched: JSON.stringify(empire.researched),
         research: empire.research ? JSON.stringify(empire.research) : null,
+        researchQueue: JSON.stringify(empire.researchQueue),
       })
       .where(eq(schema.players.id, empire.id))
       .run();
@@ -2213,6 +2269,7 @@ export class GameEngine {
         joinedAt: Date.now(),
         researched: "[]",
         research: null,
+        researchQueue: "[]",
         influence: 0,
         factionRep: "{}",
         explored: "[]",
@@ -2656,6 +2713,7 @@ export class GameEngine {
           joinedAt: Date.now(),
           researched: "[]",
           research: null,
+        researchQueue: "[]",
           influence: 0,
           factionRep: "{}",
           explored: "[]",
@@ -2686,6 +2744,7 @@ export class GameEngine {
       const empire = new Empire(p.id, p.name, p.color, p.accountId);
       empire.researched = JSON.parse(p.researched);
       empire.research = p.research ? JSON.parse(p.research) : null;
+      empire.researchQueue = JSON.parse(p.researchQueue);
       empire.influence = p.influence;
       empire.factionRep = JSON.parse(p.factionRep);
       empire.explored = new Set(JSON.parse(p.explored));

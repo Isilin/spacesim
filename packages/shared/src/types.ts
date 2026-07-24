@@ -133,6 +133,8 @@ export interface GameState {
   researched: string[];
   /** Recherche en cours (une seule à la fois), timer réel. */
   research: ActiveResearch | null;
+  /** Chaîne de techs planifiée, lancée l'une après l'autre (chantier 11). */
+  researchQueue: string[];
   /** Influence de l'empire (générée par la population satisfaite + monuments). */
   influence: number;
   /** Réputation par faction (gagnée en commerçant). */
@@ -438,6 +440,8 @@ export type ClientMessage =
   | { type: "probe"; colonyId: string; systemId: string }
   | { type: "colonize"; colonyId: string; planetId: string }
   | { type: "research"; techId: string }
+  | { type: "queueResearch"; techId: string }
+  | { type: "clearResearchQueue" }
   | { type: "sell"; colonyId: string; stationId: string; resources: Partial<Record<ResourceId, number>> }
   | { type: "buy"; colonyId: string; stationId: string; resource: ResourceId; budget: number }
   | { type: "buildShip"; colonyId: string; shipId: ShipId }
