@@ -17,6 +17,7 @@ import {
   CONTIGUOUS_CLAIM_BONUS,
   createRng,
   ECONOMY_TICK_TICKS,
+  deliverToOrbit,
   emptyOrbital,
   emptyResources,
   enqueueBuilding,
@@ -70,6 +71,7 @@ import {
   routeCargoQuantity,
   SHIPS,
   storageCap,
+  takeFromOrbit,
   WARSHIPS,
   TICK_MS,
   transferCostCredits,
@@ -595,14 +597,21 @@ export class GameEngine {
     if (jumps < 0) return "Destination inaccessible";
     const cost = transferCostCredits(jumps);
 
-    const resources = { ...from.resources };
-    if (resources.credits < cost) return `Crédits insuffisants (coût : ${cost})`;
-    for (const [res, amount] of Object.entries(cargo) as [ResourceId, number][]) {
-      if (resources[res] < amount) return `Stock insuffisant : ${res}`;
+    // La cargaison se prend en ORBITE : le stock au sol ne peut pas se substituer
+    // (chantier 12). Sans dock ni ascenseur, la colonie ne peut rien exporter.
+    const loaded = takeFromOrbit(from, cargo);
+    if (!loaded) {
+      const missing = (Object.entries(cargo) as [ResourceId, number][]).find(
+        ([res, amount]) => (from.orbitalResources[res] ?? 0) < amount,
+      );
+      return `Stock orbital insuffisant : ${missing?.[0] ?? "cargaison"}`;
     }
+    const resources = { ...loaded.resources };
+    if (resources.credits < cost) return `Crédits insuffisants (coût : ${cost})`;
+
     const now = Date.now();
     const duration = transferDurationMs(jumps) * empire.effects.transferSpeedMult;
-    const reserved = this.reserveShip(empire, from, now + 2 * duration);
+    const reserved = this.reserveShip(empire, loaded, now + 2 * duration);
     if (!reserved) return "Aucun cargo disponible";
     const total = Object.values(cargo).reduce((s, n) => s + n, 0);
     if (total > reserved.capacity) {
@@ -610,9 +619,6 @@ export class GameEngine {
     }
 
     resources.credits -= cost;
-    for (const [res, amount] of Object.entries(cargo) as [ResourceId, number][]) {
-      resources[res] -= amount;
-    }
 
     const transfer: Transfer = {
       id: randomUUID(),
@@ -670,14 +676,19 @@ export class GameEngine {
     if (jumps < 0) return "Station inaccessible";
     const fee = transferCostCredits(jumps);
 
-    const resources = { ...colony.resources };
-    if (resources.credits < fee) return `Crédits insuffisants (frais : ${fee})`;
-    for (const [res, amount] of Object.entries(cargo) as [ResourceId, number][]) {
-      if (resources[res] < amount) return `Stock insuffisant : ${res}`;
+    // Comme un convoi : la marchandise vendue part de l'orbite, pas du sol.
+    const loaded = takeFromOrbit(colony, cargo);
+    if (!loaded) {
+      const missing = (Object.entries(cargo) as [ResourceId, number][]).find(
+        ([res, amount]) => (colony.orbitalResources[res] ?? 0) < amount,
+      );
+      return `Stock orbital insuffisant : ${missing?.[0] ?? "cargaison"}`;
     }
+    const resources = { ...loaded.resources };
+    if (resources.credits < fee) return `Crédits insuffisants (frais : ${fee})`;
 
     const duration = transferDurationMs(jumps) * empire.effects.transferSpeedMult;
-    const reserved = this.reserveShip(empire, colony, Date.now() + 2 * duration);
+    const reserved = this.reserveShip(empire, loaded, Date.now() + 2 * duration);
     if (!reserved) return "Aucun cargo disponible";
     const total = Object.values(cargo).reduce((s, n) => s + n, 0);
     if (total > reserved.capacity) {
@@ -685,9 +696,6 @@ export class GameEngine {
     }
 
     resources.credits -= fee;
-    for (const [res, amount] of Object.entries(cargo) as [ResourceId, number][]) {
-      resources[res] -= amount;
-    }
     empire.colonyMap.set(colony.id, { ...reserved.colony, resources });
     this.persistColony(empire.colonyMap.get(colony.id)!);
     this.insertMission(empire, "sell", colonyId, stationId, duration, { cargo });
@@ -977,7 +985,8 @@ export class GameEngine {
       if (current.fromKind === "colony") {
         const from = empire.colonyMap.get(current.fromId);
         if (!from) continue;
-        sourceStock = from.resources[current.resource];
+        // Une route charge ce qui est en orbite, comme un convoi manuel (chantier 12).
+        sourceStock = from.orbitalResources[current.resource] ?? 0;
         fromSystemId = this.planetsById.get(from.planetId)?.systemId;
       } else {
         const outpost = empire.outpostMap.get(current.fromId);
@@ -995,10 +1004,12 @@ export class GameEngine {
       const jumps = jumpDistanceInUniverse(this.universe, fromSystemId, toSystemId, this.portalLinks);
       if (jumps < 0) continue;
 
-      const destStock =
-        current.toKind === "colony"
-          ? empire.colonyMap.get(current.toId)?.resources[current.resource] ?? 0
-          : 0;
+      // La règle « maintain » vise le stock utile à destination : sol + orbite.
+      const destColony = current.toKind === "colony" ? empire.colonyMap.get(current.toId) : undefined;
+      const destStock = destColony
+        ? (destColony.resources[current.resource] ?? 0) +
+          (destColony.orbitalResources[current.resource] ?? 0)
+        : 0;
       const qty = routeCargoQuantity(current.rule, sourceStock, destStock, fleetCapacity(current.ships));
       if (qty <= 0) continue;
       const fee = transferCostCredits(jumps);
@@ -1011,14 +1022,10 @@ export class GameEngine {
       });
       if (current.fromKind === "colony") {
         const from = empire.colonyMap.get(current.fromId)!;
-        empire.colonyMap.set(from.id, {
-          ...from,
-          resources: {
-            ...from.resources,
-            [current.resource]: from.resources[current.resource] - qty,
-          },
-        });
-        this.persistColony(empire.colonyMap.get(from.id)!);
+        const loaded = takeFromOrbit(from, { [current.resource]: qty });
+        if (!loaded) continue;
+        empire.colonyMap.set(from.id, loaded);
+        this.persistColony(loaded);
       } else {
         const outpost = empire.outpostMap.get(current.fromId)!;
         empire.outpostMap.set(outpost.id, { ...outpost, oreStock: outpost.oreStock - qty });
@@ -1040,12 +1047,8 @@ export class GameEngine {
     if (route.toKind === "colony") {
       const to = empire.colonyMap.get(route.toId);
       if (!to) return;
-      const resources = { ...to.resources };
-      resources[route.resource] = Math.min(
-        resources[route.resource] + carrying,
-        storageCap(to, route.resource, empire.effects),
-      );
-      empire.colonyMap.set(to.id, { ...to, resources });
+      // Livraison en orbite : l'ascenseur de la destination fera descendre au sol.
+      empire.colonyMap.set(to.id, deliverToOrbit(to, { [route.resource]: carrying }, empire.effects));
       this.persistColony(empire.colonyMap.get(to.id)!);
     } else {
       const stocks = this.marketMap.get(route.toId);
@@ -2579,15 +2582,15 @@ export class GameEngine {
         case "buy_return": {
           const colony = empire.colonyMap.get(mission.fromColonyId);
           if (colony) {
-            const resources = { ...colony.resources };
-            for (const [res, amount] of Object.entries(mission.cargo ?? {}) as [
-              ResourceId,
-              number,
-            ][]) {
-              resources[res] = Math.min(resources[res] + amount, storageCap(colony, res, empire.effects));
-            }
-            resources.credits += mission.budget ?? 0;
-            empire.colonyMap.set(colony.id, { ...colony, resources });
+            // L'achat revient en orbite ; seuls les crédits atterrissent directement.
+            const delivered = deliverToOrbit(colony, mission.cargo ?? {}, empire.effects);
+            empire.colonyMap.set(colony.id, {
+              ...delivered,
+              resources: {
+                ...delivered.resources,
+                credits: delivered.resources.credits + (mission.budget ?? 0),
+              },
+            });
             this.persistColony(empire.colonyMap.get(colony.id)!);
           }
           break;
@@ -2675,11 +2678,8 @@ export class GameEngine {
       if (transfer.arrivesAt > t) continue;
       const to = empire.colonyMap.get(transfer.toColonyId);
       if (to) {
-        const resources = { ...to.resources };
-        for (const [res, amount] of Object.entries(transfer.resources) as [ResourceId, number][]) {
-          resources[res] = Math.min(resources[res] + amount, storageCap(to, res, empire.effects));
-        }
-        empire.colonyMap.set(to.id, { ...to, resources });
+        // Le convoi débarque EN ORBITE ; l'ascenseur redescendra selon les règles locales.
+        empire.colonyMap.set(to.id, deliverToOrbit(to, transfer.resources, empire.effects));
       }
       empire.transferMap.delete(id);
       db.delete(schema.transfers).where(eq(schema.transfers.id, id)).run();
