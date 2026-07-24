@@ -76,12 +76,25 @@ const REFERENCE_ORBIT = 180;
  */
 const TEMP_DISTANCE_SPREAD = 45;
 
+/** Température de confort vers laquelle tend un monde très habitable. */
+const TEMPERATE_C = 15;
+
 function range(rng: Rng, [min, max]: [number, number]): number {
   return min + rng() * (max - min);
 }
 
-function pickWeightedAtmosphere(rng: Rng, type: PlanetType): Atmosphere {
-  const entries = ATMOSPHERE_WEIGHTS[type];
+/**
+ * Atmosphère tirée dans les possibilités du type, **pondérée par l'habitabilité** :
+ * un monde très habitable respire, un monde hostile étouffe. Sans ce lien, la fiche
+ * contredisait la donnée de jeu (planète à 90 d'habitabilité annoncée « toxique »).
+ */
+function pickAtmosphere(rng: Rng, type: PlanetType, habitability: number): Atmosphere {
+  const bias = Math.max(0.2, habitability / 50);
+  const entries = ATMOSPHERE_WEIGHTS[type].map(([value, weight]) => {
+    if (value === "breathable") return [value, weight * bias * bias] as const;
+    if (value === "none" || value === "toxic") return [value, weight / bias] as const;
+    return [value, weight] as const;
+  });
   const total = entries.reduce((s, [, w]) => s + w, 0);
   let r = rng() * total;
   for (const [value, weight] of entries) {
@@ -117,13 +130,17 @@ export function bodyPhysicals(planet: Planet, parentOrbitRadius?: number): BodyP
   const distanceOffset =
     TEMP_DISTANCE_SPREAD *
     Math.max(-1, Math.min(1, Math.log(REFERENCE_ORBIT / starDistance) / Math.log(4)));
-  const meanTempC = Math.round(BASE_TEMP[planet.type] + distanceOffset + range(rng, [-8, 8]));
+  const raw = BASE_TEMP[planet.type] + distanceOffset + range(rng, [-8, 8]);
+  // Un monde très habitable est forcément tempéré : la fiche doit corroborer la donnée
+  // de jeu, pas la contredire.
+  const temperatePull = (planet.habitability / 100) ** 2 * 0.7;
+  const meanTempC = Math.round(raw * (1 - temperatePull) + TEMPERATE_C * temperatePull);
 
   return {
     radiusKm,
     gravityG,
     meanTempC,
-    atmosphere: pickWeightedAtmosphere(rng, planet.type),
+    atmosphere: pickAtmosphere(rng, planet.type, planet.habitability),
     dayLengthHours: Math.round(range(rng, isMoon ? [40, 700] : [8, 90]) * 10) / 10,
     // Période orbitale : loi de Kepler (T ∝ r^1.5) autour du corps parent.
     orbitPeriodDays:

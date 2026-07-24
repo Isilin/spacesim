@@ -1,7 +1,5 @@
 import {
   CLAIM_COST,
-  COLONY_SHIP_COST,
-  colonizeInfluenceCost,
   OUTPOST_COST,
   OUTPOST_STOCK_CAP,
   PROBE_COST_CREDITS,
@@ -11,12 +9,14 @@ import {
   type GameState,
   type MiningOutpost,
   type Mission,
+  type Planet,
   type ResourceId,
   type Route,
   type StarSystem,
   type StationMarket,
   type Universe,
 } from "@spacesim/shared";
+import { BodyActions, COLONY_SHIP_COST_TEXT, formatEta } from "./BodyActions.js";
 import { PLANET_TYPE_LABELS, RESOURCE_LABELS } from "./labels.js";
 import { StationPanel } from "./StationPanel.js";
 
@@ -36,17 +36,9 @@ interface Props {
   portalLinks: [string, string][];
   now: number;
   send: (msg: ClientMessage) => void;
+  /** Ouvre la fiche détaillée d'un corps (chantier 10). */
+  onOpenBody?: (body: Planet) => void;
 }
-
-function formatEta(ms: number): string {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(s / 60);
-  return m > 0 ? `${m}m${String(s % 60).padStart(2, "0")}s` : `${s}s`;
-}
-
-const SHIP_COST_TEXT = Object.entries(COLONY_SHIP_COST)
-  .map(([res, n]) => `${n} ${RESOURCE_LABELS[res as ResourceId]}`)
-  .join(" · ");
 
 const OUTPOST_COST_TEXT = Object.entries(OUTPOST_COST)
   .map(([res, n]) => `${n} ${RESOURCE_LABELS[res as ResourceId]}`)
@@ -67,6 +59,7 @@ export function SystemPanel({
   portalLinks,
   now,
   send,
+  onOpenBody,
 }: Props) {
   const probeMission = missions.find((m) => m.kind === "probe" && m.targetId === system.id);
   const probeCost = Math.round(PROBE_COST_CREDITS * effects.probeCostMult);
@@ -93,17 +86,18 @@ export function SystemPanel({
     );
   }
 
+  /**
+   * Ligne compacte : l'essentiel pour choisir, le détail complet vit dans la vue corps
+   * (chantier 10). Cliquer la ligne ouvre cette vue.
+   */
   const renderBody = (p: (typeof system.planets)[number]) => {
     const colony = colonies.find((c) => c.planetId === p.id);
-    const shipMission = missions.find((m) => m.kind === "colonize" && m.targetId === p.id);
-    const colonizable = !colony && !shipMission && p.type !== "gas";
-    const affordable =
-      activeColony &&
-      (Object.entries(COLONY_SHIP_COST) as [ResourceId, number][]).every(
-        ([res, n]) => activeColony.resources[res] >= n,
-      );
     return (
-      <li key={p.id} className={`planet ${p.kind === "moon" ? "moon-row" : ""}`}>
+      <li
+        key={p.id}
+        className={`planet body-row ${p.kind === "moon" ? "moon-row" : ""}`}
+        onClick={() => onOpenBody?.(p)}
+      >
         <div className="planet-head">
           <strong>
             {p.kind === "moon" ? "↳ " : ""}
@@ -117,33 +111,26 @@ export function SystemPanel({
         <div className="planet-stats">
           <span>Habitabilité {p.habitability}</span>
           <span>{p.slots} emplacements</span>
+          {Object.keys(p.deposits).length > 0 && (
+            <span className="muted">
+              {Object.entries(p.deposits)
+                .map(([res, mod]) => `${RESOURCE_LABELS[res as ResourceId]} ×${mod}`)
+                .join(" · ")}
+            </span>
+          )}
         </div>
-        {Object.keys(p.deposits).length > 0 && (
-          <div className="deposits">
-            {Object.entries(p.deposits).map(([res, mod]) => (
-              <span key={res} className="deposit">
-                {RESOURCE_LABELS[res as ResourceId]} ×{mod}
-              </span>
-            ))}
-          </div>
-        )}
-        {colony && <p className="small ok">● {colony.name}</p>}
-        {shipMission && (
-          <p className="small ok">
-            Vaisseau colonial en route — {formatEta(shipMission.arrivesAt - now)}
-          </p>
-        )}
-        {colonizable && (
-          <button
-            className="action-button"
-            disabled={!affordable || game.influence < nextColonyInfluence}
-            title={`Coût : ${SHIP_COST_TEXT}${nextColonyInfluence > 0 ? ` · ${nextColonyInfluence} ✦` : ""}`}
-            onClick={() =>
-              activeColony && send({ type: "colonize", colonyId: activeColony.id, planetId: p.id })
-            }
-          >
-            Coloniser{nextColonyInfluence > 0 ? ` (${nextColonyInfluence} ✦)` : ""}
-          </button>
+        {colony ? (
+          <p className="small ok">● {colony.name}</p>
+        ) : (
+          <BodyActions
+            body={p}
+            colonies={colonies}
+            missions={missions}
+            activeColony={activeColony}
+            game={game}
+            now={now}
+            send={send}
+          />
         )}
       </li>
     );
@@ -155,9 +142,6 @@ export function SystemPanel({
   const claimed = game.claimedSystemIds.includes(system.id);
   const hasOwnColony = colonies.some(
     (c) => system.planets.some((p) => p.id === c.planetId),
-  );
-  const nextColonyInfluence = colonizeInfluenceCost(
-    colonies.length + missions.filter((m) => m.kind === "colonize").length,
   );
 
   return (
@@ -260,7 +244,8 @@ export function SystemPanel({
       </ul>
       {activeColony && (
         <p className="small muted">
-          Origine des missions : {activeColony.name}. Vaisseau colonial : {SHIP_COST_TEXT}.
+          Origine des missions : {activeColony.name}. Vaisseau colonial :{" "}
+          {COLONY_SHIP_COST_TEXT}.
         </p>
       )}
     </>

@@ -9,6 +9,7 @@ import {
   type TechId,
 } from "@spacesim/shared";
 import { useEffect, useMemo, useState } from "react";
+import { BodyView } from "./BodyView.js";
 import { ColonyView } from "./ColonyView.js";
 import { EmpireView } from "./EmpireView.js";
 import { GalaxyMap } from "./GalaxyMap.js";
@@ -31,11 +32,12 @@ interface Props {
 
 type Tab = "map" | "colony" | "logistics" | "fleets" | "research" | "empire";
 
-/** Niveau de zoom de la carte : univers → galaxie → système. */
+/** Niveau de zoom de la carte : univers → galaxie → système → corps. */
 type MapView =
   | { level: "universe" }
   | { level: "galaxy"; galaxyId: string }
-  | { level: "system"; galaxyId: string; systemId: string };
+  | { level: "system"; galaxyId: string; systemId: string }
+  | { level: "body"; galaxyId: string; systemId: string; bodyId: string };
 
 /**
  * Historique de navigation de la carte (chantier 9.7) : `entries[cursor]` est la vue
@@ -133,8 +135,12 @@ export function App({ auth }: Props) {
       ? universe.galaxies.find((g) => g.id === view.galaxyId) ?? universe.galaxies[0]!
       : null;
   const viewSystem =
-    view.level === "system" && viewGalaxy
+    (view.level === "system" || view.level === "body") && viewGalaxy
       ? viewGalaxy.systems.find((s) => s.id === view.systemId) ?? null
+      : null;
+  const viewBody =
+    view.level === "body" && viewSystem
+      ? viewSystem.planets.find((p) => p.id === view.bodyId) ?? null
       : null;
   const selectedSystem = selectedSystemId
     ? allSystems(universe).find((s) => s.id === selectedSystemId) ?? null
@@ -148,7 +154,19 @@ export function App({ auth }: Props) {
     setSelectedBodyId(null);
   };
 
-  const selectBody = (planet: Planet) => setSelectedBodyId(planet.id);
+  /** Ouvre la fiche d'un corps (chantier 10) : niveau de carte à part entière. */
+  const openBody = (planet: Planet) => {
+    const galaxy = findGalaxyOfSystem(universe, planet.systemId);
+    if (!galaxy) return;
+    setMapView({
+      level: "body",
+      galaxyId: galaxy.id,
+      systemId: planet.systemId,
+      bodyId: planet.id,
+    });
+    setSelectedSystemId(planet.systemId);
+    setSelectedBodyId(planet.id);
+  };
 
   /** Saut direct depuis la recherche ou un raccourci (chantier 9.7). */
   const goTo = (target: NavTarget) => {
@@ -338,7 +356,17 @@ export function App({ auth }: Props) {
               {viewSystem && (
                 <>
                   <span className="muted">/</span>
-                  <span className="breadcrumb-current">{viewSystem.name}</span>
+                  {viewBody ? (
+                    <button onClick={() => openSystem(viewSystem)}>{viewSystem.name}</button>
+                  ) : (
+                    <span className="breadcrumb-current">{viewSystem.name}</span>
+                  )}
+                </>
+              )}
+              {viewBody && (
+                <>
+                  <span className="muted">/</span>
+                  <span className="breadcrumb-current">{viewBody.name}</span>
                 </>
               )}
             </nav>
@@ -362,18 +390,32 @@ export function App({ auth }: Props) {
                 onSelect={(s) => setSelectedSystemId(s.id)}
                 onOpenSystem={openSystem}
               />
+            ) : viewBody && viewSystem ? (
+              <BodyView
+                system={viewSystem}
+                body={viewBody}
+                colonies={colonies}
+                missions={missions}
+                activeColony={colony}
+                effects={effects}
+                game={game}
+                explored={exploredSystemIds.includes(viewSystem.id)}
+                now={now}
+                send={send}
+                onOpenBody={openBody}
+              />
             ) : viewSystem ? (
               <SystemView
                 system={viewSystem}
                 colonies={colonies}
                 explored={exploredSystemIds.includes(viewSystem.id)}
                 selectedBodyId={selectedBodyId}
-                onSelectBody={selectBody}
+                onSelectBody={openBody}
               />
             ) : null}
           </section>
           <aside className="side-panel">
-            {view.level === "system" && viewSystem ? (
+            {(view.level === "system" || view.level === "body") && viewSystem ? (
               <SystemPanel
                 system={viewSystem}
                 colonies={colonies}
@@ -389,6 +431,7 @@ export function App({ auth }: Props) {
                 portalLinks={portalLinks}
                 now={now}
                 send={send}
+                onOpenBody={openBody}
               />
             ) : selectedSystem ? (
               <>
@@ -407,6 +450,7 @@ export function App({ auth }: Props) {
                   portalLinks={portalLinks}
                   now={now}
                   send={send}
+                  onOpenBody={openBody}
                 />
                 <button className="action-button" onClick={() => openSystem(selectedSystem)}>
                   Ouvrir la vue système

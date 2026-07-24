@@ -1045,3 +1045,131 @@ body {
   display: flex;
   gap: 4px;
 }
+
+/* ── Vue corps (chantier 10) ─────────────────────────────────────────────── */
+
+.body-view {
+  height: 100%;
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+
+.body-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.body-header .action-button {
+  margin-top: 0;
+}
+
+.body-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.body-schema {
+  width: 320px;
+  height: 320px;
+  flex: none;
+  background: radial-gradient(ellipse at center, #0d1420 0%, var(--bg) 80%);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.body-schema .orbit-inset .orbit-ring {
+  opacity: 0.6;
+}
+
+.body-panels {
+  flex: 1;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.body-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.body-card h3 {
+  font-size: 13px;
+  font-weight: normal;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.body-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 6px 12px;
+}
+
+.body-stats > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px dotted var(--border);
+  padding-bottom: 2px;
+}
+
+.body-stats dt {
+  color: var(--muted);
+}
+
+.slot-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.slot {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  font-size: 11px;
+}
+
+.slot.built {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.slot.queued {
+  border-style: dashed;
+  border-color: var(--accent);
+  color: var(--muted);
+}
+
+.slot.free {
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    #131c28 4px,
+    #131c28 8px
+  );
+}
+
+/* Ligne de corps cliquable dans le panneau système. */
+.body-row {
+  cursor: pointer;
+}
+
+.body-row:hover {
+  border-color: var(--accent);
+}

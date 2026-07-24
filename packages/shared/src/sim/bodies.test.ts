@@ -89,6 +89,23 @@ describe("bodyPhysicals", () => {
     }
   });
 
+  it("la fiche corrobore l'habitabilité au lieu de la contredire", () => {
+    // Un monde très habitable respire et reste tempéré ; un monde hostile, non.
+    const accueillant = Array.from({ length: 12 }, (_, i) =>
+      bodyPhysicals(body({ id: `hab${i}`, type: "telluric", habitability: 90 })),
+    );
+    const hostile = Array.from({ length: 12 }, (_, i) =>
+      bodyPhysicals(body({ id: `hab${i}`, type: "telluric", habitability: 10 })),
+    );
+    const respirables = (list: typeof accueillant) =>
+      list.filter((p) => p.atmosphere === "breathable").length;
+    expect(respirables(accueillant)).toBeGreaterThan(respirables(hostile));
+    for (const p of accueillant) {
+      expect(p.meanTempC).toBeGreaterThan(-15);
+      expect(p.meanTempC).toBeLessThan(45);
+    }
+  });
+
   it("isBreathable exige une atmosphère respirable ET une température vivable", () => {
     const base = bodyPhysicals(body({ id: "b", type: "telluric" }));
     expect(isBreathable({ ...base, atmosphere: "breathable", meanTempC: 18 })).toBe(true);
