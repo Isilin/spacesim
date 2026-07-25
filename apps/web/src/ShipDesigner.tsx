@@ -21,6 +21,14 @@ import { useMemo, useState } from "react";
 import { BlueprintList } from "./BlueprintList.js";
 import { formatDuration } from "./format.js";
 import { CHASSIS_LABELS, MODULE_LABELS, RESOURCE_LABELS, SLOT_LABELS } from "./labels.js";
+import { ShipHullDiagram } from "./ShipHullDiagram.js";
+
+const SLOT_LEGEND: { slot: SlotType; varName: string }[] = [
+  { slot: "weapon", varName: "--slot-weapon" },
+  { slot: "defense", varName: "--slot-defense" },
+  { slot: "propulsion", varName: "--slot-propulsion" },
+  { slot: "utility", varName: "--slot-utility" },
+];
 
 interface Props {
   blueprints: Blueprint[];
@@ -145,6 +153,23 @@ export function ShipDesigner({ blueprints, effects, activeColony, fleets, send }
         {chassis && stats && (
           <>
             <p className="muted small">{CHASSIS_LABELS[chassis.id].description}</p>
+
+            <div className="designer-preview">
+              <ShipHullDiagram
+                chassisId={draft.chassisId}
+                modules={draft.modules}
+                onRemoveAt={removeModuleAt}
+              />
+              <div className="hull-legend">
+                {SLOT_LEGEND.map(({ slot, varName }) => (
+                  <span key={slot} className="hull-legend-item">
+                    <span className="hull-legend-dot" style={{ background: `var(${varName})` }} />
+                    {SLOT_LABELS[slot]}
+                  </span>
+                ))}
+                <span className="muted small">Cliquez un emplacement rempli pour le retirer.</span>
+              </div>
+            </div>
 
             <div className="gauges">
               <Gauge label="Énergie" used={load.power} max={chassis.power} />

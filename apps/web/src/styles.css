@@ -7,6 +7,11 @@
   --accent: #4fc1ff;
   --ok: #56d364;
   --ko: #f85149;
+  /* Schéma de coque (chantier 13) : une couleur par type d'emplacement. */
+  --slot-weapon: #f85149;
+  --slot-defense: #4fc1ff;
+  --slot-propulsion: #56d364;
+  --slot-utility: #e3b341;
   font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
 }
 
@@ -1598,4 +1603,84 @@ body {
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+/* ── Schéma de coque (chantier 13) ────────────────────────────────────── */
+
+.hull-diagram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hull-diagram.empty {
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+}
+
+.hull-shape {
+  fill: color-mix(in srgb, var(--accent) 10%, transparent);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.hull-diagram.compact .hull-shape {
+  stroke-width: 3;
+}
+
+.hull-slot circle {
+  fill: var(--panel);
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+
+.hull-slot.filled circle {
+  stroke-width: 2;
+}
+
+.hull-slot.slot-weapon.filled circle { fill: var(--slot-weapon); stroke: var(--slot-weapon); }
+.hull-slot.slot-defense.filled circle { fill: var(--slot-defense); stroke: var(--slot-defense); }
+.hull-slot.slot-propulsion.filled circle { fill: var(--slot-propulsion); stroke: var(--slot-propulsion); }
+.hull-slot.slot-utility.filled circle { fill: var(--slot-utility); stroke: var(--slot-utility); }
+
+.hull-slot.slot-weapon.empty circle { stroke: var(--slot-weapon); }
+.hull-slot.slot-defense.empty circle { stroke: var(--slot-defense); }
+.hull-slot.slot-propulsion.empty circle { stroke: var(--slot-propulsion); }
+.hull-slot.slot-utility.empty circle { stroke: var(--slot-utility); }
+
+.hull-slot.clickable { cursor: pointer; }
+.hull-slot.clickable:hover circle { stroke: var(--text); }
+
+.hull-slot-label {
+  fill: var(--muted);
+  font-size: 9px;
+  font-family: inherit;
+}
+
+.hull-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.hull-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hull-legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.designer-preview {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
 }

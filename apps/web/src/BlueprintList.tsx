@@ -5,11 +5,13 @@ import {
   type ClientMessage,
   type Colony,
   type Fleet,
+  type ModuleId,
   type ResourceId,
 } from "@spacesim/shared";
 import { useState } from "react";
 import { formatDuration } from "./format.js";
 import { CHASSIS_LABELS, RESOURCE_LABELS } from "./labels.js";
+import { ShipHullDiagram } from "./ShipHullDiagram.js";
 
 interface Props {
   blueprints: Blueprint[];
@@ -46,6 +48,11 @@ export function BlueprintList({ blueprints, activeColony, fleets, editingId, onE
         const canBuildFleet = !isColony && fleets.length > 0;
         return (
           <li key={bp.id} className={`building ${editingId === bp.id ? "locked" : ""}`}>
+            <ShipHullDiagram
+              chassisId={bp.chassisId as keyof typeof CHASSIS}
+              modules={bp.modules as ModuleId[]}
+              compact
+            />
             <div className="building-info">
               <div className="building-head">
                 <strong>{bp.name}</strong>
