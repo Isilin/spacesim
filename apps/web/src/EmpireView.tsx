@@ -9,14 +9,26 @@ import {
   type Colony,
   type Contract,
   type EmpireEffects,
+  type FactionId,
   type FactionState,
   type GameState,
   type LeaderboardEntry,
   type MilestoneMetric,
+  type Objective,
+  type PirateLair,
   type RelationProposal,
   type Universe,
+  type WorldEvent,
 } from "@spacesim/shared";
-import { FACTION_MOOD_LABELS, RELATION_BADGES, RESOURCE_LABELS, repTierName } from "./labels.js";
+import { formatDuration } from "./format.js";
+import {
+  FACTION_MOOD_LABELS,
+  OBJECTIVE_KIND_LABELS,
+  RELATION_BADGES,
+  RESOURCE_LABELS,
+  WORLD_EVENT_LABELS,
+  repTierName,
+} from "./labels.js";
 
 interface Props {
   game: GameState;
@@ -27,9 +39,38 @@ interface Props {
   factionStates: FactionState[];
   contracts: Contract[];
   proposals: RelationProposal[];
+  objectives: Objective[];
+  worldEvents: WorldEvent[];
+  pirateLairs: PirateLair[];
   playerId: string | null;
   effects: EmpireEffects;
+  now: number;
   send: (msg: ClientMessage) => void;
+}
+
+/** Détail affiché sous le libellé d'un objectif (chantier 17.4). */
+function objectiveDetail(o: Objective, universe: Universe, colonyCount: number): string {
+  switch (o.kind) {
+    case "colonize_n_systems":
+      return `${colonyCount}/${o.targetCount ?? "?"} colonies`;
+    case "hold_system": {
+      const name = allSystems(universe).find((s) => s.id === o.targetSystemId)?.name ?? o.targetSystemId;
+      return `Conserver la revendication sur ${name}`;
+    }
+    case "lead_population":
+      return "Avoir la plus grande population de la partie";
+    case "lead_influence":
+      return "Avoir la plus grande influence de la partie";
+    default:
+      return "";
+  }
+}
+
+/** Lieu touché par un événement de monde (galaxie ou faction, selon le genre). */
+function worldEventLocation(e: WorldEvent, universe: Universe): string {
+  if (e.galaxyId) return universe.galaxies.find((g) => g.id === e.galaxyId)?.name ?? e.galaxyId;
+  if (e.factionId) return FACTIONS[e.factionId as FactionId]?.name ?? e.factionId;
+  return "";
 }
 
 const METRIC_LABELS: Record<MilestoneMetric, string> = {
@@ -48,8 +89,12 @@ export function EmpireView({
   factionStates,
   contracts,
   proposals,
+  objectives,
+  worldEvents,
+  pirateLairs,
   playerId,
   effects,
+  now,
   send,
 }: Props) {
   const metrics: Record<MilestoneMetric, number> = {
@@ -93,6 +138,53 @@ export function EmpireView({
           </span>
         </div>
       </div>
+
+      <h3 className="milestones-title">Fil du monde</h3>
+      <ul className="milestone-list">
+        {objectives
+          .filter((o) => o.status === "open")
+          .map((o) => (
+            <li key={o.id} className="milestone">
+              <div className="queue-head">
+                <span>🎯 {OBJECTIVE_KIND_LABELS[o.kind]}</span>
+                <span className="muted small">{formatDuration(o.deadline - now)}</span>
+              </div>
+              <span className="small muted">
+                {objectiveDetail(o, universe, colonies.length)} · récompense {o.reward} crédits
+              </span>
+            </li>
+          ))}
+        {worldEvents.map((e) => (
+          <li key={e.id} className="milestone">
+            <div className="queue-head">
+              <span className={WORLD_EVENT_LABELS[e.kind].tone}>
+                {WORLD_EVENT_LABELS[e.kind].icon} {WORLD_EVENT_LABELS[e.kind].name}
+                {" — "}
+                {worldEventLocation(e, universe)}
+              </span>
+              <span className="muted small">{formatDuration(e.expiresAt - now)}</span>
+            </div>
+          </li>
+        ))}
+        {pirateLairs
+          .filter((l) => l.bounty > 0)
+          .map((l) => (
+            <li key={l.id} className="milestone">
+              <div className="queue-head">
+                <span>
+                  ☠ Repaire pirate —{" "}
+                  {allSystems(universe).find((s) => s.id === l.systemId)?.name ?? l.systemId}
+                </span>
+                <span className="muted small">prime {l.bounty} crédits</span>
+              </div>
+            </li>
+          ))}
+        {objectives.filter((o) => o.status === "open").length === 0 &&
+          worldEvents.length === 0 &&
+          pirateLairs.filter((l) => l.bounty > 0).length === 0 && (
+            <li className="small muted">Calme plat — rien à signaler pour l'instant.</li>
+          )}
+      </ul>
 
       {leaderboard.length > 1 && (
         <>

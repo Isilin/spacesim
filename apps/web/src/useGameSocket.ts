@@ -11,6 +11,7 @@ import type {
   LeaderboardEntry,
   MiningOutpost,
   Mission,
+  Objective,
   PirateLair,
   Relation,
   RelationProposal,
@@ -21,6 +22,7 @@ import type {
   Territory,
   Transfer,
   Universe,
+  WorldEvent,
 } from "@spacesim/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -51,6 +53,8 @@ export interface GameConnection {
   foreignColonies: ForeignColony[];
   leaderboard: LeaderboardEntry[];
   territories: Territory[];
+  objectives: Objective[];
+  worldEvents: WorldEvent[];
   connected: boolean;
   /** Dernière erreur d'action renvoyée par le serveur (éphémère). */
   actionError: string | null;
@@ -85,6 +89,8 @@ export function useGameSocket(sessionToken: string, onUnauthorized: () => void):
   const [foreignColonies, setForeignColonies] = useState<ForeignColony[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [territories, setTerritories] = useState<Territory[]>([]);
+  const [objectives, setObjectives] = useState<Objective[]>([]);
+  const [worldEvents, setWorldEvents] = useState<WorldEvent[]>([]);
   const [connected, setConnected] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const retryRef = useRef(0);
@@ -129,6 +135,8 @@ export function useGameSocket(sessionToken: string, onUnauthorized: () => void):
           setForeignColonies(msg.foreignColonies);
           setLeaderboard(msg.leaderboard);
           setTerritories(msg.territories);
+          setObjectives(msg.objectives);
+          setWorldEvents(msg.worldEvents);
         } else if (msg.type === "tick") {
           setGame(msg.game);
           setColonies(msg.colonies);
@@ -150,6 +158,8 @@ export function useGameSocket(sessionToken: string, onUnauthorized: () => void):
           setForeignColonies(msg.foreignColonies);
           setLeaderboard(msg.leaderboard);
           setTerritories(msg.territories);
+          setObjectives(msg.objectives);
+          setWorldEvents(msg.worldEvents);
           if (msg.universe) setUniverse(msg.universe);
         } else if (msg.type === "actionError") {
           setActionError(msg.message);
@@ -208,6 +218,8 @@ export function useGameSocket(sessionToken: string, onUnauthorized: () => void):
     foreignColonies,
     leaderboard,
     territories,
+    objectives,
+    worldEvents,
     connected,
     actionError,
     send,

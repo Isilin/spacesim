@@ -3,6 +3,7 @@ import type {
   CombatDirective,
   FactionId,
   FactionMood,
+  ObjectiveKind,
   PlanetType,
   RelationState,
   ResourceId,
@@ -10,6 +11,7 @@ import type {
   TechBranch,
   TechId,
   WarshipId,
+  WorldEventKind,
 } from "@spacesim/shared";
 
 /** Humeur de faction (chantier 15) : nom + ton d'affichage (neutre/positif/négatif). */
@@ -26,6 +28,22 @@ export const RELATION_BADGES: Record<RelationState, string> = {
   nap: " 🤝 pacte de non-agression",
   alliance: " ⭐ allié",
   war: " ⚔ en guerre",
+};
+
+/** Objectif éphémère (chantier 17), affiché dans le fil du monde. */
+export const OBJECTIVE_KIND_LABELS: Record<ObjectiveKind, string> = {
+  colonize_n_systems: "Coloniser de nouveaux systèmes",
+  hold_system: "Défendre un système revendiqué",
+  lead_population: "Mener le classement de population",
+  lead_influence: "Mener le classement d'influence",
+};
+
+/** Événement de monde (chantier 17), affiché dans le fil du monde. */
+export const WORLD_EVENT_LABELS: Record<WorldEventKind, { name: string; icon: string; tone: "ok" | "ko" }> = {
+  economic_crisis: { name: "Crise économique", icon: "📉", tone: "ko" },
+  gold_rush: { name: "Ruée vers l'or", icon: "💰", tone: "ok" },
+  pirate_surge: { name: "Vague pirate", icon: "☠", tone: "ko" },
+  faction_boom: { name: "Essor de faction", icon: "📈", tone: "ok" },
 };
 
 export const PLANET_TYPE_LABELS: Record<PlanetType, string> = {

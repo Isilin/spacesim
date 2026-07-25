@@ -88,6 +88,8 @@ export function App({ auth }: Props) {
     foreignColonies,
     leaderboard,
     territories,
+    objectives,
+    worldEvents,
     connected,
     actionError,
     send,
@@ -330,8 +332,12 @@ export function App({ auth }: Props) {
             factionStates={factionStates}
             contracts={contracts}
             proposals={proposals}
+            objectives={objectives}
+            worldEvents={worldEvents}
+            pirateLairs={pirateLairs}
             playerId={playerId}
             effects={effects}
+            now={now}
             send={send}
           />
         </main>
