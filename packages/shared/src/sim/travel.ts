@@ -6,8 +6,8 @@ import {
   TRANSFER_CREDITS_PER_JUMP,
   TRANSFER_MS_PER_JUMP,
 } from "../constants.js";
-import { SHIPS } from "../content/ships.js";
-import type { Galaxy, ShipId, Universe } from "../types.js";
+import { SHIPS, type LegacyShipId } from "../content/ships.js";
+import type { Galaxy, Universe } from "../types.js";
 import { findGalaxyOfSystem } from "../universe.js";
 
 /** Distance en sauts entre deux systèmes d'une galaxie (BFS), -1 si inaccessible. */
@@ -95,20 +95,41 @@ export function transferCostCredits(jumps: number): number {
 
 // ── Convois (chantier 12) : le vaisseau employé compte enfin ──────────────────
 
-/** Composition d'un convoi : nombre de vaisseaux par classe. */
-export type ConvoyShips = Partial<Record<ShipId, number>>;
+/** Composition d'un convoi : nombre de vaisseaux par id (classe historique ou plan). */
+export type ConvoyShips = Partial<Record<string, number>>;
 
-function convoyEntries(ships: ConvoyShips): [ShipId, number][] {
-  return (Object.entries(ships) as [ShipId, number][]).filter(([, n]) => (n ?? 0) > 0);
+/** Stats de convoi d'un id de vaisseau. */
+export interface ConvoyStat {
+  speedMult: number;
+  fuelPerJump: number;
+  capacity: number;
+}
+
+/** Provider par défaut : stats des classes civiles historiques (chantier 13 : plans → override). */
+export function legacyConvoyStat(id: string): ConvoyStat {
+  const def = SHIPS[id as LegacyShipId];
+  return {
+    speedMult: def?.speedMult ?? 1,
+    fuelPerJump: def?.fuelPerJump ?? 0,
+    capacity: def?.capacity ?? 0,
+  };
+}
+
+function convoyEntries(ships: ConvoyShips): [string, number][] {
+  return Object.entries(ships).filter(([, n]) => (n ?? 0) > 0) as [string, number][];
 }
 
 /**
  * Durée d'un convoi : celle du vaisseau le **plus lent**, un convoi ne se sépare pas.
  * Sans vaisseau précisé, on retombe sur le barème abstrait d'avant le chantier 12.
  */
-export function convoyDurationMs(jumps: number, ships: ConvoyShips = {}): number {
+export function convoyDurationMs(
+  jumps: number,
+  ships: ConvoyShips = {},
+  statsOf: (id: string) => ConvoyStat = legacyConvoyStat,
+): number {
   const entries = convoyEntries(ships);
-  const slowest = entries.reduce((max, [id]) => Math.max(max, SHIPS[id].speedMult), 0);
+  const slowest = entries.reduce((max, [id]) => Math.max(max, statsOf(id).speedMult), 0);
   return transferDurationMs(jumps) * (slowest || 1);
 }
 
@@ -117,9 +138,14 @@ export function convoyDurationMs(jumps: number, ships: ConvoyShips = {}): number
  * la masse embarquée. Prélevée en orbite au départ — voyager coûte, et voyager chargé
  * coûte davantage.
  */
-export function convoyFuel(jumps: number, ships: ConvoyShips, cargoMass = 0): number {
+export function convoyFuel(
+  jumps: number,
+  ships: ConvoyShips,
+  cargoMass = 0,
+  statsOf: (id: string) => ConvoyStat = legacyConvoyStat,
+): number {
   const perShip = convoyEntries(ships).reduce(
-    (sum, [id, count]) => sum + SHIPS[id].fuelPerJump * count,
+    (sum, [id, count]) => sum + statsOf(id).fuelPerJump * count,
     0,
   );
   const massPart = cargoMass * FUEL_PER_MASS_JUMP;
@@ -135,6 +161,9 @@ export function convoyFees(jumps: number, portalsCrossed = 0): number {
 }
 
 /** Capacité totale d'un convoi. */
-export function convoyCapacity(ships: ConvoyShips): number {
-  return convoyEntries(ships).reduce((sum, [id, count]) => sum + SHIPS[id].capacity * count, 0);
+export function convoyCapacity(
+  ships: ConvoyShips,
+  statsOf: (id: string) => ConvoyStat = legacyConvoyStat,
+): number {
+  return convoyEntries(ships).reduce((sum, [id, count]) => sum + statsOf(id).capacity * count, 0);
 }

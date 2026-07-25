@@ -1,6 +1,6 @@
 import { CHASSIS, type ChassisId, type ShipDomain } from "../content/chassis.js";
 import { MODULES, SLOT_TYPES, type ModuleId, type SlotType } from "../content/modules.js";
-import { COMBAT_PHASES, type CombatPhase } from "../content/warships.js";
+import { COMBAT_PHASES, type CombatCategory, type CombatPhase } from "../content/warships.js";
 import type { Blueprint, ResourceId } from "../types.js";
 import type { EmpireEffects } from "./research.js";
 
@@ -23,8 +23,23 @@ export interface ShipStats {
   miningYield: number;
   colonizer: boolean;
   fleetDamageBonus: number;
+  /** Catégorie de combat (triangle de forces) dérivée du plan. */
+  category: CombatCategory;
   cost: Partial<Record<ResourceId, number>>;
   buildMs: number;
+}
+
+/** Catégorie de combat déduite des stats résolues (coque, soutien, armement). */
+export function categoryOf(stats: {
+  hull: number;
+  fleetDamageBonus: number;
+  weapons: Record<CombatPhase, number>;
+}): CombatCategory {
+  const firepower = stats.weapons.long + stats.weapons.medium + stats.weapons.short;
+  if (stats.fleetDamageBonus > 0 && firepower < 20) return "support";
+  if (stats.hull >= 350) return "capital";
+  if (stats.hull >= 140) return "line";
+  return "skirmisher";
 }
 
 /**
@@ -48,6 +63,7 @@ export function resolveBlueprint(bp: BlueprintShape): ShipStats {
       miningYield: 0,
       colonizer: false,
       fleetDamageBonus: 0,
+      category: "skirmisher",
       cost: {},
       buildMs: 0,
     };
@@ -66,6 +82,7 @@ export function resolveBlueprint(bp: BlueprintShape): ShipStats {
     miningYield: 0,
     colonizer: false,
     fleetDamageBonus: 0,
+    category: "skirmisher",
     cost,
     buildMs: chassis.buildMs,
   };
@@ -95,6 +112,7 @@ export function resolveBlueprint(bp: BlueprintShape): ShipStats {
 
   stats.fuelPerJump = Math.max(0, stats.fuelPerJump);
   stats.speedMult = Math.max(0.1, stats.speedMult);
+  stats.category = categoryOf(stats);
   return stats;
 }
 

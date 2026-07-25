@@ -2,9 +2,9 @@ import type {
   BuildingId,
   CombatDirective,
   FactionId,
+  LegacyShipId,
   PlanetType,
   ResourceId,
-  ShipId,
   TechBranch,
   TechId,
   WarshipId,
@@ -64,7 +64,7 @@ export function repTierName(rep: number): string {
   return REP_TIER_LABELS.find((t) => rep >= t.min)?.name ?? "Neutre";
 }
 
-export const SHIP_LABELS: Record<ShipId, { name: string; description: string }> = {
+export const SHIP_LABELS: Record<LegacyShipId, { name: string; description: string }> = {
   cargo_small: { name: "Cargo léger", description: "Soute de 200. Le mulet de l'espace." },
   cargo_large: {
     name: "Cargo lourd",
@@ -79,6 +79,11 @@ export const SHIP_LABELS: Record<ShipId, { name: string; description: string }> 
     description: "Soute de 80, presque deux fois plus rapide et sobre en carburant.",
   },
 };
+
+/** Libellé d'un vaisseau par id (classe historique) ; repli sur l'id pour les plans. */
+export function shipLabel(id: string): { name: string; description: string } {
+  return SHIP_LABELS[id as LegacyShipId] ?? { name: id, description: "" };
+}
 
 export const FACTION_LABELS: Record<FactionId, { name: string; description: string }> = {
   ferride: {

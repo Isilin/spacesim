@@ -11,7 +11,7 @@ import {
   type TechId,
 } from "@spacesim/shared";
 import { formatDuration } from "./format.js";
-import { RESOURCE_LABELS, SHIP_LABELS, TECH_LABELS } from "./labels.js";
+import { RESOURCE_LABELS, SHIP_LABELS, shipLabel, TECH_LABELS } from "./labels.js";
 
 interface Props {
   colony: Colony;
@@ -63,7 +63,7 @@ export function ShipyardPanel({ colony, routes, researched, now, send }: Props) 
                     {queued > 0 ? ` (+${queued})` : ""}
                   </span>
                   <span className="muted small">
-                    {Math.min(idle[shipId], owned)} dispo
+                    {Math.min(idle[shipId] ?? 0, owned)} dispo
                   </span>
                 </div>
                 <span className="muted small">{SHIP_LABELS[shipId].description}</span>
@@ -103,7 +103,7 @@ export function ShipyardPanel({ colony, routes, researched, now, send }: Props) 
           {colony.shipQueue.map((item) => (
             <li key={`${item.shipId}-${item.startedAt}`} className="queue-item">
               <div className="queue-head">
-                <span>{SHIP_LABELS[item.shipId].name}</span>
+                <span>{shipLabel(item.shipId).name}</span>
                 <span className="muted">{formatDuration(item.finishesAt - now)}</span>
               </div>
             </li>

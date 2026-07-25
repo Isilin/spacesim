@@ -160,9 +160,12 @@ export const BUILDING_IDS = [
 
 export type BuildingId = (typeof BUILDING_IDS)[number];
 
+/** Classes civiles historiques (chantier 12). Depuis le chantier 13, un vaisseau civil
+ * est identifié par l'id de son **plan** — d'où `ShipId = string`. Cette liste reste
+ * la référence des classes héritées (presets, UI de transition). */
 export const SHIP_IDS = ["cargo_small", "cargo_large", "hauler", "courier"] as const;
 
-export type ShipId = (typeof SHIP_IDS)[number];
+export type ShipId = string;
 
 /** Une instance de vaisseau en production au chantier naval. */
 export interface ShipQueueItem {

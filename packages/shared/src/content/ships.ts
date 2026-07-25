@@ -1,8 +1,11 @@
 import type { TechId } from "./techs.js";
-import type { ResourceId, ShipId } from "../types.js";
+import { SHIP_IDS, type ResourceId } from "../types.js";
+
+/** Ids concrets des classes civiles historiques (clés connues, cf. types `ShipId = string`). */
+export type LegacyShipId = (typeof SHIP_IDS)[number];
 
 export interface ShipDef {
-  id: ShipId;
+  id: LegacyShipId;
   /** Capacité de soute (unités de ressources). */
   capacity: number;
   cost: Partial<Record<ResourceId, number>>;
@@ -18,7 +21,7 @@ export interface ShipDef {
   fuelPerJump: number;
 }
 
-export const SHIPS: Record<ShipId, ShipDef> = {
+export const SHIPS: Record<LegacyShipId, ShipDef> = {
   cargo_small: {
     id: "cargo_small",
     capacity: 200,

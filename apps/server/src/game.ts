@@ -75,6 +75,8 @@ import {
   resolveShips,
   RESOURCES,
   routeCargoQuantity,
+  legacyCapacity,
+  type LegacyShipId,
   SHIPS,
   storageCap,
   takeFromOrbit,
@@ -579,7 +581,7 @@ export class GameEngine {
     return {
       colony: { ...colony, shipsBusy: [...colony.shipsBusy, { shipId, freeAt: busyUntil }] },
       shipId,
-      capacity: SHIPS[shipId].capacity,
+      capacity: legacyCapacity(shipId),
     };
   }
 
@@ -598,7 +600,7 @@ export class GameEngine {
     for (const [shipId, raw] of Object.entries(ships) as [ShipId, number][]) {
       const count = Math.floor(Number(raw));
       if (!Number.isFinite(count) || count <= 0) continue;
-      if (!SHIPS[shipId]) return null;
+      if (!SHIPS[shipId as LegacyShipId]) return null;
       if ((idle[shipId] ?? 0) < count) return null;
       wanted[shipId] = count;
     }
@@ -982,8 +984,8 @@ export class GameEngine {
     for (const [shipId, raw] of Object.entries(ships) as [ShipId, number][]) {
       const count = Math.floor(Number(raw));
       if (!Number.isFinite(count) || count <= 0) continue;
-      if (!SHIPS[shipId]) return `Vaisseau inconnu : ${shipId}`;
-      if (idle[shipId] < count) return `Vaisseaux indisponibles : ${shipId}`;
+      if (!SHIPS[shipId as LegacyShipId]) return `Vaisseau inconnu : ${shipId}`;
+      if ((idle[shipId] ?? 0) < count) return `Vaisseaux indisponibles : ${shipId}`;
       requested[shipId] = count;
       anyShip = true;
     }
