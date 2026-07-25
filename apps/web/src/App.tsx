@@ -78,6 +78,7 @@ export function App({ auth }: Props) {
     routes,
     outposts,
     gateways,
+    contracts,
     fleets,
     pirateLairs,
     battles,
@@ -289,6 +290,8 @@ export function App({ auth }: Props) {
             exploredSystemIds={exploredSystemIds}
             outposts={outposts}
             markets={markets}
+            contracts={contracts}
+            playerId={playerId}
             effects={effects}
             portalLinks={portalLinks}
             now={now}

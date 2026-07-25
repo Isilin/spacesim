@@ -1,6 +1,7 @@
 import type {
   ClientMessage,
   Colony,
+  Contract,
   EmpireEffects,
   MiningOutpost,
   Route,
@@ -9,6 +10,7 @@ import type {
   Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
+import { ContractsView } from "./ContractsView.js";
 import { MarketsView } from "./MarketsView.js";
 import { OrbitPanel } from "./OrbitPanel.js";
 import { RoutesView } from "./RoutesView.js";
@@ -24,19 +26,22 @@ interface Props {
   exploredSystemIds: string[];
   outposts: MiningOutpost[];
   markets: StationMarket[];
+  contracts: Contract[];
+  playerId: string | null;
   effects: EmpireEffects;
   portalLinks: [string, string][];
   now: number;
   send: (msg: ClientMessage) => void;
 }
 
-type Tab = "routes" | "convoys" | "orbit" | "markets";
+type Tab = "routes" | "convoys" | "orbit" | "markets" | "contracts";
 
 const TAB_LABELS: Record<Tab, string> = {
   routes: "Routes",
   convoys: "Convois",
   orbit: "Orbite",
   markets: "Marchés",
+  contracts: "Contrats",
 };
 
 /**
@@ -52,6 +57,8 @@ export function LogisticsView({
   exploredSystemIds,
   outposts,
   markets,
+  contracts,
+  playerId,
   effects,
   portalLinks,
   now,
@@ -101,7 +108,7 @@ export function LogisticsView({
         ) : (
           <p className="muted">Aucune colonie.</p>
         )
-      ) : (
+      ) : tab === "markets" ? (
         <MarketsView
           universe={universe}
           markets={markets}
@@ -110,6 +117,8 @@ export function LogisticsView({
           exploredSystemIds={exploredSystemIds}
           portalLinks={portalLinks}
         />
+      ) : (
+        <ContractsView contracts={contracts} colony={colony} playerId={playerId} now={now} send={send} />
       )}
     </div>
   );
