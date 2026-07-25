@@ -16,6 +16,15 @@ export interface ViewBox {
   height: number;
 }
 
+interface DragState {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  x: number;
+  y: number;
+  captured: boolean;
+}
+
 interface Props {
   /** Cadrage initial, et cible du bouton « recentrer ». */
   home: ViewBox;
@@ -53,7 +62,7 @@ export function ZoomableSvg({
 }: Props) {
   const [view, setView] = useState<ViewBox>(home);
   const svgRef = useRef<SVGSVGElement>(null);
-  const dragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const dragRef = useRef<DragState | null>(null);
   const movedRef = useRef(false);
 
   const apply = useCallback(
@@ -113,27 +122,37 @@ export function ZoomableSvg({
 
   const onPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (event.button !== 0) return;
-    dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      x: event.clientX,
+      y: event.clientY,
+      captured: false,
+    };
     movedRef.current = false;
-    svgRef.current?.setPointerCapture(event.pointerId);
   };
 
   const onPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
     const drag = dragRef.current;
     const rect = svgRef.current?.getBoundingClientRect();
     if (!drag || !rect || rect.width === 0) return;
-    const dx = ((event.clientX - drag.x) / rect.width) * view.width;
-    const dy = ((event.clientY - drag.y) / rect.height) * view.height;
-    if (Math.abs(event.clientX - drag.x) + Math.abs(event.clientY - drag.y) > 3) {
+    const moved = Math.abs(event.clientX - drag.startX) + Math.abs(event.clientY - drag.startY) > 3;
+    if (!moved && !drag.captured) return;
+    if (!drag.captured) {
+      svgRef.current?.setPointerCapture(event.pointerId);
+      drag.captured = true;
       movedRef.current = true;
     }
+    const dx = ((event.clientX - drag.x) / rect.width) * view.width;
+    const dy = ((event.clientY - drag.y) / rect.height) * view.height;
     dragRef.current = { ...drag, x: event.clientX, y: event.clientY };
     apply({ ...view, x: view.x - dx, y: view.y - dy });
   };
 
   const endDrag = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (dragRef.current?.pointerId === event.pointerId) {
-      svgRef.current?.releasePointerCapture(event.pointerId);
+      if (dragRef.current.captured) svgRef.current?.releasePointerCapture(event.pointerId);
       dragRef.current = null;
     }
   };
