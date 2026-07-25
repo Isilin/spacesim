@@ -181,6 +181,14 @@ app.get("/ws", { websocket: true }, (socket, request) => {
       error = engine.buyFromStation(empire, msg.colonyId, msg.stationId, msg.resource, msg.budget);
     } else if (msg.type === "buildShip") {
       error = engine.buildShip(empire, msg.colonyId, msg.shipId);
+    } else if (msg.type === "createBlueprint") {
+      error = engine.createBlueprint(empire, msg.name, msg.chassisId, msg.modules);
+    } else if (msg.type === "updateBlueprint") {
+      error = engine.updateBlueprint(empire, msg.blueprintId, msg.name, msg.chassisId, msg.modules);
+    } else if (msg.type === "deleteBlueprint") {
+      error = engine.deleteBlueprint(empire, msg.blueprintId);
+    } else if (msg.type === "buildBlueprint") {
+      error = engine.buildBlueprint(empire, msg.blueprintId, msg.colonyId, msg.fleetId);
     } else if (msg.type === "buildOutpost") {
       error = engine.buildOutpost(empire, msg.colonyId, msg.beltId);
     } else if (msg.type === "createRoute") {

@@ -33,6 +33,7 @@ const ALL_TABLES = [
   schema.battles,
   schema.pirateLairs,
   schema.fleets,
+  schema.blueprints,
   schema.gateways,
   schema.claims,
   schema.players,
@@ -557,3 +558,88 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
     }
   });
 });
+
+describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
+  const snap = (engine: GameEngine, empire: ReturnType<typeof empireFor>) =>
+    engine.snapshotForEmpire(empire);
+  /** Plan civil (domaine colonie) et militaire (domaine flotte), tous deux constructibles sans tech. */
+  const COLONY_BP = { chassisId: "light_freighter", modules: ["cargo_pod", "cargo_pod", "ion_thruster"] };
+  const FLEET_BP = { chassisId: "scout_frame", modules: ["laser_pulse", "armor_plating", "ion_thruster", "cargo_pod"] };
+
+  it("un empire neuf est amorcé avec les plans de départ", () => {
+    const engine = GameEngine.load();
+    const a = empireFor(engine, "alice");
+    const plans = snap(engine, a).blueprints;
+    expect(plans.length).toBeGreaterThanOrEqual(2);
+    expect(plans.every((p) => p.ownerId === a.id)).toBe(true);
+  });
+
+  it("crée un plan valide, rejette un plan qui dépasse les emplacements", () => {
+    const engine = GameEngine.load();
+    const a = empireFor(engine, "alice");
+    const before = snap(engine, a).blueprints.length;
+    expect(engine.createBlueprint(a, "Mon cargo", COLONY_BP.chassisId, COLONY_BP.modules)).toBeNull();
+    expect(snap(engine, a).blueprints.length).toBe(before + 1);
+    // scout_frame n'a qu'un slot d'arme : deux lasers → refus.
+    expect(
+      engine.createBlueprint(a, "Trop armé", "scout_frame", ["laser_pulse", "laser_pulse"]),
+    ).not.toBeNull();
+  });
+
+  it("les plans sont isolés par empire", () => {
+    const engine = GameEngine.load();
+    const a = empireFor(engine, "alice");
+    const b = empireFor(engine, "bob");
+    engine.createBlueprint(a, "Secret d'Alice", COLONY_BP.chassisId, COLONY_BP.modules);
+    const namesB = snap(engine, b).blueprints.map((p) => p.name);
+    expect(namesB).not.toContain("Secret d'Alice");
+  });
+
+  it("construit un plan de domaine colonie : file navale puis livraison", () => {
+    const engine = GameEngine.load();
+    const a = empireFor(engine, "alice");
+    engine.devGrant({ metals: 1000, components: 500 });
+    const colony = snap(engine, a).colonies[0]!;
+    const plan = snap(engine, a).blueprints.find((p) => p.chassisId === "light_freighter")!;
+    expect(engine.buildBlueprint(a, plan.id, colony.id)).toBeNull();
+    expect(snap(engine, a).colonies[0]!.shipQueue.some((q) => q.shipId === plan.id)).toBe(true);
+    advanceTicks(engine, 60);
+    expect((snap(engine, a).colonies[0]!.ships[plan.id] ?? 0)).toBeGreaterThanOrEqual(1);
+  });
+
+  it("construit un plan de domaine flotte : file de la flotte", () => {
+    const engine = GameEngine.load();
+    const a = empireFor(engine, "alice");
+    const colony = snap(engine, a).colonies[0]!;
+    // Grant pour couvrir le coût du châssis + modules.
+    engine.devGrant({ metals: 1000, components: 500 });
+    expect(engine.createFleet(a, colony.id, "1re escadre")).toBeNull();
+    const fleetId = snap(engine, a).fleets[0]!.id;
+    const plan = snap(engine, a).blueprints.find((p) => p.chassisId === "scout_frame")!;
+    const err = engine.buildBlueprint(a, plan.id, undefined, fleetId);
+    expect(err).toBeNull();
+    expect(snap(engine, a).fleets[0]!.queue.some((q) => q.warshipId === plan.id)).toBe(true);
+  });
+
+  it("refuse de bâtir un plan de flotte au chantier civil (mauvais domaine)", () => {
+    const engine = GameEngine.load();
+    const a = empireFor(engine, "alice");
+    const colony = snap(engine, a).colonies[0]!;
+    const fleetPlan = snap(engine, a).blueprints.find((p) => p.chassisId === "scout_frame")!;
+    expect(engine.buildBlueprint(a, fleetPlan.id, colony.id)).not.toBeNull();
+  });
+
+  it("les plans survivent au rechargement", () => {
+    const e1 = GameEngine.load();
+    const a = empireFor(e1, "alice");
+    engine_createNamed(e1, a);
+    const e2 = GameEngine.load();
+    const a2 = e2.empireForAccount("alice")!;
+    expect(e2.snapshotForEmpire(a2).blueprints.map((p) => p.name)).toContain("Persistant");
+  });
+});
+
+/** Crée un plan nommé « Persistant » (helper du test de persistance). */
+function engine_createNamed(engine: GameEngine, empire: ReturnType<typeof empireFor>): void {
+  engine.createBlueprint(empire, "Persistant", "light_freighter", ["cargo_pod", "ion_thruster"]);
+}

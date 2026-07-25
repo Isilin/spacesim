@@ -431,6 +431,8 @@ export type ServerMessage =
       outposts: MiningOutpost[];
       gateways: Gateway[];
       fleets: Fleet[];
+      /** Plans de vaisseaux de l'empire (chantier 13). */
+      blueprints: Blueprint[];
       pirateLairs: PirateLair[];
       battles: StoredBattle[];
       /** Entités étrangères visibles dans le brouillard de l'empire (chantier 7d). */
@@ -453,6 +455,8 @@ export type ServerMessage =
       outposts: MiningOutpost[];
       gateways: Gateway[];
       fleets: Fleet[];
+      /** Plans de vaisseaux de l'empire (chantier 13). */
+      blueprints: Blueprint[];
       pirateLairs: PirateLair[];
       battles: StoredBattle[];
       /** Entités étrangères visibles dans le brouillard de l'empire (chantier 7d). */
@@ -488,6 +492,12 @@ export type ClientMessage =
   | { type: "sell"; colonyId: string; stationId: string; resources: Partial<Record<ResourceId, number>> }
   | { type: "buy"; colonyId: string; stationId: string; resource: ResourceId; budget: number }
   | { type: "buildShip"; colonyId: string; shipId: ShipId }
+  /** Conception de vaisseaux (chantier 13). */
+  | { type: "createBlueprint"; name: string; chassisId: string; modules: string[] }
+  | { type: "updateBlueprint"; blueprintId: string; name: string; chassisId: string; modules: string[] }
+  | { type: "deleteBlueprint"; blueprintId: string }
+  /** Produit un vaisseau depuis un plan : `colonyId` (domaine colonie) ou `fleetId` (flotte). */
+  | { type: "buildBlueprint"; blueprintId: string; colonyId?: string; fleetId?: string }
   | { type: "buildOutpost"; colonyId: string; beltId: string }
   | {
       type: "createRoute";

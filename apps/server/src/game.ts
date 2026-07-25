@@ -9,6 +9,7 @@ import {
   canResearch,
   CLAIM_COST,
   CLAIM_PRODUCTION_BONUS,
+  combatDefFromStats,
   COLONY_SHIP_COST,
   colonizeInfluenceCost,
   colonyShipDurationMs,
@@ -26,6 +27,7 @@ import {
   emptyResources,
   enqueueBuilding,
   enqueueShip,
+  enqueueShipFromStats,
   FACTIONS,
   fleetCapacity,
   fleetIsEmpty,
@@ -62,6 +64,12 @@ import {
   pirateComposition,
   pirateDirectives,
   pickShip,
+  PRESETS,
+  presetById,
+  STARTER_PRESET_IDS,
+  resolveBlueprint,
+  validateBlueprint,
+  WARSHIP_COMBAT_DEFS,
   randInt,
   PROBE_COST_CREDITS,
   probeDurationMs,
@@ -86,7 +94,9 @@ import {
   transferDurationMs,
   TECHS,
   type AsteroidBelt,
+  type Blueprint,
   type BuildingId,
+  type CombatDef,
   type Colony,
   type EmpireEffects,
   type CombatPhase,
@@ -136,6 +146,8 @@ export interface EngineSnapshot {
   outposts: MiningOutpost[];
   gateways: Gateway[];
   fleets: Fleet[];
+  /** Plans de vaisseaux de l'empire (chantier 13). */
+  blueprints: Blueprint[];
   pirateLairs: PirateLair[];
   battles: StoredBattle[];
   /** Entités étrangères visibles dans le brouillard de l'empire (chantier 7d). */
@@ -292,6 +304,10 @@ export class GameEngine {
       engine.loadPirates();
       engine.loadBattles();
     }
+    // Plans de vaisseaux (chantier 13) : chargés puis amorcés pour tout empire qui n'en a
+    // aucun (partie neuve, ou empire d'avant le chantier 13).
+    engine.loadBlueprints();
+    engine.seedStarterBlueprintsForAll();
     // Équipement des galaxies (idempotent) : couvre aussi bien la partie neuve que les
     // galaxies apparues par extension, dont le compteur seul a survécu au redémarrage.
     engine.initMarkets();
@@ -417,6 +433,7 @@ export class GameEngine {
       outposts: [...empire.outpostMap.values()],
       gateways: [...this.gatewayMap.values()],
       fleets: [...empire.fleetMap.values()],
+      blueprints: [...empire.blueprintMap.values()],
       pirateLairs: this.pirateLairsFor(empire),
       battles: this.battleLog,
       foreignFleets,
@@ -842,7 +859,7 @@ export class GameEngine {
     return null;
   }
 
-  /** Action joueur : produire un vaisseau au chantier naval. */
+  /** Action joueur : produire un vaisseau au chantier naval (classe historique). */
   buildShip(empire: Empire, colonyId: string, shipId: ShipId): string | null {
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
@@ -850,6 +867,192 @@ export class GameEngine {
     if (!result.ok) return result.reason;
     empire.colonyMap.set(colonyId, result.colony);
     this.persistColony(result.colony);
+    this.notify();
+    return null;
+  }
+
+  // ── Conception de vaisseaux (chantier 13) ────────────────────────────────
+
+  private static readonly MAX_BLUEPRINTS = 40;
+
+  private loadBlueprints(): void {
+    for (const row of db.select().from(schema.blueprints).all()) {
+      const empire = this.empires.get(row.ownerId);
+      if (!empire) continue;
+      empire.blueprintMap.set(row.id, {
+        id: row.id,
+        ownerId: row.ownerId,
+        name: row.name,
+        chassisId: row.chassisId,
+        modules: JSON.parse(row.modules),
+        createdAt: row.createdAt,
+      });
+    }
+  }
+
+  private persistBlueprint(bp: Blueprint, insert = false): void {
+    if (insert) {
+      db.insert(schema.blueprints)
+        .values({
+          id: bp.id,
+          gameId: this.clock.id,
+          ownerId: bp.ownerId,
+          name: bp.name,
+          chassisId: bp.chassisId,
+          modules: JSON.stringify(bp.modules),
+          createdAt: bp.createdAt,
+        })
+        .run();
+      return;
+    }
+    db.update(schema.blueprints)
+      .set({ name: bp.name, chassisId: bp.chassisId, modules: JSON.stringify(bp.modules) })
+      .where(eq(schema.blueprints.id, bp.id))
+      .run();
+  }
+
+  /** Amorce un empire sans plan avec les designs de départ (presets constructibles). */
+  private seedStarterBlueprints(empire: Empire): void {
+    if (empire.blueprintMap.size > 0) return;
+    for (const presetId of STARTER_PRESET_IDS) {
+      const preset = presetById(presetId);
+      if (!preset) continue;
+      const bp: Blueprint = {
+        id: randomUUID(),
+        ownerId: empire.id,
+        name: preset.name,
+        chassisId: preset.chassisId,
+        modules: [...preset.modules],
+        createdAt: Date.now(),
+      };
+      empire.blueprintMap.set(bp.id, bp);
+      this.persistBlueprint(bp, true);
+    }
+  }
+
+  private seedStarterBlueprintsForAll(): void {
+    for (const empire of this.empires.values()) this.seedStarterBlueprints(empire);
+  }
+
+  /**
+   * Définitions de combat couvrant les classes historiques (défaut/PNJ) + les plans des
+   * empires impliqués dans la bataille — le combat résout ainsi n'importe quel id présent.
+   */
+  private combatDefs(...empires: Empire[]): Record<string, CombatDef> {
+    const defs: Record<string, CombatDef> = { ...WARSHIP_COMBAT_DEFS };
+    for (const empire of empires) {
+      for (const bp of empire.blueprintMap.values()) {
+        defs[bp.id] = combatDefFromStats(resolveBlueprint(bp));
+      }
+    }
+    return defs;
+  }
+
+  /** Action joueur : créer un plan (validé contre les techs débloquées). */
+  createBlueprint(empire: Empire, name: string, chassisId: string, modules: string[]): string | null {
+    if (empire.blueprintMap.size >= GameEngine.MAX_BLUEPRINTS) return "Trop de plans enregistrés";
+    const problems = validateBlueprint({ chassisId, modules }, empire.effects);
+    if (problems.length > 0) return problems[0]!;
+    const bp: Blueprint = {
+      id: randomUUID(),
+      ownerId: empire.id,
+      name: name.trim().slice(0, 40) || "Plan sans nom",
+      chassisId,
+      modules: [...modules],
+      createdAt: Date.now(),
+    };
+    empire.blueprintMap.set(bp.id, bp);
+    this.persistBlueprint(bp, true);
+    this.notify();
+    return null;
+  }
+
+  /** Action joueur : remplacer le contenu d'un plan existant. */
+  updateBlueprint(
+    empire: Empire,
+    blueprintId: string,
+    name: string,
+    chassisId: string,
+    modules: string[],
+  ): string | null {
+    const bp = empire.blueprintMap.get(blueprintId);
+    if (!bp) return "Plan inconnu";
+    const problems = validateBlueprint({ chassisId, modules }, empire.effects);
+    if (problems.length > 0) return problems[0]!;
+    const next: Blueprint = {
+      ...bp,
+      name: name.trim().slice(0, 40) || bp.name,
+      chassisId,
+      modules: [...modules],
+    };
+    empire.blueprintMap.set(blueprintId, next);
+    this.persistBlueprint(next);
+    this.notify();
+    return null;
+  }
+
+  /** Action joueur : supprimer un plan. */
+  deleteBlueprint(empire: Empire, blueprintId: string): string | null {
+    if (!empire.blueprintMap.has(blueprintId)) return "Plan inconnu";
+    empire.blueprintMap.delete(blueprintId);
+    db.delete(schema.blueprints).where(eq(schema.blueprints.id, blueprintId)).run();
+    this.notify();
+    return null;
+  }
+
+  /**
+   * Action joueur : produire un vaisseau depuis un plan. Domaine colonie → pool civil
+   * (routes/convois) ; domaine flotte → file de production de la flotte.
+   */
+  buildBlueprint(
+    empire: Empire,
+    blueprintId: string,
+    colonyId?: string,
+    fleetId?: string,
+  ): string | null {
+    const bp = empire.blueprintMap.get(blueprintId);
+    if (!bp) return "Plan inconnu";
+    const problems = validateBlueprint(bp, empire.effects);
+    if (problems.length > 0) return problems[0]!;
+    const stats = resolveBlueprint(bp);
+
+    if (stats.domain === "colony") {
+      const colony = colonyId ? empire.colonyMap.get(colonyId) : undefined;
+      if (!colony) return "Colonie inconnue";
+      const result = enqueueShipFromStats(colony, bp.id, stats, Date.now(), empire.effects);
+      if (!result.ok) return result.reason;
+      empire.colonyMap.set(colony.id, result.colony);
+      this.persistColony(result.colony);
+      this.notify();
+      return null;
+    }
+
+    // Domaine flotte : produit au chantier naval de la colonie de rattachement de la flotte.
+    const fleet = fleetId ? empire.fleetMap.get(fleetId) : undefined;
+    if (!fleet) return "Flotte inconnue";
+    if (fleet.movement) return "Flotte en déplacement";
+    const home = empire.colonyMap.get(fleet.homeColonyId);
+    if (!home) return "Colonie de rattachement inconnue";
+    if ((home.buildings.shipyard ?? 0) < 1) return "Chantier naval requis";
+    if (fleet.queue.length >= 5) return "File de production pleine";
+    const resources = { ...home.resources };
+    for (const [res, amount] of Object.entries(stats.cost) as [ResourceId, number][]) {
+      if ((resources[res] ?? 0) < amount) return `Ressources insuffisantes (${amount} ${res})`;
+    }
+    for (const [res, amount] of Object.entries(stats.cost) as [ResourceId, number][]) {
+      resources[res] -= amount;
+    }
+    empire.colonyMap.set(home.id, { ...home, resources });
+    this.persistColony(empire.colonyMap.get(home.id)!);
+    const now = Date.now();
+    const startedAt = Math.max(now, fleet.queue.at(-1)?.finishesAt ?? now);
+    const buildMs = Math.round(stats.buildMs * empire.effects.shipBuildSpeedMult);
+    const next: Fleet = {
+      ...fleet,
+      queue: [...fleet.queue, { warshipId: bp.id, startedAt, finishesAt: startedAt + buildMs }],
+    };
+    empire.fleetMap.set(fleet.id, next);
+    this.persistFleet(next);
     this.notify();
     return null;
   }
@@ -1635,6 +1838,7 @@ export class GameEngine {
       lair.ships as FleetComposition,
       fleet.directives as never,
       lair.directives as never,
+      this.combatDefs(empire),
     );
     this.archiveBattle(fleet.systemId, fleet.name, "Repaire pirate", report);
 
@@ -1758,6 +1962,7 @@ export class GameEngine {
       target.fleet.ships as FleetComposition,
       fleet.directives as never,
       target.fleet.directives as never,
+      this.combatDefs(empire, target.empire),
     );
     this.archiveBattle(fleet.systemId, fleet.name, `${target.empire.name} — ${target.fleet.name}`, report);
     this.applyFleetSurvivors(empire, fleet, report.attackerSurvivors as FleetComposition);
@@ -1800,6 +2005,7 @@ export class GameEngine {
         defender.ships as FleetComposition,
         fleet.directives as never,
         defender.directives as never,
+        this.combatDefs(empire, target.empire),
       );
       this.archiveBattle(systemId, fleet.name, `${target.empire.name} — ${defender.name}`, report);
       this.applyFleetSurvivors(target.empire, defender, report.defenderSurvivors as FleetComposition);
@@ -2407,6 +2613,7 @@ export class GameEngine {
     const empire = new Empire(id, empireName, color, accountId);
     this.empires.set(id, empire);
     this.foundHomeColony(empire, home);
+    this.seedStarterBlueprints(empire);
     // L'arrivant peut avoir entamé la dernière galaxie vierge : on repousse le bord.
     this.ensureFrontier();
     this.notify();
