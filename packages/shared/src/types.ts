@@ -149,6 +149,28 @@ export interface RelationProposal {
   createdAt: number;
 }
 
+export type ObjectiveKind = "colonize_n_systems" | "hold_system" | "lead_population" | "lead_influence";
+export type ObjectiveStatus = "open" | "completed" | "expired";
+
+/**
+ * Objectif éphémère (chantier 17) : but court terme personnel, tiré au sort et
+ * auto-évalué contre l'état du jeu (colonies, revendications, classements) — jamais
+ * plus d'un actif par empire à la fois. Redacté par empire, comme les relations.
+ */
+export interface Objective {
+  id: string;
+  empireId: string;
+  kind: ObjectiveKind;
+  /** colonize_n_systems : nombre de colonies visé. */
+  targetCount?: number;
+  /** hold_system : système à conserver revendiqué jusqu'à l'échéance. */
+  targetSystemId?: string;
+  reward: number;
+  createdAt: number;
+  deadline: number;
+  status: ObjectiveStatus;
+}
+
 export type ContractStatus = "open" | "fulfilled" | "expired" | "cancelled";
 
 /**
@@ -503,6 +525,8 @@ export type ServerMessage =
       relations: Relation[];
       /** Propositions de pacte en attente le concernant (chantier 16), émises ou reçues. */
       proposals: RelationProposal[];
+      /** Objectifs éphémères de l'empire (chantier 17) — personnels, jamais visibles d'un tiers. */
+      objectives: Objective[];
     }
   | {
       type: "tick";
@@ -533,6 +557,8 @@ export type ServerMessage =
       relations: Relation[];
       /** Propositions de pacte en attente le concernant (chantier 16), émises ou reçues. */
       proposals: RelationProposal[];
+      /** Objectifs éphémères de l'empire (chantier 17) — personnels, jamais visibles d'un tiers. */
+      objectives: Objective[];
       /** Présent quand l'exploration a changé depuis le dernier message. */
       universe?: Universe;
     }

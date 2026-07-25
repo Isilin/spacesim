@@ -97,6 +97,20 @@ export const relationProposals = sqliteTable("relation_proposals", {
   createdAt: integer("created_at").notNull(),
 });
 
+/** Objectifs éphémères personnels, un seul actif par empire à la fois (chantier 17). */
+export const objectives = sqliteTable("objectives", {
+  id: text("id").primaryKey(),
+  gameId: text("game_id").notNull(),
+  empireId: text("empire_id").notNull(),
+  kind: text("kind").notNull(),
+  targetCount: real("target_count"),
+  targetSystemId: text("target_system_id"),
+  reward: real("reward").notNull(),
+  createdAt: integer("created_at").notNull(),
+  deadline: integer("deadline").notNull(),
+  status: text("status").notNull().default("open"),
+});
+
 /** Systèmes revendiqués par un joueur (bonus locaux, entretien en influence). */
 export const claims = sqliteTable("claims", {
   systemId: text("system_id").primaryKey(),

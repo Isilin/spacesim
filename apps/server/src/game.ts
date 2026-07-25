@@ -76,6 +76,10 @@ import {
   npcAcceptsProposal,
   NPC_CONTRACT_DURATION_MS,
   NPC_CONTRACT_PRICE_MULT,
+  generateObjectiveSpec,
+  MAX_OPEN_OBJECTIVES_PER_EMPIRE,
+  objectiveMet,
+  OBJECTIVE_DURATION_MS,
   OUTPOST_COST,
   OUTPOST_UPKEEP_CREDITS,
   outpostTick,
@@ -137,6 +141,8 @@ import {
   type MarketResource,
   type MiningOutpost,
   type Mission,
+  type Objective,
+  type ObjectiveKind,
   type Planet,
   type ProposalKind,
   type ResourceId,
@@ -187,6 +193,8 @@ export interface EngineSnapshot {
   relations: Relation[];
   /** Propositions de pacte en attente le concernant (chantier 16), émises ou reçues. */
   proposals: RelationProposal[];
+  /** Objectifs éphémères de l'empire (chantier 17) — personnels, jamais visibles d'un tiers. */
+  objectives: Objective[];
   /** Présent si l'exploration a changé depuis la dernière notification. */
   universe?: Universe;
 }
@@ -253,6 +261,8 @@ export class GameEngine {
   private relationMap = new Map<string, Relation>();
   /** Propositions de pacte en attente (chantier 16). */
   private proposalMap = new Map<string, RelationProposal>();
+  /** Objectifs éphémères personnels (chantier 17). */
+  private objectiveMap = new Map<string, Objective>();
   private beltsById: Map<string, AsteroidBelt>;
   private listeners = new Set<StateListener>();
   private interval: NodeJS.Timeout | null = null;
@@ -341,6 +351,7 @@ export class GameEngine {
     engine.loadPlayers();
     engine.loadRelations();
     engine.loadProposals();
+    engine.loadObjectives();
     if (isNew) {
       engine.createHomeColony();
     } else {
@@ -501,6 +512,7 @@ export class GameEngine {
       factionStates: this.factionStates,
       relations: this.relationsFor(empire),
       proposals: this.proposalsFor(empire),
+      objectives: this.objectivesFor(empire),
       // L'univers n'est réémis qu'en cas de changement : nouvelle exploration (brouillard
       // levé) ou extension de l'univers (galaxies apparues).
       ...(empire.explorationDirty || empire.universeDirty
@@ -2276,6 +2288,117 @@ export class GameEngine {
     db.delete(schema.relationProposals).where(eq(schema.relationProposals.id, id)).run();
   }
 
+  // ─────────────────────────── Objectifs éphémères (chantier 17) ───────────────────────────
+
+  private loadObjectives(): void {
+    for (const row of db.select().from(schema.objectives).all()) {
+      this.objectiveMap.set(row.id, {
+        id: row.id,
+        empireId: row.empireId,
+        kind: row.kind as ObjectiveKind,
+        ...(row.targetCount !== null ? { targetCount: row.targetCount } : {}),
+        ...(row.targetSystemId !== null ? { targetSystemId: row.targetSystemId } : {}),
+        reward: row.reward,
+        createdAt: row.createdAt,
+        deadline: row.deadline,
+        status: row.status as Objective["status"],
+      });
+    }
+  }
+
+  private insertObjective(objective: Objective): void {
+    db.insert(schema.objectives)
+      .values({
+        id: objective.id,
+        gameId: this.clock.id,
+        empireId: objective.empireId,
+        kind: objective.kind,
+        targetCount: objective.targetCount ?? null,
+        targetSystemId: objective.targetSystemId ?? null,
+        reward: objective.reward,
+        createdAt: objective.createdAt,
+        deadline: objective.deadline,
+        status: objective.status,
+      })
+      .run();
+  }
+
+  private persistObjective(objective: Objective): void {
+    db.update(schema.objectives)
+      .set({ status: objective.status, deadline: objective.deadline })
+      .where(eq(schema.objectives.id, objective.id))
+      .run();
+  }
+
+  /** Objectifs de l'empire — personnels, jamais ceux d'un tiers (chantier 17). */
+  private objectivesFor(empire: Empire): Objective[] {
+    return [...this.objectiveMap.values()].filter((o) => o.empireId === empire.id);
+  }
+
+  /** Empires en tête de population/influence — sert à évaluer lead_population/lead_influence. */
+  private empireLeaders(): { populationLeaderId: string | null; influenceLeaderId: string | null } {
+    let popLeader: { id: string; value: number } | null = null;
+    let infLeader: { id: string; value: number } | null = null;
+    for (const empire of this.empires.values()) {
+      const population = [...empire.colonyMap.values()].reduce((s, c) => s + c.population, 0);
+      if (!popLeader || population > popLeader.value) popLeader = { id: empire.id, value: population };
+      if (!infLeader || empire.influence > infLeader.value) infLeader = { id: empire.id, value: empire.influence };
+    }
+    return { populationLeaderId: popLeader?.id ?? null, influenceLeaderId: infLeader?.id ?? null };
+  }
+
+  /** Tire un nouvel objectif éphémère pour chaque empire humain qui n'en a pas déjà un ouvert. */
+  private generateObjectives(tickNumber: number, now: number): void {
+    for (const empire of this.empires.values()) {
+      if (empire.kind !== "human") continue;
+      const mine = this.objectivesFor(empire);
+      const open = mine.filter((o) => o.status === "open");
+      if (open.length >= MAX_OPEN_OBJECTIVES_PER_EMPIRE) continue;
+      // Cooldown : pas de nouveau tirage juste après complétion/expiration, sinon un but
+      // trivialement déjà vrai (ex. lead_influence en tête depuis longtemps) se rejouerait
+      // en boucle à chaque tick éco et verserait sa récompense sans fin.
+      const lastCreatedAt = mine.reduce((max, o) => Math.max(max, o.createdAt), 0);
+      if (lastCreatedAt > 0 && now - lastCreatedAt < OBJECTIVE_DURATION_MS) continue;
+      const rng = createRng(`objective-${this.clock.seed}-${empire.id}-${tickNumber}`);
+      const spec = generateObjectiveSpec(rng, now, empire.colonyMap.size, empire.claimedSystemIds);
+      const objective: Objective = { id: randomUUID(), empireId: empire.id, status: "open", ...spec };
+      this.objectiveMap.set(objective.id, objective);
+      this.insertObjective(objective);
+    }
+  }
+
+  /** Valide ou expire les objectifs ouverts, contre l'état courant du jeu. */
+  private resolveObjectives(t: number): void {
+    const { populationLeaderId, influenceLeaderId } = this.empireLeaders();
+    for (const [id, objective] of this.objectiveMap) {
+      if (objective.status !== "open") continue;
+      const empire = this.empires.get(objective.empireId);
+      if (!empire) continue;
+      const met = objectiveMet(objective, {
+        colonyCount: empire.colonyMap.size,
+        claimedSystemIds: empire.claimedSystemIds,
+        leadsPopulation: populationLeaderId === empire.id,
+        leadsInfluence: influenceLeaderId === empire.id,
+      });
+      if (met) {
+        const home = [...empire.colonyMap.values()][0];
+        if (home) {
+          const resources = { ...home.resources, credits: home.resources.credits + objective.reward };
+          empire.colonyMap.set(home.id, { ...home, resources });
+          this.persistColony(empire.colonyMap.get(home.id)!);
+        }
+        const next: Objective = { ...objective, status: "completed" };
+        this.objectiveMap.set(id, next);
+        this.persistObjective(next);
+        console.log(`[game] « ${empire.name} » a rempli son objectif : ${objective.kind}`);
+      } else if (t >= objective.deadline) {
+        const next: Objective = { ...objective, status: "expired" };
+        this.objectiveMap.set(id, next);
+        this.persistObjective(next);
+      }
+    }
+  }
+
   /** Retire une flotte (survivants nuls) ou la met à jour (chantier 7d — PvP). */
   private applyFleetSurvivors(empire: Empire, fleet: Fleet, ships: FleetComposition): void {
     if (fleetIsEmpty(ships)) {
@@ -2934,6 +3057,13 @@ export class GameEngine {
       const next: Relation = { ...relation, until: relation.until - delta };
       this.relationMap.set(id, next);
       this.persistRelation(next);
+    }
+    // Échéance des objectifs éphémères : même décalage.
+    for (const [id, objective] of this.objectiveMap) {
+      if (objective.status !== "open") continue;
+      const next: Objective = { ...objective, deadline: objective.deadline - delta };
+      this.objectiveMap.set(id, next);
+      this.persistObjective(next);
     }
     for (const [id, fleet] of this.fleetMap) {
       if (fleet.queue.length === 0 && !fleet.movement) continue;
@@ -3788,6 +3918,9 @@ export class GameEngine {
       // Portails et contrats : univers partagé, résolus une fois par tick.
       this.resolveGateways(t);
       this.resolveContracts(t);
+      // Objectifs éphémères : réactifs à tout changement (colonisation, claim…), pas
+      // seulement au tick éco.
+      this.resolveObjectives(t);
       for (const empire of this.empires.values()) {
         this.processRoutes(empire, t);
         this.outpostsTick(empire);
@@ -3806,6 +3939,8 @@ export class GameEngine {
         // Économie des empires PNJ (chantier 14) : après les marchés, pour tarifer
         // leurs contrats sur des cours à jour.
         for (const empire of this.empires.values()) this.npcTick(empire);
+        // Objectifs éphémères (chantier 17) : un nouveau tirage par cycle éco, pas par tick.
+        this.generateObjectives(tickNumber, t);
       }
       // Front de peuplement : une colonisation a pu entamer la frontière (chantier 9).
       if (isEconomyTick) this.ensureFrontier();
