@@ -25,6 +25,16 @@ Principes :
   capacité et débit de l'ascenseur ; `liftRules` décide de ce qui monte/descend. Tout ce qui
   embarque (convois, routes, ventes) passe par `takeFromOrbit`/`deliverToOrbit` — sans dock, une
   colonie ne peut rien exporter. Prix de station **régionaux** (`stationPrice(res, stock, ctx)`).
+- **Conception de vaisseaux** (chantier 13) : plus de classes figées — un vaisseau est un
+  `Blueprint` (châssis + modules), assemblé par le joueur (`ShipDesigner`, onglet Chantier),
+  résolu par `sim/design.ts` (`resolveBlueprint`/`validateBlueprint`). Châssis (`content/chassis.ts`)
+  = coque de base + emplacements typés (`weapon`/`defense`/`propulsion`/`utility`) + budgets
+  partagés énergie/tonnage/calcul (EVE-like) + `domain` (`fleet` = flotte militaire, `colony` =
+  pool civil). Modules (`content/modules.ts`) débloqués par la recherche
+  (`EmpireEffects.unlockedChassis`/`unlockedModules`, dérivés de `requiresTech`). `sim/combat.ts`
+  et `sim/ships.ts` prennent des stats **injectées** (défaut : tables historiques `SHIPS`/
+  `WARSHIPS`, conservées pour la parité). Plans commercialisables en station PNJ (`StationPanel`) :
+  achat au catalogue (`PRESETS`, marge +40 %), revente de plan ou de vaisseau assemblé (décote −50 %).
 - Code en anglais, UI en français (labels dans le client ou fichiers de contenu).
 
 ## Commandes
