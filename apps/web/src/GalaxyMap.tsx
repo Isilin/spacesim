@@ -91,8 +91,12 @@ export function GalaxyMap({
               hasColony ? "colonized" : "",
             ].join(" ")}
             transform={`translate(${sys.x}, ${sys.y})`}
-            onClick={() => onSelect(sys)}
-            onDoubleClick={() => onOpenSystem(sys)}
+            onMouseDown={(event) => {
+              if (event.button !== 0) return;
+              event.stopPropagation();
+              if (event.detail === 2) onOpenSystem(sys);
+              else onSelect(sys);
+            }}
           >
             <circle r={20} className="system-hit" />
             {galaxy.anchorSystemId === sys.id && (

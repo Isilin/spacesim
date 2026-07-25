@@ -233,8 +233,12 @@ export function UniverseMap({
               colonyCount > 0 ? "settled" : "",
             ].join(" ")}
             transform={`translate(${galaxy.x}, ${galaxy.y})`}
-            onClick={() => onSelect(galaxy)}
-            onDoubleClick={() => onOpenGalaxy(galaxy)}
+            onMouseDown={(event) => {
+              if (event.button !== 0) return;
+              event.stopPropagation();
+              if (event.detail === 2) onOpenGalaxy(galaxy);
+              else onSelect(galaxy);
+            }}
           >
             {/* Halo de chaleur économique (chantier 17.3) : rayon et opacité suivent
                 l'intensité relative — invisible si la galaxie n'a aucun contrat ouvert. */}

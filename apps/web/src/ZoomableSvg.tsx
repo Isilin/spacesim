@@ -22,7 +22,6 @@ interface DragState {
   startY: number;
   x: number;
   y: number;
-  captured: boolean;
 }
 
 interface Props {
@@ -128,7 +127,6 @@ export function ZoomableSvg({
       startY: event.clientY,
       x: event.clientX,
       y: event.clientY,
-      captured: false,
     };
     movedRef.current = false;
   };
@@ -138,10 +136,8 @@ export function ZoomableSvg({
     const rect = svgRef.current?.getBoundingClientRect();
     if (!drag || !rect || rect.width === 0) return;
     const moved = Math.abs(event.clientX - drag.startX) + Math.abs(event.clientY - drag.startY) > 3;
-    if (!moved && !drag.captured) return;
-    if (!drag.captured) {
-      svgRef.current?.setPointerCapture(event.pointerId);
-      drag.captured = true;
+    if (!moved && !movedRef.current) return;
+    if (!movedRef.current) {
       movedRef.current = true;
     }
     const dx = ((event.clientX - drag.x) / rect.width) * view.width;
@@ -152,7 +148,6 @@ export function ZoomableSvg({
 
   const endDrag = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (dragRef.current?.pointerId === event.pointerId) {
-      if (dragRef.current.captured) svgRef.current?.releasePointerCapture(event.pointerId);
       dragRef.current = null;
     }
   };

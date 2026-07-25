@@ -117,8 +117,12 @@ export function SystemView({
                   <circle cx={pos.x} cy={pos.y} r={moonScreenRadius} className="orbit-ring moon-orbit" />
                   <g
                     className={`body ${selectedBodyId === moon.id ? "selected" : ""}`}
-                    onClick={() => onSelectBody(moon)}
-                    onDoubleClick={() => onOpenBody(moon)}
+                    onMouseDown={(event) => {
+                      if (event.button !== 0) return;
+                      event.stopPropagation();
+                      if (event.detail === 2) onOpenBody(moon);
+                      else onSelectBody(moon);
+                    }}
                   >
                     <circle cx={mpos.x} cy={mpos.y} r={8} className="body-hit" />
                     <circle
@@ -137,8 +141,12 @@ export function SystemView({
             })}
             <g
               className={`body ${selectedBodyId === planet.id ? "selected" : ""}`}
-              onClick={() => onSelectBody(planet)}
-              onDoubleClick={() => onOpenBody(planet)}
+              onMouseDown={(event) => {
+                if (event.button !== 0) return;
+                event.stopPropagation();
+                if (event.detail === 2) onOpenBody(planet);
+                else onSelectBody(planet);
+              }}
             >
               <circle cx={pos.x} cy={pos.y} r={18} className="body-hit" />
               <circle

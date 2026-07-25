@@ -177,7 +177,11 @@ export function ResearchView({ game, colonies, now, send }: Props) {
                     dimmed ? "dimmed" : ""
                   }`}
                   transform={`translate(${node.x}, ${node.y})`}
-                  onClick={() => setSelected(id)}
+                  onMouseDown={(event) => {
+                    if (event.button !== 0) return;
+                    event.stopPropagation();
+                    setSelected(id);
+                  }}
                   onMouseEnter={() => setHovered(id)}
                   onMouseLeave={() => setHovered(null)}
                 >

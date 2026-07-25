@@ -144,8 +144,12 @@ export function BodyView({
               <g
                 key={moon.id}
                 className={`body ${selectedBodyId === moon.id ? "selected" : ""}`}
-                onClick={() => onSelectBody(moon)}
-                onDoubleClick={() => onOpenBody(moon)}
+                onMouseDown={(event) => {
+                  if (event.button !== 0) return;
+                  event.stopPropagation();
+                  if (event.detail === 2) onOpenBody(moon);
+                  else onSelectBody(moon);
+                }}
               >
                 <circle cx={x} cy={y} r={12} className="body-hit" />
                 <circle cx={x} cy={y} r={6} fill={BODY_COLORS[moon.type]} className="body-dot" />
