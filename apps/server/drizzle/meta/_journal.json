@@ -85,6 +85,13 @@
       "when": 1784863999025,
       "tag": "0011_sturdy_the_renegades",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1784982695661,
+      "tag": "0012_modern_bastion",
+      "breakpoints": true
     }
   ]
 }

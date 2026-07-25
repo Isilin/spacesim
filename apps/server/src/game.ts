@@ -164,6 +164,20 @@ const DEFAULT_PLAYER_COLOR = "#4fd1ff";
 /** Couleurs de territoire attribuées aux empires supplémentaires (outil de dev). */
 const DEV_EMPIRE_COLORS = ["#4fd1ff", "#ff6b6b", "#ffd93d", "#6bcB77", "#c77dff", "#ff922b"];
 
+/**
+ * Empires PNJ amorcés sur une partie neuve (chantier 14) : peu nombreux, pilotés par
+ * l'IA économique — un monde vivant dès le premier tick, pas encore une population.
+ */
+const NPC_EMPIRE_COUNT = 3;
+const NPC_EMPIRE_NAMES = [
+  "Confédération de Kess",
+  "Dominion Vashtar",
+  "République Solenne",
+  "Directoire Zhorn",
+  "Ligue Cindra",
+  "Hégémonie Aurel",
+];
+
 /** Signal « l'état a changé » : chaque connexion recompose alors le snapshot de son empire. */
 export type StateListener = () => void;
 
@@ -2379,7 +2393,12 @@ export class GameEngine {
    * départ (brouillard isolé). Retourne l'`Empire`, ou `null` si l'univers ne peut
    * plus accueillir personne (plafond de galaxies atteint).
    */
-  private createEmpire(id: string, name?: string, accountId: string | null = null): Empire | null {
+  private createEmpire(
+    id: string,
+    name?: string,
+    accountId: string | null = null,
+    kind: "human" | "npc" = "human",
+  ): Empire | null {
     const home = this.pickHomePlanet();
     if (!home) return null;
 
@@ -2391,6 +2410,7 @@ export class GameEngine {
         id,
         gameId: this.clock.id,
         accountId,
+        kind,
         name: empireName,
         color,
         joinedAt: Date.now(),
@@ -2402,7 +2422,7 @@ export class GameEngine {
         explored: "[]",
       })
       .run();
-    const empire = new Empire(id, empireName, color, accountId);
+    const empire = new Empire(id, empireName, color, accountId, kind);
     this.empires.set(id, empire);
     this.foundHomeColony(empire, home);
     // L'arrivant peut avoir entamé la dernière galaxie vierge : on repousse le bord.
@@ -2410,6 +2430,22 @@ export class GameEngine {
     this.notify();
     console.log(`[game] empire « ${empireName} » instancié (${this.empires.size} au total)`);
     return empire;
+  }
+
+  /**
+   * Amorce quelques empires PNJ si le monde n'en a encore aucun (chantier 14) : le
+   * monde n'est plus vide au premier tick, l'IA économique (`npcTick`) les fait vivre
+   * ensuite. Public et idempotent (compte les PNJ déjà présents plutôt que de dépendre
+   * d'un flag « partie neuve ») : le serveur peut l'appeler à chaque boot sans jamais
+   * doubler la population, y compris pour une partie créée avant ce chantier. Distinct
+   * de `load()` à dessein — les tests qui n'en ont pas besoin restent à un seul empire.
+   */
+  ensureNpcPopulation(count = NPC_EMPIRE_COUNT): void {
+    const existing = [...this.empires.values()].filter((e) => e.kind === "npc").length;
+    for (let i = existing; i < count; i++) {
+      const name = NPC_EMPIRE_NAMES[i % NPC_EMPIRE_NAMES.length]!;
+      this.createEmpire(randomUUID(), name, null, "npc");
+    }
   }
 
   /**
@@ -2433,7 +2469,11 @@ export class GameEngine {
     const existing = this.empireForAccount(accountId);
     if (existing) return existing;
 
-    const orphan = [...this.empires.values()].find((e) => e.accountId === null);
+    // "human" exclut les PNJ (chantier 14) : sans ce filtre, la deuxième inscription
+    // pourrait adopter un empire piloté par l'IA au lieu de l'empire amorcé au boot.
+    const orphan = [...this.empires.values()].find(
+      (e) => e.accountId === null && e.kind === "human",
+    );
     if (orphan) {
       orphan.accountId = accountId;
       const empireName = name?.trim().slice(0, 40);
@@ -2462,6 +2502,11 @@ export class GameEngine {
   /** Outil de dev uniquement : instancie un empire supplémentaire. Retourne son id. */
   devSpawnEmpire(name?: string): string | null {
     return this.createEmpire(randomUUID(), name)?.id ?? null;
+  }
+
+  /** Outil de dev uniquement : instancie un empire PNJ (chantier 14). Retourne son id. */
+  devSpawnNpcEmpire(name?: string): string | null {
+    return this.createEmpire(randomUUID(), name, null, "npc")?.id ?? null;
   }
 
   /** Outil de dev uniquement : arme une flotte d'un empire dans un système (tests PvP). */
@@ -2501,6 +2546,7 @@ export class GameEngine {
       id: e.id,
       name: e.name,
       color: e.color,
+      kind: e.kind,
       isDefault: e.id === this.defaultEmpire.id,
       influence: Math.round(e.influence * 100) / 100,
       researched: e.researched.length,
@@ -2870,7 +2916,7 @@ export class GameEngine {
       .where(eq(schema.players.gameId, this.clock.id))
       .all();
     for (const p of rows) {
-      const empire = new Empire(p.id, p.name, p.color, p.accountId);
+      const empire = new Empire(p.id, p.name, p.color, p.accountId, p.kind as "human" | "npc");
       empire.researched = JSON.parse(p.researched);
       empire.research = p.research ? JSON.parse(p.research) : null;
       empire.researchQueue = JSON.parse(p.researchQueue);

@@ -79,6 +79,12 @@ export class Empire {
      * amorcé au boot d'une partie neuve, ou un empire d'outil de dev.
      */
     public accountId: string | null = null,
+    /**
+     * "human" (défaut) ou "npc" (chantier 14) : distingue l'empire amorcé au boot —
+     * adoptable par le premier compte inscrit — des empires pilotés par l'IA
+     * économique, qu'un compte ne doit jamais pouvoir adopter par erreur.
+     */
+    public kind: "human" | "npc" = "human",
   ) {}
 
   /** Recompose la forme externe `GameState` : horloge partagée + état de cet empire. */

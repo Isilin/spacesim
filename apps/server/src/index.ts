@@ -15,6 +15,9 @@ import { GameEngine } from "./game.js";
 const PORT = Number(process.env.PORT ?? 3001);
 
 const engine = GameEngine.load();
+// Population PNJ (chantier 14) : distinct de `load()`, idempotent — jamais doublé
+// au redémarrage, backfillé si absent sur une partie créée avant ce chantier.
+engine.ensureNpcPopulation();
 engine.start();
 purgeExpiredSessions();
 
@@ -102,6 +105,11 @@ if (process.env.NODE_ENV !== "production") {
   app.post("/dev/spawnempire", (request) => {
     const { name } = (request.body ?? {}) as { name?: string };
     const empireId = engine.devSpawnEmpire(name);
+    return { ok: empireId !== null, empireId };
+  });
+  app.post("/dev/spawnnpc", (request) => {
+    const { name } = (request.body ?? {}) as { name?: string };
+    const empireId = engine.devSpawnNpcEmpire(name);
     return { ok: empireId !== null, empireId };
   });
   app.get("/dev/empires", () => engine.devEmpireSummaries());

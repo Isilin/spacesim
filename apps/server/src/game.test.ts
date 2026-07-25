@@ -33,6 +33,7 @@ const ALL_TABLES = [
   schema.battles,
   schema.pirateLairs,
   schema.fleets,
+  schema.contracts,
   schema.gateways,
   schema.claims,
   schema.players,
@@ -48,6 +49,7 @@ function resetDb(): void {
 interface EmpireSummary {
   id: string;
   name: string;
+  kind: "human" | "npc";
   isDefault: boolean;
   influence: number;
   exploredCount: number;
@@ -555,5 +557,69 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
       expect(a.colonies.map((c) => c.systemId)).toEqual(b.colonies.map((c) => c.systemId));
       expect(a.exploredSystemIds).toEqual(b.exploredSystemIds);
     }
+  });
+});
+
+describe("GameEngine — empires PNJ (chantier 14)", () => {
+  it("un GameEngine.load() nu ne seme aucun PNJ : ensureNpcPopulation reste opt-in", () => {
+    const engine = GameEngine.load();
+    expect(summaries(engine)).toHaveLength(1);
+    expect(summaries(engine)[0]!.kind).toBe("human");
+  });
+
+  it("ensureNpcPopulation amorce des PNJ avec leur propre colonie mère", () => {
+    const engine = GameEngine.load();
+    engine.ensureNpcPopulation(3);
+    const all = summaries(engine);
+    expect(all).toHaveLength(4);
+    const npcs = all.filter((e) => e.kind === "npc");
+    expect(npcs).toHaveLength(3);
+    for (const npc of npcs) {
+      expect(npc.colonies).toHaveLength(1);
+      expect(npc.isDefault).toBe(false);
+    }
+  });
+
+  it("ensureNpcPopulation est idempotent : ne double jamais la population", () => {
+    const engine = GameEngine.load();
+    engine.ensureNpcPopulation(3);
+    engine.ensureNpcPopulation(3);
+    expect(summaries(engine).filter((e) => e.kind === "npc")).toHaveLength(3);
+    // Relèvement du quota : complète sans toucher aux PNJ déjà en place (ids en SET,
+    // pas triés — des UUID n'ont aucun ordre lexicographique lié à leur création).
+    const before = new Set(summaries(engine).filter((e) => e.kind === "npc").map((e) => e.id));
+    engine.ensureNpcPopulation(5);
+    const after = summaries(engine).filter((e) => e.kind === "npc");
+    expect(after).toHaveLength(5);
+    expect([...before].every((id) => after.some((e) => e.id === id))).toBe(true);
+  });
+
+  it("un compte humain n'adopte jamais un empire PNJ (bug corrigé au chantier 14)", () => {
+    const engine = GameEngine.load();
+    const bootId = summaries(engine)[0]!.id;
+    engine.ensureNpcPopulation(3);
+
+    // Premier compte : adopte bien l'empire humain amorcé au boot, pas un PNJ.
+    const alice = engine.createEmpireForAccount("compte-alice", "Alice")!;
+    expect(alice.id).toBe(bootId);
+    expect(alice.kind).toBe("human");
+
+    // Deuxième compte : obtient un empire humain neuf — jamais l'un des PNJ existants,
+    // qui ont pourtant accountId===null comme l'empire amorcé avant adoption.
+    const bob = engine.createEmpireForAccount("compte-bob", "Bob")!;
+    expect(bob.kind).toBe("human");
+    expect(bob.id).not.toBe(bootId);
+    const npcIds = summaries(engine)
+      .filter((e) => e.kind === "npc")
+      .map((e) => e.id);
+    expect(npcIds).not.toContain(bob.id);
+    expect(npcIds).toHaveLength(3);
+  });
+
+  it("devSpawnNpcEmpire instancie un PNJ isolé, hors du quota d'ensureNpcPopulation", () => {
+    const engine = GameEngine.load();
+    const id = engine.devSpawnNpcEmpire("Voisin");
+    expect(id).not.toBeNull();
+    expect(summaries(engine).find((e) => e.id === id)?.kind).toBe("npc");
   });
 });

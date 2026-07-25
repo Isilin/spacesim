@@ -49,6 +49,11 @@ export const players = sqliteTable("players", {
   gameId: text("game_id").notNull(),
   /** Compte propriétaire (chantier 8). NULL = empire anonyme legacy ou outil de dev. */
   accountId: text("account_id"),
+  /**
+   * "human" (défaut, y compris l'empire amorcé au boot, adoptable par un compte) ou
+   * "npc" (chantier 14 — piloté par l'IA économique, jamais adopté par un compte).
+   */
+  kind: text("kind").notNull().default("human"),
   name: text("name").notNull(),
   /** Couleur d'affichage du territoire sur la carte. */
   color: text("color").notNull(),
@@ -205,6 +210,31 @@ export const stationStates = sqliteTable("station_states", {
   stationId: text("station_id").primaryKey(),
   gameId: text("game_id").notNull(),
   stocks: text("stocks").notNull(),
+});
+
+/**
+ * Contrats de demande (chantier 14) : l'émetteur séquestre `pricePerUnit × quantity`
+ * crédits à la publication ; n'importe quel autre empire peut livrer depuis son orbite.
+ * Tout scalaire — pas de blob JSON, la forme ne bouge pas au gré de l'équilibrage.
+ */
+export const contracts = sqliteTable("contracts", {
+  id: text("id").primaryKey(),
+  gameId: text("game_id").notNull(),
+  issuerId: text("issuer_id").notNull(),
+  issuerName: text("issuer_name").notNull(),
+  issuerColor: text("issuer_color").notNull(),
+  /** Colonie émettrice : destination de la livraison. */
+  colonyId: text("colony_id").notNull(),
+  colonyName: text("colony_name").notNull(),
+  systemId: text("system_id").notNull(),
+  resource: text("resource").notNull(),
+  quantity: real("quantity").notNull(),
+  /** Reste à livrer — décompté à l'acceptation d'un convoi, pas à son arrivée. */
+  remaining: real("remaining").notNull(),
+  pricePerUnit: real("price_per_unit").notNull(),
+  createdAt: integer("created_at").notNull(),
+  deadline: integer("deadline").notNull(),
+  status: text("status").notNull().default("open"),
 });
 
 export const transfers = sqliteTable("transfers", {
