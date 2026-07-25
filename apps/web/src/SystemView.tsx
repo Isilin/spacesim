@@ -13,6 +13,7 @@ interface Props {
   explored: boolean;
   selectedBodyId: string | null;
   onSelectBody: (planet: Planet) => void;
+  onOpenBody: (planet: Planet) => void;
 }
 
 const PLANET_COLORS: Record<string, string> = {
@@ -34,7 +35,14 @@ const PLANET_RADIUS: Record<string, number> = {
 };
 
 /** Niveau système : étoile au centre, orbites, planètes, lunes, ceintures. */
-export function SystemView({ system, colonies, explored, selectedBodyId, onSelectBody }: Props) {
+export function SystemView({
+  system,
+  colonies,
+  explored,
+  selectedBodyId,
+  onSelectBody,
+  onOpenBody,
+}: Props) {
   const c = SYSTEM_VIEW_SIZE / 2;
   const home = useMemo<ViewBox>(
     () => ({ x: 0, y: 0, width: SYSTEM_VIEW_SIZE, height: SYSTEM_VIEW_SIZE }),
@@ -110,6 +118,7 @@ export function SystemView({ system, colonies, explored, selectedBodyId, onSelec
                   <g
                     className={`body ${selectedBodyId === moon.id ? "selected" : ""}`}
                     onClick={() => onSelectBody(moon)}
+                    onDoubleClick={() => onOpenBody(moon)}
                   >
                     <circle cx={mpos.x} cy={mpos.y} r={8} className="body-hit" />
                     <circle
@@ -129,6 +138,7 @@ export function SystemView({ system, colonies, explored, selectedBodyId, onSelec
             <g
               className={`body ${selectedBodyId === planet.id ? "selected" : ""}`}
               onClick={() => onSelectBody(planet)}
+              onDoubleClick={() => onOpenBody(planet)}
             >
               <circle cx={pos.x} cy={pos.y} r={18} className="body-hit" />
               <circle

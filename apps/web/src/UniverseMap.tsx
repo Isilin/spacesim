@@ -24,7 +24,9 @@ interface Props {
   contracts: Contract[];
   /** Cadrage imposé par la navigation (recherche, « ma capitale »). */
   focus?: ViewBox | null;
+  selectedId: string | null;
   onSelect: (galaxy: Galaxy) => void;
+  onOpenGalaxy: (galaxy: Galaxy) => void;
 }
 
 /** Rayon de la zone de clic / d'espacement d'une galaxie. */
@@ -89,7 +91,9 @@ export function UniverseMap({
   gateways,
   contracts,
   focus,
+  selectedId,
   onSelect,
+  onOpenGalaxy,
 }: Props) {
   const explored = new Set(exploredSystemIds);
   const colonyPlanetIds = new Set(colonies.map((c) => c.planetId));
@@ -224,11 +228,13 @@ export function UniverseMap({
             key={galaxy.id}
             className={[
               "galaxy-node",
+              selectedId === galaxy.id ? "selected" : "",
               isReachable ? "reachable" : "far",
               colonyCount > 0 ? "settled" : "",
             ].join(" ")}
             transform={`translate(${galaxy.x}, ${galaxy.y})`}
             onClick={() => onSelect(galaxy)}
+            onDoubleClick={() => onOpenGalaxy(galaxy)}
           >
             {/* Halo de chaleur économique (chantier 17.3) : rayon et opacité suivent
                 l'intensité relative — invisible si la galaxie n'a aucun contrat ouvert. */}

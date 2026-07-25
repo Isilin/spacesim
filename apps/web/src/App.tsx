@@ -99,6 +99,7 @@ export function App({ auth }: Props) {
   const [tab, setTab] = useState<Tab>("colony");
   const [colonyId, setColonyId] = useState<string | null>(null);
   const [history, setHistory] = useState<MapHistory>(EMPTY_HISTORY);
+  const [selectedGalaxyId, setSelectedGalaxyId] = useState<string | null>(null);
   const [selectedSystemId, setSelectedSystemId] = useState<string | null>(null);
   const [selectedBodyId, setSelectedBodyId] = useState<string | null>(null);
   const now = useNow();
@@ -153,10 +154,18 @@ export function App({ auth }: Props) {
     ? allSystems(universe).find((s) => s.id === selectedSystemId) ?? null
     : null;
 
+  const openGalaxy = (galaxyId: string) => {
+    setMapView({ level: "galaxy", galaxyId });
+    setSelectedGalaxyId(galaxyId);
+    setSelectedSystemId(null);
+    setSelectedBodyId(null);
+  };
+
   const openSystem = (system: StarSystem) => {
     const galaxy = findGalaxyOfSystem(universe, system.id);
     if (!galaxy) return;
     setMapView({ level: "system", galaxyId: galaxy.id, systemId: system.id });
+    setSelectedGalaxyId(galaxy.id);
     setSelectedSystemId(system.id);
     setSelectedBodyId(null);
   };
@@ -171,6 +180,7 @@ export function App({ auth }: Props) {
       systemId: planet.systemId,
       bodyId: planet.id,
     });
+    setSelectedGalaxyId(galaxy.id);
     setSelectedSystemId(planet.systemId);
     setSelectedBodyId(planet.id);
   };
@@ -182,12 +192,13 @@ export function App({ auth }: Props) {
       return;
     }
     if (target.kind === "galaxy") {
-      setMapView({ level: "galaxy", galaxyId: target.galaxyId });
+      openGalaxy(target.galaxyId);
       return;
     }
-    setMapView({ level: "system", galaxyId: target.galaxyId, systemId: target.systemId });
-    setSelectedSystemId(target.systemId);
-    setSelectedBodyId(null);
+    const system = universe.galaxies
+      .find((galaxy) => galaxy.id === target.galaxyId)
+      ?.systems.find((candidate) => candidate.id === target.systemId);
+    if (system) openSystem(system);
   };
 
   const fleetSystemIds = fleets.map((f) => f.systemId);
@@ -416,7 +427,9 @@ export function App({ auth }: Props) {
                 exploredSystemIds={exploredSystemIds}
                 gateways={gateways}
                 contracts={contracts}
-                onSelect={(galaxy) => setMapView({ level: "galaxy", galaxyId: galaxy.id })}
+                selectedId={selectedGalaxyId}
+                onSelect={(galaxy) => setSelectedGalaxyId(galaxy.id)}
+                onOpenGalaxy={(galaxy) => openGalaxy(galaxy.id)}
               />
             ) : view.level === "galaxy" && viewGalaxy ? (
               <GalaxyMap
@@ -442,6 +455,8 @@ export function App({ auth }: Props) {
                 explored={exploredSystemIds.includes(viewSystem.id)}
                 now={now}
                 send={send}
+                selectedBodyId={selectedBodyId}
+                onSelectBody={(body) => setSelectedBodyId(body.id)}
                 onOpenBody={openBody}
               />
             ) : viewSystem ? (
@@ -450,7 +465,8 @@ export function App({ auth }: Props) {
                 colonies={colonies}
                 explored={exploredSystemIds.includes(viewSystem.id)}
                 selectedBodyId={selectedBodyId}
-                onSelectBody={openBody}
+                onSelectBody={(body) => setSelectedBodyId(body.id)}
+                onOpenBody={openBody}
               />
             ) : null}
           </section>

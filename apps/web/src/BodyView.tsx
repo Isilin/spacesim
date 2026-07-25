@@ -30,6 +30,8 @@ interface Props {
   explored: boolean;
   now: number;
   send: (msg: ClientMessage) => void;
+  selectedBodyId: string | null;
+  onSelectBody: (body: Planet) => void;
   /** Ouvre un autre corps du même système (lune, planète parente). */
   onOpenBody: (body: Planet) => void;
 }
@@ -66,6 +68,8 @@ export function BodyView({
   explored,
   now,
   send,
+  selectedBodyId,
+  onSelectBody,
   onOpenBody,
 }: Props) {
   const parent = body.parentPlanetId
@@ -137,7 +141,12 @@ export function BodyView({
             const x = c + Math.cos(angle) * moonOrbit(i);
             const y = c + Math.sin(angle) * moonOrbit(i);
             return (
-              <g key={moon.id} className="body" onClick={() => onOpenBody(moon)}>
+              <g
+                key={moon.id}
+                className={`body ${selectedBodyId === moon.id ? "selected" : ""}`}
+                onClick={() => onSelectBody(moon)}
+                onDoubleClick={() => onOpenBody(moon)}
+              >
                 <circle cx={x} cy={y} r={12} className="body-hit" />
                 <circle cx={x} cy={y} r={6} fill={BODY_COLORS[moon.type]} className="body-dot" />
                 {colonies.some((col) => col.planetId === moon.id) && (
