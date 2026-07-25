@@ -203,6 +203,8 @@ export const missions = sqliteTable("missions", {
   buyResource: text("buy_resource"),
   /** Soute du cargo réservé (mission buy). */
   capacity: real("capacity"),
+  /** Contrat honoré (mission deliver_contract, chantier 14). */
+  contractId: text("contract_id"),
 });
 
 /** Stocks dynamiques des stations PNJ — les prix en dérivent (sim/market). */

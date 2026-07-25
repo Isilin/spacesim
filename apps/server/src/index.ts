@@ -233,6 +233,19 @@ app.get("/ws", { websocket: true }, (socket, request) => {
       error = engine.makePeace(empire, msg.targetEmpireId);
     } else if (msg.type === "disbandFleet") {
       error = engine.disbandFleet(empire, msg.fleetId);
+    } else if (msg.type === "postContract") {
+      error = engine.postContract(
+        empire,
+        msg.colonyId,
+        msg.resource,
+        msg.quantity,
+        msg.pricePerUnit,
+        msg.durationMs,
+      );
+    } else if (msg.type === "acceptContract") {
+      error = engine.acceptContract(empire, msg.colonyId, msg.contractId, msg.quantity);
+    } else if (msg.type === "cancelContract") {
+      error = engine.cancelContract(empire, msg.contractId);
     }
     if (error) send({ type: "actionError", message: error });
   });

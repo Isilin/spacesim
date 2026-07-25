@@ -9,11 +9,15 @@ import {
   canResearch,
   CLAIM_COST,
   CLAIM_PRODUCTION_BONUS,
+  clampContractDuration,
   COLONY_SHIP_COST,
   colonizeInfluenceCost,
   colonyShipDurationMs,
   computeEffects,
   contiguousClaims,
+  contractAcceptable,
+  contractEscrow,
+  contractPayout,
   convoyCapacity,
   convoyDurationMs,
   convoyFees,
@@ -42,6 +46,7 @@ import {
   generateUniverse,
   idleShips,
   INITIAL_GALAXIES,
+  isContractExpired,
   pickStarterGalaxy,
   influencePerTick,
   jumpDistanceInUniverse,
@@ -49,6 +54,7 @@ import {
   marketTick,
   initialStocks,
   MAX_CATCHUP_TICKS,
+  MAX_OPEN_CONTRACTS_PER_EMPIRE,
   NEW_COLONY_ORBITAL,
   NEW_COLONY_POPULATION,
   NEW_COLONY_RESOURCES,
@@ -305,6 +311,7 @@ export class GameEngine {
       engine.loadRoutes();
       engine.loadOutposts();
       engine.loadGateways();
+      engine.loadContracts();
       engine.loadFleets();
       engine.loadPirates();
       engine.loadBattles();
@@ -1536,6 +1543,153 @@ export class GameEngine {
     return null;
   }
 
+  // ─────────────────────────── Contrats de fourniture (chantier 14) ───────────────────────────
+
+  /** Action joueur : publier un contrat — crédits mis sous séquestre jusqu'à expiration/annulation. */
+  postContract(
+    empire: Empire,
+    colonyId: string,
+    resource: ResourceId,
+    quantity: number,
+    pricePerUnit: number,
+    durationMs: number,
+  ): string | null {
+    const colony = empire.colonyMap.get(colonyId);
+    if (!colony) return "Colonie inconnue";
+    if (!(MARKET_RESOURCES as readonly string[]).includes(resource)) {
+      return `Ressource non contractualisable : ${resource}`;
+    }
+    const qty = Math.floor(Number(quantity));
+    if (!Number.isFinite(qty) || qty <= 0) return "Quantité invalide";
+    const price = Number(pricePerUnit);
+    if (!Number.isFinite(price) || price <= 0) return "Prix invalide";
+
+    const openCount = [...this.contractMap.values()].filter(
+      (c) => c.issuerId === empire.id && c.status === "open",
+    ).length;
+    if (openCount >= MAX_OPEN_CONTRACTS_PER_EMPIRE) return "Trop de contrats ouverts (dix au plus)";
+
+    const escrow = contractEscrow(qty, price);
+    if (colony.resources.credits < escrow) return `Crédits insuffisants (séquestre : ${escrow})`;
+
+    const planet = this.planetsById.get(colony.planetId);
+    if (!planet) return "Planète inconnue";
+
+    const now = Date.now();
+    const contract: Contract = {
+      id: randomUUID(),
+      issuerId: empire.id,
+      issuerName: empire.name,
+      issuerColor: empire.color,
+      colonyId: colony.id,
+      colonyName: colony.name,
+      systemId: planet.systemId,
+      resource,
+      quantity: qty,
+      remaining: qty,
+      pricePerUnit: price,
+      createdAt: now,
+      deadline: now + clampContractDuration(Number(durationMs)),
+      status: "open",
+    };
+    const resources = { ...colony.resources, credits: colony.resources.credits - escrow };
+    empire.colonyMap.set(colony.id, { ...colony, resources });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
+    this.contractMap.set(contract.id, contract);
+    this.insertContract(contract);
+    this.notify();
+    return null;
+  }
+
+  /** Action joueur : accepter (tout ou partie d')un contrat étranger et affréter le convoi. */
+  acceptContract(
+    empire: Empire,
+    colonyId: string,
+    contractId: string,
+    quantity: number,
+  ): string | null {
+    const colony = empire.colonyMap.get(colonyId);
+    if (!colony) return "Colonie inconnue";
+    const contract = this.contractMap.get(contractId);
+    if (!contract) return "Contrat inconnu";
+    if (contract.issuerId === empire.id) return "Impossible d'accepter son propre contrat";
+
+    const now = Date.now();
+    const qty = Math.floor(Number(quantity));
+    if (!contractAcceptable(contract, qty, now)) return "Contrat indisponible pour cette quantité";
+
+    const fromPlanet = this.planetsById.get(colony.planetId);
+    if (!fromPlanet) return "Planète inconnue";
+    const jumps = jumpDistanceInUniverse(this.universe, fromPlanet.systemId, contract.systemId, this.portalLinks);
+    if (jumps < 0) return "Colonie destinataire inaccessible";
+    const portals = this.portalsCrossed(fromPlanet.systemId, contract.systemId);
+
+    const cargo: Partial<Record<ResourceId, number>> = { [contract.resource]: qty };
+    const loaded = takeFromOrbit(colony, cargo);
+    if (!loaded) return `Stock orbital insuffisant : ${contract.resource}`;
+
+    const speed = empire.effects.transferSpeedMult;
+    const one = this.reserveShip(empire, loaded, now + 2 * transferDurationMs(jumps) * speed);
+    if (!one) return "Convoi indisponible : vaisseaux manquants";
+    const reserved = { colony: one.colony, ships: { [one.shipId]: 1 }, capacity: one.capacity };
+    if (qty > reserved.capacity) return `Cargaison trop lourde pour ce convoi (soute : ${reserved.capacity})`;
+
+    const duration = convoyDurationMs(jumps, reserved.ships) * speed;
+    const fee = convoyFees(jumps, portals);
+    const fuel = Math.ceil(convoyFuel(jumps, reserved.ships, qty) * empire.effects.fuelMult);
+    const resources = { ...reserved.colony.resources };
+    if (resources.credits < fee) return `Crédits insuffisants (frais : ${fee})`;
+    const fueled = takeFromOrbit(reserved.colony, { energy: fuel });
+    if (!fueled) return `Carburant insuffisant en orbite (${fuel} énergie)`;
+    resources.credits -= fee;
+
+    empire.colonyMap.set(colony.id, { ...fueled, resources });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
+
+    // Décompté à l'acceptation (pas à la livraison) : bloque toute survente pendant le trajet.
+    const remaining = contract.remaining - qty;
+    const nextContract: Contract = {
+      ...contract,
+      remaining,
+      status: remaining <= 0 ? "fulfilled" : "open",
+    };
+    this.contractMap.set(contract.id, nextContract);
+    this.persistContract(nextContract);
+
+    this.insertMission(
+      empire,
+      "deliver_contract",
+      colonyId,
+      contract.colonyId,
+      duration,
+      { cargo, contractId: contract.id },
+      now,
+    );
+    this.notify();
+    return null;
+  }
+
+  /** Action joueur : annuler son propre contrat — rembourse le séquestre du reliquat non honoré. */
+  cancelContract(empire: Empire, contractId: string): string | null {
+    const contract = this.contractMap.get(contractId);
+    if (!contract) return "Contrat inconnu";
+    if (contract.issuerId !== empire.id) return "Seul l'émetteur peut annuler ce contrat";
+    if (contract.status !== "open") return "Contrat déjà clos";
+
+    const colony = empire.colonyMap.get(contract.colonyId);
+    if (colony) {
+      const refund = contractEscrow(contract.remaining, contract.pricePerUnit);
+      const resources = { ...colony.resources, credits: colony.resources.credits + refund };
+      empire.colonyMap.set(colony.id, { ...colony, resources });
+      this.persistColony(empire.colonyMap.get(colony.id)!);
+    }
+    const next: Contract = { ...contract, status: "cancelled" };
+    this.contractMap.set(contract.id, next);
+    this.persistContract(next);
+    this.notify();
+    return null;
+  }
+
   // ─────────────────────────── Flottes & combat ───────────────────────────
 
   /** Action joueur : créer une flotte vide rattachée à une colonie. */
@@ -2173,6 +2327,75 @@ export class GameEngine {
     }
   }
 
+  private loadContracts(): void {
+    for (const row of db.select().from(schema.contracts).all()) {
+      this.contractMap.set(row.id, {
+        id: row.id,
+        issuerId: row.issuerId,
+        issuerName: row.issuerName,
+        issuerColor: row.issuerColor,
+        colonyId: row.colonyId,
+        colonyName: row.colonyName,
+        systemId: row.systemId,
+        resource: row.resource as ResourceId,
+        quantity: row.quantity,
+        remaining: row.remaining,
+        pricePerUnit: row.pricePerUnit,
+        createdAt: row.createdAt,
+        deadline: row.deadline,
+        status: row.status as Contract["status"],
+      });
+    }
+  }
+
+  private insertContract(contract: Contract): void {
+    db.insert(schema.contracts)
+      .values({
+        id: contract.id,
+        gameId: this.clock.id,
+        issuerId: contract.issuerId,
+        issuerName: contract.issuerName,
+        issuerColor: contract.issuerColor,
+        colonyId: contract.colonyId,
+        colonyName: contract.colonyName,
+        systemId: contract.systemId,
+        resource: contract.resource,
+        quantity: contract.quantity,
+        remaining: contract.remaining,
+        pricePerUnit: contract.pricePerUnit,
+        createdAt: contract.createdAt,
+        deadline: contract.deadline,
+        status: contract.status,
+      })
+      .run();
+  }
+
+  /** Ne met à jour que ce qui bouge après publication : reliquat, statut, échéance. */
+  private persistContract(contract: Contract): void {
+    db.update(schema.contracts)
+      .set({ remaining: contract.remaining, status: contract.status, deadline: contract.deadline })
+      .where(eq(schema.contracts.id, contract.id))
+      .run();
+  }
+
+  /** Expire les contrats dépassés et rembourse le séquestre du reliquat non honoré. */
+  private resolveContracts(t: number): void {
+    for (const [id, contract] of this.contractMap) {
+      if (contract.status !== "open" || !isContractExpired(contract, t)) continue;
+      const issuer = this.empires.get(contract.issuerId);
+      const colony = issuer?.colonyMap.get(contract.colonyId);
+      if (issuer && colony) {
+        const refund = contractEscrow(contract.remaining, contract.pricePerUnit);
+        const resources = { ...colony.resources, credits: colony.resources.credits + refund };
+        issuer.colonyMap.set(colony.id, { ...colony, resources });
+        this.persistColony(issuer.colonyMap.get(colony.id)!);
+      }
+      const next: Contract = { ...contract, status: "expired" };
+      this.contractMap.set(id, next);
+      this.persistContract(next);
+    }
+  }
+
   /** Action joueur : revendiquer un système (colonie sur place requise). */
   claimSystem(empire: Empire, systemId: string): string | null {
     const system = allSystems(this.universe).find((s) => s.id === systemId);
@@ -2280,6 +2503,13 @@ export class GameEngine {
       if (gateway.activatesAt === null) continue;
       this.gatewayMap.set(id, { ...gateway, activatesAt: gateway.activatesAt - delta });
       this.persistGateway(this.gatewayMap.get(id)!);
+    }
+    // Contrats : partagés comme les portails — l'échéance suit le même décalage.
+    for (const [id, contract] of this.contractMap) {
+      if (contract.status !== "open") continue;
+      const next: Contract = { ...contract, deadline: contract.deadline - delta };
+      this.contractMap.set(id, next);
+      this.persistContract(next);
     }
     for (const [id, fleet] of this.fleetMap) {
       if (fleet.queue.length === 0 && !fleet.movement) continue;
@@ -2595,7 +2825,7 @@ export class GameEngine {
     fromColonyId: string,
     targetId: string,
     durationMs: number,
-    extras: Pick<Mission, "cargo" | "budget" | "buyResource" | "capacity"> = {},
+    extras: Pick<Mission, "cargo" | "budget" | "buyResource" | "capacity" | "contractId"> = {},
     departedAt = Date.now(),
   ): void {
     const mission: Mission = {
@@ -2621,6 +2851,7 @@ export class GameEngine {
         budget: mission.budget ?? null,
         buyResource: mission.buyResource ?? null,
         capacity: mission.capacity ?? null,
+        contractId: mission.contractId ?? null,
       })
       .run();
   }
@@ -2734,6 +2965,27 @@ export class GameEngine {
             }
             this.gatewayMap.set(gateway.galaxyId, next);
             this.persistGateway(next);
+          }
+          break;
+        }
+        case "deliver_contract": {
+          // Livraison cross-empire (chantier 14) : le cargo appartient à `empire`, la
+          // colonie destinataire à l'émetteur du contrat — deux empires distincts.
+          const contract = mission.contractId ? this.contractMap.get(mission.contractId) : undefined;
+          const issuer = contract ? this.empires.get(contract.issuerId) : undefined;
+          const destColony = contract && issuer ? issuer.colonyMap.get(contract.colonyId) : undefined;
+          if (contract && issuer && destColony && mission.cargo) {
+            const delivered = deliverToOrbit(destColony, mission.cargo, issuer.effects);
+            issuer.colonyMap.set(destColony.id, delivered);
+            this.persistColony(delivered);
+          }
+          const payer = empire.colonyMap.get(mission.fromColonyId);
+          if (contract && payer) {
+            const cargoQty = Object.values(mission.cargo ?? {}).reduce((s, n) => s + (n ?? 0), 0);
+            const payout = contractPayout(contract, cargoQty);
+            const resources = { ...payer.resources, credits: payer.resources.credits + payout };
+            empire.colonyMap.set(payer.id, { ...payer, resources });
+            this.persistColony(empire.colonyMap.get(payer.id)!);
           }
           break;
         }
@@ -3076,8 +3328,9 @@ export class GameEngine {
         this.resolveMissions(empire, t);
         this.resolveResearch(empire, t);
       }
-      // Portails : univers partagé, résolus une fois avant les routes qui les empruntent.
+      // Portails et contrats : univers partagé, résolus une fois par tick.
       this.resolveGateways(t);
+      this.resolveContracts(t);
       for (const empire of this.empires.values()) {
         this.processRoutes(empire, t);
         this.outpostsTick(empire);
@@ -3154,6 +3407,7 @@ export class GameEngine {
         ...(row.budget !== null ? { budget: row.budget } : {}),
         ...(row.buyResource ? { buyResource: row.buyResource as ResourceId } : {}),
         ...(row.capacity !== null ? { capacity: row.capacity } : {}),
+        ...(row.contractId ? { contractId: row.contractId } : {}),
       });
     }
   }
