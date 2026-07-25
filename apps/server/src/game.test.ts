@@ -647,6 +647,27 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     expect(contract.issuerId).toBe(empire.id);
   });
 
+  it("un contrat est diffusé à tous les empires, pas seulement à son émetteur (pas de brouillard)", () => {
+    const engine = GameEngine.load();
+    const empire = engine.defaultEmpireForDev;
+    const colony = engine.colonies[0]!;
+    // Un tiers totalement étranger à la transaction — jamais exploré le système de
+    // l'émetteur, jamais interagi avec lui.
+    const bystander = engine.empireById(engine.devSpawnEmpire("Spectateur")!)!;
+
+    expect(engine.postContract(empire, colony.id, "ore", 10, 1, 3_600_000)).toBeNull();
+    const contractId = engine.contracts[0]!.id;
+
+    // Comme leaderboard/gateways : diffusé en entier, à la différence de markets/territories
+    // qui restent brouillardés par empire.
+    const seenByBystander = engine.snapshotForEmpire(bystander).contracts.find(
+      (c) => c.id === contractId,
+    );
+    expect(seenByBystander).toBeDefined();
+    expect(seenByBystander!.status).toBe("open");
+    expect(seenByBystander!.issuerName).toBe(empire.name);
+  });
+
   it("postContract : refuse une ressource non contractualisable (crédits, science)", () => {
     const engine = GameEngine.load();
     const empire = engine.defaultEmpireForDev;
