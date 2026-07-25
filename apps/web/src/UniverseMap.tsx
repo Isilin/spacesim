@@ -1,10 +1,13 @@
 import {
+  galaxyActivity,
   galaxyLinks,
   galaxyParentIndex,
   gatewayProgressRatio,
+  normalizedActivity,
   MAP_HEIGHT,
   MAP_WIDTH,
   type Colony,
+  type Contract,
   type Galaxy,
   type Gateway,
   type Universe,
@@ -17,6 +20,8 @@ interface Props {
   colonies: Colony[];
   exploredSystemIds: string[];
   gateways: Gateway[];
+  /** Contrats ouverts (chantiers 14/15) : source des hotspots économiques (chantier 17.3). */
+  contracts: Contract[];
   /** Cadrage imposé par la navigation (recherche, « ma capitale »). */
   focus?: ViewBox | null;
   onSelect: (galaxy: Galaxy) => void;
@@ -82,6 +87,7 @@ export function UniverseMap({
   colonies,
   exploredSystemIds,
   gateways,
+  contracts,
   focus,
   onSelect,
 }: Props) {
@@ -92,6 +98,12 @@ export function UniverseMap({
   const gatewayByGalaxy = useMemo(
     () => new Map(gateways.map((g) => [g.galaxyId, g])),
     [gateways],
+  );
+  // Zones d'activité économique (chantier 17.3) : dérivées des contrats ouverts, jamais
+  // stockées — juste une lecture de « où le monde bat » au moment du rendu.
+  const activity = useMemo(
+    () => normalizedActivity(galaxyActivity(contracts, universe)),
+    [contracts, universe],
   );
 
   /**
@@ -159,6 +171,12 @@ export function UniverseMap({
           <stop offset="35%" stopColor="#e6efff" stopOpacity="0.55" />
           <stop offset="100%" stopColor="#e6efff" stopOpacity="0" />
         </radialGradient>
+        {/* Halo de chaleur économique (chantier 17.3) : où le commerce bat le plus fort. */}
+        <radialGradient id="economic-hotspot" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#ffb347" stopOpacity="0.55" />
+          <stop offset="60%" stopColor="#ffb347" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="#ffb347" stopOpacity="0" />
+        </radialGradient>
       </defs>
 
       {/* Réseau inter-galactique : arêtes de l'arbre de voisinage. */}
@@ -200,6 +218,7 @@ export function UniverseMap({
         const isReachable = reachable.has(gi);
         const glyph = galaxyGlyph(gi, galaxy.depositBonus);
         const dotColor = `hsl(${glyph.hue} 72% 74%)`;
+        const heat = activity.get(galaxy.id) ?? 0;
         return (
           <g
             key={galaxy.id}
@@ -211,6 +230,15 @@ export function UniverseMap({
             transform={`translate(${galaxy.x}, ${galaxy.y})`}
             onClick={() => onSelect(galaxy)}
           >
+            {/* Halo de chaleur économique (chantier 17.3) : rayon et opacité suivent
+                l'intensité relative — invisible si la galaxie n'a aucun contrat ouvert. */}
+            {heat > 0 && (
+              <circle
+                r={DISC * (1.4 + heat * 0.9)}
+                fill="url(#economic-hotspot)"
+                opacity={0.4 + heat * 0.6}
+              />
+            )}
             {/* Cercle de clic invisible. */}
             <circle r={HALO} className="galaxy-hit" />
 
@@ -247,6 +275,15 @@ export function UniverseMap({
             {showStats && isReachable && gi > 0 && (
               <text y={DISC + 42} textAnchor="middle" className="galaxy-sub gateway-active">
                 ◈ Relié — gisements ×{galaxy.depositBonus}
+              </text>
+            )}
+            {showStats && heat > 0.5 && (
+              <text
+                y={isReachable && gi > 0 ? DISC + 58 : DISC + 42}
+                textAnchor="middle"
+                className="galaxy-sub gateway-active"
+              >
+                🔥 forte activité économique
               </text>
             )}
           </g>

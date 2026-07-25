@@ -390,6 +390,7 @@ export function App({ auth }: Props) {
                 colonies={colonies}
                 exploredSystemIds={exploredSystemIds}
                 gateways={gateways}
+                contracts={contracts}
                 onSelect={(galaxy) => setMapView({ level: "galaxy", galaxyId: galaxy.id })}
               />
             ) : view.level === "galaxy" && viewGalaxy ? (
