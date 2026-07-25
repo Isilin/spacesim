@@ -105,6 +105,32 @@ export interface Universe {
   galaxies: Galaxy[];
 }
 
+export type ContractStatus = "open" | "fulfilled" | "expired" | "cancelled";
+
+/**
+ * Contrat de fourniture (chantier 14) : un empire promet des crédits — retenus en
+ * séquestre à la publication — contre la livraison physique d'une ressource à l'une
+ * de ses colonies. Diffusé en entier comme `leaderboard`/`gateways` : une offre
+ * publique, pas une donnée stratégique à cacher dans le brouillard.
+ */
+export interface Contract {
+  id: string;
+  issuerId: string;
+  issuerName: string;
+  issuerColor: string;
+  colonyId: string;
+  colonyName: string;
+  systemId: string;
+  resource: ResourceId;
+  quantity: number;
+  /** Reste à livrer — décrémenté à l'acceptation, pas à la livraison (anti-survente). */
+  remaining: number;
+  pricePerUnit: number;
+  createdAt: number;
+  deadline: number;
+  status: ContractStatus;
+}
+
 export interface ActiveResearch {
   techId: string;
   startedAt: number;
@@ -362,6 +388,7 @@ export interface Transfer {
  * probe : cible = système. colonize : cible = planète.
  * sell : cargaison vers une station, créditée au prix spot à l'arrivée.
  * buy : budget crédits vers une station ; buy_return : trajet retour chargé.
+ * deliver_contract : cargaison vers la colonie d'un AUTRE empire (contrat, chantier 14).
  */
 export interface Mission {
   id: string;
@@ -372,13 +399,14 @@ export interface Mission {
     | "buy"
     | "buy_return"
     | "build_outpost"
-    | "contribute_gateway";
+    | "contribute_gateway"
+    | "deliver_contract";
   fromColonyId: string;
-  /** Id de système (probe), de planète (colonize) ou de station (commerce). */
+  /** Id de système (probe), de planète (colonize) ou de station/colonie (commerce). */
   targetId: string;
   departedAt: number;
   arrivesAt: number;
-  /** sell / buy_return : cargaison transportée. */
+  /** sell / buy_return / deliver_contract : cargaison transportée. */
   cargo?: Partial<Record<ResourceId, number>>;
   /** buy : crédits emportés pour l'achat. */
   budget?: number;
@@ -386,6 +414,8 @@ export interface Mission {
   buyResource?: ResourceId;
   /** buy : soute du cargo réservé — borne la quantité achetée. */
   capacity?: number;
+  /** deliver_contract : contrat honoré, résolu contre l'empire émetteur à l'arrivée. */
+  contractId?: string;
 }
 
 /** État dynamique d'une station : ses stocks (les prix en dérivent). */
@@ -421,6 +451,8 @@ export type ServerMessage =
       leaderboard: LeaderboardEntry[];
       /** Systèmes revendiqués visibles, colorés par empire propriétaire (chantier 7e). */
       territories: Territory[];
+      /** Contrats de fourniture actifs de toute la partie (chantier 14, non brouillardés). */
+      contracts: Contract[];
     }
   | {
       type: "tick";
@@ -443,6 +475,8 @@ export type ServerMessage =
       leaderboard: LeaderboardEntry[];
       /** Systèmes revendiqués visibles, colorés par empire propriétaire (chantier 7e). */
       territories: Territory[];
+      /** Contrats de fourniture actifs de toute la partie (chantier 14, non brouillardés). */
+      contracts: Contract[];
       /** Présent quand l'exploration a changé depuis le dernier message. */
       universe?: Universe;
     }
@@ -500,4 +534,14 @@ export type ClientMessage =
   | { type: "attackColony"; fleetId: string; targetColonyId: string }
   | { type: "declareWar"; targetEmpireId: string }
   | { type: "makePeace"; targetEmpireId: string }
-  | { type: "disbandFleet"; fleetId: string };
+  | { type: "disbandFleet"; fleetId: string }
+  | {
+      type: "postContract";
+      colonyId: string;
+      resource: ResourceId;
+      quantity: number;
+      pricePerUnit: number;
+      durationMs: number;
+    }
+  | { type: "acceptContract"; colonyId: string; contractId: string; quantity: number }
+  | { type: "cancelContract"; contractId: string };

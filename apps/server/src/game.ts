@@ -86,6 +86,7 @@ import {
   type AsteroidBelt,
   type BuildingId,
   type Colony,
+  type Contract,
   type EmpireEffects,
   type CombatPhase,
   type FactionId,
@@ -143,6 +144,8 @@ export interface EngineSnapshot {
   leaderboard: LeaderboardEntry[];
   /** Systèmes revendiqués visibles, colorés par empire (chantier 7e). */
   territories: Territory[];
+  /** Contrats de fourniture actifs de toute la partie (chantier 14, non brouillardés). */
+  contracts: Contract[];
   /** Présent si l'exploration a changé depuis la dernière notification. */
   universe?: Universe;
 }
@@ -199,6 +202,8 @@ export class GameEngine {
   // Phase D). N'importe quel empire y contribue via `contributeGateway` ; une fois actif, le
   // portail bénéficie à tous. Pas de portail par-empire — cohérent avec les marchés/pirates PNJ.
   private gatewayMap = new Map<string, Gateway>();
+  /** Contrats de fourniture (chantier 14) : partagés comme les portails, pas de fog. */
+  private contractMap = new Map<string, Contract>();
   private lairMap = new Map<string, PirateLair>();
   private battleLog: StoredBattle[] = [];
   /** Guerres en cours (paires canoniques `a|b`, a<b) ; absence = paix (chantier 7e). */
@@ -354,6 +359,10 @@ export class GameEngine {
     return [...this.gatewayMap.values()];
   }
 
+  get contracts(): Contract[] {
+    return [...this.contractMap.values()];
+  }
+
   get fleets(): Fleet[] {
     return [...this.defaultEmpire.fleetMap.values()];
   }
@@ -435,6 +444,7 @@ export class GameEngine {
       foreignColonies,
       leaderboard: this.leaderboard(empire),
       territories: this.territoriesFor(empire),
+      contracts: this.contracts,
       // L'univers n'est réémis qu'en cas de changement : nouvelle exploration (brouillard
       // levé) ou extension de l'univers (galaxies apparues).
       ...(empire.explorationDirty || empire.universeDirty

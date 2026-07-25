@@ -25,3 +25,4 @@ export * from "./sim/colony.js";
 export * from "./sim/travel.js";
 export * from "./sim/territory.js";
 export * from "./sim/fog.js";
+export * from "./sim/contracts.js";
