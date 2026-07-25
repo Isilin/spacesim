@@ -105,6 +105,19 @@ export interface Universe {
   galaxies: Galaxy[];
 }
 
+export type FactionMood = "neutral" | "boom" | "shortage" | "embargo";
+
+/**
+ * État vivant d'une faction (chantier 15) : humeur temporaire, partagée comme les
+ * portails ou les contrats — pas de brouillard, une faction se comporte pareil pour tous.
+ */
+export interface FactionState {
+  factionId: string;
+  mood: FactionMood;
+  /** Timestamp de fin de l'humeur courante (null = neutre, pas de minuterie). */
+  moodUntil: number | null;
+}
+
 export type ContractStatus = "open" | "fulfilled" | "expired" | "cancelled";
 
 /**
@@ -453,6 +466,8 @@ export type ServerMessage =
       territories: Territory[];
       /** Contrats de fourniture actifs de toute la partie (chantier 14, non brouillardés). */
       contracts: Contract[];
+      /** Humeur courante de chaque faction (chantier 15, non brouillardée). */
+      factionStates: FactionState[];
     }
   | {
       type: "tick";
@@ -477,6 +492,8 @@ export type ServerMessage =
       territories: Territory[];
       /** Contrats de fourniture actifs de toute la partie (chantier 14, non brouillardés). */
       contracts: Contract[];
+      /** Humeur courante de chaque faction (chantier 15, non brouillardée). */
+      factionStates: FactionState[];
       /** Présent quand l'exploration a changé depuis le dernier message. */
       universe?: Universe;
     }

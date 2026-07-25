@@ -1,5 +1,6 @@
 import {
   allSystems,
+  FACTIONS,
   type Colony,
   type FactionId,
   type GameState,
@@ -9,7 +10,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useEffect, useRef, useState } from "react";
-import { BUILDING_LABELS, FACTION_LABELS, repTierName, TECH_LABELS } from "./labels.js";
+import { BUILDING_LABELS, repTierName, TECH_LABELS } from "./labels.js";
 
 export interface Notification {
   id: number;
@@ -113,7 +114,7 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
       const prevRep = prev.game.factionRep[factionId] ?? 0;
       if (repTierName(rep) !== repTierName(prevRep) && rep > prevRep) {
         texts.push(
-          `Réputation : ${FACTION_LABELS[factionId as FactionId]?.name ?? factionId} — ${repTierName(rep)}`,
+          `Réputation : ${FACTIONS[factionId as FactionId]?.name ?? factionId} — ${repTierName(rep)}`,
         );
       }
     }

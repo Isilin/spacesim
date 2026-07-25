@@ -80,19 +80,11 @@ export const SHIP_LABELS: Record<ShipId, { name: string; description: string }> 
   },
 };
 
-export const FACTION_LABELS: Record<FactionId, { name: string; description: string }> = {
-  ferride: {
-    name: "Consortium Ferride",
-    description: "Forges orbitales et chaînes de montage. Vend le métal, paie cher les vivres.",
-  },
-  ostara_league: {
-    name: "Ligue Agraire d'Ostara",
-    description: "Les greniers de la galaxie. Vend nourriture et biens, achète l'industrie.",
-  },
-  aether_cartel: {
-    name: "Cartel de l'Éther",
-    description: "Réacteurs, minerai brut et discrétion. Vend l'énergie, achète le raffiné.",
-  },
+/** Description étendue par faction — le nom canonique vit dans `content/factions.ts` (shared). */
+export const FACTION_DESCRIPTIONS: Record<FactionId, string> = {
+  ferride: "Forges orbitales et chaînes de montage. Vend le métal, paie cher les vivres.",
+  ostara_league: "Les greniers de la galaxie. Vend nourriture et biens, achète l'industrie.",
+  aether_cartel: "Réacteurs, minerai brut et discrétion. Vend l'énergie, achète le raffiné.",
 };
 
 export const BRANCH_LABELS: Record<TechBranch, string> = {

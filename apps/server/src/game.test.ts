@@ -34,6 +34,7 @@ const ALL_TABLES = [
   schema.pirateLairs,
   schema.fleets,
   schema.contracts,
+  schema.factionStates,
   schema.gateways,
   schema.claims,
   schema.players,
@@ -844,5 +845,32 @@ describe("GameEngine — pilote économique PNJ (chantier 14)", () => {
     expect(engine.contracts.filter((c) => c.issuerId === engine.defaultEmpireForDev.id)).toHaveLength(
       0,
     );
+  });
+});
+
+describe("GameEngine — état de faction (chantier 15)", () => {
+  it("une partie neuve amorce les trois factions, neutres", () => {
+    const engine = GameEngine.load();
+    const states = engine.factionStates;
+    expect(states).toHaveLength(3);
+    for (const state of states) {
+      expect(state.mood).toBe("neutral");
+      expect(state.moodUntil).toBeNull();
+    }
+    expect(states.map((s) => s.factionId).sort()).toEqual(
+      ["aether_cartel", "ferride", "ostara_league"].sort(),
+    );
+  });
+
+  it("initFactionStates est idempotent : un rechargement ne dédouble jamais les factions", () => {
+    GameEngine.load();
+    const reloaded = GameEngine.load();
+    expect(reloaded.factionStates).toHaveLength(3);
+  });
+
+  it("l'état de faction est diffusé à tous les empires (pas de brouillard)", () => {
+    const engine = GameEngine.load();
+    const other = engine.empireById(engine.devSpawnEmpire("Spectateur")!)!;
+    expect(engine.snapshotForEmpire(other).factionStates).toHaveLength(3);
   });
 });

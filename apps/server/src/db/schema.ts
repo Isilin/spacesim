@@ -116,6 +116,14 @@ export const fleets = sqliteTable("fleets", {
   movement: text("movement"),
 });
 
+/** Humeur courante des factions (chantier 15) : partagée, comme les portails. */
+export const factionStates = sqliteTable("faction_states", {
+  factionId: text("faction_id").primaryKey(),
+  gameId: text("game_id").notNull(),
+  mood: text("mood").notNull().default("neutral"),
+  moodUntil: integer("mood_until"),
+});
+
 /** Repaires de pirates PNJ. */
 export const pirateLairs = sqliteTable("pirate_lairs", {
   id: text("id").primaryKey(),

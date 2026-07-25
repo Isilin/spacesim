@@ -1,19 +1,19 @@
 import {
   allSystems,
   FACTION_IDS,
+  FACTIONS,
   influencePerTick,
   MILESTONES,
   REP_TIERS,
   type ClientMessage,
   type Colony,
-  type FactionId,
   type EmpireEffects,
   type GameState,
   type LeaderboardEntry,
   type MilestoneMetric,
   type Universe,
 } from "@spacesim/shared";
-import { FACTION_LABELS, repTierName } from "./labels.js";
+import { repTierName } from "./labels.js";
 
 interface Props {
   game: GameState;
@@ -137,7 +137,7 @@ export function EmpireView({
             <li key={factionId} className={`milestone ${!nextTier ? "reached" : ""}`}>
               <div className="queue-head">
                 <span>
-                  {FACTION_LABELS[factionId as FactionId].name} — {repTierName(rep)}
+                  {FACTIONS[factionId].name} — {repTierName(rep)}
                 </span>
                 <span className="muted small">
                   {Math.floor(rep)}

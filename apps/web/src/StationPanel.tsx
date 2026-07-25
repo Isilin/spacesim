@@ -1,5 +1,6 @@
 import {
   BASE_PRICES,
+  FACTIONS,
   jumpDistanceInUniverse,
   MARKET_RESOURCES,
   maxConvoyCapacity,
@@ -22,7 +23,7 @@ import {
 } from "@spacesim/shared";
 import { useState } from "react";
 import { formatDuration, systemIdOf } from "./format.js";
-import { FACTION_LABELS, RESOURCE_LABELS, repTierName } from "./labels.js";
+import { FACTION_DESCRIPTIONS, RESOURCE_LABELS, repTierName } from "./labels.js";
 
 interface Props {
   station: TradeStation;
@@ -56,7 +57,8 @@ export function StationPanel({
   const [sellAmounts, setSellAmounts] = useState<Partial<Record<ResourceId, string>>>({});
   const [buyResource, setBuyResource] = useState<MarketResource>("metals");
   const [buyBudget, setBuyBudget] = useState("");
-  const faction = FACTION_LABELS[station.factionId as FactionId];
+  const faction = FACTIONS[station.factionId as FactionId];
+  const factionDescription = FACTION_DESCRIPTIONS[station.factionId as FactionId];
 
   // Contexte régional (chantier 12) : le comptoir a son propre barème selon son
   // éloignement — c'est ce qui fait qu'un aller-retour peut valoir le carburant.
@@ -101,7 +103,7 @@ export function StationPanel({
     <div className="station-panel">
       <h2>⬡ {station.name}</h2>
       <p className="muted small">
-        {faction?.name ?? station.factionId} — {faction?.description ?? ""}
+        {faction?.name ?? station.factionId} — {factionDescription ?? ""}
       </p>
       {jumps >= 0 && (
         <p className="small muted">

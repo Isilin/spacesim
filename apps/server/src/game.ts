@@ -31,6 +31,7 @@ import {
   emptyResources,
   enqueueBuilding,
   enqueueShip,
+  FACTION_IDS,
   FACTIONS,
   fleetCapacity,
   fleetIsEmpty,
@@ -101,6 +102,7 @@ import {
   type EmpireEffects,
   type CombatPhase,
   type FactionId,
+  type FactionState,
   type Fleet,
   type FleetComposition,
   type ForeignColony,
@@ -157,6 +159,8 @@ export interface EngineSnapshot {
   territories: Territory[];
   /** Contrats de fourniture actifs de toute la partie (chantier 14, non brouillardés). */
   contracts: Contract[];
+  /** Humeur courante de chaque faction (chantier 15, non brouillardée). */
+  factionStates: FactionState[];
   /** Présent si l'exploration a changé depuis la dernière notification. */
   universe?: Universe;
 }
@@ -215,6 +219,8 @@ export class GameEngine {
   private gatewayMap = new Map<string, Gateway>();
   /** Contrats de fourniture (chantier 14) : partagés comme les portails, pas de fog. */
   private contractMap = new Map<string, Contract>();
+  /** Humeur des factions (chantier 15) : partagée, pas de fog. */
+  private factionStateMap = new Map<string, FactionState>();
   private lairMap = new Map<string, PirateLair>();
   private battleLog: StoredBattle[] = [];
   /** Guerres en cours (paires canoniques `a|b`, a<b) ; absence = paix (chantier 7e). */
@@ -317,6 +323,7 @@ export class GameEngine {
       engine.loadOutposts();
       engine.loadGateways();
       engine.loadContracts();
+      engine.loadFactionStates();
       engine.loadFleets();
       engine.loadPirates();
       engine.loadBattles();
@@ -325,6 +332,7 @@ export class GameEngine {
     // galaxies apparues par extension, dont le compteur seul a survécu au redémarrage.
     engine.initMarkets();
     engine.initGateways();
+    engine.initFactionStates();
     // L'univers doit toujours offrir de la place devant les joueurs (chantier 9).
     engine.ensureFrontier();
     engine.catchUp();
@@ -373,6 +381,10 @@ export class GameEngine {
 
   get contracts(): Contract[] {
     return [...this.contractMap.values()];
+  }
+
+  get factionStates(): FactionState[] {
+    return [...this.factionStateMap.values()];
   }
 
   get fleets(): Fleet[] {
@@ -457,6 +469,7 @@ export class GameEngine {
       leaderboard: this.leaderboard(empire),
       territories: this.territoriesFor(empire),
       contracts: this.contracts,
+      factionStates: this.factionStates,
       // L'univers n'est réémis qu'en cas de changement : nouvelle exploration (brouillard
       // levé) ou extension de l'univers (galaxies apparues).
       ...(empire.explorationDirty || empire.universeDirty
@@ -2313,6 +2326,44 @@ export class GameEngine {
         .values({ galaxyId: galaxy.id, gameId: this.clock.id, progress: "{}", activatesAt: null, active: 0 })
         .run();
     }
+  }
+
+  /** Dote chaque faction d'un état (chantier 15). Idempotent : rejoué sans jamais dédoubler. */
+  private initFactionStates(): void {
+    for (const factionId of FACTION_IDS) {
+      if (this.factionStateMap.has(factionId)) continue;
+      const state: FactionState = { factionId, mood: "neutral", moodUntil: null };
+      this.factionStateMap.set(factionId, state);
+      this.insertFactionState(state);
+    }
+  }
+
+  private loadFactionStates(): void {
+    for (const row of db.select().from(schema.factionStates).all()) {
+      this.factionStateMap.set(row.factionId, {
+        factionId: row.factionId,
+        mood: row.mood as FactionState["mood"],
+        moodUntil: row.moodUntil,
+      });
+    }
+  }
+
+  private insertFactionState(state: FactionState): void {
+    db.insert(schema.factionStates)
+      .values({
+        factionId: state.factionId,
+        gameId: this.clock.id,
+        mood: state.mood,
+        moodUntil: state.moodUntil,
+      })
+      .run();
+  }
+
+  private persistFactionState(state: FactionState): void {
+    db.update(schema.factionStates)
+      .set({ mood: state.mood, moodUntil: state.moodUntil })
+      .where(eq(schema.factionStates.factionId, state.factionId))
+      .run();
   }
 
   // ── Extension de l'univers (chantier 9) ────────────────────────────────
