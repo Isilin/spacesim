@@ -14,6 +14,7 @@ import { ColonyView } from "./ColonyView.js";
 import { EmpireView } from "./EmpireView.js";
 import { GalaxyMap } from "./GalaxyMap.js";
 import { FleetsView } from "./FleetsView.js";
+import { ShipDesigner } from "./ShipDesigner.js";
 import { GatewaysPanel } from "./GatewaysPanel.js";
 import { MapNav, type NavTarget } from "./MapNav.js";
 import { ResearchView } from "./ResearchView.js";
@@ -30,7 +31,7 @@ interface Props {
   auth: Auth;
 }
 
-type Tab = "map" | "colony" | "logistics" | "fleets" | "research" | "empire";
+type Tab = "map" | "colony" | "logistics" | "fleets" | "shipyard" | "research" | "empire";
 
 /** Niveau de zoom de la carte : univers → galaxie → système → corps. */
 type MapView =
@@ -79,6 +80,7 @@ export function App({ auth }: Props) {
     outposts,
     gateways,
     fleets,
+    blueprints,
     pirateLairs,
     battles,
     foreignFleets,
@@ -206,6 +208,12 @@ export function App({ auth }: Props) {
             Flottes{pirateLairs.length > 0 ? ` (${pirateLairs.length}☠)` : ""}
           </button>
           <button
+            className={tab === "shipyard" ? "active" : ""}
+            onClick={() => setTab("shipyard")}
+          >
+            Chantier
+          </button>
+          <button
             className={tab === "research" ? "active" : ""}
             onClick={() => setTab("research")}
           >
@@ -302,11 +310,22 @@ export function App({ auth }: Props) {
             pirateLairs={pirateLairs}
             battles={battles}
             colonies={colonies}
+            blueprints={blueprints}
             foreignFleets={foreignFleets}
             foreignColonies={foreignColonies}
             universe={universe}
             researched={game.researched}
             now={now}
+            send={send}
+          />
+        </main>
+      ) : tab === "shipyard" ? (
+        <main className="content-single">
+          <ShipDesigner
+            blueprints={blueprints}
+            effects={effects}
+            activeColony={colony}
+            fleets={fleets}
             send={send}
           />
         </main>

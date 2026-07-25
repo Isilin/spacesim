@@ -1,10 +1,14 @@
 import type {
   BuildingId,
+  ChassisId,
   CombatDirective,
   FactionId,
   LegacyShipId,
+  ModuleId,
+  ModuleRole,
   PlanetType,
   ResourceId,
+  SlotType,
   TechBranch,
   TechId,
   WarshipId,
@@ -124,6 +128,59 @@ export const WARSHIP_LABELS: Record<WarshipId, { name: string; description: stri
     name: "Cuirassé",
     description: "Coque colossale, feu écrasant. Craint les nuées légères.",
   },
+};
+
+// ── Conception de vaisseaux (chantier 13) ──────────────────────────────────
+
+export const SLOT_LABELS: Record<SlotType, string> = {
+  weapon: "Arme",
+  defense: "Défense",
+  propulsion: "Propulsion",
+  utility: "Utilitaire",
+};
+
+export const ROLE_LABELS: Record<ModuleRole, string> = {
+  weapon: "Arme",
+  defense: "Défense",
+  propulsion: "Propulsion",
+  cargo: "Soute",
+  mining: "Extraction",
+  habitat: "Habitat",
+  support: "Soutien",
+  sensor: "Senseur",
+};
+
+export const CHASSIS_LABELS: Record<ChassisId, { name: string; description: string }> = {
+  scout_frame: { name: "Éclaireur", description: "Coque légère polyvalente, vive et sobre." },
+  standard_hull: { name: "Coque standard", description: "Généraliste équilibrée, deux armes." },
+  warframe: { name: "Cadre de guerre", description: "Militaire : +15 % dégâts, trois armes." },
+  battlecruiser: {
+    name: "Croiseur de bataille",
+    description: "Colossal : +20 % dégâts, +10 % défense, quatre armes.",
+  },
+  light_freighter: { name: "Cargo léger", description: "Civil : +20 % soute, coque nue." },
+  heavy_freighter: { name: "Soutier lourd", description: "Civil : +50 % soute, quatre utilitaires." },
+  mining_barge: { name: "Barge minière", description: "Extraction : +60 % rendement de minage." },
+  colony_ark: { name: "Arche coloniale", description: "Colonisation : +30 % habitat, gros vaisseau." },
+};
+
+export const MODULE_LABELS: Record<ModuleId, { name: string; description: string }> = {
+  laser_pulse: { name: "Laser à impulsion", description: "Arme de mêlée (court)." },
+  autocannon: { name: "Canon automatique", description: "Arme à moyenne portée." },
+  railgun: { name: "Railgun", description: "Arme longue portée, perforante." },
+  missile_battery: { name: "Batterie de missiles", description: "Frappe très longue portée." },
+  armor_plating: { name: "Blindage", description: "+60 points de coque." },
+  deflector_shield: { name: "Bouclier déflecteur", description: "+30 boucliers." },
+  aegis_shield: { name: "Bouclier Aegis", description: "+70 boucliers." },
+  ion_thruster: { name: "Propulseur ionique", description: "+vitesse, un peu de carburant." },
+  warp_drive: { name: "Distorseur", description: "+vitesse forte, carburant élevé." },
+  ramscoop: { name: "Collecteur Bussard", description: "+vitesse légère, carburant réduit." },
+  cargo_pod: { name: "Module de soute", description: "+150 de capacité." },
+  cargo_hold_xl: { name: "Cale XL", description: "+450 de capacité." },
+  mining_laser: { name: "Laser de minage", description: "+40 rendement d'extraction." },
+  habitat_pod: { name: "Module d'habitat", description: "Rend le vaisseau colonisateur." },
+  fleet_uplink: { name: "Liaison de flotte", description: "+12 % dégâts de flotte (soutien)." },
+  sensor_array: { name: "Réseau de senseurs", description: "+4 initiative." },
 };
 
 export const DIRECTIVE_LABELS: Record<CombatDirective, { name: string; hint: string }> = {
