@@ -111,6 +111,17 @@ export const objectives = sqliteTable("objectives", {
   status: text("status").notNull().default("open"),
 });
 
+/** Événements de monde actifs, partagés (chantier 17). Supprimés à expiration. */
+export const worldEvents = sqliteTable("world_events", {
+  id: text("id").primaryKey(),
+  gameId: text("game_id").notNull(),
+  kind: text("kind").notNull(),
+  galaxyId: text("galaxy_id"),
+  factionId: text("faction_id"),
+  createdAt: integer("created_at").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+});
+
 /** Systèmes revendiqués par un joueur (bonus locaux, entretien en influence). */
 export const claims = sqliteTable("claims", {
   systemId: text("system_id").primaryKey(),

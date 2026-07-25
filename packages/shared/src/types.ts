@@ -171,6 +171,24 @@ export interface Objective {
   status: ObjectiveStatus;
 }
 
+export type WorldEventKind = "economic_crisis" | "gold_rush" | "pirate_surge" | "faction_boom";
+
+/**
+ * Événement de monde (chantier 17) : crise ou essor régional, vague pirate, essor de
+ * faction — subi ou exploité par tous. Diffusé en entier comme les portails/contrats,
+ * jamais brouillardé (un événement touche un lieu ou une faction, pas un empire).
+ */
+export interface WorldEvent {
+  id: string;
+  kind: WorldEventKind;
+  /** economic_crisis / gold_rush / pirate_surge : galaxie touchée. */
+  galaxyId?: string;
+  /** faction_boom : faction touchée. */
+  factionId?: string;
+  createdAt: number;
+  expiresAt: number;
+}
+
 export type ContractStatus = "open" | "fulfilled" | "expired" | "cancelled";
 
 /**
@@ -527,6 +545,8 @@ export type ServerMessage =
       proposals: RelationProposal[];
       /** Objectifs éphémères de l'empire (chantier 17) — personnels, jamais visibles d'un tiers. */
       objectives: Objective[];
+      /** Événements de monde actifs (chantier 17), non brouillardés. */
+      worldEvents: WorldEvent[];
     }
   | {
       type: "tick";
@@ -559,6 +579,8 @@ export type ServerMessage =
       proposals: RelationProposal[];
       /** Objectifs éphémères de l'empire (chantier 17) — personnels, jamais visibles d'un tiers. */
       objectives: Objective[];
+      /** Événements de monde actifs (chantier 17), non brouillardés. */
+      worldEvents: WorldEvent[];
       /** Présent quand l'exploration a changé depuis le dernier message. */
       universe?: Universe;
     }

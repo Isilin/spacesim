@@ -85,6 +85,10 @@ import {
   outpostTick,
   PIRATE_SPAWN_CHANCE,
   PIRATE_TAX_PER_TICK,
+  rollWorldEvent,
+  worldEventPriceBonus,
+  WORLD_EVENT_DURATION_MS,
+  WORLD_EVENT_PIRATE_MULT,
   RAID_FRACTION,
   pirateBounty,
   pirateComposition,
@@ -159,6 +163,8 @@ import {
   type TradeStation,
   type Transfer,
   type Universe,
+  type WorldEvent,
+  type WorldEventKind,
 } from "@spacesim/shared";
 import { and, eq, isNull } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
@@ -195,6 +201,8 @@ export interface EngineSnapshot {
   proposals: RelationProposal[];
   /** Objectifs éphémères de l'empire (chantier 17) — personnels, jamais visibles d'un tiers. */
   objectives: Objective[];
+  /** Événements de monde actifs (chantier 17), non brouillardés. */
+  worldEvents: WorldEvent[];
   /** Présent si l'exploration a changé depuis la dernière notification. */
   universe?: Universe;
 }
@@ -263,6 +271,8 @@ export class GameEngine {
   private proposalMap = new Map<string, RelationProposal>();
   /** Objectifs éphémères personnels (chantier 17). */
   private objectiveMap = new Map<string, Objective>();
+  /** Événements de monde actifs, partagés (chantier 17). */
+  private worldEventMap = new Map<string, WorldEvent>();
   private beltsById: Map<string, AsteroidBelt>;
   private listeners = new Set<StateListener>();
   private interval: NodeJS.Timeout | null = null;
@@ -352,6 +362,7 @@ export class GameEngine {
     engine.loadRelations();
     engine.loadProposals();
     engine.loadObjectives();
+    engine.loadWorldEvents();
     if (isNew) {
       engine.createHomeColony();
     } else {
@@ -513,6 +524,7 @@ export class GameEngine {
       relations: this.relationsFor(empire),
       proposals: this.proposalsFor(empire),
       objectives: this.objectivesFor(empire),
+      worldEvents: [...this.worldEventMap.values()],
       // L'univers n'est réémis qu'en cas de changement : nouvelle exploration (brouillard
       // levé) ou extension de l'univers (galaxies apparues).
       ...(empire.explorationDirty || empire.universeDirty
@@ -1434,14 +1446,18 @@ export class GameEngine {
 
   /**
    * Bonus commercial appliqué en station : remise de réputation + marge des chartes
-   * commerciales (chantier 12) + bonus d'humeur de faction (chantier 15, boom). Majore
-   * les ventes, réduit les achats.
+   * commerciales (chantier 12) + bonus d'humeur de faction (chantier 15, boom) + effet
+   * d'un événement de monde régional (chantier 17, crise/ruée). Majore les ventes,
+   * réduit les achats.
    */
   private stationRepBonus(empire: Empire, stationId: string): number {
     const station = this.stationsById.get(stationId);
     const rep = station ? repBonus(empire.factionRep[station.factionId] ?? 0) : 0;
     const mood = station ? this.factionStateMap.get(station.factionId)?.mood ?? "neutral" : "neutral";
-    return rep + empire.effects.tradeMargin + moodRebateBonus(mood);
+    const galaxyIndex = station ? this.galaxyIndexOfSystem.get(station.systemId) : undefined;
+    const galaxyId = galaxyIndex !== undefined ? this.universe.galaxies[galaxyIndex]?.id : undefined;
+    const eventBonus = galaxyId ? worldEventPriceBonus(this.worldEventKindsOnGalaxy(galaxyId)) : 0;
+    return rep + empire.effects.tradeMargin + moodRebateBonus(mood) + eventBonus;
   }
 
   /** Un embargo de faction ferme la station aux empires qui n'ont pas encore fait leurs preuves. */
@@ -2399,6 +2415,90 @@ export class GameEngine {
     }
   }
 
+  // ─────────────────────────── Événements de monde (chantier 17) ───────────────────────────
+
+  private loadWorldEvents(): void {
+    for (const row of db.select().from(schema.worldEvents).all()) {
+      this.worldEventMap.set(row.id, {
+        id: row.id,
+        kind: row.kind as WorldEventKind,
+        ...(row.galaxyId !== null ? { galaxyId: row.galaxyId } : {}),
+        ...(row.factionId !== null ? { factionId: row.factionId } : {}),
+        createdAt: row.createdAt,
+        expiresAt: row.expiresAt,
+      });
+    }
+  }
+
+  private insertWorldEvent(event: WorldEvent): void {
+    db.insert(schema.worldEvents)
+      .values({
+        id: event.id,
+        gameId: this.clock.id,
+        kind: event.kind,
+        galaxyId: event.galaxyId ?? null,
+        factionId: event.factionId ?? null,
+        createdAt: event.createdAt,
+        expiresAt: event.expiresAt,
+      })
+      .run();
+  }
+
+  /** Retire les événements de monde expirés (pas de statut : ils disparaissent, point). */
+  private resolveWorldEvents(t: number): void {
+    for (const [id, event] of this.worldEventMap) {
+      if (t < event.expiresAt) continue;
+      this.worldEventMap.delete(id);
+      db.delete(schema.worldEvents).where(eq(schema.worldEvents.id, id)).run();
+    }
+  }
+
+  /** Kinds d'événements de monde actifs sur une galaxie (bonus/malus de prix, spawn pirate). */
+  private worldEventKindsOnGalaxy(galaxyId: string): WorldEventKind[] {
+    return [...this.worldEventMap.values()].filter((e) => e.galaxyId === galaxyId).map((e) => e.kind);
+  }
+
+  /** Tire un nouvel événement de monde et l'applique — cadence lente, un à la fois par cible. */
+  private worldEventTick(tickNumber: number, now: number): void {
+    const rng = createRng(`worldevent-${this.clock.seed}-${tickNumber}`);
+    const kind = rollWorldEvent(rng);
+    if (!kind) return;
+
+    if (kind === "faction_boom") {
+      const factionId = FACTION_IDS[Math.floor(rng() * FACTION_IDS.length)]!;
+      const alreadyActive = [...this.worldEventMap.values()].some(
+        (e) => e.kind === "faction_boom" && e.factionId === factionId,
+      );
+      if (alreadyActive) return;
+      const expiresAt = now + WORLD_EVENT_DURATION_MS;
+      const event: WorldEvent = { id: randomUUID(), kind, factionId, createdAt: now, expiresAt };
+      this.worldEventMap.set(event.id, event);
+      this.insertWorldEvent(event);
+      // Effet immédiat : force le boom, comme une pénurie de faction poste aussitôt un contrat.
+      this.setFactionMood(factionId, "boom", expiresAt);
+      console.log(`[game] essor de faction : ${FACTIONS[factionId as FactionId].name}`);
+      this.notify();
+      return;
+    }
+
+    // Les trois autres kinds ciblent une galaxie de l'univers déjà généré.
+    if (this.universe.galaxies.length === 0) return;
+    const galaxy = this.universe.galaxies[Math.floor(rng() * this.universe.galaxies.length)]!;
+    const alreadyActive = this.worldEventKindsOnGalaxy(galaxy.id).includes(kind);
+    if (alreadyActive) return;
+    const event: WorldEvent = {
+      id: randomUUID(),
+      kind,
+      galaxyId: galaxy.id,
+      createdAt: now,
+      expiresAt: now + WORLD_EVENT_DURATION_MS,
+    };
+    this.worldEventMap.set(event.id, event);
+    this.insertWorldEvent(event);
+    console.log(`[game] événement de monde : ${kind} sur ${galaxy.name}`);
+    this.notify();
+  }
+
   /** Retire une flotte (survivants nuls) ou la met à jour (chantier 7d — PvP). */
   private applyFleetSurvivors(empire: Empire, fleet: Fleet, ships: FleetComposition): void {
     if (fleetIsEmpty(ships)) {
@@ -2612,10 +2712,13 @@ export class GameEngine {
     for (const systemId of this.universeExplored()) {
       if (this.claimOwner(systemId)) continue;
       if ([...this.lairMap.values()].some((l) => l.systemId === systemId)) continue;
-      const rng = createRng(`pirate-${this.clock.seed}-${systemId}-${tickNumber}`);
-      if (rng() > PIRATE_SPAWN_CHANCE) continue;
-      // Menace croissante selon l'éloignement de la galaxie d'origine.
       const galaxy = this.universe.galaxies.find((g) => g.systems.some((s) => s.id === systemId));
+      // Vague pirate majeure (chantier 17) : la galaxie touchée voit sa chance de spawn multipliée.
+      const surging = galaxy ? this.worldEventKindsOnGalaxy(galaxy.id).includes("pirate_surge") : false;
+      const chance = surging ? Math.min(1, PIRATE_SPAWN_CHANCE * WORLD_EVENT_PIRATE_MULT) : PIRATE_SPAWN_CHANCE;
+      const rng = createRng(`pirate-${this.clock.seed}-${systemId}-${tickNumber}`);
+      if (rng() > chance) continue;
+      // Menace croissante selon l'éloignement de la galaxie d'origine.
       const threat = galaxy && galaxy.id !== "gal-0" ? 3 : randInt(rng, 1, 2);
       const ships = pirateComposition(rng, threat);
       const lair: PirateLair = {
@@ -3065,6 +3168,16 @@ export class GameEngine {
       this.objectiveMap.set(id, next);
       this.persistObjective(next);
     }
+    // Échéance des événements de monde déclenchés via l'outil de dev (Date.now() réel,
+    // contrairement au tirage naturel qui utilise déjà l'horloge simulée).
+    for (const [id, event] of this.worldEventMap) {
+      const next: WorldEvent = { ...event, expiresAt: event.expiresAt - delta };
+      this.worldEventMap.set(id, next);
+      db.update(schema.worldEvents)
+        .set({ expiresAt: next.expiresAt })
+        .where(eq(schema.worldEvents.id, id))
+        .run();
+    }
     for (const [id, fleet] of this.fleetMap) {
       if (fleet.queue.length === 0 && !fleet.movement) continue;
       const next: Fleet = {
@@ -3124,16 +3237,18 @@ export class GameEngine {
     this.notify();
   }
 
-  /** Outil de dev uniquement : force l'humeur d'une faction (chantier 15). */
-  devSetFactionMood(factionId: string, mood: FactionState["mood"], durationMs = FACTION_MOOD_DURATION_MS): boolean {
+  /** Force l'humeur d'une faction — partagé entre l'outil de dev et les événements de monde. */
+  private setFactionMood(factionId: string, mood: FactionState["mood"], until: number | null): boolean {
     if (!this.factionStateMap.has(factionId)) return false;
-    const state: FactionState = {
-      factionId,
-      mood,
-      moodUntil: mood === "neutral" ? null : Date.now() + durationMs,
-    };
+    const state: FactionState = { factionId, mood, moodUntil: mood === "neutral" ? null : until };
     this.factionStateMap.set(factionId, state);
     this.persistFactionState(state);
+    return true;
+  }
+
+  /** Outil de dev uniquement : force l'humeur d'une faction (chantier 15). */
+  devSetFactionMood(factionId: string, mood: FactionState["mood"], durationMs = FACTION_MOOD_DURATION_MS): boolean {
+    if (!this.setFactionMood(factionId, mood, Date.now() + durationMs)) return false;
     // Même effet de bord qu'une bascule naturelle : sinon l'outil de dev mentirait sur
     // ce qu'une pénurie déclenche réellement.
     if (mood === "shortage") {
@@ -3141,6 +3256,33 @@ export class GameEngine {
     }
     this.notify();
     return true;
+  }
+
+  /**
+   * Outil de dev uniquement : déclenche un événement de monde (chantier 17). `target`
+   * est un id de galaxie (economic_crisis/gold_rush/pirate_surge) ou de faction
+   * (faction_boom) ; laissé vide, le premier de l'univers/des factions est pris.
+   */
+  devTriggerWorldEvent(kind: WorldEventKind, target = "", durationMs = WORLD_EVENT_DURATION_MS): string | null {
+    const now = Date.now();
+    const expiresAt = now + durationMs;
+    if (kind === "faction_boom") {
+      const factionId = target || FACTION_IDS[0]!;
+      if (!this.factionStateMap.has(factionId)) return null;
+      const event: WorldEvent = { id: randomUUID(), kind, factionId, createdAt: now, expiresAt };
+      this.worldEventMap.set(event.id, event);
+      this.insertWorldEvent(event);
+      this.setFactionMood(factionId, "boom", expiresAt);
+      this.notify();
+      return event.id;
+    }
+    const galaxyId = target || this.universe.galaxies[0]?.id;
+    if (!galaxyId || !this.universe.galaxies.some((g) => g.id === galaxyId)) return null;
+    const event: WorldEvent = { id: randomUUID(), kind, galaxyId, createdAt: now, expiresAt };
+    this.worldEventMap.set(event.id, event);
+    this.insertWorldEvent(event);
+    this.notify();
+    return event.id;
   }
 
   /** Outil de dev uniquement : fait apparaître un repaire pirate dans un système. */
@@ -3921,6 +4063,10 @@ export class GameEngine {
       // Objectifs éphémères : réactifs à tout changement (colonisation, claim…), pas
       // seulement au tick éco.
       this.resolveObjectives(t);
+      // Événements de monde : expiration à chaque tick, nouveau tirage au tick éco (avant
+      // spawnPirates, pour qu'une vague pirate fraîchement déclenchée s'applique tout de suite).
+      this.resolveWorldEvents(t);
+      if (isEconomyTick) this.worldEventTick(tickNumber, t);
       for (const empire of this.empires.values()) {
         this.processRoutes(empire, t);
         this.outpostsTick(empire);

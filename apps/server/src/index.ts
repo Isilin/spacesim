@@ -116,6 +116,20 @@ if (process.env.NODE_ENV !== "production") {
     if (!ok) return reply.code(404).send({ error: "Faction inconnue" });
     return { ok: true };
   });
+  app.post("/dev/triggerworldevent", (request, reply) => {
+    const { kind, target, durationMs } = (request.body ?? {}) as {
+      kind?: string;
+      target?: string;
+      durationMs?: number;
+    };
+    const eventId = engine.devTriggerWorldEvent(
+      (kind ?? "economic_crisis") as Parameters<typeof engine.devTriggerWorldEvent>[0],
+      target ?? "",
+      durationMs,
+    );
+    if (!eventId) return reply.code(404).send({ error: "Cible inconnue" });
+    return { ok: true, eventId };
+  });
   app.post("/dev/spawnempire", (request) => {
     const { name } = (request.body ?? {}) as { name?: string };
     const empireId = engine.devSpawnEmpire(name);

@@ -30,3 +30,4 @@ export * from "./sim/npc.js";
 export * from "./sim/factions.js";
 export * from "./sim/diplomacy.js";
 export * from "./sim/objectives.js";
+export * from "./sim/worldEvents.js";
