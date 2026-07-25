@@ -43,6 +43,11 @@ export const TECH_IDS = [
   "point_defense",
   "strike_doctrine",
   "dreadnoughts",
+  // Conception de vaisseaux (chantier 13) : techs dédiées, croisées entre branches.
+  "plasma_weapons",
+  "reactive_armor",
+  "graviton_thrusters",
+  "xeno_survey",
 ] as const;
 
 export type TechId = (typeof TECH_IDS)[number];
@@ -395,6 +400,43 @@ export const TECHS: Record<TechId, TechDef> = {
     durationMs: 660_000,
     requires: ["capital_ships", "heavy_industry"],
     // Débloque le cuirassé.
+    effects: {},
+  },
+  // ─── Conception de vaisseaux (chantier 13) ───
+  plasma_weapons: {
+    id: "plasma_weapons",
+    branch: "military",
+    cost: 500,
+    durationMs: 420_000,
+    requires: ["capital_ships"],
+    // Débloque le module d'arme plasma (content/modules).
+    effects: {},
+  },
+  reactive_armor: {
+    id: "reactive_armor",
+    branch: "military",
+    cost: 420,
+    durationMs: 360_000,
+    requires: ["point_defense", "heavy_industry"],
+    // Débloque le blindage réactif (content/modules).
+    effects: {},
+  },
+  graviton_thrusters: {
+    id: "graviton_thrusters",
+    branch: "industry",
+    cost: 480,
+    durationMs: 390_000,
+    requires: ["space_elevator", "fusion_power"],
+    // Débloque le propulseur à graviton (content/modules).
+    effects: {},
+  },
+  xeno_survey: {
+    id: "xeno_survey",
+    branch: "colonization",
+    cost: 340,
+    durationMs: 300_000,
+    requires: ["deep_survey"],
+    // Débloque le châssis éclaireur lointain et la foreuse à noyau (content/chassis, modules).
     effects: {},
   },
 };

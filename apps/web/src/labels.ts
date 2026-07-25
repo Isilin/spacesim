@@ -162,6 +162,10 @@ export const CHASSIS_LABELS: Record<ChassisId, { name: string; description: stri
   heavy_freighter: { name: "Soutier lourd", description: "Civil : +50 % soute, quatre utilitaires." },
   mining_barge: { name: "Barge minière", description: "Extraction : +60 % rendement de minage." },
   colony_ark: { name: "Arche coloniale", description: "Colonisation : +30 % habitat, gros vaisseau." },
+  explorer_frame: {
+    name: "Éclaireur lointain",
+    description: "Prospection : +30 % senseurs, +15 % minage, deux propulseurs.",
+  },
 };
 
 export const MODULE_LABELS: Record<ModuleId, { name: string; description: string }> = {
@@ -181,6 +185,10 @@ export const MODULE_LABELS: Record<ModuleId, { name: string; description: string
   habitat_pod: { name: "Module d'habitat", description: "Rend le vaisseau colonisateur." },
   fleet_uplink: { name: "Liaison de flotte", description: "+12 % dégâts de flotte (soutien)." },
   sensor_array: { name: "Réseau de senseurs", description: "+4 initiative." },
+  plasma_cannon: { name: "Canon plasma", description: "Arme puissante à toute portée." },
+  reactive_plating: { name: "Blindage réactif", description: "+120 points de coque." },
+  graviton_engine: { name: "Propulseur à graviton", description: "+vitesse forte, sobre en carburant." },
+  deep_core_drill: { name: "Foreuse à noyau", description: "+80 rendement d'extraction." },
 };
 
 export const DIRECTIVE_LABELS: Record<CombatDirective, { name: string; hint: string }> = {
@@ -338,5 +346,22 @@ export const TECH_LABELS: Record<TechId, { name: string; description: string }> 
   dreadnoughts: {
     name: "Cuirassés",
     description: "Des forteresses mobiles qui décident d'une guerre. Débloque le cuirassé.",
+  },
+  plasma_weapons: {
+    name: "Armement plasma",
+    description: "Canons à plasma confiné. Débloque le canon plasma, puissant à toute portée.",
+  },
+  reactive_armor: {
+    name: "Blindage réactif",
+    description: "Plaques auto-réactives absorbant l'impact. Débloque le blindage réactif.",
+  },
+  graviton_thrusters: {
+    name: "Propulsion à graviton",
+    description: "Manipulation locale de la gravité. Débloque le propulseur à graviton.",
+  },
+  xeno_survey: {
+    name: "Prospection xéno",
+    description:
+      "Cartographie des confins inexplorés. Débloque l'éclaireur lointain et la foreuse à noyau.",
   },
 };

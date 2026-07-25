@@ -54,6 +54,7 @@ export const CHASSIS_IDS = [
   "heavy_freighter",
   "mining_barge",
   "colony_ark",
+  "explorer_frame",
 ] as const;
 
 export type ChassisId = (typeof CHASSIS_IDS)[number];
@@ -192,6 +193,24 @@ export const CHASSIS: Record<ChassisId, ChassisDef> = {
     cost: { metals: 300 },
     buildMs: 180_000,
     requiresTech: "colonial_engineering",
+  },
+  // ─── Éclaireur lointain (chantier 13) : prospection profonde, hors des sentiers battus ───
+  explorer_frame: {
+    id: "explorer_frame",
+    kind: "explorer",
+    domain: "colony",
+    hull: 60,
+    baseInitiative: 20,
+    power: 45,
+    tonnage: 50,
+    calc: 35,
+    slots: { weapon: 0, defense: 1, propulsion: 2, utility: 3 },
+    baseSpeedMult: 1.6,
+    baseFuelPerJump: 10,
+    roleBonus: { sensor: 1.3, mining: 1.15 },
+    cost: { metals: 150 },
+    buildMs: 90_000,
+    requiresTech: "xeno_survey",
   },
 };
 

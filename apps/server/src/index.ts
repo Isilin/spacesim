@@ -189,6 +189,12 @@ app.get("/ws", { websocket: true }, (socket, request) => {
       error = engine.deleteBlueprint(empire, msg.blueprintId);
     } else if (msg.type === "buildBlueprint") {
       error = engine.buildBlueprint(empire, msg.blueprintId, msg.colonyId, msg.fleetId);
+    } else if (msg.type === "buyBlueprintFromStation") {
+      error = engine.buyBlueprintFromStation(empire, msg.colonyId, msg.stationId, msg.presetId);
+    } else if (msg.type === "sellBlueprint") {
+      error = engine.sellBlueprint(empire, msg.colonyId, msg.stationId, msg.blueprintId);
+    } else if (msg.type === "sellShip") {
+      error = engine.sellShip(empire, msg.colonyId, msg.stationId, msg.shipId, msg.count);
     } else if (msg.type === "buildOutpost") {
       error = engine.buildOutpost(empire, msg.colonyId, msg.beltId);
     } else if (msg.type === "createRoute") {

@@ -73,6 +73,11 @@ export const MODULE_IDS = [
   "habitat_pod",
   "fleet_uplink",
   "sensor_array",
+  // Conception de vaisseaux (chantier 13) : techs dédiées.
+  "plasma_cannon",
+  "reactive_plating",
+  "graviton_engine",
+  "deep_core_drill",
 ] as const;
 
 export type ModuleId = (typeof MODULE_IDS)[number];
@@ -286,6 +291,55 @@ export const MODULES: Record<ModuleId, ModuleDef> = {
     buildMs: 7_000,
     requiresTech: "astro_cartography",
     effects: { initiative: 4 },
+  },
+  // ─── Conception de vaisseaux (chantier 13) : techs dédiées ───
+  plasma_cannon: {
+    id: "plasma_cannon",
+    slot: "weapon",
+    role: "weapon",
+    power: 18,
+    tonnage: 10,
+    calc: 8,
+    cost: { metals: 50, components: 20 },
+    buildMs: 14_000,
+    requiresTech: "plasma_weapons",
+    effects: { weapons: { long: 20, medium: 20, short: 20 } },
+  },
+  reactive_plating: {
+    id: "reactive_plating",
+    slot: "defense",
+    role: "defense",
+    power: 6,
+    tonnage: 20,
+    calc: 2,
+    cost: { metals: 80, components: 15 },
+    buildMs: 11_000,
+    requiresTech: "reactive_armor",
+    effects: { hullBonus: 120 },
+  },
+  graviton_engine: {
+    id: "graviton_engine",
+    slot: "propulsion",
+    role: "propulsion",
+    power: 20,
+    tonnage: 8,
+    calc: 10,
+    cost: { metals: 60, components: 30 },
+    buildMs: 13_000,
+    requiresTech: "graviton_thrusters",
+    effects: { speedMult: 0.9, fuelDelta: 6 },
+  },
+  deep_core_drill: {
+    id: "deep_core_drill",
+    slot: "utility",
+    role: "mining",
+    power: 10,
+    tonnage: 10,
+    calc: 6,
+    cost: { metals: 40, components: 15 },
+    buildMs: 12_000,
+    requiresTech: "xeno_survey",
+    effects: { miningYield: 80 },
   },
 };
 

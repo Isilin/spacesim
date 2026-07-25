@@ -453,6 +453,7 @@ export function App({ auth }: Props) {
                 outposts={outposts}
                 game={game}
                 routes={routes}
+                blueprints={blueprints}
                 portalLinks={portalLinks}
                 now={now}
                 send={send}
@@ -472,6 +473,7 @@ export function App({ auth }: Props) {
                   outposts={outposts}
                   game={game}
                   routes={routes}
+                  blueprints={blueprints}
                   portalLinks={portalLinks}
                   now={now}
                   send={send}

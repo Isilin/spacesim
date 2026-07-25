@@ -64,6 +64,9 @@ import {
   pirateComposition,
   pirateDirectives,
   pickShip,
+  BLUEPRINT_BUY_MARKUP,
+  BLUEPRINT_SELL_FRACTION,
+  costValue,
   PRESETS,
   presetById,
   STARTER_PRESET_IDS,
@@ -1053,6 +1056,109 @@ export class GameEngine {
     };
     empire.fleetMap.set(fleet.id, next);
     this.persistFleet(next);
+    this.notify();
+    return null;
+  }
+
+  /** Distance en sauts colonie → station, -1 si inaccessible (aide au marché de plans). */
+  private jumpsToStation(colony: Colony, stationId: string): number {
+    const station = this.stationsById.get(stationId);
+    if (!station) return -1;
+    const fromPlanet = this.planetsById.get(colony.planetId);
+    if (!fromPlanet) return -1;
+    return jumpDistanceInUniverse(this.universe, fromPlanet.systemId, station.systemId, this.portalLinks);
+  }
+
+  /**
+   * Action joueur : acheter un plan tout fait à une station PNJ (chantier 13). Transaction
+   * instantanée (un plan n'est pas une cargaison physique) : le prix majore la valeur en
+   * ressources du design, payé en crédits au sol.
+   */
+  buyBlueprintFromStation(
+    empire: Empire,
+    colonyId: string,
+    stationId: string,
+    presetId: string,
+  ): string | null {
+    if (empire.blueprintMap.size >= GameEngine.MAX_BLUEPRINTS) return "Trop de plans enregistrés";
+    const colony = empire.colonyMap.get(colonyId);
+    if (!colony) return "Colonie inconnue";
+    const station = this.stationsById.get(stationId);
+    if (!station) return "Station inconnue";
+    if (!empire.explored.has(station.systemId)) return "Station non découverte";
+    if (this.jumpsToStation(colony, stationId) < 0) return "Station inaccessible";
+    const preset = presetById(presetId);
+    if (!preset) return "Plan inconnu au catalogue";
+
+    const price = Math.round(costValue(resolveBlueprint(preset).cost) * BLUEPRINT_BUY_MARKUP);
+    if (colony.resources.credits < price) return `Crédits insuffisants (${price})`;
+
+    const bp: Blueprint = {
+      id: randomUUID(),
+      ownerId: empire.id,
+      name: preset.name,
+      chassisId: preset.chassisId,
+      modules: [...preset.modules],
+      createdAt: Date.now(),
+    };
+    empire.blueprintMap.set(bp.id, bp);
+    this.persistBlueprint(bp, true);
+    empire.colonyMap.set(colony.id, {
+      ...colony,
+      resources: { ...colony.resources, credits: colony.resources.credits - price },
+    });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
+    this.notify();
+    return null;
+  }
+
+  /** Action joueur : revendre un plan à une station PNJ, contre une fraction de sa valeur. */
+  sellBlueprint(empire: Empire, colonyId: string, stationId: string, blueprintId: string): string | null {
+    const colony = empire.colonyMap.get(colonyId);
+    if (!colony) return "Colonie inconnue";
+    if (this.jumpsToStation(colony, stationId) < 0) return "Station inaccessible";
+    const bp = empire.blueprintMap.get(blueprintId);
+    if (!bp) return "Plan inconnu";
+
+    const price = Math.round(costValue(resolveBlueprint(bp).cost) * BLUEPRINT_SELL_FRACTION);
+    empire.blueprintMap.delete(blueprintId);
+    db.delete(schema.blueprints).where(eq(schema.blueprints.id, blueprintId)).run();
+    empire.colonyMap.set(colony.id, {
+      ...colony,
+      resources: { ...colony.resources, credits: colony.resources.credits + price },
+    });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
+    this.notify();
+    return null;
+  }
+
+  /**
+   * Action joueur : revendre des vaisseaux assemblés (civils, désœuvrés) à une station PNJ.
+   * Couvre aussi bien les classes historiques que les vaisseaux issus d'un plan.
+   */
+  sellShip(empire: Empire, colonyId: string, stationId: string, shipId: string, countRaw: number): string | null {
+    const colony = empire.colonyMap.get(colonyId);
+    if (!colony) return "Colonie inconnue";
+    if (this.jumpsToStation(colony, stationId) < 0) return "Station inaccessible";
+    const count = Math.floor(Number(countRaw));
+    if (!Number.isFinite(count) || count <= 0) return "Quantité invalide";
+
+    const idle = idleShips(colony, [...empire.routeMap.values()]);
+    if ((idle[shipId] ?? 0) < count) return "Vaisseaux indisponibles (occupés ou insuffisants)";
+
+    const legacyDef = SHIPS[shipId as LegacyShipId];
+    const bp = empire.blueprintMap.get(shipId);
+    const cost = legacyDef?.cost ?? (bp ? resolveBlueprint(bp).cost : null);
+    if (!cost) return "Vaisseau inconnu";
+
+    const price = Math.round(costValue(cost) * BLUEPRINT_SELL_FRACTION) * count;
+    const ships = { ...colony.ships, [shipId]: (colony.ships[shipId] ?? 0) - count };
+    empire.colonyMap.set(colony.id, {
+      ...colony,
+      ships,
+      resources: { ...colony.resources, credits: colony.resources.credits + price },
+    });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
     this.notify();
     return null;
   }

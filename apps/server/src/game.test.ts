@@ -565,6 +565,13 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
   /** Plan civil (domaine colonie) et militaire (domaine flotte), tous deux constructibles sans tech. */
   const COLONY_BP = { chassisId: "light_freighter", modules: ["cargo_pod", "cargo_pod", "ion_thruster"] };
   const FLEET_BP = { chassisId: "scout_frame", modules: ["laser_pulse", "armor_plating", "ion_thruster", "cargo_pod"] };
+  /** Station de la galaxie d'origine, rendue visible de l'empire (même recette que le test logistique). */
+  const reachableStation = (engine: GameEngine, empire: ReturnType<typeof empireFor>) => {
+    const station = engine.universe.galaxies[0]!.systems.find((s) => s.station)?.station;
+    if (!station) throw new Error("la galaxie d'origine a toujours au moins une station");
+    engine.devArmFleet(empire, station.systemId, {});
+    return station;
+  };
 
   it("un empire neuf est amorcé avec les plans de départ", () => {
     const engine = GameEngine.load();
@@ -636,6 +643,82 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     const e2 = GameEngine.load();
     const a2 = e2.empireForAccount("alice")!;
     expect(e2.snapshotForEmpire(a2).blueprints.map((p) => p.name)).toContain("Persistant");
+  });
+
+  describe("marché de plans en station", () => {
+    it("achète un plan de départ : crédits débités, plan ajouté", () => {
+      const engine = GameEngine.load();
+      const a = empireFor(engine, "alice");
+      const station = reachableStation(engine, a);
+      engine.devGrant({ credits: 5000 });
+      const colony = snap(engine, a).colonies[0]!;
+      const before = snap(engine, a).blueprints.length;
+
+      expect(engine.buyBlueprintFromStation(a, colony.id, station.id, "cruiser_mk1")).toBeNull();
+
+      const after = snap(engine, a);
+      expect(after.blueprints.length).toBe(before + 1);
+      expect(after.colonies[0]!.resources.credits).toBeLessThan(colony.resources.credits);
+    });
+
+    it("refuse l'achat sans crédits suffisants", () => {
+      const engine = GameEngine.load();
+      const a = empireFor(engine, "alice");
+      const station = reachableStation(engine, a);
+      const colony = snap(engine, a).colonies[0]!;
+      expect(engine.buyBlueprintFromStation(a, colony.id, station.id, "cruiser_mk1")).toMatch(
+        /Crédits insuffisants/,
+      );
+    });
+
+    it("refuse l'achat d'un preset inconnu", () => {
+      const engine = GameEngine.load();
+      const a = empireFor(engine, "alice");
+      const station = reachableStation(engine, a);
+      const colony = snap(engine, a).colonies[0]!;
+      engine.devGrant({ credits: 5000 });
+      expect(engine.buyBlueprintFromStation(a, colony.id, station.id, "n-importe-quoi")).toMatch(
+        /inconnu/,
+      );
+    });
+
+    it("revend un plan : crédité, plan retiré", () => {
+      const engine = GameEngine.load();
+      const a = empireFor(engine, "alice");
+      const station = reachableStation(engine, a);
+      const colony = snap(engine, a).colonies[0]!;
+      const plan = snap(engine, a).blueprints[0]!;
+      const creditsBefore = colony.resources.credits;
+
+      expect(engine.sellBlueprint(a, colony.id, station.id, plan.id)).toBeNull();
+
+      const after = snap(engine, a);
+      expect(after.blueprints.some((p) => p.id === plan.id)).toBe(false);
+      expect(after.colonies[0]!.resources.credits).toBeGreaterThan(creditsBefore);
+    });
+
+    it("revend un vaisseau assemblé (classe historique) : décompte le pool, crédite", () => {
+      const engine = GameEngine.load();
+      const a = empireFor(engine, "alice");
+      const station = reachableStation(engine, a);
+      const colony = snap(engine, a).colonies[0]!;
+      expect(colony.ships.cargo_small).toBe(2); // amorcé à la fondation
+      const creditsBefore = colony.resources.credits;
+
+      expect(engine.sellShip(a, colony.id, station.id, "cargo_small", 1)).toBeNull();
+
+      const after = snap(engine, a).colonies[0]!;
+      expect(after.ships.cargo_small).toBe(1);
+      expect(after.resources.credits).toBeGreaterThan(creditsBefore);
+    });
+
+    it("refuse de vendre plus de vaisseaux que disponibles", () => {
+      const engine = GameEngine.load();
+      const a = empireFor(engine, "alice");
+      const station = reachableStation(engine, a);
+      const colony = snap(engine, a).colonies[0]!;
+      expect(engine.sellShip(a, colony.id, station.id, "cargo_small", 99)).not.toBeNull();
+    });
   });
 });
 

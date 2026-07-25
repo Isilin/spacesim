@@ -498,6 +498,10 @@ export type ClientMessage =
   | { type: "deleteBlueprint"; blueprintId: string }
   /** Produit un vaisseau depuis un plan : `colonyId` (domaine colonie) ou `fleetId` (flotte). */
   | { type: "buildBlueprint"; blueprintId: string; colonyId?: string; fleetId?: string }
+  /** Marché de plans en station (chantier 13). */
+  | { type: "buyBlueprintFromStation"; colonyId: string; stationId: string; presetId: string }
+  | { type: "sellBlueprint"; colonyId: string; stationId: string; blueprintId: string }
+  | { type: "sellShip"; colonyId: string; stationId: string; shipId: string; count: number }
   | { type: "buildOutpost"; colonyId: string; beltId: string }
   | {
       type: "createRoute";
