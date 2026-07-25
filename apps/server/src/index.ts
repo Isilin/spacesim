@@ -102,6 +102,20 @@ if (process.env.NODE_ENV !== "production") {
     engine.devSpawnPirate(systemId ?? "", threat ?? 2);
     return { ok: true };
   });
+  app.post("/dev/setfactionmood", (request, reply) => {
+    const { factionId, mood, durationMs } = (request.body ?? {}) as {
+      factionId?: string;
+      mood?: string;
+      durationMs?: number;
+    };
+    const ok = engine.devSetFactionMood(
+      factionId ?? "",
+      (mood ?? "neutral") as Parameters<typeof engine.devSetFactionMood>[1],
+      durationMs,
+    );
+    if (!ok) return reply.code(404).send({ error: "Faction inconnue" });
+    return { ok: true };
+  });
   app.post("/dev/spawnempire", (request) => {
     const { name } = (request.body ?? {}) as { name?: string };
     const empireId = engine.devSpawnEmpire(name);

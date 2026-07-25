@@ -27,3 +27,4 @@ export * from "./sim/territory.js";
 export * from "./sim/fog.js";
 export * from "./sim/contracts.js";
 export * from "./sim/npc.js";
+export * from "./sim/factions.js";

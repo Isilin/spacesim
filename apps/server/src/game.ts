@@ -29,10 +29,13 @@ import {
   deliverToOrbit,
   emptyOrbital,
   emptyResources,
+  embargoBlocks,
   enqueueBuilding,
   enqueueShip,
   FACTION_IDS,
+  FACTION_MOOD_DURATION_MS,
   FACTIONS,
+  factionTick,
   fleetCapacity,
   fleetIsEmpty,
   GATEWAY_BUILD_MS,
@@ -57,6 +60,7 @@ import {
   initialStocks,
   MAX_CATCHUP_TICKS,
   MAX_OPEN_CONTRACTS_PER_EMPIRE,
+  moodRebateBonus,
   NEW_COLONY_ORBITAL,
   NEW_COLONY_POPULATION,
   NEW_COLONY_RESOURCES,
@@ -798,6 +802,7 @@ export class GameEngine {
     const station = this.stationsById.get(stationId);
     if (!station) return "Station inconnue";
     if (!empire.explored.has(station.systemId)) return "Station non découverte";
+    if (this.stationEmbargoed(empire, stationId)) return "Embargo de faction — commerce refusé";
 
     const cargo: Partial<Record<ResourceId, number>> = {};
     for (const [res, raw] of Object.entries(wanted) as [ResourceId, number][]) {
@@ -856,6 +861,7 @@ export class GameEngine {
     const station = this.stationsById.get(stationId);
     if (!station) return "Station inconnue";
     if (!empire.explored.has(station.systemId)) return "Station non découverte";
+    if (this.stationEmbargoed(empire, stationId)) return "Embargo de faction — commerce refusé";
     if (!(MARKET_RESOURCES as readonly string[]).includes(resource)) {
       return `Ressource non échangeable : ${resource}`;
     }
@@ -1296,6 +1302,18 @@ export class GameEngine {
     this.postContract(empire, colony.id, resource, quantity, price, NPC_CONTRACT_DURATION_MS);
   }
 
+  /** Fait évoluer l'humeur de chaque faction à un tick économique (chantier 15). */
+  private factionMoodTick(now: number, tickNumber: number): void {
+    for (const [factionId, state] of this.factionStateMap) {
+      const rng = createRng(`faction-${this.clock.seed}-${factionId}-${tickNumber}`);
+      const next = factionTick(state, rng, now);
+      if (next === state) continue;
+      this.factionStateMap.set(factionId, next);
+      this.persistFactionState(next);
+      console.log(`[game] humeur de ${FACTIONS[factionId as FactionId].name} : ${next.mood}`);
+    }
+  }
+
   /** Fait tourner l'économie d'un empire PNJ : vend le surplus, contractualise les besoins. */
   private npcTick(empire: Empire): void {
     if (empire.kind !== "npc") return;
@@ -1312,12 +1330,22 @@ export class GameEngine {
 
   /**
    * Bonus commercial appliqué en station : remise de réputation + marge des chartes
-   * commerciales (chantier 12). Majore les ventes, réduit les achats.
+   * commerciales (chantier 12) + bonus d'humeur de faction (chantier 15, boom). Majore
+   * les ventes, réduit les achats.
    */
   private stationRepBonus(empire: Empire, stationId: string): number {
     const station = this.stationsById.get(stationId);
     const rep = station ? repBonus(empire.factionRep[station.factionId] ?? 0) : 0;
-    return rep + empire.effects.tradeMargin;
+    const mood = station ? this.factionStateMap.get(station.factionId)?.mood ?? "neutral" : "neutral";
+    return rep + empire.effects.tradeMargin + moodRebateBonus(mood);
+  }
+
+  /** Un embargo de faction ferme la station aux empires qui n'ont pas encore fait leurs preuves. */
+  private stationEmbargoed(empire: Empire, stationId: string): boolean {
+    const station = this.stationsById.get(stationId);
+    if (!station) return false;
+    const mood = this.factionStateMap.get(station.factionId)?.mood ?? "neutral";
+    return embargoBlocks(mood, empire.factionRep[station.factionId] ?? 0);
   }
 
   private loadRoutes(): void {
@@ -2647,6 +2675,13 @@ export class GameEngine {
       this.contractMap.set(id, next);
       this.persistContract(next);
     }
+    // Humeurs de faction : même décalage, pour qu'un fast-forward de dev/test les résolve.
+    for (const [id, state] of this.factionStateMap) {
+      if (state.moodUntil === null) continue;
+      const next: FactionState = { ...state, moodUntil: state.moodUntil - delta };
+      this.factionStateMap.set(id, next);
+      this.persistFactionState(next);
+    }
     for (const [id, fleet] of this.fleetMap) {
       if (fleet.queue.length === 0 && !fleet.movement) continue;
       const next: Fleet = {
@@ -2704,6 +2739,20 @@ export class GameEngine {
     this.gatewayMap.set(galaxyId, next);
     this.persistGateway(next);
     this.notify();
+  }
+
+  /** Outil de dev uniquement : force l'humeur d'une faction (chantier 15). */
+  devSetFactionMood(factionId: string, mood: FactionState["mood"], durationMs = FACTION_MOOD_DURATION_MS): boolean {
+    if (!this.factionStateMap.has(factionId)) return false;
+    const state: FactionState = {
+      factionId,
+      mood,
+      moodUntil: mood === "neutral" ? null : Date.now() + durationMs,
+    };
+    this.factionStateMap.set(factionId, state);
+    this.persistFactionState(state);
+    this.notify();
+    return true;
   }
 
   /** Outil de dev uniquement : fait apparaître un repaire pirate dans un système. */
@@ -3479,6 +3528,9 @@ export class GameEngine {
       // Marchés PNJ : univers partagé, une fois par tick éco.
       if (isEconomyTick) {
         this.economyTick(tickNumber);
+        // Humeurs de faction (chantier 15) : après les marchés, avant les PNJ qui
+        // tarifent leurs contrats sur les cours (et bientôt les humeurs) à jour.
+        this.factionMoodTick(t, tickNumber);
         // Économie des empires PNJ (chantier 14) : après les marchés, pour tarifer
         // leurs contrats sur des cours à jour.
         for (const empire of this.empires.values()) this.npcTick(empire);
