@@ -168,7 +168,11 @@ export function validateBlueprint(bp: BlueprintShape, effects: EmpireEffects): s
 }
 
 /** Budgets consommés par un plan (pour les jauges de l'UI). */
-export function blueprintLoad(bp: BlueprintShape): { power: number; tonnage: number; calc: number } {
+export function blueprintLoad(bp: BlueprintShape): {
+  power: number;
+  tonnage: number;
+  calc: number;
+} {
   let power = 0;
   let tonnage = 0;
   let calc = 0;

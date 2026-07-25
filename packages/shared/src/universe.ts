@@ -35,17 +35,75 @@ const GOLDEN_ANGLE = 2.399963229728653;
 // donnent deux noms distincts, sans consulter les galaxies déjà générées.
 
 const NAME_HEADS = [
-  "Al", "Bac", "Cyg", "Dre", "Elo", "Fer", "Ghe", "Hya", "Il", "Jar",
-  "Kae", "Lor", "Mer", "Nyx", "Ost", "Pel", "Quor", "Rha", "Sel", "Tal",
-  "Umb", "Vens", "Wre", "Xan", "Yso", "Zer", "Aph", "Bor", "Cin", "Dag",
-  "Ere", "Fom", "Gal", "Hes", "Ith", "Jor", "Kres", "Lum", "Mor", "Nad",
-  "Oph", "Pyr", "Quil", "Rhes", "Sar", "Tyb", "Ull", "Ves", "Kha", "Ely",
+  "Al",
+  "Bac",
+  "Cyg",
+  "Dre",
+  "Elo",
+  "Fer",
+  "Ghe",
+  "Hya",
+  "Il",
+  "Jar",
+  "Kae",
+  "Lor",
+  "Mer",
+  "Nyx",
+  "Ost",
+  "Pel",
+  "Quor",
+  "Rha",
+  "Sel",
+  "Tal",
+  "Umb",
+  "Vens",
+  "Wre",
+  "Xan",
+  "Yso",
+  "Zer",
+  "Aph",
+  "Bor",
+  "Cin",
+  "Dag",
+  "Ere",
+  "Fom",
+  "Gal",
+  "Hes",
+  "Ith",
+  "Jor",
+  "Kres",
+  "Lum",
+  "Mor",
+  "Nad",
+  "Oph",
+  "Pyr",
+  "Quil",
+  "Rhes",
+  "Sar",
+  "Tyb",
+  "Ull",
+  "Ves",
+  "Kha",
+  "Ely",
 ] as const;
 
 const NAME_JOINTS = ["", "d", "l", "n", "r", "s", "th", "v", "m", "st", "rn"] as const;
 
 const NAME_TAILS = [
-  "a", "is", "us", "on", "ar", "en", "or", "ia", "yn", "ess", "um", "ae", "os", "ix",
+  "a",
+  "is",
+  "us",
+  "on",
+  "ar",
+  "en",
+  "or",
+  "ia",
+  "yn",
+  "ess",
+  "um",
+  "ae",
+  "os",
+  "ix",
 ] as const;
 
 /** Nombre de noms distincts formables (50 × 11 × 14). */
@@ -64,7 +122,8 @@ function syllabicName(index: number): string {
   const n = ((index % NAME_SPACE) + NAME_SPACE) % NAME_SPACE;
   const head = NAME_HEADS[n % NAME_HEADS.length]!;
   const joint = NAME_JOINTS[Math.floor(n / NAME_HEADS.length) % NAME_JOINTS.length]!;
-  const tail = NAME_TAILS[Math.floor(n / (NAME_HEADS.length * NAME_JOINTS.length)) % NAME_TAILS.length]!;
+  const tail =
+    NAME_TAILS[Math.floor(n / (NAME_HEADS.length * NAME_JOINTS.length)) % NAME_TAILS.length]!;
   const name = `${head}${joint}${tail}`;
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
@@ -107,12 +166,35 @@ const HABITABILITY: Record<PlanetType, [number, number]> = {
 };
 
 /** Tendance des gisements par type : [ressource, proba, min, max]. */
-const DEPOSIT_TENDENCIES: Record<PlanetType, readonly (readonly ["ore" | "energy" | "food", number, number, number])[]> = {
-  telluric: [["ore", 0.8, 0.7, 1.2], ["food", 0.9, 0.9, 1.4], ["energy", 0.6, 0.8, 1.1]],
-  oceanic: [["food", 0.95, 1.1, 1.6], ["ore", 0.4, 0.5, 0.9], ["energy", 0.6, 0.8, 1.2]],
-  arid: [["ore", 0.85, 0.9, 1.4], ["energy", 0.85, 1.0, 1.5], ["food", 0.3, 0.4, 0.8]],
-  frozen: [["ore", 0.8, 0.9, 1.5], ["energy", 0.4, 0.5, 0.9], ["food", 0.2, 0.3, 0.6]],
-  volcanic: [["ore", 0.95, 1.2, 1.8], ["energy", 0.9, 1.1, 1.6], ["food", 0.1, 0.2, 0.4]],
+const DEPOSIT_TENDENCIES: Record<
+  PlanetType,
+  readonly (readonly ["ore" | "energy" | "food", number, number, number])[]
+> = {
+  telluric: [
+    ["ore", 0.8, 0.7, 1.2],
+    ["food", 0.9, 0.9, 1.4],
+    ["energy", 0.6, 0.8, 1.1],
+  ],
+  oceanic: [
+    ["food", 0.95, 1.1, 1.6],
+    ["ore", 0.4, 0.5, 0.9],
+    ["energy", 0.6, 0.8, 1.2],
+  ],
+  arid: [
+    ["ore", 0.85, 0.9, 1.4],
+    ["energy", 0.85, 1.0, 1.5],
+    ["food", 0.3, 0.4, 0.8],
+  ],
+  frozen: [
+    ["ore", 0.8, 0.9, 1.5],
+    ["energy", 0.4, 0.5, 0.9],
+    ["food", 0.2, 0.3, 0.6],
+  ],
+  volcanic: [
+    ["ore", 0.95, 1.2, 1.8],
+    ["energy", 0.9, 1.1, 1.6],
+    ["food", 0.1, 0.2, 0.4],
+  ],
   gas: [["energy", 1.0, 1.3, 2.0]],
 };
 
@@ -294,9 +376,7 @@ export function galaxyDefAt(seed: string, index: number): GalaxyDef {
     x: Math.round(UNIVERSE_CENTER_X + Math.cos(angle) * radius),
     y: Math.round(UNIVERSE_CENTER_Y + Math.sin(angle) * radius),
     systems:
-      index === 0
-        ? HOME_GALAXY_SYSTEMS
-        : randInt(createRng(`${seed}:galaxy-size:${index}`), 7, 13),
+      index === 0 ? HOME_GALAXY_SYSTEMS : randInt(createRng(`${seed}:galaxy-size:${index}`), 7, 13),
     depositBonus: index === 0 ? 1 : Math.round(Math.min(3, 1 + 0.5 * Math.sqrt(index)) * 100) / 100,
   };
 }

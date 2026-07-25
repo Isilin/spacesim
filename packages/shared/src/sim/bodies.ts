@@ -58,11 +58,31 @@ const BASE_TEMP: Record<PlanetType, number> = {
 
 /** Atmosphères plausibles par type, pondérées. */
 const ATMOSPHERE_WEIGHTS: Record<PlanetType, readonly (readonly [Atmosphere, number])[]> = {
-  telluric: [["breathable", 5], ["thin", 3], ["toxic", 2]],
-  oceanic: [["breathable", 6], ["dense", 2], ["thin", 1]],
-  arid: [["thin", 5], ["none", 3], ["toxic", 2]],
-  frozen: [["none", 5], ["thin", 4], ["toxic", 1]],
-  volcanic: [["toxic", 6], ["dense", 3], ["thin", 1]],
+  telluric: [
+    ["breathable", 5],
+    ["thin", 3],
+    ["toxic", 2],
+  ],
+  oceanic: [
+    ["breathable", 6],
+    ["dense", 2],
+    ["thin", 1],
+  ],
+  arid: [
+    ["thin", 5],
+    ["none", 3],
+    ["toxic", 2],
+  ],
+  frozen: [
+    ["none", 5],
+    ["thin", 4],
+    ["toxic", 1],
+  ],
+  volcanic: [
+    ["toxic", 6],
+    ["dense", 3],
+    ["thin", 1],
+  ],
   gas: [["dense", 1]],
 };
 
@@ -121,10 +141,13 @@ export function bodyPhysicals(planet: Planet, parentOrbitRadius?: number): BodyP
   const radiusKm = Math.round(range(rng, RADIUS_RANGE[planet.type]) * moonScale);
   const density = range(rng, DENSITY_RANGE[planet.type]);
   // g ∝ densité × rayon (à densité égale, un corps deux fois plus gros pèse deux fois plus).
-  const gravityG = Math.round((density * (radiusKm / 6371)) * 100) / 100;
+  const gravityG = Math.round(density * (radiusKm / 6371) * 100) / 100;
 
   // Distance à l'étoile : pour une lune, celle de sa planète.
-  const starDistance = Math.max(20, (isMoon ? parentOrbitRadius ?? REFERENCE_ORBIT : planet.orbitRadius));
+  const starDistance = Math.max(
+    20,
+    isMoon ? (parentOrbitRadius ?? REFERENCE_ORBIT) : planet.orbitRadius,
+  );
   // Écart logarithmique borné : proche = plus chaud, loin = plus froid, sans jamais
   // renverser la nature du corps.
   const distanceOffset =
@@ -144,11 +167,14 @@ export function bodyPhysicals(planet: Planet, parentOrbitRadius?: number): BodyP
     dayLengthHours: Math.round(range(rng, isMoon ? [40, 700] : [8, 90]) * 10) / 10,
     // Période orbitale : loi de Kepler (T ∝ r^1.5) autour du corps parent.
     orbitPeriodDays:
-      Math.round(((planet.orbitRadius / (isMoon ? 4 : 40)) ** 1.5 + range(rng, [0.2, 2])) * 10) / 10,
+      Math.round(((planet.orbitRadius / (isMoon ? 4 : 40)) ** 1.5 + range(rng, [0.2, 2])) * 10) /
+      10,
   };
 }
 
 /** Le corps est-il vivable sans combinaison ? (habillage : croisé avec l'habitabilité) */
 export function isBreathable(physicals: BodyPhysicals): boolean {
-  return physicals.atmosphere === "breathable" && physicals.meanTempC > -20 && physicals.meanTempC < 55;
+  return (
+    physicals.atmosphere === "breathable" && physicals.meanTempC > -20 && physicals.meanTempC < 55
+  );
 }

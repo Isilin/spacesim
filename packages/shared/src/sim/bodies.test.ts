@@ -54,11 +54,15 @@ describe("bodyPhysicals", () => {
     // Une glacée collée à son étoile reste glaciale, une volcanique lointaine brûlante :
     // sinon la carte afficherait des mondes gelés à 40 °C.
     for (const orbitRadius of [40, 70, 180, 400, 900]) {
-      expect(bodyPhysicals(body({ id: `f${orbitRadius}`, type: "frozen", orbitRadius })).meanTempC)
-        .toBeLessThan(0);
-      expect(bodyPhysicals(body({ id: `v${orbitRadius}`, type: "volcanic", orbitRadius })).meanTempC)
-        .toBeGreaterThan(100);
-      const telluric = bodyPhysicals(body({ id: `t${orbitRadius}`, type: "telluric", orbitRadius }));
+      expect(
+        bodyPhysicals(body({ id: `f${orbitRadius}`, type: "frozen", orbitRadius })).meanTempC,
+      ).toBeLessThan(0);
+      expect(
+        bodyPhysicals(body({ id: `v${orbitRadius}`, type: "volcanic", orbitRadius })).meanTempC,
+      ).toBeGreaterThan(100);
+      const telluric = bodyPhysicals(
+        body({ id: `t${orbitRadius}`, type: "telluric", orbitRadius }),
+      );
       expect(telluric.meanTempC).toBeGreaterThan(-60);
       expect(telluric.meanTempC).toBeLessThan(80);
     }

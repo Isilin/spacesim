@@ -118,7 +118,13 @@ export function LogisticsView({
           portalLinks={portalLinks}
         />
       ) : (
-        <ContractsView contracts={contracts} colony={colony} playerId={playerId} now={now} send={send} />
+        <ContractsView
+          contracts={contracts}
+          colony={colony}
+          playerId={playerId}
+          now={now}
+          send={send}
+        />
       )}
     </div>
   );

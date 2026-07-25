@@ -26,7 +26,15 @@ function makeColony(overrides: Partial<Colony> = {}): Colony {
 describe("decideColonyEconomy", () => {
   it("aucun intent quand tout est dans les clous", () => {
     const colony = makeColony({
-      resources: { ...emptyResources(), ore: 200, energy: 200, food: 200, metals: 200, goods: 200, components: 200 },
+      resources: {
+        ...emptyResources(),
+        ore: 200,
+        energy: 200,
+        food: 200,
+        metals: 200,
+        goods: 200,
+        components: 200,
+      },
       orbitalResources: { ...emptyOrbital(), ore: 100 },
     });
     expect(decideColonyEconomy(colony)).toEqual([]);
@@ -34,7 +42,15 @@ describe("decideColonyEconomy", () => {
 
   it("vend l'excédent orbital au-delà du seuil", () => {
     const colony = makeColony({
-      resources: { ...emptyResources(), ore: 200, energy: 200, food: 200, metals: 200, goods: 200, components: 200 },
+      resources: {
+        ...emptyResources(),
+        ore: 200,
+        energy: 200,
+        food: 200,
+        metals: 200,
+        goods: 200,
+        components: 200,
+      },
       orbitalResources: { ...emptyOrbital(), ore: NPC_SURPLUS_THRESHOLD + 50 },
     });
     const intents = decideColonyEconomy(colony);
@@ -43,7 +59,15 @@ describe("decideColonyEconomy", () => {
 
   it("demande par contrat ce qui manque au sol", () => {
     const colony = makeColony({
-      resources: { ...emptyResources(), ore: 10, energy: 200, food: 200, metals: 200, goods: 200, components: 200 },
+      resources: {
+        ...emptyResources(),
+        ore: 10,
+        energy: 200,
+        food: 200,
+        metals: 200,
+        goods: 200,
+        components: 200,
+      },
       orbitalResources: emptyOrbital(),
     });
     const intents = decideColonyEconomy(colony);
@@ -54,7 +78,15 @@ describe("decideColonyEconomy", () => {
 
   it("un surplus orbital prime sur un déficit au sol pour la même ressource", () => {
     const colony = makeColony({
-      resources: { ...emptyResources(), ore: 0, energy: 200, food: 200, metals: 200, goods: 200, components: 200 },
+      resources: {
+        ...emptyResources(),
+        ore: 0,
+        energy: 200,
+        food: 200,
+        metals: 200,
+        goods: 200,
+        components: 200,
+      },
       orbitalResources: { ...emptyOrbital(), ore: NPC_SURPLUS_THRESHOLD + 1 },
     });
     const intents = decideColonyEconomy(colony);
@@ -63,7 +95,15 @@ describe("decideColonyEconomy", () => {
 
   it("plusieurs ressources peuvent générer plusieurs intents", () => {
     const colony = makeColony({
-      resources: { ...emptyResources(), ore: 0, energy: 0, food: 200, metals: 200, goods: 200, components: 200 },
+      resources: {
+        ...emptyResources(),
+        ore: 0,
+        energy: 0,
+        food: 200,
+        metals: 200,
+        goods: 200,
+        components: 200,
+      },
       orbitalResources: emptyOrbital(),
     });
     const intents = decideColonyEconomy(colony);

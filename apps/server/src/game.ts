@@ -603,7 +603,8 @@ export class GameEngine {
         claimed,
         influence: Math.floor(empire.influence),
         score: Math.round(score),
-        relation: empire.id === viewer.id ? "neutral" : this.relationEntry(viewer.id, empire.id).state,
+        relation:
+          empire.id === viewer.id ? "neutral" : this.relationEntry(viewer.id, empire.id).state,
       });
     }
     return rows.sort((a, b) => b.score - a.score);
@@ -764,7 +765,8 @@ export class GameEngine {
   ): string | null {
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
-    if (!(RESOURCES as readonly string[]).includes(resource)) return `Ressource inconnue : ${resource}`;
+    if (!(RESOURCES as readonly string[]).includes(resource))
+      return `Ressource inconnue : ${resource}`;
     const liftRules = { ...colony.liftRules };
     if (rule === null) {
       delete liftRules[resource];
@@ -806,7 +808,12 @@ export class GameEngine {
     const fromPlanet = this.planetsById.get(from.planetId);
     const toPlanet = this.planetsById.get(to.planetId);
     if (!fromPlanet || !toPlanet) return "Planète inconnue";
-    const jumps = jumpDistanceInUniverse(this.universe, fromPlanet.systemId, toPlanet.systemId, this.portalLinks);
+    const jumps = jumpDistanceInUniverse(
+      this.universe,
+      fromPlanet.systemId,
+      toPlanet.systemId,
+      this.portalLinks,
+    );
     if (jumps < 0) return "Destination inaccessible";
     const portals = this.portalsCrossed(fromPlanet.systemId, toPlanet.systemId);
 
@@ -833,7 +840,9 @@ export class GameEngine {
         )
       : (() => {
           const one = this.reserveShip(empire, loaded, now + 2 * transferDurationMs(jumps) * speed);
-          return one ? { colony: one.colony, ships: { [one.shipId]: 1 }, capacity: one.capacity } : null;
+          return one
+            ? { colony: one.colony, ships: { [one.shipId]: 1 }, capacity: one.capacity }
+            : null;
         })();
     if (!reserved) return "Convoi indisponible : vaisseaux manquants";
     if (total > reserved.capacity) {
@@ -904,7 +913,12 @@ export class GameEngine {
 
     const fromPlanet = this.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const jumps = jumpDistanceInUniverse(this.universe, fromPlanet.systemId, station.systemId, this.portalLinks);
+    const jumps = jumpDistanceInUniverse(
+      this.universe,
+      fromPlanet.systemId,
+      station.systemId,
+      this.portalLinks,
+    );
     if (jumps < 0) return "Station inaccessible";
     const fee = transferCostCredits(jumps);
 
@@ -957,7 +971,12 @@ export class GameEngine {
 
     const fromPlanet = this.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const jumps = jumpDistanceInUniverse(this.universe, fromPlanet.systemId, station.systemId, this.portalLinks);
+    const jumps = jumpDistanceInUniverse(
+      this.universe,
+      fromPlanet.systemId,
+      station.systemId,
+      this.portalLinks,
+    );
     if (jumps < 0) return "Station inaccessible";
     const fee = transferCostCredits(jumps);
 
@@ -986,7 +1005,13 @@ export class GameEngine {
   buildShip(empire: Empire, colonyId: string, shipId: ShipId): string | null {
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
-    const result = enqueueShip(colony, shipId, Date.now(), empire.researched as TechId[], empire.effects);
+    const result = enqueueShip(
+      colony,
+      shipId,
+      Date.now(),
+      empire.researched as TechId[],
+      empire.effects,
+    );
     if (!result.ok) return result.reason;
     empire.colonyMap.set(colonyId, result.colony);
     this.persistColony(result.colony);
@@ -1072,7 +1097,12 @@ export class GameEngine {
   }
 
   /** Action joueur : créer un plan (validé contre les techs débloquées). */
-  createBlueprint(empire: Empire, name: string, chassisId: string, modules: string[]): string | null {
+  createBlueprint(
+    empire: Empire,
+    name: string,
+    chassisId: string,
+    modules: string[],
+  ): string | null {
     if (empire.blueprintMap.size >= GameEngine.MAX_BLUEPRINTS) return "Trop de plans enregistrés";
     const problems = validateBlueprint({ chassisId, modules }, empire.effects);
     if (problems.length > 0) return problems[0]!;
@@ -1186,7 +1216,12 @@ export class GameEngine {
     if (!station) return -1;
     const fromPlanet = this.planetsById.get(colony.planetId);
     if (!fromPlanet) return -1;
-    return jumpDistanceInUniverse(this.universe, fromPlanet.systemId, station.systemId, this.portalLinks);
+    return jumpDistanceInUniverse(
+      this.universe,
+      fromPlanet.systemId,
+      station.systemId,
+      this.portalLinks,
+    );
   }
 
   /**
@@ -1233,7 +1268,12 @@ export class GameEngine {
   }
 
   /** Action joueur : revendre un plan à une station PNJ, contre une fraction de sa valeur. */
-  sellBlueprint(empire: Empire, colonyId: string, stationId: string, blueprintId: string): string | null {
+  sellBlueprint(
+    empire: Empire,
+    colonyId: string,
+    stationId: string,
+    blueprintId: string,
+  ): string | null {
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
     if (this.jumpsToStation(colony, stationId) < 0) return "Station inaccessible";
@@ -1256,7 +1296,13 @@ export class GameEngine {
    * Action joueur : revendre des vaisseaux assemblés (civils, désœuvrés) à une station PNJ.
    * Couvre aussi bien les classes historiques que les vaisseaux issus d'un plan.
    */
-  sellShip(empire: Empire, colonyId: string, stationId: string, shipId: string, countRaw: number): string | null {
+  sellShip(
+    empire: Empire,
+    colonyId: string,
+    stationId: string,
+    shipId: string,
+    countRaw: number,
+  ): string | null {
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
     if (this.jumpsToStation(colony, stationId) < 0) return "Station inaccessible";
@@ -1294,13 +1340,20 @@ export class GameEngine {
       return "Ceinture déjà exploitée";
     }
     if (
-      [...empire.missionMap.values()].some((m) => m.kind === "build_outpost" && m.targetId === beltId)
+      [...empire.missionMap.values()].some(
+        (m) => m.kind === "build_outpost" && m.targetId === beltId,
+      )
     ) {
       return "Un chantier est déjà en route";
     }
     const fromPlanet = this.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const jumps = jumpDistanceInUniverse(this.universe, fromPlanet.systemId, belt.systemId, this.portalLinks);
+    const jumps = jumpDistanceInUniverse(
+      this.universe,
+      fromPlanet.systemId,
+      belt.systemId,
+      this.portalLinks,
+    );
     if (jumps < 0) return "Ceinture inaccessible";
 
     const resources = { ...colony.resources };
@@ -1339,7 +1392,12 @@ export class GameEngine {
           },
         });
       }
-      const oreStock = outpostTick(outpost.oreStock, beltRichness(belt), upkeepPaid, empire.effects.outpostYieldMult);
+      const oreStock = outpostTick(
+        outpost.oreStock,
+        beltRichness(belt),
+        upkeepPaid,
+        empire.effects.outpostYieldMult,
+      );
       if (oreStock !== outpost.oreStock) {
         empire.outpostMap.set(id, { ...outpost, oreStock });
       }
@@ -1523,16 +1581,27 @@ export class GameEngine {
           ? this.planetsById.get(empire.colonyMap.get(current.toId)?.planetId ?? "")?.systemId
           : this.stationsById.get(current.toId)?.systemId;
       if (!toSystemId) continue;
-      const jumps = jumpDistanceInUniverse(this.universe, fromSystemId, toSystemId, this.portalLinks);
+      const jumps = jumpDistanceInUniverse(
+        this.universe,
+        fromSystemId,
+        toSystemId,
+        this.portalLinks,
+      );
       if (jumps < 0) continue;
 
       // La règle « maintain » vise le stock utile à destination : sol + orbite.
-      const destColony = current.toKind === "colony" ? empire.colonyMap.get(current.toId) : undefined;
+      const destColony =
+        current.toKind === "colony" ? empire.colonyMap.get(current.toId) : undefined;
       const destStock = destColony
         ? (destColony.resources[current.resource] ?? 0) +
           (destColony.orbitalResources[current.resource] ?? 0)
         : 0;
-      const qty = routeCargoQuantity(current.rule, sourceStock, destStock, fleetCapacity(current.ships));
+      const qty = routeCargoQuantity(
+        current.rule,
+        sourceStock,
+        destStock,
+        fleetCapacity(current.ships),
+      );
       if (qty <= 0) continue;
       const fee = transferCostCredits(jumps);
       if (owner.resources.credits < fee) continue;
@@ -1557,7 +1626,12 @@ export class GameEngine {
       const duration = transferDurationMs(jumps) * empire.effects.transferSpeedMult;
       const next: Route = {
         ...current,
-        activeCycle: { departedAt: t, arrivesAt: t + duration, backAt: t + 2 * duration, carrying: qty },
+        activeCycle: {
+          departedAt: t,
+          arrivesAt: t + duration,
+          backAt: t + 2 * duration,
+          carrying: qty,
+        },
       };
       empire.routeMap.set(id, next);
       this.persistRoute(next);
@@ -1570,13 +1644,20 @@ export class GameEngine {
       const to = empire.colonyMap.get(route.toId);
       if (!to) return;
       // Livraison en orbite : l'ascenseur de la destination fera descendre au sol.
-      empire.colonyMap.set(to.id, deliverToOrbit(to, { [route.resource]: carrying }, empire.effects));
+      empire.colonyMap.set(
+        to.id,
+        deliverToOrbit(to, { [route.resource]: carrying }, empire.effects),
+      );
       this.persistColony(empire.colonyMap.get(to.id)!);
     } else {
       const stocks = this.marketMap.get(route.toId);
       const owner = empire.colonyMap.get(route.ownerColonyId);
       if (!stocks || !owner) return;
-      const result = resolveSale(stocks, { [route.resource]: carrying }, this.priceContextOf(route.toId));
+      const result = resolveSale(
+        stocks,
+        { [route.resource]: carrying },
+        this.priceContextOf(route.toId),
+      );
       this.marketMap.set(route.toId, result.stocks);
       this.persistMarket(route.toId);
       const revenue = Math.floor(result.revenue * (1 + this.stationRepBonus(empire, route.toId)));
@@ -1621,7 +1702,12 @@ export class GameEngine {
     let bestJumps = Infinity;
     for (const station of this.stationsById.values()) {
       if (this.galaxyIndexOfSystem.get(station.systemId) !== galaxyIndex) continue;
-      const jumps = jumpDistanceInUniverse(this.universe, systemId, station.systemId, this.portalLinks);
+      const jumps = jumpDistanceInUniverse(
+        this.universe,
+        systemId,
+        station.systemId,
+        this.portalLinks,
+      );
       if (jumps < 0 || jumps >= bestJumps) continue;
       bestJumps = jumps;
       best = station;
@@ -1634,7 +1720,12 @@ export class GameEngine {
    * ni trajet : un PNJ n'est pas un joueur affrétant des vaisseaux, seul son résultat
    * économique (stocks de marché, crédits) compte pour le reste de l'univers.
    */
-  private npcSellSurplus(empire: Empire, colony: Colony, resource: MarketResource, quantity: number): void {
+  private npcSellSurplus(
+    empire: Empire,
+    colony: Colony,
+    resource: MarketResource,
+    quantity: number,
+  ): void {
     if (quantity <= 0) return;
     const planet = this.planetsById.get(colony.planetId);
     const station = planet ? this.nearestStation(planet.systemId) : null;
@@ -1655,7 +1746,12 @@ export class GameEngine {
   }
 
   /** Publie un contrat pour un besoin PNJ — un joueur peut le servir contre rémunération. */
-  private npcPostContract(empire: Empire, colony: Colony, resource: MarketResource, quantity: number): void {
+  private npcPostContract(
+    empire: Empire,
+    colony: Colony,
+    resource: MarketResource,
+    quantity: number,
+  ): void {
     if (quantity <= 0) return;
     // Pas d'empilement : un contrat déjà ouvert pour cette ressource suffit à couvrir le besoin.
     const alreadyOpen = [...this.contractMap.values()].some(
@@ -1671,7 +1767,11 @@ export class GameEngine {
     const stocks = station ? this.marketMap.get(station.id) : undefined;
     const price =
       Math.round(
-        stationPrice(resource, stocks?.[resource] ?? TARGET_STOCK, station ? this.priceContextOf(station.id) : undefined) *
+        stationPrice(
+          resource,
+          stocks?.[resource] ?? TARGET_STOCK,
+          station ? this.priceContextOf(station.id) : undefined,
+        ) *
           NPC_CONTRACT_PRICE_MULT *
           100,
       ) / 100;
@@ -1712,7 +1812,11 @@ export class GameEngine {
     const stocks = this.marketMap.get(station.id);
     const price =
       Math.round(
-        stationPrice(resource, stocks?.[resource] ?? TARGET_STOCK, this.priceContextOf(station.id)) *
+        stationPrice(
+          resource,
+          stocks?.[resource] ?? TARGET_STOCK,
+          this.priceContextOf(station.id),
+        ) *
           FACTION_CONTRACT_PRICE_MULT *
           100,
       ) / 100;
@@ -1764,9 +1868,12 @@ export class GameEngine {
   private stationRepBonus(empire: Empire, stationId: string): number {
     const station = this.stationsById.get(stationId);
     const rep = station ? repBonus(empire.factionRep[station.factionId] ?? 0) : 0;
-    const mood = station ? this.factionStateMap.get(station.factionId)?.mood ?? "neutral" : "neutral";
+    const mood = station
+      ? (this.factionStateMap.get(station.factionId)?.mood ?? "neutral")
+      : "neutral";
     const galaxyIndex = station ? this.galaxyIndexOfSystem.get(station.systemId) : undefined;
-    const galaxyId = galaxyIndex !== undefined ? this.universe.galaxies[galaxyIndex]?.id : undefined;
+    const galaxyId =
+      galaxyIndex !== undefined ? this.universe.galaxies[galaxyIndex]?.id : undefined;
     const eventBonus = galaxyId ? worldEventPriceBonus(this.worldEventKindsOnGalaxy(galaxyId)) : 0;
     return rep + empire.effects.tradeMargin + moodRebateBonus(mood) + eventBonus;
   }
@@ -1951,7 +2058,9 @@ export class GameEngine {
     if (empire.explored.has(systemId)) return "Système déjà exploré";
     const system = allSystems(this.universe).find((s) => s.id === systemId);
     if (!system) return "Système inconnu";
-    if ([...empire.missionMap.values()].some((m) => m.kind === "probe" && m.targetId === systemId)) {
+    if (
+      [...empire.missionMap.values()].some((m) => m.kind === "probe" && m.targetId === systemId)
+    ) {
       return "Une sonde est déjà en route";
     }
     const fromPlanet = this.planetsById.get(colony.planetId);
@@ -1960,7 +2069,12 @@ export class GameEngine {
     if (colony.resources.credits < cost) {
       return `Crédits insuffisants (coût : ${cost})`;
     }
-    const jumps = jumpDistanceInUniverse(this.universe, fromPlanet.systemId, systemId, this.portalLinks);
+    const jumps = jumpDistanceInUniverse(
+      this.universe,
+      fromPlanet.systemId,
+      systemId,
+      this.portalLinks,
+    );
     if (jumps < 0) return "Système inaccessible";
 
     const resources = { ...colony.resources, credits: colony.resources.credits - cost };
@@ -1995,7 +2109,12 @@ export class GameEngine {
     }
     const fromPlanet = this.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const jumps = jumpDistanceInUniverse(this.universe, fromPlanet.systemId, target.systemId, this.portalLinks);
+    const jumps = jumpDistanceInUniverse(
+      this.universe,
+      fromPlanet.systemId,
+      target.systemId,
+      this.portalLinks,
+    );
     if (jumps < 0) return "Système inaccessible";
 
     const resources = { ...colony.resources };
@@ -2067,7 +2186,12 @@ export class GameEngine {
       parentIndex === null
         ? this.universe.galaxies[0]!.anchorSystemId
         : this.universe.galaxies[parentIndex]!.anchorSystemId;
-    const jumps = jumpDistanceInUniverse(this.universe, fromPlanet.systemId, anchorId, this.portalLinks);
+    const jumps = jumpDistanceInUniverse(
+      this.universe,
+      fromPlanet.systemId,
+      anchorId,
+      this.portalLinks,
+    );
     if (jumps < 0) return "Galaxie voisine encore inaccessible";
     const fee = transferCostCredits(jumps);
 
@@ -2177,7 +2301,12 @@ export class GameEngine {
 
     const fromPlanet = this.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const jumps = jumpDistanceInUniverse(this.universe, fromPlanet.systemId, contract.systemId, this.portalLinks);
+    const jumps = jumpDistanceInUniverse(
+      this.universe,
+      fromPlanet.systemId,
+      contract.systemId,
+      this.portalLinks,
+    );
     if (jumps < 0) return "Colonie destinataire inaccessible";
     const portals = this.portalsCrossed(fromPlanet.systemId, contract.systemId);
 
@@ -2189,7 +2318,8 @@ export class GameEngine {
     const one = this.reserveShip(empire, loaded, now + 2 * transferDurationMs(jumps) * speed);
     if (!one) return "Convoi indisponible : vaisseaux manquants";
     const reserved = { colony: one.colony, ships: { [one.shipId]: 1 }, capacity: one.capacity };
-    if (qty > reserved.capacity) return `Cargaison trop lourde pour ce convoi (soute : ${reserved.capacity})`;
+    if (qty > reserved.capacity)
+      return `Cargaison trop lourde pour ce convoi (soute : ${reserved.capacity})`;
 
     const duration = convoyDurationMs(jumps, reserved.ships) * speed;
     const fee = convoyFees(jumps, portals);
@@ -2336,7 +2466,12 @@ export class GameEngine {
     if (fleet.movement) return "Flotte déjà en déplacement";
     if (fleet.queue.length > 0) return "Production en cours au chantier";
     if (toSystemId === fleet.systemId) return "Déjà sur place";
-    const jumps = jumpDistanceInUniverse(this.universe, fleet.systemId, toSystemId, this.portalLinks);
+    const jumps = jumpDistanceInUniverse(
+      this.universe,
+      fleet.systemId,
+      toSystemId,
+      this.portalLinks,
+    );
     if (jumps < 0) return "Système inaccessible";
     const now = Date.now();
     const next: Fleet = {
@@ -2475,7 +2610,10 @@ export class GameEngine {
     db.update(schema.relations)
       .set({ state: relation.state, since: relation.since, until: relation.until })
       .where(
-        and(eq(schema.relations.empireA, relation.empireA), eq(schema.relations.empireB, relation.empireB)),
+        and(
+          eq(schema.relations.empireA, relation.empireA),
+          eq(schema.relations.empireB, relation.empireB),
+        ),
       )
       .run();
   }
@@ -2512,7 +2650,8 @@ export class GameEngine {
   /** Puissance de flotte totale d'un empire (somme de toutes ses flottes). */
   private empireFleetPower(empire: Empire): number {
     let power = 0;
-    for (const fleet of empire.fleetMap.values()) power += fleetPower(fleet.ships as FleetComposition);
+    for (const fleet of empire.fleetMap.values())
+      power += fleetPower(fleet.ships as FleetComposition);
     return power;
   }
 
@@ -2669,8 +2808,10 @@ export class GameEngine {
     let infLeader: { id: string; value: number } | null = null;
     for (const empire of this.empires.values()) {
       const population = [...empire.colonyMap.values()].reduce((s, c) => s + c.population, 0);
-      if (!popLeader || population > popLeader.value) popLeader = { id: empire.id, value: population };
-      if (!infLeader || empire.influence > infLeader.value) infLeader = { id: empire.id, value: empire.influence };
+      if (!popLeader || population > popLeader.value)
+        popLeader = { id: empire.id, value: population };
+      if (!infLeader || empire.influence > infLeader.value)
+        infLeader = { id: empire.id, value: empire.influence };
     }
     return { populationLeaderId: popLeader?.id ?? null, influenceLeaderId: infLeader?.id ?? null };
   }
@@ -2689,7 +2830,12 @@ export class GameEngine {
       if (lastCreatedAt > 0 && now - lastCreatedAt < OBJECTIVE_DURATION_MS) continue;
       const rng = createRng(`objective-${this.clock.seed}-${empire.id}-${tickNumber}`);
       const spec = generateObjectiveSpec(rng, now, empire.colonyMap.size, empire.claimedSystemIds);
-      const objective: Objective = { id: randomUUID(), empireId: empire.id, status: "open", ...spec };
+      const objective: Objective = {
+        id: randomUUID(),
+        empireId: empire.id,
+        status: "open",
+        ...spec,
+      };
       this.objectiveMap.set(objective.id, objective);
       this.insertObjective(objective);
     }
@@ -2711,7 +2857,10 @@ export class GameEngine {
       if (met) {
         const home = [...empire.colonyMap.values()][0];
         if (home) {
-          const resources = { ...home.resources, credits: home.resources.credits + objective.reward };
+          const resources = {
+            ...home.resources,
+            credits: home.resources.credits + objective.reward,
+          };
           empire.colonyMap.set(home.id, { ...home, resources });
           this.persistColony(empire.colonyMap.get(home.id)!);
         }
@@ -2767,7 +2916,9 @@ export class GameEngine {
 
   /** Kinds d'événements de monde actifs sur une galaxie (bonus/malus de prix, spawn pirate). */
   private worldEventKindsOnGalaxy(galaxyId: string): WorldEventKind[] {
-    return [...this.worldEventMap.values()].filter((e) => e.galaxyId === galaxyId).map((e) => e.kind);
+    return [...this.worldEventMap.values()]
+      .filter((e) => e.galaxyId === galaxyId)
+      .map((e) => e.kind);
   }
 
   /** Tire un nouvel événement de monde et l'applique — cadence lente, un à la fois par cible. */
@@ -2843,9 +2994,18 @@ export class GameEngine {
       target.fleet.directives as never,
       this.combatDefs(empire, target.empire),
     );
-    this.archiveBattle(fleet.systemId, fleet.name, `${target.empire.name} — ${target.fleet.name}`, report);
+    this.archiveBattle(
+      fleet.systemId,
+      fleet.name,
+      `${target.empire.name} — ${target.fleet.name}`,
+      report,
+    );
     this.applyFleetSurvivors(empire, fleet, report.attackerSurvivors as FleetComposition);
-    this.applyFleetSurvivors(target.empire, target.fleet, report.defenderSurvivors as FleetComposition);
+    this.applyFleetSurvivors(
+      target.empire,
+      target.fleet,
+      report.defenderSurvivors as FleetComposition,
+    );
     this.notify();
     return null;
   }
@@ -2887,7 +3047,11 @@ export class GameEngine {
         this.combatDefs(empire, target.empire),
       );
       this.archiveBattle(systemId, fleet.name, `${target.empire.name} — ${defender.name}`, report);
-      this.applyFleetSurvivors(target.empire, defender, report.defenderSurvivors as FleetComposition);
+      this.applyFleetSurvivors(
+        target.empire,
+        defender,
+        report.defenderSurvivors as FleetComposition,
+      );
       this.applyFleetSurvivors(empire, fleet, report.attackerSurvivors as FleetComposition);
       // Attaquant anéanti ou défense victorieuse → pas de raid.
       if (fleetIsEmpty(report.attackerSurvivors) || report.winner !== "attacker") {
@@ -2912,7 +3076,10 @@ export class GameEngine {
     if (home) {
       const homeResources = { ...home.resources };
       for (const [res, amount] of Object.entries(stolen) as [ResourceId, number][]) {
-        homeResources[res] = Math.min(homeResources[res] + amount, storageCap(home, res, empire.effects));
+        homeResources[res] = Math.min(
+          homeResources[res] + amount,
+          storageCap(home, res, empire.effects),
+        );
       }
       empire.colonyMap.set(home.id, { ...home, resources: homeResources });
       this.persistColony(empire.colonyMap.get(home.id)!);
@@ -3028,8 +3195,12 @@ export class GameEngine {
       if ([...this.lairMap.values()].some((l) => l.systemId === systemId)) continue;
       const galaxy = this.universe.galaxies.find((g) => g.systems.some((s) => s.id === systemId));
       // Vague pirate majeure (chantier 17) : la galaxie touchée voit sa chance de spawn multipliée.
-      const surging = galaxy ? this.worldEventKindsOnGalaxy(galaxy.id).includes("pirate_surge") : false;
-      const chance = surging ? Math.min(1, PIRATE_SPAWN_CHANCE * WORLD_EVENT_PIRATE_MULT) : PIRATE_SPAWN_CHANCE;
+      const surging = galaxy
+        ? this.worldEventKindsOnGalaxy(galaxy.id).includes("pirate_surge")
+        : false;
+      const chance = surging
+        ? Math.min(1, PIRATE_SPAWN_CHANCE * WORLD_EVENT_PIRATE_MULT)
+        : PIRATE_SPAWN_CHANCE;
       const rng = createRng(`pirate-${this.clock.seed}-${systemId}-${tickNumber}`);
       if (rng() > chance) continue;
       // Menace croissante selon l'éloignement de la galaxie d'origine.
@@ -3059,7 +3230,12 @@ export class GameEngine {
     };
     if (insert) {
       db.insert(schema.fleets)
-        .values({ id: fleet.id, gameId: this.clock.id, ownerId: fleet.ownerId ?? this.defaultEmpire.id, ...values })
+        .values({
+          id: fleet.id,
+          gameId: this.clock.id,
+          ownerId: fleet.ownerId ?? this.defaultEmpire.id,
+          ...values,
+        })
         .run();
     } else {
       db.update(schema.fleets).set(values).where(eq(schema.fleets.id, fleet.id)).run();
@@ -3074,7 +3250,9 @@ export class GameEngine {
       bounty: lair.bounty,
     };
     if (insert) {
-      db.insert(schema.pirateLairs).values({ id: lair.id, gameId: this.clock.id, ...values }).run();
+      db.insert(schema.pirateLairs)
+        .values({ id: lair.id, gameId: this.clock.id, ...values })
+        .run();
     } else {
       db.update(schema.pirateLairs).set(values).where(eq(schema.pirateLairs.id, lair.id)).run();
     }
@@ -3134,10 +3312,21 @@ export class GameEngine {
   private initGateways(): void {
     for (const galaxy of this.universe.galaxies.slice(1)) {
       if (this.gatewayMap.has(galaxy.id)) continue;
-      const gateway: Gateway = { galaxyId: galaxy.id, progress: {}, activatesAt: null, active: false };
+      const gateway: Gateway = {
+        galaxyId: galaxy.id,
+        progress: {},
+        activatesAt: null,
+        active: false,
+      };
       this.gatewayMap.set(galaxy.id, gateway);
       db.insert(schema.gateways)
-        .values({ galaxyId: galaxy.id, gameId: this.clock.id, progress: "{}", activatesAt: null, active: 0 })
+        .values({
+          galaxyId: galaxy.id,
+          gameId: this.clock.id,
+          progress: "{}",
+          activatesAt: null,
+          active: 0,
+        })
         .run();
     }
   }
@@ -3552,7 +3741,11 @@ export class GameEngine {
   }
 
   /** Force l'humeur d'une faction — partagé entre l'outil de dev et les événements de monde. */
-  private setFactionMood(factionId: string, mood: FactionState["mood"], until: number | null): boolean {
+  private setFactionMood(
+    factionId: string,
+    mood: FactionState["mood"],
+    until: number | null,
+  ): boolean {
     if (!this.factionStateMap.has(factionId)) return false;
     const state: FactionState = { factionId, mood, moodUntil: mood === "neutral" ? null : until };
     this.factionStateMap.set(factionId, state);
@@ -3561,12 +3754,19 @@ export class GameEngine {
   }
 
   /** Outil de dev uniquement : force l'humeur d'une faction (chantier 15). */
-  devSetFactionMood(factionId: string, mood: FactionState["mood"], durationMs = FACTION_MOOD_DURATION_MS): boolean {
+  devSetFactionMood(
+    factionId: string,
+    mood: FactionState["mood"],
+    durationMs = FACTION_MOOD_DURATION_MS,
+  ): boolean {
     if (!this.setFactionMood(factionId, mood, Date.now() + durationMs)) return false;
     // Même effet de bord qu'une bascule naturelle : sinon l'outil de dev mentirait sur
     // ce qu'une pénurie déclenche réellement.
     if (mood === "shortage") {
-      this.factionPostShortageContract(factionId, createRng(`dev-shortage-${factionId}-${Date.now()}`));
+      this.factionPostShortageContract(
+        factionId,
+        createRng(`dev-shortage-${factionId}-${Date.now()}`),
+      );
     }
     this.notify();
     return true;
@@ -3577,7 +3777,11 @@ export class GameEngine {
    * est un id de galaxie (economic_crisis/gold_rush/pirate_surge) ou de faction
    * (faction_boom) ; laissé vide, le premier de l'univers/des factions est pris.
    */
-  devTriggerWorldEvent(kind: WorldEventKind, target = "", durationMs = WORLD_EVENT_DURATION_MS): string | null {
+  devTriggerWorldEvent(
+    kind: WorldEventKind,
+    target = "",
+    durationMs = WORLD_EVENT_DURATION_MS,
+  ): string | null {
     const now = Date.now();
     const expiresAt = now + durationMs;
     if (kind === "faction_boom") {
@@ -3654,7 +3858,7 @@ export class GameEngine {
       .filter((p) => p.type !== "gas" && !occupiedPlanets.has(p.id))
       .sort((a, b) => b.habitability - a.habitability);
     const freeSystem = candidates.filter((p) => !occupiedSystems.has(p.systemId));
-    return (freeSystem[0] ?? candidates[0]) ?? null;
+    return freeSystem[0] ?? candidates[0] ?? null;
   }
 
   /**
@@ -3930,7 +4134,11 @@ export class GameEngine {
           const stocks = this.marketMap.get(mission.targetId);
           const colony = empire.colonyMap.get(mission.fromColonyId);
           if (stocks && colony && mission.cargo) {
-            const result = resolveSale(stocks, mission.cargo, this.priceContextOf(mission.targetId));
+            const result = resolveSale(
+              stocks,
+              mission.cargo,
+              this.priceContextOf(mission.targetId),
+            );
             this.marketMap.set(mission.targetId, result.stocks);
             this.persistMarket(mission.targetId);
             // Bonus de réputation : la faction paie mieux ses partenaires.
@@ -3960,7 +4168,9 @@ export class GameEngine {
             this.marketMap.set(mission.targetId, result.stocks);
             this.persistMarket(mission.targetId);
             // Remise de réputation : une part du prix payé est restituée.
-            const rebate = Math.floor(result.spent * this.stationRepBonus(empire, mission.targetId));
+            const rebate = Math.floor(
+              result.spent * this.stationRepBonus(empire, mission.targetId),
+            );
             this.addFactionRep(empire, mission.targetId, result.spent);
             // Trajet retour, chargé + reliquat de budget (et remise) à rembourser.
             this.insertMission(
@@ -4003,7 +4213,9 @@ export class GameEngine {
           // colonie destinataire à l'émetteur du contrat — deux empires distincts.
           // Livraison à une FACTION (chantier 15) : pas de colonie émettrice — `colonyId`
           // porte alors l'id d'un comptoir, honoré au marché, standing à la clé.
-          const contract = mission.contractId ? this.contractMap.get(mission.contractId) : undefined;
+          const contract = mission.contractId
+            ? this.contractMap.get(mission.contractId)
+            : undefined;
           const issuerEmpire = contract ? this.empires.get(contract.issuerId) : undefined;
           const cargoQty = Object.values(mission.cargo ?? {}).reduce((s, n) => s + (n ?? 0), 0);
           if (contract && issuerEmpire && mission.cargo) {
@@ -4018,7 +4230,11 @@ export class GameEngine {
             if (stocks) {
               // `resolveSale` ne sert ici qu'à faire bouger le stock/prix du comptoir —
               // sa recette est ignorée : l'accepteur est payé au prix FIXE du contrat.
-              const result = resolveSale(stocks, mission.cargo, this.priceContextOf(contract.colonyId));
+              const result = resolveSale(
+                stocks,
+                mission.cargo,
+                this.priceContextOf(contract.colonyId),
+              );
               this.marketMap.set(contract.colonyId, result.stocks);
               this.persistMarket(contract.colonyId);
               this.addFactionRep(empire, contract.colonyId, cargoQty * contract.pricePerUnit);
@@ -4111,7 +4327,11 @@ export class GameEngine {
     // Bonus de territoire soudé : les claims contigus rapportent un supplément d'influence.
     const contiguous = contiguousClaims(this.universe, empire.claimedSystemIds).size;
     const net =
-      influencePerTick([...empire.colonyMap.values()], empire.claimedSystemIds.length, empire.effects.influenceMult) +
+      influencePerTick(
+        [...empire.colonyMap.values()],
+        empire.claimedSystemIds.length,
+        empire.effects.influenceMult,
+      ) +
       contiguous * CONTIGUOUS_CLAIM_BONUS;
     let influence = empire.influence + net;
     if (influence < 0 && empire.claimedSystemIds.length > 0) {
@@ -4194,7 +4414,7 @@ export class GameEngine {
           joinedAt: Date.now(),
           researched: "[]",
           research: null,
-        researchQueue: "[]",
+          researchQueue: "[]",
           influence: 0,
           factionRep: "{}",
           explored: "[]",
@@ -4432,12 +4652,18 @@ export class GameEngine {
       // Bonus territorial : système revendiqué = production boostée.
       const claimed = empire.claimedSystemIds.includes(planet.systemId);
       const effects = claimed
-        ? { ...empire.effects, outputMultAll: empire.effects.outputMultAll * CLAIM_PRODUCTION_BONUS }
+        ? {
+            ...empire.effects,
+            outputMultAll: empire.effects.outputMultAll * CLAIM_PRODUCTION_BONUS,
+          }
         : empire.effects;
       // L'ascenseur tourne après la production : ce qui vient d'être produit peut monter.
       empire.colonyMap.set(
         id,
-        applyLift(applyColonyTick(resolveShips(resolveQueue(colony, t), t), planet, effects), effects),
+        applyLift(
+          applyColonyTick(resolveShips(resolveQueue(colony, t), t), planet, effects),
+          effects,
+        ),
       );
     }
   }

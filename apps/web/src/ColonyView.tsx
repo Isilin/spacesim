@@ -32,7 +32,6 @@ import { BUILDING_LABELS, PLANET_TYPE_LABELS, RESOURCE_LABELS, TECH_LABELS } fro
 
 import { ShipyardPanel } from "./ShipyardPanel.js";
 
-
 interface Props {
   colony: Colony;
   planet: Planet;
@@ -64,7 +63,6 @@ const SHOWN_RESOURCES: ResourceId[] = [
   "credits",
   "science",
 ];
-
 
 function formatCost(cost: Partial<Record<ResourceId, number>>): string {
   return Object.entries(cost)
@@ -196,7 +194,10 @@ export function ColonyView({
                   <div className="building-info">
                     <div className="building-head">
                       <strong>{BUILDING_LABELS[id].name}</strong>
-                      <span className="level">×{count}{queued > 0 ? ` (+${queued})` : ""}</span>
+                      <span className="level">
+                        ×{count}
+                        {queued > 0 ? ` (+${queued})` : ""}
+                      </span>
                       {shortages.some((s) => s.buildingId === id) && (
                         <span className="shortage" title="Intrants manquants : bâtiment à l'arrêt">
                           ⚠ pénurie

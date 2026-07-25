@@ -46,7 +46,10 @@ export function OrbitPanel({ colony, effects, send }: Props) {
 
       {docks > 0 && (
         <div className="progress" title={`${Math.floor(used)} / ${cap}`}>
-          <div className="progress-fill" style={{ width: `${cap > 0 ? (used / cap) * 100 : 0}%` }} />
+          <div
+            className="progress-fill"
+            style={{ width: `${cap > 0 ? (used / cap) * 100 : 0}%` }}
+          />
         </div>
       )}
 
@@ -115,8 +118,8 @@ export function OrbitPanel({ colony, effects, send }: Props) {
       </table>
       <p className="small muted">
         « Monter le surplus » hisse tout ce qui dépasse le seuil gardé au sol ; « redescendre »
-        ramène de l'orbite jusqu'à atteindre ce seuil. L'ascenseur est partagé entre les
-        ressources et consomme de l'énergie au sol.
+        ramène de l'orbite jusqu'à atteindre ce seuil. L'ascenseur est partagé entre les ressources
+        et consomme de l'énergie au sol.
       </p>
     </section>
   );

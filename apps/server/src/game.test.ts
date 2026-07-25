@@ -338,7 +338,6 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
   });
 
   it("préserve l'état d'empire (influence, brouillard) au rechargement", () => {
-
     const e1 = GameEngine.load();
     e1.devSpawnEmpire("Colonia");
     e1.devFastForward(50); // 10 ticks : l'influence de chaque empire progresse
@@ -511,7 +510,11 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
       .flatMap((g) => g.systems)
       .flatMap((s) => (s.station ? [s.station.id] : []));
     const stocked = new Set(
-      db.select().from(schema.stationStates).all().map((r) => r.stationId),
+      db
+        .select()
+        .from(schema.stationStates)
+        .all()
+        .map((r) => r.stationId),
     );
     expect(stationIds.every((id) => stocked.has(id))).toBe(true);
   });
@@ -611,7 +614,11 @@ describe("GameEngine — empires PNJ (chantier 14)", () => {
     expect(summaries(engine).filter((e) => e.kind === "npc")).toHaveLength(3);
     // Relèvement du quota : complète sans toucher aux PNJ déjà en place (ids en SET,
     // pas triés — des UUID n'ont aucun ordre lexicographique lié à leur création).
-    const before = new Set(summaries(engine).filter((e) => e.kind === "npc").map((e) => e.id));
+    const before = new Set(
+      summaries(engine)
+        .filter((e) => e.kind === "npc")
+        .map((e) => e.id),
+    );
     engine.ensureNpcPopulation(5);
     const after = summaries(engine).filter((e) => e.kind === "npc");
     expect(after).toHaveLength(5);
@@ -684,9 +691,9 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
 
     // Comme leaderboard/gateways : diffusé en entier, à la différence de markets/territories
     // qui restent brouillardés par empire.
-    const seenByBystander = engine.snapshotForEmpire(bystander).contracts.find(
-      (c) => c.id === contractId,
-    );
+    const seenByBystander = engine
+      .snapshotForEmpire(bystander)
+      .contracts.find((c) => c.id === contractId);
     expect(seenByBystander).toBeDefined();
     expect(seenByBystander!.status).toBe("open");
     expect(seenByBystander!.issuerName).toBe(empire.name);
@@ -814,7 +821,9 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     const creditsAfterDelivery = engine.colonies[0]!.resources.credits;
     const organicTolerance = ticksElapsed * 2 + 5 + OBJECTIVE_REWARD_CREDITS;
     expect(creditsAfterDelivery).toBeGreaterThanOrEqual(accepterCreditsBeforeDelivery + 20);
-    expect(creditsAfterDelivery).toBeLessThan(accepterCreditsBeforeDelivery + 20 + organicTolerance);
+    expect(creditsAfterDelivery).toBeLessThan(
+      accepterCreditsBeforeDelivery + 20 + organicTolerance,
+    );
     expect(engine.snapshotForEmpire(accepter).missions).toHaveLength(0);
   });
 
@@ -856,7 +865,9 @@ describe("GameEngine — pilote économique PNJ (chantier 14)", () => {
     // Le PNJ vend dès que l'orbite dépasse le seuil : elle reste bornée, jamais au plafond.
     expect(colony.orbitalResources.ore).toBeLessThan(500);
 
-    const npcContracts = engine.snapshotForEmpire(npc).contracts.filter((c) => c.issuerId === npcId);
+    const npcContracts = engine
+      .snapshotForEmpire(npc)
+      .contracts.filter((c) => c.issuerId === npcId);
     expect(npcContracts.length).toBeGreaterThan(0);
     // Publié pour un besoin réel (métaux/biens/composants : jamais produits localement).
     expect(["metals", "goods", "components"]).toContain(npcContracts[0]!.resource);
@@ -867,9 +878,9 @@ describe("GameEngine — pilote économique PNJ (chantier 14)", () => {
     const engine = GameEngine.load();
     advanceTicks(engine, 350);
     // L'empire par défaut est humain : aucun contrat n'a dû être publié en son nom.
-    expect(engine.contracts.filter((c) => c.issuerId === engine.defaultEmpireForDev.id)).toHaveLength(
-      0,
-    );
+    expect(
+      engine.contracts.filter((c) => c.issuerId === engine.defaultEmpireForDev.id),
+    ).toHaveLength(0);
   });
 });
 
@@ -991,9 +1002,9 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
     engine.devSetFactionMood(factionId, "neutral");
     engine.devSetFactionMood(factionId, "shortage");
 
-    expect(engine.contracts.filter((c) => c.issuerId === factionId && c.status === "open")).toHaveLength(
-      1,
-    );
+    expect(
+      engine.contracts.filter((c) => c.issuerId === factionId && c.status === "open"),
+    ).toHaveLength(1);
   });
 
   it("honoré, un contrat de faction livre au comptoir, paie au prix fixé et crédite le standing", () => {
@@ -1307,7 +1318,9 @@ describe("GameEngine — événements de monde (chantier 17)", () => {
     advanceTicks(engine, 12); // dépasse largement les 10s réglées
 
     expect(
-      engine.snapshotForEmpire(engine.defaultEmpireForDev).worldEvents.some((e) => e.id === eventId),
+      engine
+        .snapshotForEmpire(engine.defaultEmpireForDev)
+        .worldEvents.some((e) => e.id === eventId),
     ).toBe(false);
   });
 
@@ -1328,8 +1341,14 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
   const snap = (engine: GameEngine, empire: ReturnType<typeof empireFor>) =>
     engine.snapshotForEmpire(empire);
   /** Plan civil (domaine colonie) et militaire (domaine flotte), tous deux constructibles sans tech. */
-  const COLONY_BP = { chassisId: "light_freighter", modules: ["cargo_pod", "cargo_pod", "ion_thruster"] };
-  const FLEET_BP = { chassisId: "scout_frame", modules: ["laser_pulse", "armor_plating", "ion_thruster", "cargo_pod"] };
+  const COLONY_BP = {
+    chassisId: "light_freighter",
+    modules: ["cargo_pod", "cargo_pod", "ion_thruster"],
+  };
+  const FLEET_BP = {
+    chassisId: "scout_frame",
+    modules: ["laser_pulse", "armor_plating", "ion_thruster", "cargo_pod"],
+  };
   /** Station de la galaxie d'origine, rendue visible de l'empire (même recette que le test logistique). */
   const reachableStation = (engine: GameEngine, empire: ReturnType<typeof empireFor>) => {
     const station = engine.universe.galaxies[0]!.systems.find((s) => s.station)?.station;
@@ -1350,7 +1369,9 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     const engine = GameEngine.load();
     const a = empireFor(engine, "alice");
     const before = snap(engine, a).blueprints.length;
-    expect(engine.createBlueprint(a, "Mon cargo", COLONY_BP.chassisId, COLONY_BP.modules)).toBeNull();
+    expect(
+      engine.createBlueprint(a, "Mon cargo", COLONY_BP.chassisId, COLONY_BP.modules),
+    ).toBeNull();
     expect(snap(engine, a).blueprints.length).toBe(before + 1);
     // scout_frame n'a qu'un slot d'arme : deux lasers → refus.
     expect(
@@ -1376,7 +1397,7 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     expect(engine.buildBlueprint(a, plan.id, colony.id)).toBeNull();
     expect(snap(engine, a).colonies[0]!.shipQueue.some((q) => q.shipId === plan.id)).toBe(true);
     advanceTicks(engine, 60);
-    expect((snap(engine, a).colonies[0]!.ships[plan.id] ?? 0)).toBeGreaterThanOrEqual(1);
+    expect(snap(engine, a).colonies[0]!.ships[plan.id] ?? 0).toBeGreaterThanOrEqual(1);
   });
 
   it("construit un plan de domaine flotte : file de la flotte", () => {

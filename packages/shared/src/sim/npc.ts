@@ -36,7 +36,11 @@ export function decideColonyEconomy(colony: Colony): NpcIntent[] {
   for (const resource of MARKET_RESOURCES) {
     const orbital = colony.orbitalResources[resource] ?? 0;
     if (orbital > NPC_SURPLUS_THRESHOLD) {
-      intents.push({ kind: "sell", resource, quantity: Math.floor(orbital - NPC_SURPLUS_THRESHOLD) });
+      intents.push({
+        kind: "sell",
+        resource,
+        quantity: Math.floor(orbital - NPC_SURPLUS_THRESHOLD),
+      });
       continue;
     }
     const ground = colony.resources[resource] ?? 0;

@@ -105,7 +105,11 @@ describe("sessions", () => {
     const expired = createSession(result.account.id, Date.now() - SESSION_TTL_MS - 1000);
     expect(resolveSession(expired.token)).toBeNull();
     expect(
-      db.select().from(schema.sessions).all().some((s) => s.token === expired.token),
+      db
+        .select()
+        .from(schema.sessions)
+        .all()
+        .some((s) => s.token === expired.token),
     ).toBe(false);
   });
 
@@ -114,9 +118,17 @@ describe("sessions", () => {
     if (!result.ok) throw new Error("inscription échouée");
     // Session ouverte il y a 29 jours : elle vaut encore, mais son TTL doit repartir.
     const old = createSession(result.account.id, Date.now() - SESSION_TTL_MS + 24 * 3600 * 1000);
-    const before = db.select().from(schema.sessions).all().find((s) => s.token === old.token)!;
+    const before = db
+      .select()
+      .from(schema.sessions)
+      .all()
+      .find((s) => s.token === old.token)!;
     expect(resolveSession(old.token)?.id).toBe(result.account.id);
-    const after = db.select().from(schema.sessions).all().find((s) => s.token === old.token)!;
+    const after = db
+      .select()
+      .from(schema.sessions)
+      .all()
+      .find((s) => s.token === old.token)!;
     expect(after.expiresAt).toBeGreaterThan(before.expiresAt);
   });
 

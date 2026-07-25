@@ -10,7 +10,10 @@ import type { Universe } from "../types.js";
  * Expurge l'univers pour le client : les systèmes non explorés gardent leur
  * position et leur nom (visibles de loin) mais leurs corps sont masqués.
  */
-export function redactUniverse(universe: Universe, exploredSystemIds: ReadonlySet<string>): Universe {
+export function redactUniverse(
+  universe: Universe,
+  exploredSystemIds: ReadonlySet<string>,
+): Universe {
   return {
     ...universe,
     galaxies: universe.galaxies.map((galaxy) => ({

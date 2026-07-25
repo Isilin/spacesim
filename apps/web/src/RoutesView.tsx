@@ -38,7 +38,6 @@ const RULE_LABELS: Record<RuleType, string> = {
   surplus: "Exporter le surplus",
 };
 
-
 export function RoutesView({
   routes,
   colonies,
@@ -62,14 +61,18 @@ export function RoutesView({
 
   const sources = [
     ...colonies.map((c) => ({ id: c.id, kind: "colony" as const, label: c.name })),
-    ...outposts.map((o) => ({ id: o.id, kind: "outpost" as const, label: `⛏ ${beltName(o.beltId)}` })),
+    ...outposts.map((o) => ({
+      id: o.id,
+      kind: "outpost" as const,
+      label: `⛏ ${beltName(o.beltId)}`,
+    })),
   ];
   const source = sources.find((s) => s.id === fromId) ?? sources[0];
   const fromOutpost = source?.kind === "outpost";
 
   // Propriétaire (fournit les cargos) : la source si c'est une colonie, sinon au choix.
   const owner = fromOutpost
-    ? colonies.find((c) => c.id === ownerId) ?? colonies[0]
+    ? (colonies.find((c) => c.id === ownerId) ?? colonies[0])
     : colonies.find((c) => c.id === source?.id);
 
   const stations = allStations(universe).filter((s) => exploredSystemIds.includes(s.systemId));
@@ -104,7 +107,11 @@ export function RoutesView({
   const rule: RouteRule | null =
     ruleType === "maintain"
       ? Number.isFinite(p1) && p1 > 0
-        ? { type: "maintain", minAtDestination: p1, keepAtSource: Number.isFinite(p2) && p2 > 0 ? p2 : 0 }
+        ? {
+            type: "maintain",
+            minAtDestination: p1,
+            keepAtSource: Number.isFinite(p2) && p2 > 0 ? p2 : 0,
+          }
         : null
       : ruleType === "fixed"
         ? Number.isFinite(p1) && p1 > 0
@@ -220,7 +227,10 @@ export function RoutesView({
         </label>
         <label className="small muted">
           Ressource{" "}
-          <select value={effectiveResource} onChange={(e) => setResource(e.target.value as ResourceId)}>
+          <select
+            value={effectiveResource}
+            onChange={(e) => setResource(e.target.value as ResourceId)}
+          >
             {availableResources.map((res) => (
               <option key={res} value={res}>
                 {RESOURCE_LABELS[res as ResourceId]}
@@ -244,24 +254,45 @@ export function RoutesView({
           <>
             <label className="small muted transfer-amount">
               Stock min à destination
-              <input type="number" min={1} value={param1} onChange={(e) => setParam1(e.target.value)} />
+              <input
+                type="number"
+                min={1}
+                value={param1}
+                onChange={(e) => setParam1(e.target.value)}
+              />
             </label>
             <label className="small muted transfer-amount">
               Garder à la source
-              <input type="number" min={0} value={param2} onChange={(e) => setParam2(e.target.value)} />
+              <input
+                type="number"
+                min={0}
+                value={param2}
+                onChange={(e) => setParam2(e.target.value)}
+              />
             </label>
           </>
         )}
         {ruleType === "fixed" && (
           <label className="small muted transfer-amount">
             Quantité par cycle
-            <input type="number" min={1} value={param1} onChange={(e) => setParam1(e.target.value)} />
+            <input
+              type="number"
+              min={1}
+              value={param1}
+              onChange={(e) => setParam1(e.target.value)}
+            />
           </label>
         )}
         {ruleType === "surplus" && (
           <label className="small muted transfer-amount">
             Garder à la source
-            <input type="number" min={0} value={param1} placeholder="0" onChange={(e) => setParam1(e.target.value)} />
+            <input
+              type="number"
+              min={0}
+              value={param1}
+              placeholder="0"
+              onChange={(e) => setParam1(e.target.value)}
+            />
           </label>
         )}
         {SHIP_IDS.map((shipId) => (

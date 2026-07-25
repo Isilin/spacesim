@@ -27,7 +27,6 @@ interface Props {
 
 const GATEWAY_RESOURCES = Object.keys(GATEWAY_COST) as ResourceId[];
 
-
 export function GatewaysPanel({
   gateways,
   universe,

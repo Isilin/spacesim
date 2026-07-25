@@ -54,7 +54,8 @@ function objectiveDetail(o: Objective, universe: Universe, colonyCount: number):
     case "colonize_n_systems":
       return `${colonyCount}/${o.targetCount ?? "?"} colonies`;
     case "hold_system": {
-      const name = allSystems(universe).find((s) => s.id === o.targetSystemId)?.name ?? o.targetSystemId;
+      const name =
+        allSystems(universe).find((s) => s.id === o.targetSystemId)?.name ?? o.targetSystemId;
       return `Conserver la revendication sur ${name}`;
     }
     case "lead_population":
@@ -123,8 +124,14 @@ export function EmpireView({
           <span className="resource-name">Influence</span>
           <span className="resource-stock">✦ {Math.floor(game.influence)}</span>
           <span className="resource-rate ok">
-            {(influencePerTick(colonies, game.claimedSystemIds.length, effects.influenceMult) >= 0 ? "+" : "") +
-              (Math.round(influencePerTick(colonies, game.claimedSystemIds.length, effects.influenceMult) * 1000) / 1000)}
+            {(influencePerTick(colonies, game.claimedSystemIds.length, effects.influenceMult) >= 0
+              ? "+"
+              : "") +
+              Math.round(
+                influencePerTick(colonies, game.claimedSystemIds.length, effects.influenceMult) *
+                  1000,
+              ) /
+                1000}
             /tick
           </span>
         </div>
@@ -193,8 +200,12 @@ export function EmpireView({
             {leaderboard.map((e, i) => {
               // Une proposition en cours (émise ou reçue) prime sur les boutons de relation :
               // il faut d'abord y répondre / l'annuler avant de proposer autre chose.
-              const incoming = proposals.find((p) => p.fromEmpireId === e.id && p.toEmpireId === playerId);
-              const outgoing = proposals.find((p) => p.fromEmpireId === playerId && p.toEmpireId === e.id);
+              const incoming = proposals.find(
+                (p) => p.fromEmpireId === e.id && p.toEmpireId === playerId,
+              );
+              const outgoing = proposals.find(
+                (p) => p.fromEmpireId === playerId && p.toEmpireId === e.id,
+              );
               return (
                 <li key={e.id} className={`milestone ${e.id === playerId ? "reached" : ""}`}>
                   <div className="queue-head">
@@ -218,7 +229,11 @@ export function EmpireView({
                           <button
                             className="action-button small"
                             onClick={() =>
-                              send({ type: "respondRelation", proposalId: incoming.id, accept: true })
+                              send({
+                                type: "respondRelation",
+                                proposalId: incoming.id,
+                                accept: true,
+                              })
                             }
                           >
                             Accepter
@@ -226,7 +241,11 @@ export function EmpireView({
                           <button
                             className="action-button small"
                             onClick={() =>
-                              send({ type: "respondRelation", proposalId: incoming.id, accept: false })
+                              send({
+                                type: "respondRelation",
+                                proposalId: incoming.id,
+                                accept: false,
+                              })
                             }
                           >
                             Refuser
@@ -239,7 +258,9 @@ export function EmpireView({
                           </span>
                           <button
                             className="action-button small"
-                            onClick={() => send({ type: "cancelProposal", proposalId: outgoing.id })}
+                            onClick={() =>
+                              send({ type: "cancelProposal", proposalId: outgoing.id })
+                            }
                           >
                             Annuler
                           </button>
@@ -277,7 +298,11 @@ export function EmpireView({
                           <button
                             className="action-button small"
                             onClick={() =>
-                              send({ type: "proposeRelation", targetEmpireId: e.id, kind: "alliance" })
+                              send({
+                                type: "proposeRelation",
+                                targetEmpireId: e.id,
+                                kind: "alliance",
+                              })
                             }
                           >
                             Proposer une alliance

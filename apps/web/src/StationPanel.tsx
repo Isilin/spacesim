@@ -47,8 +47,6 @@ interface Props {
   send: (msg: ClientMessage) => void;
 }
 
-
-
 export function StationPanel({
   station,
   market,
@@ -86,7 +84,9 @@ export function StationPanel({
   const eta = jumps >= 0 ? transferDurationMs(jumps) * transferSpeedMult : 0;
 
   const related = missions.filter(
-    (m) => (m.kind === "sell" || m.kind === "buy" || m.kind === "buy_return") && m.targetId === station.id,
+    (m) =>
+      (m.kind === "sell" || m.kind === "buy" || m.kind === "buy_return") &&
+      m.targetId === station.id,
   );
 
   const cargo: Partial<Record<ResourceId, number>> = {};
@@ -98,12 +98,15 @@ export function StationPanel({
   const totalCargo = Object.values(cargo).reduce((s, n) => s + n, 0);
   const convoyCapacity = activeColony ? maxConvoyCapacity(activeColony, routes) : 0;
   const overCapacity = totalCargo > convoyCapacity;
-  const estimatedRevenue = market && hasCargo ? resolveSale(market.stocks, cargo, priceContext).revenue : 0;
+  const estimatedRevenue =
+    market && hasCargo ? resolveSale(market.stocks, cargo, priceContext).revenue : 0;
 
   const budget = Math.floor(Number(buyBudget));
   const validBudget = Number.isFinite(budget) && budget > 0;
   const estimatedPurchase =
-    market && validBudget ? resolvePurchase(market.stocks, buyResource, budget, Infinity, priceContext) : null;
+    market && validBudget
+      ? resolvePurchase(market.stocks, buyResource, budget, Infinity, priceContext)
+      : null;
 
   const canTrade = activeColony && jumps >= 0;
 
@@ -115,7 +118,8 @@ export function StationPanel({
       </p>
       {jumps >= 0 && (
         <p className="small muted">
-          {jumps} saut{jumps > 1 ? "s" : ""} — {formatDuration(eta)} — frais {fee} crédits par convoi
+          {jumps} saut{jumps > 1 ? "s" : ""} — {formatDuration(eta)} — frais {fee} crédits par
+          convoi
         </p>
       )}
       {(() => {
@@ -126,7 +130,10 @@ export function StationPanel({
             Réputation : <span className="ok">{repTierName(rep)}</span>{" "}
             <span className="muted">({Math.floor(rep)})</span>
             {bonus > 0 && (
-              <span className="ok"> — ventes +{bonus * 100} %, achats −{bonus * 100} %</span>
+              <span className="ok">
+                {" "}
+                — ventes +{bonus * 100} %, achats −{bonus * 100} %
+              </span>
             )}
           </p>
         );
@@ -176,7 +183,11 @@ export function StationPanel({
             <li key={m.id} className="queue-item">
               <div className="queue-head">
                 <span>
-                  {m.kind === "sell" ? "Vente" : m.kind === "buy" ? "Achat (aller)" : "Achat (retour)"}
+                  {m.kind === "sell"
+                    ? "Vente"
+                    : m.kind === "buy"
+                      ? "Achat (aller)"
+                      : "Achat (retour)"}
                 </span>
                 <span className="muted">{formatDuration(m.arrivesAt - now)}</span>
               </div>
@@ -192,7 +203,8 @@ export function StationPanel({
             {/* On ne vend que ce qui est déjà en orbite (chantier 12). */}
             {MARKET_RESOURCES.map((res) => (
               <label key={res} className="small muted transfer-amount">
-                {RESOURCE_LABELS[res]} (orbite : {Math.floor(activeColony.orbitalResources[res] ?? 0)})
+                {RESOURCE_LABELS[res]} (orbite :{" "}
+                {Math.floor(activeColony.orbitalResources[res] ?? 0)})
                 <input
                   type="number"
                   min={0}
@@ -208,7 +220,9 @@ export function StationPanel({
               {overCapacity ? ` — cargaison trop lourde (${totalCargo})` : ""}
             </span>
             {hasCargo && !overCapacity && (
-              <span className="small ok">Revenu estimé au prix actuel : ~{estimatedRevenue} crédits</span>
+              <span className="small ok">
+                Revenu estimé au prix actuel : ~{estimatedRevenue} crédits
+              </span>
             )}
             <button
               disabled={!hasCargo || overCapacity || convoyCapacity === 0}
@@ -260,7 +274,9 @@ export function StationPanel({
             <button
               disabled={!validBudget || activeColony.resources.credits < budget + fee}
               title={
-                activeColony.resources.credits < budget + fee ? "Crédits insuffisants (budget + frais)" : ""
+                activeColony.resources.credits < budget + fee
+                  ? "Crédits insuffisants (budget + frais)"
+                  : ""
               }
               onClick={() => {
                 send({
@@ -315,7 +331,9 @@ function BlueprintMarket({
     <div className="transfer-form">
       <strong className="small">Plans de vaisseaux</strong>
 
-      <span className="muted small">Catalogue de la station (marge {Math.round((BLUEPRINT_BUY_MARKUP - 1) * 100)} %)</span>
+      <span className="muted small">
+        Catalogue de la station (marge {Math.round((BLUEPRINT_BUY_MARKUP - 1) * 100)} %)
+      </span>
       <ul className="building-list">
         {PRESETS.map((preset) => {
           const price = Math.round(blueprintValue(resolveBlueprint(preset)) * BLUEPRINT_BUY_MARKUP);
@@ -352,7 +370,9 @@ function BlueprintMarket({
           </span>
           <ul className="building-list">
             {blueprints.map((bp) => {
-              const price = Math.round(blueprintValue(resolveBlueprint(bp)) * BLUEPRINT_SELL_FRACTION);
+              const price = Math.round(
+                blueprintValue(resolveBlueprint(bp)) * BLUEPRINT_SELL_FRACTION,
+              );
               return (
                 <li key={bp.id} className="building">
                   <div className="building-info">

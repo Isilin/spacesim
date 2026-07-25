@@ -51,14 +51,7 @@ const WHEEL_SENSITIVITY = 0.0015;
  * Rendue nécessaire par l'univers infini — un `viewBox` figé ne peut plus cadrer une
  * carte sans bord — mais réutilisée par les trois niveaux (univers, galaxie, système).
  */
-export function ZoomableSvg({
-  home,
-  children,
-  className,
-  ariaLabel,
-  focus,
-  onViewChange,
-}: Props) {
+export function ZoomableSvg({ home, children, className, ariaLabel, focus, onViewChange }: Props) {
   const [view, setView] = useState<ViewBox>(home);
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<DragState | null>(null);

@@ -344,4 +344,9 @@ export const MODULES: Record<ModuleId, ModuleDef> = {
 };
 
 /** Modules disponibles sans recherche (le reste est débloqué par sa `requiresTech`). */
-export const BASE_MODULES: ModuleId[] = ["laser_pulse", "armor_plating", "ion_thruster", "cargo_pod"];
+export const BASE_MODULES: ModuleId[] = [
+  "laser_pulse",
+  "armor_plating",
+  "ion_thruster",
+  "cargo_pod",
+];

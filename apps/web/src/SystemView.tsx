@@ -1,9 +1,4 @@
-import {
-  SYSTEM_VIEW_SIZE,
-  type Colony,
-  type Planet,
-  type StarSystem,
-} from "@spacesim/shared";
+import { SYSTEM_VIEW_SIZE, type Colony, type Planet, type StarSystem } from "@spacesim/shared";
 import { useMemo } from "react";
 import { ZoomableSvg, type ViewBox } from "./ZoomableSvg.js";
 
@@ -75,7 +70,14 @@ export function SystemView({
 
       {system.station && (
         <g className="station-marker" transform={`translate(${c + 46}, ${c - 46})`}>
-          <rect x={-7} y={-7} width={14} height={14} className="station-box" transform="rotate(45)" />
+          <rect
+            x={-7}
+            y={-7}
+            width={14}
+            height={14}
+            className="station-box"
+            transform="rotate(45)"
+          />
           <text y={-14} textAnchor="middle" className="body-label">
             {system.station.name}
           </text>
@@ -89,13 +91,7 @@ export function SystemView({
       )}
 
       {system.belts.map((belt) => (
-        <circle
-          key={belt.id}
-          cx={c}
-          cy={c}
-          r={belt.orbitRadius * scale}
-          className="belt-ring"
-        />
+        <circle key={belt.id} cx={c} cy={c} r={belt.orbitRadius * scale} className="belt-ring" />
       ))}
 
       {planets.map((planet) => {
@@ -114,7 +110,12 @@ export function SystemView({
               };
               return (
                 <g key={moon.id}>
-                  <circle cx={pos.x} cy={pos.y} r={moonScreenRadius} className="orbit-ring moon-orbit" />
+                  <circle
+                    cx={pos.x}
+                    cy={pos.y}
+                    r={moonScreenRadius}
+                    className="orbit-ring moon-orbit"
+                  />
                   <g
                     className={`body ${selectedBodyId === moon.id ? "selected" : ""}`}
                     onMouseDown={(event) => {

@@ -19,7 +19,10 @@ import type {
 } from "@spacesim/shared";
 
 /** Humeur de faction (chantier 15) : nom + ton d'affichage (neutre/positif/négatif). */
-export const FACTION_MOOD_LABELS: Record<FactionMood, { name: string; tone: "muted" | "ok" | "ko" }> = {
+export const FACTION_MOOD_LABELS: Record<
+  FactionMood,
+  { name: string; tone: "muted" | "ok" | "ko" }
+> = {
   neutral: { name: "Calme", tone: "muted" },
   boom: { name: "Essor — achats bonifiés", tone: "ok" },
   shortage: { name: "Pénurie — contrat en cours", tone: "ok" },
@@ -43,7 +46,10 @@ export const OBJECTIVE_KIND_LABELS: Record<ObjectiveKind, string> = {
 };
 
 /** Événement de monde (chantier 17), affiché dans le fil du monde. */
-export const WORLD_EVENT_LABELS: Record<WorldEventKind, { name: string; icon: string; tone: "ok" | "ko" }> = {
+export const WORLD_EVENT_LABELS: Record<
+  WorldEventKind,
+  { name: string; icon: string; tone: "ok" | "ko" }
+> = {
   economic_crisis: { name: "Crise économique", icon: "📉", tone: "ko" },
   gold_rush: { name: "Ruée vers l'or", icon: "💰", tone: "ok" },
   pirate_surge: { name: "Vague pirate", icon: "☠", tone: "ko" },
@@ -74,12 +80,18 @@ export const BUILDING_LABELS: Record<BuildingId, { name: string; description: st
   mine: { name: "Mine", description: "Extrait le minerai (selon gisement)." },
   power_plant: { name: "Centrale", description: "Produit de l'énergie (selon gisement)." },
   farm: { name: "Ferme", description: "Produit de la nourriture (selon gisement)." },
-  habitat: { name: "Habitat", description: "20 logements par niveau (modulés par l'habitabilité)." },
+  habitat: {
+    name: "Habitat",
+    description: "20 logements par niveau (modulés par l'habitabilité).",
+  },
   storage_depot: { name: "Entrepôt", description: "+1000 de stockage par niveau." },
   laboratory: { name: "Laboratoire", description: "Produit de la science, consomme de l'énergie." },
   smelter: { name: "Fonderie", description: "Minerai + énergie → métaux." },
   component_factory: { name: "Usine de composants", description: "Métaux + énergie → composants." },
-  goods_factory: { name: "Usine de biens", description: "Métaux + énergie → biens de consommation." },
+  goods_factory: {
+    name: "Usine de biens",
+    description: "Métaux + énergie → biens de consommation.",
+  },
   shipyard: { name: "Chantier naval", description: "Produit les vaisseaux civils (cargos)." },
   monument: {
     name: "Monument",
@@ -196,9 +208,15 @@ export const CHASSIS_LABELS: Record<ChassisId, { name: string; description: stri
     description: "Colossal : +20 % dégâts, +10 % défense, quatre armes.",
   },
   light_freighter: { name: "Cargo léger", description: "Civil : +20 % soute, coque nue." },
-  heavy_freighter: { name: "Soutier lourd", description: "Civil : +50 % soute, quatre utilitaires." },
+  heavy_freighter: {
+    name: "Soutier lourd",
+    description: "Civil : +50 % soute, quatre utilitaires.",
+  },
   mining_barge: { name: "Barge minière", description: "Extraction : +60 % rendement de minage." },
-  colony_ark: { name: "Arche coloniale", description: "Colonisation : +30 % habitat, gros vaisseau." },
+  colony_ark: {
+    name: "Arche coloniale",
+    description: "Colonisation : +30 % habitat, gros vaisseau.",
+  },
   explorer_frame: {
     name: "Éclaireur lointain",
     description: "Prospection : +30 % senseurs, +15 % minage, deux propulseurs.",
@@ -224,13 +242,19 @@ export const MODULE_LABELS: Record<ModuleId, { name: string; description: string
   sensor_array: { name: "Réseau de senseurs", description: "+4 initiative." },
   plasma_cannon: { name: "Canon plasma", description: "Arme puissante à toute portée." },
   reactive_plating: { name: "Blindage réactif", description: "+120 points de coque." },
-  graviton_engine: { name: "Propulseur à graviton", description: "+vitesse forte, sobre en carburant." },
+  graviton_engine: {
+    name: "Propulseur à graviton",
+    description: "+vitesse forte, sobre en carburant.",
+  },
   deep_core_drill: { name: "Foreuse à noyau", description: "+80 rendement d'extraction." },
 };
 
 export const DIRECTIVE_LABELS: Record<CombatDirective, { name: string; hint: string }> = {
   barrage: { name: "Barrage", hint: "+35 % dégâts, défense affaiblie. Écrase l'évitement." },
-  shields: { name: "Boucliers renforcés", hint: "Défense max, dégâts réduits. Encaisse le barrage." },
+  shields: {
+    name: "Boucliers renforcés",
+    hint: "Défense max, dégâts réduits. Encaisse le barrage.",
+  },
   evasive: { name: "Manœuvre d'évitement", hint: "Esquive. Déborde les boucliers." },
   focus_fire: { name: "Tir concentré", hint: "Cible les gros vaisseaux d'abord. Neutre." },
 };
@@ -242,7 +266,8 @@ export const TECH_LABELS: Record<TechId, { name: string; description: string }> 
   },
   industrial_chains: {
     name: "Chaînes industrielles",
-    description: "Standardisation des lignes d'assemblage. Débloque usines de composants et de biens.",
+    description:
+      "Standardisation des lignes d'assemblage. Débloque usines de composants et de biens.",
   },
   advanced_mining: {
     name: "Extraction avancée",
@@ -332,8 +357,7 @@ export const TECH_LABELS: Record<TechId, { name: string; description: string }> 
   },
   ore_processing: {
     name: "Traitement du minerai",
-    description:
-      "Concassage et tri sur site. Mines +15 %, avant-postes +40 %, stockage +25 %.",
+    description: "Concassage et tri sur site. Mines +15 %, avant-postes +40 %, stockage +25 %.",
   },
   modular_construction: {
     name: "Construction modulaire",

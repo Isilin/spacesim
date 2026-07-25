@@ -27,7 +27,6 @@ export const COLONY_SHIP_COST_TEXT = Object.entries(COLONY_SHIP_COST)
   .map(([res, n]) => `${n} ${RESOURCE_LABELS[res as ResourceId]}`)
   .join(" · ");
 
-
 /**
  * Actions possibles sur un corps (chantier 10) : colonisation, ou état en cours.
  * Extrait du `SystemPanel` pour être partagé avec la vue corps sans duplication.
@@ -39,7 +38,9 @@ export function BodyActions({ body, colonies, missions, activeColony, game, now,
   if (colony) return <p className="small ok">● {colony.name}</p>;
   if (incoming) {
     return (
-      <p className="small ok">Vaisseau colonial en route — {formatDuration(incoming.arrivesAt - now)}</p>
+      <p className="small ok">
+        Vaisseau colonial en route — {formatDuration(incoming.arrivesAt - now)}
+      </p>
     );
   }
   if (body.type === "gas") {

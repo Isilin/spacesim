@@ -93,7 +93,9 @@ export function MapNav({
   const colonySystems = useMemo(() => {
     const byPlanet = new Map(
       universe.galaxies.flatMap((g) =>
-        g.systems.flatMap((s) => s.planets.map((p) => [p.id, { galaxy: g.id, system: s.id }] as const)),
+        g.systems.flatMap((s) =>
+          s.planets.map((p) => [p.id, { galaxy: g.id, system: s.id }] as const),
+        ),
       ),
     );
     return colonies
@@ -103,7 +105,9 @@ export function MapNav({
 
   const homeTarget = colonySystems.find((s) => s.system === homeSystemId) ?? colonySystems[0];
   const fleetTarget = universe.galaxies.flatMap((g) =>
-    g.systems.filter((s) => fleetSystemIds.includes(s.id)).map((s) => ({ galaxy: g.id, system: s.id })),
+    g.systems
+      .filter((s) => fleetSystemIds.includes(s.id))
+      .map((s) => ({ galaxy: g.id, system: s.id })),
   )[0];
 
   return (
@@ -152,7 +156,8 @@ export function MapNav({
           type="button"
           disabled={!homeTarget}
           onClick={() =>
-            homeTarget && go({ kind: "system", galaxyId: homeTarget.galaxy, systemId: homeTarget.system })
+            homeTarget &&
+            go({ kind: "system", galaxyId: homeTarget.galaxy, systemId: homeTarget.system })
           }
         >
           Ma capitale
@@ -162,7 +167,8 @@ export function MapNav({
           disabled={!fleetTarget}
           title={fleetTarget ? "" : "Aucune flotte en service"}
           onClick={() =>
-            fleetTarget && go({ kind: "system", galaxyId: fleetTarget.galaxy, systemId: fleetTarget.system })
+            fleetTarget &&
+            go({ kind: "system", galaxyId: fleetTarget.galaxy, systemId: fleetTarget.system })
           }
         >
           Mes flottes

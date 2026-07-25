@@ -99,10 +99,7 @@ export function UniverseMap({
   const colonyPlanetIds = new Set(colonies.map((c) => c.planetId));
 
   const links = useMemo(() => galaxyLinks(universe), [universe]);
-  const gatewayByGalaxy = useMemo(
-    () => new Map(gateways.map((g) => [g.galaxyId, g])),
-    [gateways],
-  );
+  const gatewayByGalaxy = useMemo(() => new Map(gateways.map((g) => [g.galaxyId, g])), [gateways]);
   // Zones d'activité économique (chantier 17.3) : dérivées des contrats ouverts, jamais
   // stockées — juste une lecture de « où le monde bat » au moment du rendu.
   const activity = useMemo(

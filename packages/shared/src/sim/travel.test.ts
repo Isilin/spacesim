@@ -27,12 +27,16 @@ function makeGalaxy(id: string, systemIds: string[], links: [string, string][]):
 }
 
 // a—b—c—d, plus raccourci a—c
-const galaxy = makeGalaxy("g1", ["a", "b", "c", "d"], [
-  ["a", "b"],
-  ["b", "c"],
-  ["c", "d"],
-  ["a", "c"],
-]);
+const galaxy = makeGalaxy(
+  "g1",
+  ["a", "b", "c", "d"],
+  [
+    ["a", "b"],
+    ["b", "c"],
+    ["c", "d"],
+    ["a", "c"],
+  ],
+);
 
 const universe: Universe = {
   seed: "t",

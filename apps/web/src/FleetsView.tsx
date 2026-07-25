@@ -57,7 +57,6 @@ const PHASE_LABELS: Record<string, string> = {
   short: "Mêlée",
 };
 
-
 function compositionText(comp: FleetComposition, nameOf: (id: string) => string): string {
   const parts = Object.entries(comp)
     .filter(([, n]) => (n ?? 0) > 0)
@@ -148,7 +147,9 @@ export function FleetsView({
                                     .map(([r, n]) => `${n} ${RESOURCE_LABELS[r as ResourceId]}`)
                                     .join(" · ")
                             }
-                            onClick={() => send({ type: "buildWarship", fleetId: fleet.id, warshipId: id })}
+                            onClick={() =>
+                              send({ type: "buildWarship", fleetId: fleet.id, warshipId: id })
+                            }
                           >
                             + {WARSHIP_LABELS[id].name}
                           </button>
@@ -190,7 +191,11 @@ export function FleetsView({
                         defaultValue=""
                         onChange={(e) => {
                           if (e.target.value)
-                            send({ type: "moveFleet", fleetId: fleet.id, toSystemId: e.target.value });
+                            send({
+                              type: "moveFleet",
+                              fleetId: fleet.id,
+                              toSystemId: e.target.value,
+                            });
                           e.target.value = "";
                         }}
                       >
@@ -216,12 +221,15 @@ export function FleetsView({
                   {lairsHere.map((lair) => (
                     <div key={lair.id} className="lair-target">
                       <span className="small ko">
-                        ☠ Repaire pirate — {compositionText(lair.ships, nameOf)} · butin {lair.bounty} ✧
+                        ☠ Repaire pirate — {compositionText(lair.ships, nameOf)} · butin{" "}
+                        {lair.bounty} ✧
                       </span>
                       <button
                         className="action-button"
                         disabled={!!fleet.movement}
-                        onClick={() => send({ type: "attackLair", fleetId: fleet.id, lairId: lair.id })}
+                        onClick={() =>
+                          send({ type: "attackLair", fleetId: fleet.id, lairId: lair.id })
+                        }
                       >
                         Attaquer
                       </button>
@@ -276,7 +284,10 @@ export function FleetsView({
               <strong className="small">Nouvelle flotte</strong>
               <label className="small muted">
                 Rattachée à{" "}
-                <select value={colony?.id ?? ""} onChange={(e) => setNewFleetColony(e.target.value)}>
+                <select
+                  value={colony?.id ?? ""}
+                  onChange={(e) => setNewFleetColony(e.target.value)}
+                >
                   {colonies.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}

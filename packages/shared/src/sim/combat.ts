@@ -174,7 +174,7 @@ function applyDamage(
       const n = count ?? 0;
       const atkCat = defs[atkId]?.category;
       total += n;
-      weighted += n * (atkCat ? CATEGORY_ADVANTAGE[atkCat]?.[targetCat] ?? 1 : 1);
+      weighted += n * (atkCat ? (CATEGORY_ADVANTAGE[atkCat]?.[targetCat] ?? 1) : 1);
     }
     return total > 0 ? weighted / total : 1;
   };
@@ -246,8 +246,22 @@ export function resolveBattle(
       atkDamageTotal += atkDamage;
       defDamageTotal += defDamage;
       // Tirs simultanés : on fige les compositions avant d'appliquer.
-      applyDamage(def, atkDamage, DIRECTIVES[defDir].incomingMult, atkDir === "focus_fire", atkMix, defs);
-      applyDamage(atk, defDamage, DIRECTIVES[atkDir].incomingMult, defDir === "focus_fire", defMix, defs);
+      applyDamage(
+        def,
+        atkDamage,
+        DIRECTIVES[defDir].incomingMult,
+        atkDir === "focus_fire",
+        atkMix,
+        defs,
+      );
+      applyDamage(
+        atk,
+        defDamage,
+        DIRECTIVES[atkDir].incomingMult,
+        defDir === "focus_fire",
+        defMix,
+        defs,
+      );
     }
 
     const atkAfter = collapse(alive(atk));

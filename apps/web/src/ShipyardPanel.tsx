@@ -21,7 +21,6 @@ interface Props {
   send: (msg: ClientMessage) => void;
 }
 
-
 function formatCost(cost: Partial<Record<ResourceId, number>>): string {
   return Object.entries(cost)
     .map(([res, n]) => `${n} ${RESOURCE_LABELS[res as ResourceId]}`)
@@ -62,9 +61,7 @@ export function ShipyardPanel({ colony, routes, researched, now, send }: Props) 
                     ×{owned}
                     {queued > 0 ? ` (+${queued})` : ""}
                   </span>
-                  <span className="muted small">
-                    {Math.min(idle[shipId] ?? 0, owned)} dispo
-                  </span>
+                  <span className="muted small">{Math.min(idle[shipId] ?? 0, owned)} dispo</span>
                 </div>
                 <span className="muted small">{SHIP_LABELS[shipId].description}</span>
                 {techLocked ? (

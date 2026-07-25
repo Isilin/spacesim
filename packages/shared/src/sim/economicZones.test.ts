@@ -43,7 +43,11 @@ describe("galaxyActivity", () => {
 
   it("distingue les galaxies entre elles", () => {
     const contracts = [
-      makeContract({ systemId: universe.galaxies[0]!.systems[0]!.id, remaining: 10, pricePerUnit: 1 }),
+      makeContract({
+        systemId: universe.galaxies[0]!.systems[0]!.id,
+        remaining: 10,
+        pricePerUnit: 1,
+      }),
       makeContract({
         id: "c2",
         systemId: universe.galaxies[1]!.systems[0]!.id,

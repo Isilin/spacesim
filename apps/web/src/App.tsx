@@ -140,18 +140,18 @@ export function App({ auth }: Props) {
 
   const viewGalaxy =
     view.level !== "universe"
-      ? universe.galaxies.find((g) => g.id === view.galaxyId) ?? universe.galaxies[0]!
+      ? (universe.galaxies.find((g) => g.id === view.galaxyId) ?? universe.galaxies[0]!)
       : null;
   const viewSystem =
     (view.level === "system" || view.level === "body") && viewGalaxy
-      ? viewGalaxy.systems.find((s) => s.id === view.systemId) ?? null
+      ? (viewGalaxy.systems.find((s) => s.id === view.systemId) ?? null)
       : null;
   const viewBody =
     view.level === "body" && viewSystem
-      ? viewSystem.planets.find((p) => p.id === view.bodyId) ?? null
+      ? (viewSystem.planets.find((p) => p.id === view.bodyId) ?? null)
       : null;
   const selectedSystem = selectedSystemId
-    ? allSystems(universe).find((s) => s.id === selectedSystemId) ?? null
+    ? (allSystems(universe).find((s) => s.id === selectedSystemId) ?? null)
     : null;
 
   const openGalaxy = (galaxyId: string) => {
@@ -223,16 +223,10 @@ export function App({ auth }: Props) {
           <button className={tab === "fleets" ? "active" : ""} onClick={() => setTab("fleets")}>
             Flottes{pirateLairs.length > 0 ? ` (${pirateLairs.length}☠)` : ""}
           </button>
-          <button
-            className={tab === "shipyard" ? "active" : ""}
-            onClick={() => setTab("shipyard")}
-          >
+          <button className={tab === "shipyard" ? "active" : ""} onClick={() => setTab("shipyard")}>
             Chantier
           </button>
-          <button
-            className={tab === "research" ? "active" : ""}
-            onClick={() => setTab("research")}
-          >
+          <button className={tab === "research" ? "active" : ""} onClick={() => setTab("research")}>
             Recherche
           </button>
           <button className={tab === "empire" ? "active" : ""} onClick={() => setTab("empire")}>
@@ -396,9 +390,7 @@ export function App({ auth }: Props) {
               {viewGalaxy && (
                 <>
                   <span className="muted">/</span>
-                  <button
-                    onClick={() => setMapView({ level: "galaxy", galaxyId: viewGalaxy.id })}
-                  >
+                  <button onClick={() => setMapView({ level: "galaxy", galaxyId: viewGalaxy.id })}>
                     {viewGalaxy.name}
                   </button>
                 </>
@@ -525,9 +517,7 @@ export function App({ auth }: Props) {
                 send={send}
               />
             ) : (
-              <p className="muted">
-                Sélectionnez un système (double-clic : vue système).
-              </p>
+              <p className="muted">Sélectionnez un système (double-clic : vue système).</p>
             )}
           </aside>
         </main>

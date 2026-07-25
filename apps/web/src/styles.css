@@ -58,8 +58,12 @@ body {
   color: var(--muted);
 }
 
-.stat.ok { color: var(--ok); }
-.stat.ko { color: var(--ko); }
+.stat.ok {
+  color: var(--ok);
+}
+.stat.ko {
+  color: var(--ko);
+}
 
 .content {
   display: flex;
@@ -85,13 +89,25 @@ body {
   stroke-width: 1;
 }
 
-.system { cursor: pointer; }
-.system-hit { fill: transparent; }
-.system-star { fill: #d8e6f5; }
-.system.unexplored .system-star { fill: #46586e; }
+.system {
+  cursor: pointer;
+}
+.system-hit {
+  fill: transparent;
+}
+.system-star {
+  fill: #d8e6f5;
+}
+.system.unexplored .system-star {
+  fill: #46586e;
+}
 .system:hover .system-star,
-.system.selected .system-star { fill: var(--accent); }
-.system.selected .system-star { r: 7; }
+.system.selected .system-star {
+  fill: var(--accent);
+}
+.system.selected .system-star {
+  r: 7;
+}
 
 .colony-ring {
   fill: none;
@@ -106,7 +122,9 @@ body {
   opacity: 0.7;
 }
 
-.mission-line.colonize { stroke: var(--ok); }
+.mission-line.colonize {
+  stroke: var(--ok);
+}
 
 .system-label {
   fill: var(--muted);
@@ -115,7 +133,9 @@ body {
 }
 
 .system:hover .system-label,
-.system.selected .system-label { fill: var(--text); }
+.system.selected .system-label {
+  fill: var(--text);
+}
 
 .side-panel {
   width: 340px;
@@ -131,7 +151,9 @@ body {
   letter-spacing: 1px;
 }
 
-.muted { color: var(--muted); }
+.muted {
+  color: var(--muted);
+}
 
 .planet-list {
   list-style: none;
@@ -191,7 +213,9 @@ body {
   border-radius: 3px;
 }
 
-.tabs button:hover { color: var(--text); }
+.tabs button:hover {
+  color: var(--text);
+}
 .tabs button.active {
   color: var(--accent);
   border-color: var(--border);
@@ -224,7 +248,9 @@ body {
   letter-spacing: 1px;
 }
 
-.small { font-size: 12px; }
+.small {
+  font-size: 12px;
+}
 
 .resource-bar {
   display: flex;
@@ -251,10 +277,18 @@ body {
   letter-spacing: 1px;
 }
 
-.resource-stock { font-size: 16px; }
-.resource-rate { font-size: 12px; }
-.resource-rate.ok { color: var(--ok); }
-.resource-rate.ko { color: var(--ko); }
+.resource-stock {
+  font-size: 16px;
+}
+.resource-rate {
+  font-size: 12px;
+}
+.resource-rate.ok {
+  color: var(--ok);
+}
+.resource-rate.ko {
+  color: var(--ko);
+}
 
 .colony-columns {
   display: flex;
@@ -262,8 +296,12 @@ body {
   align-items: flex-start;
 }
 
-.buildings-panel { flex: 1; }
-.queue-panel { width: 320px; }
+.buildings-panel {
+  flex: 1;
+}
+.queue-panel {
+  width: 320px;
+}
 
 .buildings-panel h3,
 .queue-panel h3 {
@@ -306,7 +344,10 @@ body {
   align-items: baseline;
 }
 
-.level { color: var(--accent); font-size: 12px; }
+.level {
+  color: var(--accent);
+  font-size: 12px;
+}
 
 .building button {
   background: var(--bg);
@@ -364,7 +405,9 @@ body {
   padding: 1px 5px;
 }
 
-.transfer-panel { margin-top: 20px; }
+.transfer-panel {
+  margin-top: 20px;
+}
 
 .transfer-form {
   display: flex;
@@ -388,7 +431,9 @@ body {
   margin-left: 8px;
 }
 
-.transfer-amount input { width: 90px; }
+.transfer-amount input {
+  width: 90px;
+}
 
 .transfer-form button {
   align-self: flex-start;
@@ -444,7 +489,9 @@ body {
   max-width: 240px;
 }
 
-.building.locked { opacity: 0.6; }
+.building.locked {
+  opacity: 0.6;
+}
 
 .research-header {
   display: flex;
@@ -458,7 +505,9 @@ body {
   align-items: flex-start;
 }
 
-.research-branch { flex: 1; }
+.research-branch {
+  flex: 1;
+}
 
 .research-branch h3 {
   color: var(--accent);
@@ -483,8 +532,12 @@ body {
   padding: 10px 12px;
 }
 
-.tech.done { border-color: var(--ok); }
-.tech.locked { opacity: 0.55; }
+.tech.done {
+  border-color: var(--ok);
+}
+.tech.locked {
+  opacity: 0.55;
+}
 
 .tech-head {
   display: flex;
@@ -522,8 +575,12 @@ body {
   padding: 8px 12px;
 }
 
-.milestone.reached { border-color: var(--ok); }
-.progress-fill.reached { background: var(--ok); }
+.milestone.reached {
+  border-color: var(--ok);
+}
+.progress-fill.reached {
+  background: var(--ok);
+}
 
 .toast-stack {
   position: fixed;
@@ -560,37 +617,68 @@ body {
   padding: 2px 4px;
 }
 
-.breadcrumb button:hover { text-decoration: underline; }
-.breadcrumb-current { color: var(--text); }
+.breadcrumb button:hover {
+  text-decoration: underline;
+}
+.breadcrumb-current {
+  color: var(--text);
+}
 
 .map-panel {
   display: flex;
   flex-direction: column;
 }
 
-.galaxy-node { cursor: pointer; }
-.galaxy-hit { fill: transparent; }
+.galaxy-node {
+  cursor: pointer;
+}
+.galaxy-hit {
+  fill: transparent;
+}
 
 /* Glyphe de galaxie spirale (chantier 12 — refonte carte). */
-.galaxy-glyph { transition: opacity 0.2s; }
-.galaxy-disc { opacity: 0.07; }
-.galaxy-node:hover .galaxy-glyph { opacity: 1; }
-.galaxy-node:hover .galaxy-disc { opacity: 0.14; }
-.galaxy-node.selected .galaxy-disc { opacity: 0.22; stroke: var(--accent); stroke-width: 2; }
+.galaxy-glyph {
+  transition: opacity 0.2s;
+}
+.galaxy-disc {
+  opacity: 0.07;
+}
+.galaxy-node:hover .galaxy-glyph {
+  opacity: 1;
+}
+.galaxy-node:hover .galaxy-disc {
+  opacity: 0.14;
+}
+.galaxy-node.selected .galaxy-disc {
+  opacity: 0.22;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
 /* Galaxie non encore reliée : glyphe assourdi. */
-.galaxy-node.far .galaxy-glyph { opacity: 0.5; }
-.galaxy-node.far .galaxy-disc { opacity: 0.04; }
+.galaxy-node.far .galaxy-glyph {
+  opacity: 0.5;
+}
+.galaxy-node.far .galaxy-disc {
+  opacity: 0.04;
+}
 
 .galaxy-label {
   fill: var(--text);
   font-size: 15px;
   letter-spacing: 3px;
 }
-.galaxy-node.far .galaxy-label { fill: var(--muted); }
-.galaxy-sub { fill: var(--muted); font-size: 11px; }
+.galaxy-node.far .galaxy-label {
+  fill: var(--muted);
+}
+.galaxy-sub {
+  fill: var(--muted);
+  font-size: 11px;
+}
 
 /* Réseau inter-galactique : arêtes de l'arbre de voisinage. */
-.wormhole { fill: none; }
+.wormhole {
+  fill: none;
+}
 .wormhole.potential {
   stroke: #223148;
   stroke-width: 1;
@@ -613,13 +701,17 @@ body {
   filter: drop-shadow(0 0 4px rgba(79, 193, 255, 0.8));
 }
 
-.star-core { fill: #ffd27f; }
+.star-core {
+  fill: #ffd27f;
+}
 .orbit-ring {
   fill: none;
   stroke: #223148;
   stroke-width: 1;
 }
-.moon-orbit { stroke-dasharray: 2 3; }
+.moon-orbit {
+  stroke-dasharray: 2 3;
+}
 .belt-ring {
   fill: none;
   stroke: #3a4a60;
@@ -627,17 +719,29 @@ body {
   stroke-dasharray: 1 7;
   opacity: 0.8;
 }
-.body { cursor: pointer; }
-.body-hit { fill: transparent; }
-.body:hover .body-dot, .body.selected .body-dot { stroke: var(--accent); stroke-width: 2; }
+.body {
+  cursor: pointer;
+}
+.body-hit {
+  fill: transparent;
+}
+.body:hover .body-dot,
+.body.selected .body-dot {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
 .body-label {
   fill: var(--muted);
   font-size: 12px;
   pointer-events: none;
 }
-.body:hover .body-label { fill: var(--text); }
+.body:hover .body-label {
+  fill: var(--text);
+}
 
-.moon-row { margin-left: 18px; }
+.moon-row {
+  margin-left: 18px;
+}
 
 .station-box {
   fill: none;
@@ -653,7 +757,9 @@ body {
   background: var(--panel);
 }
 
-.station-panel h2 { color: #e0b64f; }
+.station-panel h2 {
+  color: #e0b64f;
+}
 
 .market-table {
   width: 100%;
@@ -677,7 +783,9 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
-.shipyard-panel { margin-top: 20px; }
+.shipyard-panel {
+  margin-top: 20px;
+}
 .shipyard-panel h3,
 .routes-view h3 {
   color: var(--text);
@@ -687,7 +795,9 @@ body {
   margin-bottom: 10px;
 }
 
-.routes-create-title { margin-top: 20px; }
+.routes-create-title {
+  margin-top: 20px;
+}
 
 .route-list {
   list-style: none;
@@ -712,7 +822,11 @@ body {
   gap: 8px;
 }
 
-.route-actions .action-button { margin-top: 4px; padding: 3px 10px; font-size: 12px; }
+.route-actions .action-button {
+  margin-top: 4px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
 
 .anchor-ring {
   fill: none;
@@ -721,7 +835,9 @@ body {
   stroke-dasharray: 4 3;
 }
 
-.gateway-active { fill: var(--accent); }
+.gateway-active {
+  fill: var(--accent);
+}
 
 .gateways-panel h2 {
   color: #b48fe0;
@@ -747,7 +863,11 @@ body {
   gap: 6px;
 }
 
-.action-button.small { padding: 3px 8px; font-size: 12px; margin-top: 0; }
+.action-button.small {
+  padding: 3px 8px;
+  font-size: 12px;
+  margin-top: 0;
+}
 
 .directives {
   display: flex;
@@ -788,7 +908,9 @@ body {
   border-radius: 3px;
 }
 
-.battle-head { cursor: pointer; }
+.battle-head {
+  cursor: pointer;
+}
 .battle-detail {
   margin-top: 6px;
   border-top: 1px solid var(--border);
@@ -797,9 +919,14 @@ body {
   flex-direction: column;
   gap: 4px;
 }
-.battle-phase { border-left: 2px solid var(--border); padding-left: 8px; }
+.battle-phase {
+  border-left: 2px solid var(--border);
+  padding-left: 8px;
+}
 
-.stat.influence { color: #b48fe0; }
+.stat.influence {
+  color: #b48fe0;
+}
 
 .claim-ring {
   fill: none;
@@ -808,7 +935,9 @@ body {
   stroke-dasharray: 4 3;
 }
 
-.claim-badge { color: #b48fe0; }
+.claim-badge {
+  color: #b48fe0;
+}
 
 /* ── Comptes (chantier 8) ────────────────────────────────────────────────── */
 
@@ -1246,10 +1375,18 @@ body {
   stroke-width: 0.5;
 }
 
-.tech-band.industry { fill: #10161f; }
-.tech-band.colonization { fill: #0e1620; }
-.tech-band.society { fill: #101520; }
-.tech-band.military { fill: #12141d; }
+.tech-band.industry {
+  fill: #10161f;
+}
+.tech-band.colonization {
+  fill: #0e1620;
+}
+.tech-band.society {
+  fill: #101520;
+}
+.tech-band.military {
+  fill: #12141d;
+}
 
 .tech-band-label {
   fill: var(--muted);
@@ -1264,14 +1401,18 @@ body {
   stroke-width: 1.2;
 }
 
-.tech-edge.unlocked { stroke: #2f4a63; }
+.tech-edge.unlocked {
+  stroke: #2f4a63;
+}
 
 .tech-edge.highlighted {
   stroke: var(--accent);
   stroke-width: 2;
 }
 
-.tech-node { cursor: pointer; }
+.tech-node {
+  cursor: pointer;
+}
 
 .tech-node .tech-box {
   fill: var(--panel);
@@ -1289,15 +1430,35 @@ body {
   font-size: 10px;
 }
 
-.tech-node.done .tech-box { stroke: var(--ok); }
-.tech-node.done .tech-node-name { fill: var(--ok); }
-.tech-node.active .tech-box { stroke: var(--accent); stroke-width: 2; }
-.tech-node.queued .tech-box { stroke: #b48fe0; stroke-dasharray: 4 3; }
-.tech-node.available .tech-box { stroke: #3d5a7a; }
-.tech-node.locked { opacity: 0.45; }
-.tech-node.dimmed { opacity: 0.2; }
-.tech-node.selected .tech-box { stroke: var(--accent); }
-.tech-node:hover .tech-box { stroke: var(--accent); }
+.tech-node.done .tech-box {
+  stroke: var(--ok);
+}
+.tech-node.done .tech-node-name {
+  fill: var(--ok);
+}
+.tech-node.active .tech-box {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.tech-node.queued .tech-box {
+  stroke: #b48fe0;
+  stroke-dasharray: 4 3;
+}
+.tech-node.available .tech-box {
+  stroke: #3d5a7a;
+}
+.tech-node.locked {
+  opacity: 0.45;
+}
+.tech-node.dimmed {
+  opacity: 0.2;
+}
+.tech-node.selected .tech-box {
+  stroke: var(--accent);
+}
+.tech-node:hover .tech-box {
+  stroke: var(--accent);
+}
 
 .research-detail {
   width: 280px;
@@ -1325,7 +1486,9 @@ body {
   gap: 2px;
 }
 
-.research-chain li.queued { color: #b48fe0; }
+.research-chain li.queued {
+  color: #b48fe0;
+}
 
 /* ── Sol / orbite (chantier 12) ──────────────────────────────────────────── */
 
@@ -1640,18 +1803,42 @@ body {
   stroke-width: 2;
 }
 
-.hull-slot.slot-weapon.filled circle { fill: var(--slot-weapon); stroke: var(--slot-weapon); }
-.hull-slot.slot-defense.filled circle { fill: var(--slot-defense); stroke: var(--slot-defense); }
-.hull-slot.slot-propulsion.filled circle { fill: var(--slot-propulsion); stroke: var(--slot-propulsion); }
-.hull-slot.slot-utility.filled circle { fill: var(--slot-utility); stroke: var(--slot-utility); }
+.hull-slot.slot-weapon.filled circle {
+  fill: var(--slot-weapon);
+  stroke: var(--slot-weapon);
+}
+.hull-slot.slot-defense.filled circle {
+  fill: var(--slot-defense);
+  stroke: var(--slot-defense);
+}
+.hull-slot.slot-propulsion.filled circle {
+  fill: var(--slot-propulsion);
+  stroke: var(--slot-propulsion);
+}
+.hull-slot.slot-utility.filled circle {
+  fill: var(--slot-utility);
+  stroke: var(--slot-utility);
+}
 
-.hull-slot.slot-weapon.empty circle { stroke: var(--slot-weapon); }
-.hull-slot.slot-defense.empty circle { stroke: var(--slot-defense); }
-.hull-slot.slot-propulsion.empty circle { stroke: var(--slot-propulsion); }
-.hull-slot.slot-utility.empty circle { stroke: var(--slot-utility); }
+.hull-slot.slot-weapon.empty circle {
+  stroke: var(--slot-weapon);
+}
+.hull-slot.slot-defense.empty circle {
+  stroke: var(--slot-defense);
+}
+.hull-slot.slot-propulsion.empty circle {
+  stroke: var(--slot-propulsion);
+}
+.hull-slot.slot-utility.empty circle {
+  stroke: var(--slot-utility);
+}
 
-.hull-slot.clickable { cursor: pointer; }
-.hull-slot.clickable:hover circle { stroke: var(--text); }
+.hull-slot.clickable {
+  cursor: pointer;
+}
+.hull-slot.clickable:hover circle {
+  stroke: var(--text);
+}
 
 .hull-slot-label {
   fill: var(--muted);

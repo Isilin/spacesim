@@ -74,7 +74,11 @@ export function ShipDesigner({ blueprints, effects, activeColony, fleets, send }
     const bp = blueprints.find((b) => b.id === id);
     if (!bp) return;
     setEditingId(id);
-    setDraft({ name: bp.name, chassisId: bp.chassisId as ChassisId, modules: [...(bp.modules as ModuleId[])] });
+    setDraft({
+      name: bp.name,
+      chassisId: bp.chassisId as ChassisId,
+      modules: [...(bp.modules as ModuleId[])],
+    });
   };
 
   const chassis = draft.chassisId ? CHASSIS[draft.chassisId] : null;

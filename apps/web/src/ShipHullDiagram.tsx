@@ -35,9 +35,19 @@ const HULL_PATHS: Record<ChassisKind, string> = {
 const MAX_TONNAGE = 240;
 
 /** Position verticale de la bande de chaque type d'emplacement (nez en haut). */
-const BAND_Y: Record<SlotType, number> = { weapon: 55, utility: 108, defense: 150, propulsion: 192 };
+const BAND_Y: Record<SlotType, number> = {
+  weapon: 55,
+  utility: 108,
+  defense: 150,
+  propulsion: 192,
+};
 /** Demi-largeur de la bande — les emplacements s'y répartissent symétriquement. */
-const BAND_HALF_WIDTH: Record<SlotType, number> = { weapon: 42, utility: 46, defense: 40, propulsion: 30 };
+const BAND_HALF_WIDTH: Record<SlotType, number> = {
+  weapon: 42,
+  utility: 46,
+  defense: 40,
+  propulsion: 30,
+};
 
 function slotPositions(type: SlotType, count: number): { x: number; y: number }[] {
   if (count <= 0) return [];
@@ -76,7 +86,10 @@ export function ShipHullDiagram({ chassisId, modules, compact, onRemoveAt }: Pro
 
   if (!chassis) {
     return (
-      <div className={`hull-diagram ${compact ? "compact" : ""} empty`} style={{ width: size, height: size * 1.375 }}>
+      <div
+        className={`hull-diagram ${compact ? "compact" : ""} empty`}
+        style={{ width: size, height: size * 1.375 }}
+      >
         <span className="muted small">Aucun châssis</span>
       </div>
     );

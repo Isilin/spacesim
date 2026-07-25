@@ -194,10 +194,7 @@ describe("chaînes de production", () => {
     expect(after.resources.metals).toBe(0);
     expect(after.resources.components).toBe(0);
     const shortages = colonyShortages(colony);
-    expect(shortages.map((s) => s.buildingId).sort()).toEqual([
-      "component_factory",
-      "smelter",
-    ]);
+    expect(shortages.map((s) => s.buildingId).sort()).toEqual(["component_factory", "smelter"]);
   });
 
   it("les biens consommés soutiennent la satisfaction", () => {

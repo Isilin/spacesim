@@ -1,10 +1,6 @@
+import { emailSchema, passwordSchema } from "@spacesim/protocol";
 import { eq, lt } from "drizzle-orm";
-import {
-  randomBytes,
-  randomUUID,
-  scryptSync,
-  timingSafeEqual,
-} from "node:crypto";
+import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { db, schema } from "./db/index.js";
 
 /** Durée de vie d'une session, en ms (glissante : prolongée à chaque usage). */
@@ -16,9 +12,6 @@ const SESSION_REFRESH_MS = 24 * 3600 * 1000;
 /** Paramètres scrypt : coût mémoire/CPU volontairement élevé côté serveur. */
 const SCRYPT_N = 16384;
 const SCRYPT_KEYLEN = 64;
-
-const MIN_PASSWORD_LENGTH = 8;
-const MAX_PASSWORD_LENGTH = 200;
 
 /** Anti-force brute : N échecs par IP sur une fenêtre glissante. */
 const MAX_FAILED_ATTEMPTS = 10;
@@ -55,12 +48,7 @@ export function verifyPassword(password: string, stored: string): boolean {
 // ── Validation des saisies ───────────────────────────────────────────────────
 
 export function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
-
-/** Validation volontairement permissive : présence d'un `@` entouré de texte, sans espace. */
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
+  return emailSchema.parse(email);
 }
 
 // ── Anti-force brute ─────────────────────────────────────────────────────────
@@ -94,7 +82,10 @@ function clearFailures(ip: string): void {
 // ── Sessions ─────────────────────────────────────────────────────────────────
 
 /** Ouvre une session pour un compte : jeton opaque de 32 octets. */
-export function createSession(accountId: string, now = Date.now()): { token: string; expiresAt: number } {
+export function createSession(
+  accountId: string,
+  now = Date.now(),
+): { token: string; expiresAt: number } {
   const token = randomBytes(32).toString("base64url");
   const expiresAt = now + SESSION_TTL_MS;
   db.insert(schema.sessions).values({ token, accountId, createdAt: now, expiresAt }).run();
@@ -108,11 +99,7 @@ export function createSession(accountId: string, now = Date.now()): { token: str
  */
 export function resolveSession(token: string | undefined, now = Date.now()): Account | null {
   if (!token) return null;
-  const session = db
-    .select()
-    .from(schema.sessions)
-    .where(eq(schema.sessions.token, token))
-    .get();
+  const session = db.select().from(schema.sessions).where(eq(schema.sessions.token, token)).get();
   if (!session) return null;
   if (session.expiresAt <= now) {
     db.delete(schema.sessions).where(eq(schema.sessions.token, token)).run();
@@ -159,14 +146,19 @@ export function findAccountByEmail(email: string): { id: string; passwordHash: s
  * (le moteur de jeu) : ce module ne connaît que l'identité.
  */
 export function register(email: string, password: string, ip = "?"): AuthResult {
-  const normalized = normalizeEmail(email ?? "");
-  if (!isValidEmail(normalized)) return { ok: false, error: "Adresse e-mail invalide" };
-  if (typeof password !== "string" || password.length < MIN_PASSWORD_LENGTH) {
-    return { ok: false, error: `Mot de passe trop court (${MIN_PASSWORD_LENGTH} caractères minimum)` };
+  const parsedEmail = emailSchema.safeParse(email ?? "");
+  if (!parsedEmail.success) return { ok: false, error: "Adresse e-mail invalide" };
+  const parsedPassword = passwordSchema.safeParse(password);
+  if (!parsedPassword.success && (typeof password !== "string" || password.length < 8)) {
+    return {
+      ok: false,
+      error: "Mot de passe trop court (8 caractères minimum)",
+    };
   }
-  if (password.length > MAX_PASSWORD_LENGTH) {
+  if (!parsedPassword.success) {
     return { ok: false, error: "Mot de passe trop long" };
   }
+  const normalized = parsedEmail.data;
   if (findAccountByEmail(normalized)) {
     return { ok: false, error: "Un compte existe déjà pour cette adresse" };
   }
@@ -194,10 +186,15 @@ export function login(email: string, password: string, ip = "?"): AuthResult {
   if (isRateLimited(ip)) {
     return { ok: false, error: "Trop de tentatives — réessayez dans quelques minutes" };
   }
-  const normalized = normalizeEmail(email ?? "");
-  const account = findAccountByEmail(normalized);
   const invalid = { ok: false as const, error: "Identifiants incorrects" };
-  if (!account || typeof password !== "string") {
+  const parsedEmail = emailSchema.safeParse(email ?? "");
+  if (!parsedEmail.success || typeof password !== "string") {
+    recordFailure(ip);
+    return invalid;
+  }
+  const normalized = parsedEmail.data;
+  const account = findAccountByEmail(normalized);
+  if (!account) {
     recordFailure(ip);
     return invalid;
   }

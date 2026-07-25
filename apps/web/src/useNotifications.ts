@@ -57,7 +57,7 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
     for (const systemId of snapshot.exploredSystemIds) {
       if (!prev.exploredSystemIds.includes(systemId)) {
         const name = snapshot.universe
-          ? allSystems(snapshot.universe).find((s) => s.id === systemId)?.name ?? systemId
+          ? (allSystems(snapshot.universe).find((s) => s.id === systemId)?.name ?? systemId)
           : systemId;
         // Le premier système (colonie mère) ne mérite pas de toast.
         if (prev.exploredSystemIds.length > 0) texts.push(`Système exploré : ${name}`);
@@ -71,7 +71,8 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
         const stillQueued = current.queue.some(
           (q) => q.buildingId === item.buildingId && q.startedAt === item.startedAt,
         );
-        const built = (current.buildings[item.buildingId] ?? 0) > (prevColony.buildings[item.buildingId] ?? 0);
+        const built =
+          (current.buildings[item.buildingId] ?? 0) > (prevColony.buildings[item.buildingId] ?? 0);
         if (!stillQueued && built) {
           texts.push(
             `Construction terminée : ${BUILDING_LABELS[item.buildingId].name} (${current.name})`,
@@ -105,7 +106,7 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
     for (const systemId of prev.game.claimedSystemIds) {
       if (!snapshot.game.claimedSystemIds.includes(systemId)) {
         const name = snapshot.universe
-          ? allSystems(snapshot.universe).find((s) => s.id === systemId)?.name ?? systemId
+          ? (allSystems(snapshot.universe).find((s) => s.id === systemId)?.name ?? systemId)
           : systemId;
         texts.push(`Revendication perdue : ${name}`);
       }

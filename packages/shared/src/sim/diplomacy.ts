@@ -15,7 +15,11 @@ export const DECLARE_WAR_INFLUENCE_COST = 50;
  * Une alliance ne se rompt pas en déclarant directement la guerre — il faut d'abord la
  * rompre (retour à neutre), sinon une alliance ne protégerait de rien.
  */
-export function declareWarReason(current: RelationState, now: number, cooldownUntil: number | null): string | null {
+export function declareWarReason(
+  current: RelationState,
+  now: number,
+  cooldownUntil: number | null,
+): string | null {
   if (current === "war") return "Déjà en guerre";
   if (current === "alliance") return "Rompez l'alliance avant de déclarer la guerre";
   if (cooldownUntil !== null && now < cooldownUntil) return "Cooldown de guerre en cours";
@@ -28,10 +32,15 @@ export function makePeaceReason(current: RelationState): string | null {
 }
 
 /** Un pacte (NAP ou alliance) ne se propose pas en pleine guerre, ni s'il existe déjà. */
-export function proposeRelationReason(current: RelationState, proposed: ProposalKind): string | null {
+export function proposeRelationReason(
+  current: RelationState,
+  proposed: ProposalKind,
+): string | null {
   if (current === "war") return "En guerre — faites la paix d'abord";
-  if (current === proposed) return proposed === "nap" ? "Déjà en pacte de non-agression" : "Déjà alliés";
-  if (current === "alliance" && proposed === "nap") return "Rompez l'alliance avant de repasser au pacte";
+  if (current === proposed)
+    return proposed === "nap" ? "Déjà en pacte de non-agression" : "Déjà alliés";
+  if (current === "alliance" && proposed === "nap")
+    return "Rompez l'alliance avant de repasser au pacte";
   return null;
 }
 
@@ -50,7 +59,11 @@ export const NPC_ALLIANCE_MAX_POWER_RATIO = 5;
  * bienvenu (aucun engagement fort), une alliance seulement entre partenaires de force
  * comparable — ni un poids plume qui n'apporte rien, ni un colosse qui engloutirait le PNJ.
  */
-export function npcAcceptsProposal(kind: ProposalKind, npcPower: number, proposerPower: number): boolean {
+export function npcAcceptsProposal(
+  kind: ProposalKind,
+  npcPower: number,
+  proposerPower: number,
+): boolean {
   if (kind === "nap") return true;
   if (npcPower <= 0 || proposerPower <= 0) return true;
   const ratio = proposerPower / npcPower;

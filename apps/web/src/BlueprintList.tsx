@@ -29,7 +29,14 @@ function formatCost(cost: Partial<Record<ResourceId, number>>): string {
 }
 
 /** Liste des plans de l'empire : produire (colonie/flotte), éditer, supprimer. */
-export function BlueprintList({ blueprints, activeColony, fleets, editingId, onEdit, send }: Props) {
+export function BlueprintList({
+  blueprints,
+  activeColony,
+  fleets,
+  editingId,
+  onEdit,
+  send,
+}: Props) {
   const [fleetChoice, setFleetChoice] = useState<Record<string, string>>({});
 
   if (blueprints.length === 0) {
@@ -41,7 +48,8 @@ export function BlueprintList({ blueprints, activeColony, fleets, editingId, onE
       {blueprints.map((bp) => {
         const stats = resolveBlueprint(bp);
         const chassis = CHASSIS[bp.chassisId as keyof typeof CHASSIS];
-        const chassisName = CHASSIS_LABELS[bp.chassisId as keyof typeof CHASSIS_LABELS]?.name ?? bp.chassisId;
+        const chassisName =
+          CHASSIS_LABELS[bp.chassisId as keyof typeof CHASSIS_LABELS]?.name ?? bp.chassisId;
         const isColony = stats.domain === "colony";
         const targetFleetId = fleetChoice[bp.id] ?? fleets[0]?.id ?? "";
         const canBuildColony = isColony && !!activeColony;

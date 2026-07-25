@@ -36,8 +36,6 @@ interface Props {
 
 const CARGO_RESOURCES: ResourceId[] = ["ore", "metals", "components", "food", "goods"];
 
-
-
 export function TransferPanel({
   colony,
   colonies,
@@ -113,9 +111,7 @@ export function TransferPanel({
         <ul className="queue-list">
           {related.map((t) => {
             const outgoing = t.fromColonyId === colony.id;
-            const other = colonies.find(
-              (c) => c.id === (outgoing ? t.toColonyId : t.fromColonyId),
-            );
+            const other = colonies.find((c) => c.id === (outgoing ? t.toColonyId : t.fromColonyId));
             return (
               <li key={t.id} className="queue-item">
                 <div className="queue-head">
@@ -141,7 +137,10 @@ export function TransferPanel({
         <div className="transfer-form">
           <label className="small muted">
             Destination{" "}
-            <select value={destination?.id ?? ""} onChange={(e) => setDestinationId(e.target.value)}>
+            <select
+              value={destination?.id ?? ""}
+              onChange={(e) => setDestinationId(e.target.value)}
+            >
               {others.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -198,7 +197,11 @@ export function TransferPanel({
           )}
           <button
             disabled={
-              !hasCargo || !destination || overCapacity || capacity === 0 || (hasConvoy && missingFuel)
+              !hasCargo ||
+              !destination ||
+              overCapacity ||
+              capacity === 0 ||
+              (hasConvoy && missingFuel)
             }
             onClick={() => {
               if (!destination) return;

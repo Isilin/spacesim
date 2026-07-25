@@ -100,7 +100,14 @@ export function GalaxyMap({
           >
             <circle r={20} className="system-hit" />
             {galaxy.anchorSystemId === sys.id && (
-              <rect x={-11} y={-11} width={22} height={22} className="anchor-ring" transform="rotate(45)" />
+              <rect
+                x={-11}
+                y={-11}
+                width={22}
+                height={22}
+                className="anchor-ring"
+                transform="rotate(45)"
+              />
             )}
             {territoryColor.has(sys.id) ? (
               <circle
@@ -114,7 +121,14 @@ export function GalaxyMap({
             {hasColony && <circle r={9} className="colony-ring" />}
             <circle r={5} className="system-star" />
             {sys.station && isExplored && (
-              <rect x={8} y={-4} width={7} height={7} className="station-box" transform="rotate(45 11.5 -0.5)" />
+              <rect
+                x={8}
+                y={-4}
+                width={7}
+                height={7}
+                className="station-box"
+                transform="rotate(45 11.5 -0.5)"
+              />
             )}
             <text y={-14} textAnchor="middle" className="system-label">
               {sys.name}

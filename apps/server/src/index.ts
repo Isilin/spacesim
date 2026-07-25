@@ -304,4 +304,6 @@ app.get("/ws", { websocket: true }, (socket, request) => {
 });
 
 await app.listen({ port: PORT, host: "127.0.0.1" });
-console.log(`[server] http://127.0.0.1:${PORT} — partie ${engine.game.id} (seed ${engine.game.seed}), tick ${engine.game.tick}`);
+console.log(
+  `[server] http://127.0.0.1:${PORT} — partie ${engine.game.id} (seed ${engine.game.seed}), tick ${engine.game.tick}`,
+);

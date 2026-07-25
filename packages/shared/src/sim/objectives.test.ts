@@ -53,12 +53,12 @@ describe("generateObjectiveSpec", () => {
 
 describe("objectiveMet", () => {
   it("colonize_n_systems : rempli une fois le compte atteint ou dépassé", () => {
-    expect(objectiveMet({ kind: "colonize_n_systems", targetCount: 5 }, progress({ colonyCount: 4 }))).toBe(
-      false,
-    );
-    expect(objectiveMet({ kind: "colonize_n_systems", targetCount: 5 }, progress({ colonyCount: 5 }))).toBe(
-      true,
-    );
+    expect(
+      objectiveMet({ kind: "colonize_n_systems", targetCount: 5 }, progress({ colonyCount: 4 })),
+    ).toBe(false);
+    expect(
+      objectiveMet({ kind: "colonize_n_systems", targetCount: 5 }, progress({ colonyCount: 5 })),
+    ).toBe(true);
   });
 
   it("hold_system : rempli tant que le système visé reste revendiqué", () => {
@@ -68,8 +68,12 @@ describe("objectiveMet", () => {
   });
 
   it("lead_population / lead_influence : reflètent directement le classement fourni", () => {
-    expect(objectiveMet({ kind: "lead_population" }, progress({ leadsPopulation: false }))).toBe(false);
-    expect(objectiveMet({ kind: "lead_population" }, progress({ leadsPopulation: true }))).toBe(true);
+    expect(objectiveMet({ kind: "lead_population" }, progress({ leadsPopulation: false }))).toBe(
+      false,
+    );
+    expect(objectiveMet({ kind: "lead_population" }, progress({ leadsPopulation: true }))).toBe(
+      true,
+    );
     expect(objectiveMet({ kind: "lead_influence" }, progress({ leadsInfluence: true }))).toBe(true);
   });
 });

@@ -1,8 +1,4 @@
-import {
-  LIFT_ENERGY_PER_UNIT,
-  LIFT_PER_DOCK,
-  ORBITAL_CAP_PER_DOCK,
-} from "../constants.js";
+import { LIFT_ENERGY_PER_UNIT, LIFT_PER_DOCK, ORBITAL_CAP_PER_DOCK } from "../constants.js";
 import { RESOURCES, type Colony, type ResourceId } from "../types.js";
 import { NO_EFFECTS, type EmpireEffects } from "./research.js";
 

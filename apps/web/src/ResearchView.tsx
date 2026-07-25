@@ -34,7 +34,6 @@ const BAND_PADDING = 26;
 const MARGIN_X = 30;
 const MARGIN_Y = 20;
 
-
 /** Arbre de recherche en graphe : nœuds par branche et profondeur, arêtes de prérequis. */
 export function ResearchView({ game, colonies, now, send }: Props) {
   const researched = game.researched as TechId[];
@@ -116,7 +115,10 @@ export function ResearchView({ game, colonies, now, send }: Props) {
           <span className="stat">
             File : {queue.length} tech{queue.length > 1 ? "s" : ""} planifiée
             {queue.length > 1 ? "s" : ""}
-            <button className="link-button research-clear" onClick={() => send({ type: "clearResearchQueue" })}>
+            <button
+              className="link-button research-clear"
+              onClick={() => send({ type: "clearResearchQueue" })}
+            >
               vider
             </button>
           </span>
@@ -225,7 +227,9 @@ export function ResearchView({ game, colonies, now, send }: Props) {
               {detailState === "done" ? (
                 <p className="small ok">Technologie acquise.</p>
               ) : detailState === "active" ? (
-                <p className="small ok">Recherche en cours — {formatDuration(active!.finishesAt - now)}</p>
+                <p className="small ok">
+                  Recherche en cours — {formatDuration(active!.finishesAt - now)}
+                </p>
               ) : detailState === "available" ? (
                 <button
                   className="action-button"
@@ -244,8 +248,8 @@ export function ResearchView({ game, colonies, now, send }: Props) {
               ) : (
                 <>
                   <p className="small muted">
-                    Chaîne à parcourir : {detailPath.length} technologies ·{" "}
-                    {pathCost(detailPath)} science au total.
+                    Chaîne à parcourir : {detailPath.length} technologies · {pathCost(detailPath)}{" "}
+                    science au total.
                   </p>
                   <ol className="research-chain small">
                     {detailPath.map((id) => (
@@ -265,8 +269,8 @@ export function ResearchView({ game, colonies, now, send }: Props) {
             </>
           ) : (
             <p className="muted small">
-              Sélectionnez une technologie pour voir son détail. Survolez un nœud pour
-              éclairer sa chaîne de prérequis.
+              Sélectionnez une technologie pour voir son détail. Survolez un nœud pour éclairer sa
+              chaîne de prérequis.
             </p>
           )}
         </aside>

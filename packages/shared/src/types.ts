@@ -11,14 +11,7 @@ export const RESOURCES = [
 
 export type ResourceId = (typeof RESOURCES)[number];
 
-export const PLANET_TYPES = [
-  "telluric",
-  "oceanic",
-  "volcanic",
-  "frozen",
-  "arid",
-  "gas",
-] as const;
+export const PLANET_TYPES = ["telluric", "oceanic", "volcanic", "frozen", "arid", "gas"] as const;
 
 export type PlanetType = (typeof PLANET_TYPES)[number];
 
@@ -149,7 +142,11 @@ export interface RelationProposal {
   createdAt: number;
 }
 
-export type ObjectiveKind = "colonize_n_systems" | "hold_system" | "lead_population" | "lead_influence";
+export type ObjectiveKind =
+  | "colonize_n_systems"
+  | "hold_system"
+  | "lead_population"
+  | "lead_influence";
 export type ObjectiveStatus = "open" | "completed" | "expired";
 
 /**
@@ -627,12 +624,23 @@ export type ClientMessage =
   | { type: "clearResearchQueue" }
   /** Consigne d'ascension sol↔orbite ; `rule: null` retire la consigne (chantier 12). */
   | { type: "setLiftRule"; colonyId: string; resource: ResourceId; rule: LiftRule | null }
-  | { type: "sell"; colonyId: string; stationId: string; resources: Partial<Record<ResourceId, number>> }
+  | {
+      type: "sell";
+      colonyId: string;
+      stationId: string;
+      resources: Partial<Record<ResourceId, number>>;
+    }
   | { type: "buy"; colonyId: string; stationId: string; resource: ResourceId; budget: number }
   | { type: "buildShip"; colonyId: string; shipId: ShipId }
   /** Conception de vaisseaux (chantier 13). */
   | { type: "createBlueprint"; name: string; chassisId: string; modules: string[] }
-  | { type: "updateBlueprint"; blueprintId: string; name: string; chassisId: string; modules: string[] }
+  | {
+      type: "updateBlueprint";
+      blueprintId: string;
+      name: string;
+      chassisId: string;
+      modules: string[];
+    }
   | { type: "deleteBlueprint"; blueprintId: string }
   /** Produit un vaisseau depuis un plan : `colonyId` (domaine colonie) ou `fleetId` (flotte). */
   | { type: "buildBlueprint"; blueprintId: string; colonyId?: string; fleetId?: string }

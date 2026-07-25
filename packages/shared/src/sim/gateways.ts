@@ -39,7 +39,10 @@ export function gatewayCost(galaxyId: string): Partial<Record<ResourceId, number
 /** Ce qui reste à livrer par ressource. */
 export function gatewayRemaining(gateway: Gateway): Partial<Record<ResourceId, number>> {
   const remaining: Partial<Record<ResourceId, number>> = {};
-  for (const [res, total] of Object.entries(gatewayCost(gateway.galaxyId)) as [ResourceId, number][]) {
+  for (const [res, total] of Object.entries(gatewayCost(gateway.galaxyId)) as [
+    ResourceId,
+    number,
+  ][]) {
     const missing = total - (gateway.progress[res] ?? 0);
     if (missing > 0) remaining[res] = missing;
   }
@@ -55,7 +58,10 @@ export function gatewayCovered(gateway: Gateway): boolean {
 export function gatewayProgressRatio(gateway: Gateway): number {
   let delivered = 0;
   let total = 0;
-  for (const [res, cost] of Object.entries(gatewayCost(gateway.galaxyId)) as [ResourceId, number][]) {
+  for (const [res, cost] of Object.entries(gatewayCost(gateway.galaxyId)) as [
+    ResourceId,
+    number,
+  ][]) {
     total += cost;
     delivered += Math.min(gateway.progress[res] ?? 0, cost);
   }

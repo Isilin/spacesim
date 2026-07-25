@@ -47,9 +47,8 @@ export function MarketsView({
 
   const fromSystem = useMemo(() => {
     if (!activeColony) return undefined;
-    return allSystems(universe).find((s) =>
-      s.planets.some((p) => p.id === activeColony.planetId),
-    )?.id;
+    return allSystems(universe).find((s) => s.planets.some((p) => p.id === activeColony.planetId))
+      ?.id;
   }, [universe, activeColony]);
 
   const rows = useMemo(() => {
@@ -130,7 +129,10 @@ export function MarketsView({
             {rows.map((row) => {
               const gap = row.price / BASE_PRICES[resource] - 1;
               return (
-                <tr key={row.station.id} className={row.station.id === best?.station.id ? "best" : ""}>
+                <tr
+                  key={row.station.id}
+                  className={row.station.id === best?.station.id ? "best" : ""}
+                >
                   <td>{row.station.name}</td>
                   <td className="muted">{row.galaxyName}</td>
                   <td className="muted">{Math.floor(row.stock)}</td>
@@ -154,9 +156,9 @@ export function MarketsView({
       )}
 
       <p className="small muted">
-        Le prix d'un comptoir dépend de son stock, de son biais local et de l'éloignement de
-        sa galaxie : les anneaux lointains paient cher le manufacturé et bradent le brut. La
-        colonne « net » retranche les frais du voyage pour un cargo léger plein.
+        Le prix d'un comptoir dépend de son stock, de son biais local et de l'éloignement de sa
+        galaxie : les anneaux lointains paient cher le manufacturé et bradent le brut. La colonne «
+        net » retranche les frais du voyage pour un cargo léger plein.
       </p>
     </div>
   );

@@ -98,7 +98,9 @@ describe("npcAcceptsProposal", () => {
   });
 
   it("refuse une alliance avec un partenaire beaucoup plus faible", () => {
-    expect(npcAcceptsProposal("alliance", 100, 100 * NPC_ALLIANCE_MIN_POWER_RATIO * 0.5)).toBe(false);
+    expect(npcAcceptsProposal("alliance", 100, 100 * NPC_ALLIANCE_MIN_POWER_RATIO * 0.5)).toBe(
+      false,
+    );
   });
 
   it("refuse une alliance avec un partenaire beaucoup plus fort", () => {

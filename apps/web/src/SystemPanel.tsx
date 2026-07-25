@@ -75,13 +75,16 @@ export function SystemPanel({
         <h2>{system.name}</h2>
         <p className="muted">Système non exploré.</p>
         {probeMission ? (
-          <p className="small ok">Sonde en route — {formatDuration(probeMission.arrivesAt - now)}</p>
+          <p className="small ok">
+            Sonde en route — {formatDuration(probeMission.arrivesAt - now)}
+          </p>
         ) : (
           <button
             className="action-button"
             disabled={!activeColony || activeColony.resources.credits < probeCost}
             onClick={() =>
-              activeColony && send({ type: "probe", colonyId: activeColony.id, systemId: system.id })
+              activeColony &&
+              send({ type: "probe", colonyId: activeColony.id, systemId: system.id })
             }
           >
             Sonder ({probeCost} crédits)
@@ -145,9 +148,7 @@ export function SystemPanel({
   const moonCount = system.planets.length - planets.length;
 
   const claimed = game.claimedSystemIds.includes(system.id);
-  const hasOwnColony = colonies.some(
-    (c) => system.planets.some((p) => p.id === c.planetId),
-  );
+  const hasOwnColony = colonies.some((c) => system.planets.some((p) => p.id === c.planetId));
 
   return (
     <>
@@ -197,7 +198,9 @@ export function SystemPanel({
       <ul className="planet-list">
         {planets.flatMap((p) => [
           renderBody(p),
-          ...system.planets.filter((m) => m.kind === "moon" && m.parentPlanetId === p.id).map(renderBody),
+          ...system.planets
+            .filter((m) => m.kind === "moon" && m.parentPlanetId === p.id)
+            .map(renderBody),
         ])}
         {system.belts.map((belt) => {
           const outpost = outposts.find((o) => o.beltId === belt.id);
@@ -250,8 +253,7 @@ export function SystemPanel({
       </ul>
       {activeColony && (
         <p className="small muted">
-          Origine des missions : {activeColony.name}. Vaisseau colonial :{" "}
-          {COLONY_SHIP_COST_TEXT}.
+          Origine des missions : {activeColony.name}. Vaisseau colonial : {COLONY_SHIP_COST_TEXT}.
         </p>
       )}
     </>

@@ -91,7 +91,8 @@ export function BodyView({
         <div>
           <h2>{body.name}</h2>
           <p className="muted">
-            {body.kind === "moon" ? "Lune" : "Planète"} {PLANET_TYPE_LABELS[body.type].toLowerCase()}
+            {body.kind === "moon" ? "Lune" : "Planète"}{" "}
+            {PLANET_TYPE_LABELS[body.type].toLowerCase()}
             {parent ? ` · en orbite autour de ${parent.name}` : ` · système ${system.name}`}
           </p>
         </div>
@@ -278,7 +279,11 @@ function SlotGrid({ body, colony }: { body: Planet; colony: Colony | undefined }
         </span>
       ))}
       {queued.map((id, i) => (
-        <span key={`q${i}`} className="slot queued" title={`${BUILDING_LABELS[id].name} (en cours)`}>
+        <span
+          key={`q${i}`}
+          className="slot queued"
+          title={`${BUILDING_LABELS[id].name} (en cours)`}
+        >
           {BUILDING_LABELS[id].name.charAt(0)}
         </span>
       ))}

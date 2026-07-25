@@ -45,7 +45,9 @@ export function usedSlots(colony: Colony): number {
 }
 
 export function canAfford(colony: Colony, cost: Partial<Record<ResourceId, number>>): boolean {
-  return Object.entries(cost).every(([res, amount]) => colony.resources[res as ResourceId] >= amount);
+  return Object.entries(cost).every(
+    ([res, amount]) => colony.resources[res as ResourceId] >= amount,
+  );
 }
 
 export type EnqueueResult = { ok: true; colony: Colony } | { ok: false; reason: string };
@@ -66,7 +68,8 @@ export function enqueueBuilding(
   if (colony.queue.length >= MAX_QUEUE_LENGTH + effects.queueBonus) {
     return { ok: false, reason: "File de construction pleine" };
   }
-  if (usedSlots(colony) >= planet.slots) return { ok: false, reason: "Plus d'emplacements disponibles" };
+  if (usedSlots(colony) >= planet.slots)
+    return { ok: false, reason: "Plus d'emplacements disponibles" };
 
   const cost = buildingCost(def);
   if (!canAfford(colony, cost)) return { ok: false, reason: "Ressources insuffisantes" };
@@ -116,7 +119,11 @@ export function effectiveHabitability(planet: Planet, effects: EmpireEffects = N
 }
 
 /** Plafond de population : logements modulés par l'habitabilité effective. */
-export function popCap(colony: Colony, planet: Planet, effects: EmpireEffects = NO_EFFECTS): number {
+export function popCap(
+  colony: Colony,
+  planet: Planet,
+  effects: EmpireEffects = NO_EFFECTS,
+): number {
   return Math.floor(housing(colony, effects) * (effectiveHabitability(planet, effects) / 100));
 }
 

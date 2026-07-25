@@ -31,7 +31,9 @@ export function generateObjectiveSpec(
   colonyCount: number,
   claimedSystemIds: readonly string[],
 ): ObjectiveSpec {
-  const eligible = OBJECTIVE_KINDS.filter((k) => k !== "hold_system" || claimedSystemIds.length > 0);
+  const eligible = OBJECTIVE_KINDS.filter(
+    (k) => k !== "hold_system" || claimedSystemIds.length > 0,
+  );
   const kind = eligible[Math.floor(rng() * eligible.length)]!;
   const spec: ObjectiveSpec = {
     kind,
@@ -68,7 +70,9 @@ export function objectiveMet(
     case "colonize_n_systems":
       return progress.colonyCount >= (spec.targetCount ?? Infinity);
     case "hold_system":
-      return spec.targetSystemId !== undefined && progress.claimedSystemIds.includes(spec.targetSystemId);
+      return (
+        spec.targetSystemId !== undefined && progress.claimedSystemIds.includes(spec.targetSystemId)
+      );
     case "lead_population":
       return progress.leadsPopulation;
     case "lead_influence":

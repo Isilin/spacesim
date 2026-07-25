@@ -37,6 +37,45 @@ Principes :
   achat au catalogue (`PRESETS`, marge +40 %), revente de plan ou de vaisseau assemblé (décote −50 %).
 - Code en anglais, UI en français (labels dans le client ou fichiers de contenu).
 
+## Architecture cible et frontières
+
+La séparation des responsabilités est stricte :
+
+- `packages/shared` reste le noyau de domaine : modèles, contenu, génération d'univers et
+  simulation pure. Il ne dépend d'aucune bibliothèque runtime, d'I/O ou de transport.
+- `packages/protocol` portera les contrats HTTP/WebSocket et leurs schémas Zod. Il peut dépendre
+  de `shared`; les applications peuvent dépendre de lui, jamais l'inverse.
+- `apps/server` reste un serveur Fastify. Il sépare les adaptateurs HTTP/WS, les services
+  applicatifs, le runtime de jeu mutable, les projections client et les repositories Drizzle.
+  `GameEngine` demeure une façade de compatibilité pendant les extractions. Ne pas introduire
+  NestJS ou un conteneur DI : la composition explicite au boot est suffisante pour le moteur à
+  ticks et WebSocket.
+- L'API de jeu publique et la future API protégée `/api/admin` utilisent les mêmes services
+  applicatifs. Une route admin ne modifie jamais Drizzle ni les maps du runtime directement.
+  Les actions administratives sont autorisées par rôle, nommées, auditées et validées.
+- `apps/web` est le client joueur. Son état poussé par WebSocket est centralisé, puis les
+  features consomment des sélecteurs plutôt que de faire transiter le snapshot par props.
+- `packages/ui` hébergera les tokens, styles de base et primitives React génériques, sans logique
+  de jeu. Les cartes SVG, labels, calculs d'affichage et interactions métier restent dans les
+  features de `apps/web`. Le futur client admin réutilisera `protocol` et `ui`.
+
+## Workflow de changement
+
+Les règles Karpathy suivantes complètent les règles propres au projet :
+
+1. **Réfléchir avant de coder** : expliciter les hypothèses et les compromis. En cas
+   d'ambiguïté qui modifie le comportement, demander une décision plutôt que choisir en silence.
+2. **Privilégier la simplicité** : livrer le minimum nécessaire. Ne pas introduire une couche,
+   une option ou une gestion d'erreur spéculative.
+3. **Faire des changements chirurgicaux** : chaque ligne modifiée doit découler de la demande.
+   Ne pas corriger du code adjacent ni supprimer du code préexistant sans objectif explicite.
+4. **Piloter par des objectifs vérifiables** : avant une extraction, définir le comportement à
+   préserver et le test qui le prouve; exécuter ce test avant et après le changement.
+
+La remise en ordre de l'architecture est une exception explicitement demandée à la règle de
+portée minimale. Elle reste découpée par frontière et chaque extraction conserve les contrats,
+les sauvegardes et la sémantique de tick existants.
+
 ## Commandes
 
 ```
@@ -44,7 +83,14 @@ pnpm dev:server    # serveur de jeu (port 3001)
 pnpm dev:web       # client web (port 5173)
 pnpm test          # tests unitaires de la simulation (shared)
 pnpm typecheck     # tsc sur les 3 packages
+pnpm format        # normalise le formatage avec Biome
+pnpm format:check  # vérifie le formatage sans modifier les fichiers
+pnpm lint          # règles Biome adoptées progressivement
 ```
+
+`format:check` est obligatoire pour tout le dépôt. Le lint est renforcé progressivement avec
+chaque zone de code assainie, afin de ne pas masquer un chantier de refactorisation sous des
+centaines de corrections non liées.
 
 Les deux serveurs de dev sont aussi déclarés dans `.claude/launch.json` (noms `server` et `web`).
 La DB SQLite (`apps/server/spacesim.db`) se supprime sans risque pour repartir d'une partie neuve.
@@ -59,6 +105,8 @@ Le CLI docker n'est pas sur le PATH — il vit sous
 docker compose up app              # serveur (3001) + client web (5173), hot reload
 docker compose run --rm test       # tests unitaires (packages/shared)
 docker compose run --rm typecheck  # tsc sur les 3 packages
+docker compose run --rm test sh -c "pnpm lint"
+docker compose run --rm test sh -c "pnpm format:check"
 ```
 
 `Dockerfile` = toolchain (node 22 + pnpm via corepack, épinglé par `packageManager`).

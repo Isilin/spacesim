@@ -9,13 +9,7 @@ import type { ResourceId } from "../types.js";
  * Hybride : `kind` "generic" = polyvalent, sans bonus ; les autres sont spécialisés
  * (slots orientés + `roleBonus` sur leur rôle de prédilection).
  */
-export type ChassisKind =
-  | "generic"
-  | "military"
-  | "freighter"
-  | "miner"
-  | "colonizer"
-  | "explorer";
+export type ChassisKind = "generic" | "military" | "freighter" | "miner" | "colonizer" | "explorer";
 
 /** Où vit et se produit un vaisseau bâti : flotte (combat/mouvement) ou pool de colonie. */
 export type ShipDomain = "fleet" | "colony";

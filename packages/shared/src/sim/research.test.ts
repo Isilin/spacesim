@@ -34,7 +34,12 @@ describe("computeEffects", () => {
   });
 
   it("cumule les multiplicateurs", () => {
-    const effects = computeEffects(["metallurgy", "advanced_mining", "automation", "industrial_chains"]);
+    const effects = computeEffects([
+      "metallurgy",
+      "advanced_mining",
+      "automation",
+      "industrial_chains",
+    ]);
     expect(effects.unlockedBuildings.has("smelter")).toBe(true);
     expect(effects.unlockedBuildings.has("component_factory")).toBe(true);
     expect(effects.outputMult.mine).toBe(1.25);
@@ -79,7 +84,11 @@ describe("computeEffects", () => {
     for (const id of TECH_IDS) {
       for (const key of Object.keys(TECHS[id].effects)) {
         const mapped =
-          key === "unlockBuildings" ? "unlockedBuildings" : key === "queueBonus" ? "queueBonus" : key;
+          key === "unlockBuildings"
+            ? "unlockedBuildings"
+            : key === "queueBonus"
+              ? "queueBonus"
+              : key;
         expect(known.has(mapped)).toBe(true);
       }
     }

@@ -102,8 +102,7 @@ describe("génération — galaxies lointaines plus riches", () => {
     expect(universe.galaxies[1]!.depositBonus).toBe(1.5);
     // Moyenne des gisements de minerai nettement supérieure dans la galaxie bonus.
     const avg = (gi: number) => {
-      const values = universe.galaxies[gi]!.systems
-        .flatMap((s) => s.planets)
+      const values = universe.galaxies[gi]!.systems.flatMap((s) => s.planets)
         .map((p) => p.deposits.ore ?? 0)
         .filter((v) => v > 0);
       return values.reduce((a, b) => a + b, 0) / values.length;

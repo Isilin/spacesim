@@ -115,7 +115,9 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
                       max={c.remaining}
                       value={entry}
                       placeholder="0"
-                      onChange={(e) => setAcceptAmounts({ ...acceptAmounts, [c.id]: e.target.value })}
+                      onChange={(e) =>
+                        setAcceptAmounts({ ...acceptAmounts, [c.id]: e.target.value })
+                      }
                     />
                   </label>
                   <button
@@ -146,7 +148,10 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
         <div className="transfer-form">
           <label className="small muted">
             Ressource{" "}
-            <select value={resource} onChange={(e) => setResource(e.target.value as MarketResource)}>
+            <select
+              value={resource}
+              onChange={(e) => setResource(e.target.value as MarketResource)}
+            >
               {MARKET_RESOURCES.map((res) => (
                 <option key={res} value={res}>
                   {RESOURCE_LABELS[res]}
@@ -156,7 +161,12 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
           </label>
           <label className="small muted transfer-amount">
             Quantité
-            <input type="number" min={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+            <input
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+            />
           </label>
           <label className="small muted transfer-amount">
             Prix (cr/unité)

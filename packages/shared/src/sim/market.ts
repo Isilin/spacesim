@@ -83,11 +83,7 @@ export function regionalMultiplier(resource: MarketResource, ctx: PriceContext):
  * Stock bas → cher, plein → bradé. Sans contexte, on retrouve le barème d'avant le
  * chantier 12 (utile aux tests et aux estimations hors station connue).
  */
-export function stationPrice(
-  resource: MarketResource,
-  stock: number,
-  ctx?: PriceContext,
-): number {
+export function stationPrice(resource: MarketResource, stock: number, ctx?: PriceContext): number {
   const ratio = TARGET_STOCK / Math.max(stock, 1);
   const mult = Math.min(PRICE_MULT_MAX, Math.max(PRICE_MULT_MIN, ratio ** 0.7));
   const regional = ctx ? regionalMultiplier(resource, ctx) : 1;

@@ -6,7 +6,10 @@ import type { Contract, Universe } from "../types.js";
  * de la valeur des contrats ouverts qui s'y trouvent (chantiers 14/15, PNJ et factions
  * compris, puisque les contrats ne sont pas brouillardés). Rend visible où le monde bat.
  */
-export function galaxyActivity(contracts: readonly Contract[], universe: Universe): Map<string, number> {
+export function galaxyActivity(
+  contracts: readonly Contract[],
+  universe: Universe,
+): Map<string, number> {
   const activity = new Map<string, number>();
   for (const contract of contracts) {
     if (contract.status !== "open") continue;
