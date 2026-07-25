@@ -260,6 +260,14 @@ app.get("/ws", { websocket: true }, (socket, request) => {
       error = engine.acceptContract(empire, msg.colonyId, msg.contractId, msg.quantity);
     } else if (msg.type === "cancelContract") {
       error = engine.cancelContract(empire, msg.contractId);
+    } else if (msg.type === "proposeRelation") {
+      error = engine.proposeRelation(empire, msg.targetEmpireId, msg.kind);
+    } else if (msg.type === "respondRelation") {
+      error = engine.respondRelation(empire, msg.proposalId, msg.accept);
+    } else if (msg.type === "cancelProposal") {
+      error = engine.cancelProposal(empire, msg.proposalId);
+    } else if (msg.type === "breakRelation") {
+      error = engine.breakRelation(empire, msg.targetEmpireId);
     }
     if (error) send({ type: "actionError", message: error });
   });

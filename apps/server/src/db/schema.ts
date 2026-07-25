@@ -87,6 +87,16 @@ export const relations = sqliteTable("relations", {
   until: integer("until"),
 });
 
+/** Propositions de pacte (NAP/alliance) en attente d'une réponse (chantier 16). */
+export const relationProposals = sqliteTable("relation_proposals", {
+  id: text("id").primaryKey(),
+  gameId: text("game_id").notNull(),
+  fromEmpireId: text("from_empire_id").notNull(),
+  toEmpireId: text("to_empire_id").notNull(),
+  kind: text("kind").notNull(),
+  createdAt: integer("created_at").notNull(),
+});
+
 /** Systèmes revendiqués par un joueur (bonus locaux, entretien en influence). */
 export const claims = sqliteTable("claims", {
   systemId: text("system_id").primaryKey(),

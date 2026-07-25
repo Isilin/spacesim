@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   breakRelationReason,
   declareWarReason,
+  DECLARE_WAR_INFLUENCE_COST,
   makePeaceReason,
+  npcAcceptsProposal,
+  NPC_ALLIANCE_MAX_POWER_RATIO,
+  NPC_ALLIANCE_MIN_POWER_RATIO,
   proposeRelationReason,
   relationKey,
   WAR_COOLDOWN_MS,
@@ -73,5 +77,36 @@ describe("breakRelationReason", () => {
 describe("WAR_COOLDOWN_MS", () => {
   it("est positif", () => {
     expect(WAR_COOLDOWN_MS).toBeGreaterThan(0);
+  });
+});
+
+describe("DECLARE_WAR_INFLUENCE_COST", () => {
+  it("est positif", () => {
+    expect(DECLARE_WAR_INFLUENCE_COST).toBeGreaterThan(0);
+  });
+});
+
+describe("npcAcceptsProposal", () => {
+  it("accepte toujours un NAP, quelle que soit la force relative", () => {
+    expect(npcAcceptsProposal("nap", 1, 1000)).toBe(true);
+    expect(npcAcceptsProposal("nap", 1000, 1)).toBe(true);
+    expect(npcAcceptsProposal("nap", 0, 0)).toBe(true);
+  });
+
+  it("accepte une alliance entre forces comparables", () => {
+    expect(npcAcceptsProposal("alliance", 100, 100)).toBe(true);
+  });
+
+  it("refuse une alliance avec un partenaire beaucoup plus faible", () => {
+    expect(npcAcceptsProposal("alliance", 100, 100 * NPC_ALLIANCE_MIN_POWER_RATIO * 0.5)).toBe(false);
+  });
+
+  it("refuse une alliance avec un partenaire beaucoup plus fort", () => {
+    expect(npcAcceptsProposal("alliance", 100, 100 * NPC_ALLIANCE_MAX_POWER_RATIO * 2)).toBe(false);
+  });
+
+  it("sans flotte connue d'un côté ou l'autre, accepte par défaut (pas de comparaison possible)", () => {
+    expect(npcAcceptsProposal("alliance", 0, 500)).toBe(true);
+    expect(npcAcceptsProposal("alliance", 500, 0)).toBe(true);
   });
 });

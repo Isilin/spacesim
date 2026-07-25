@@ -1,20 +1,4 @@
-export const RELATION_STATES = ["neutral", "nap", "alliance", "war"] as const;
-
-export type RelationState = (typeof RELATION_STATES)[number];
-
-/**
- * Relation entre deux empires (chantier 16). Paire canonique (`empireA` < `empireB`,
- * voir `relationKey`) : une seule ligne décrit une relation symétrique. `until` est un
- * cooldown (ex. guerre interdite peu après une paix), pas une durée de pacte — NAP et
- * alliance restent en vigueur tant qu'aucune des parties ne les rompt.
- */
-export interface Relation {
-  empireA: string;
-  empireB: string;
-  state: RelationState;
-  since: number;
-  until: number | null;
-}
+import type { ProposalKind, RelationState } from "../types.js";
 
 /** Clé canonique d'une paire d'empires — ordre stable, indépendant de qui appelle. */
 export function relationKey(a: string, b: string): string {
@@ -23,6 +7,9 @@ export function relationKey(a: string, b: string): string {
 
 /** Après une paix, délai avant de pouvoir redéclarer la guerre au même empire. */
 export const WAR_COOLDOWN_MS = 600_000;
+
+/** Déclarer la guerre coûte de l'influence — plus question qu'elle soit gratuite. */
+export const DECLARE_WAR_INFLUENCE_COST = 50;
 
 /**
  * Une alliance ne se rompt pas en déclarant directement la guerre — il faut d'abord la
@@ -41,7 +28,7 @@ export function makePeaceReason(current: RelationState): string | null {
 }
 
 /** Un pacte (NAP ou alliance) ne se propose pas en pleine guerre, ni s'il existe déjà. */
-export function proposeRelationReason(current: RelationState, proposed: "nap" | "alliance"): string | null {
+export function proposeRelationReason(current: RelationState, proposed: ProposalKind): string | null {
   if (current === "war") return "En guerre — faites la paix d'abord";
   if (current === proposed) return proposed === "nap" ? "Déjà en pacte de non-agression" : "Déjà alliés";
   if (current === "alliance" && proposed === "nap") return "Rompez l'alliance avant de repasser au pacte";
@@ -51,4 +38,21 @@ export function proposeRelationReason(current: RelationState, proposed: "nap" | 
 export function breakRelationReason(current: RelationState): string | null {
   if (current !== "nap" && current !== "alliance") return "Aucun pacte à rompre";
   return null;
+}
+
+/** Bornes du ratio de puissance de flotte acceptable pour qu'un PNJ accepte une alliance. */
+export const NPC_ALLIANCE_MIN_POWER_RATIO = 0.2;
+export const NPC_ALLIANCE_MAX_POWER_RATIO = 5;
+
+/**
+ * Un PNJ accepte-t-il une proposition ? Pur — la force relative (déjà calculée par
+ * l'appelant, `sim/combat.ts` `fleetPower`) est le seul critère : un NAP est toujours
+ * bienvenu (aucun engagement fort), une alliance seulement entre partenaires de force
+ * comparable — ni un poids plume qui n'apporte rien, ni un colosse qui engloutirait le PNJ.
+ */
+export function npcAcceptsProposal(kind: ProposalKind, npcPower: number, proposerPower: number): boolean {
+  if (kind === "nap") return true;
+  if (npcPower <= 0 || proposerPower <= 0) return true;
+  const ratio = proposerPower / npcPower;
+  return ratio >= NPC_ALLIANCE_MIN_POWER_RATIO && ratio <= NPC_ALLIANCE_MAX_POWER_RATIO;
 }

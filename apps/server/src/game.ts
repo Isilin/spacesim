@@ -6,6 +6,7 @@ import {
   applyColonyTick,
   applyLift,
   beltRichness,
+  breakRelationReason,
   canResearch,
   CLAIM_COST,
   CLAIM_PRODUCTION_BONUS,
@@ -24,6 +25,7 @@ import {
   convoyFuel,
   CONTIGUOUS_CLAIM_BONUS,
   createRng,
+  DECLARE_WAR_INFLUENCE_COST,
   declareWarReason,
   decideColonyEconomy,
   ECONOMY_TICK_TICKS,
@@ -43,6 +45,7 @@ import {
   factionTick,
   fleetCapacity,
   fleetIsEmpty,
+  fleetPower,
   GATEWAY_BUILD_MS,
   GATEWAY_COST,
   gatewayCost,
@@ -70,6 +73,7 @@ import {
   NEW_COLONY_ORBITAL,
   NEW_COLONY_POPULATION,
   NEW_COLONY_RESOURCES,
+  npcAcceptsProposal,
   NPC_CONTRACT_DURATION_MS,
   NPC_CONTRACT_PRICE_MULT,
   OUTPOST_COST,
@@ -85,6 +89,7 @@ import {
   randInt,
   PROBE_COST_CREDITS,
   probeDurationMs,
+  proposeRelationReason,
   redactUniverse,
   relationKey,
   REP_PER_CREDIT,
@@ -133,8 +138,10 @@ import {
   type MiningOutpost,
   type Mission,
   type Planet,
+  type ProposalKind,
   type ResourceId,
   type Relation,
+  type RelationProposal,
   type RelationState,
   type Rng,
   type Route,
@@ -176,6 +183,10 @@ export interface EngineSnapshot {
   contracts: Contract[];
   /** Humeur courante de chaque faction (chantier 15, non brouillardée). */
   factionStates: FactionState[];
+  /** Relations impliquant l'empire (chantier 16) — redactées, pas de fuite vers un tiers. */
+  relations: Relation[];
+  /** Propositions de pacte en attente le concernant (chantier 16), émises ou reçues. */
+  proposals: RelationProposal[];
   /** Présent si l'exploration a changé depuis la dernière notification. */
   universe?: Universe;
 }
@@ -240,6 +251,8 @@ export class GameEngine {
   private battleLog: StoredBattle[] = [];
   /** Relations entre empires (paires canoniques `a|b`, a<b) ; absence = neutre (chantier 16). */
   private relationMap = new Map<string, Relation>();
+  /** Propositions de pacte en attente (chantier 16). */
+  private proposalMap = new Map<string, RelationProposal>();
   private beltsById: Map<string, AsteroidBelt>;
   private listeners = new Set<StateListener>();
   private interval: NodeJS.Timeout | null = null;
@@ -327,6 +340,7 @@ export class GameEngine {
     engine.ensureDefaultPlayer();
     engine.loadPlayers();
     engine.loadRelations();
+    engine.loadProposals();
     if (isNew) {
       engine.createHomeColony();
     } else {
@@ -485,12 +499,28 @@ export class GameEngine {
       territories: this.territoriesFor(empire),
       contracts: this.contracts,
       factionStates: this.factionStates,
+      relations: this.relationsFor(empire),
+      proposals: this.proposalsFor(empire),
       // L'univers n'est réémis qu'en cas de changement : nouvelle exploration (brouillard
       // levé) ou extension de l'univers (galaxies apparues).
       ...(empire.explorationDirty || empire.universeDirty
         ? { universe: this.clientUniverseFor(empire) }
         : {}),
     };
+  }
+
+  /** Relations impliquant l'empire (chantier 16) — jamais celles entre deux tiers. */
+  private relationsFor(empire: Empire): Relation[] {
+    return [...this.relationMap.values()].filter(
+      (r) => r.empireA === empire.id || r.empireB === empire.id,
+    );
+  }
+
+  /** Propositions en attente où l'empire est émetteur ou destinataire (chantier 16). */
+  private proposalsFor(empire: Empire): RelationProposal[] {
+    return [...this.proposalMap.values()].filter(
+      (p) => p.fromEmpireId === empire.id || p.toEmpireId === empire.id,
+    );
   }
 
   /**
@@ -2110,7 +2140,7 @@ export class GameEngine {
       .run();
   }
 
-  /** Action joueur : déclarer la guerre à un empire (relation symétrique). */
+  /** Action joueur : déclarer la guerre à un empire — unilatérale, mais coûteuse en influence. */
   declareWar(empire: Empire, targetEmpireId: string): string | null {
     if (targetEmpireId === empire.id) return "Cible invalide";
     const target = this.empires.get(targetEmpireId);
@@ -2118,6 +2148,10 @@ export class GameEngine {
     const current = this.relationEntry(empire.id, targetEmpireId);
     const reason = declareWarReason(current.state, Date.now(), current.until);
     if (reason) return reason;
+    if (empire.influence < DECLARE_WAR_INFLUENCE_COST) {
+      return `Influence insuffisante (${Math.floor(empire.influence)}/${DECLARE_WAR_INFLUENCE_COST})`;
+    }
+    empire.influence -= DECLARE_WAR_INFLUENCE_COST;
     this.setRelation(empire.id, targetEmpireId, "war", null);
     console.log(`[game] « ${empire.name} » déclare la guerre à « ${target.name} »`);
     this.notify();
@@ -2133,6 +2167,113 @@ export class GameEngine {
     this.setRelation(empire.id, targetEmpireId, "neutral", Date.now() + WAR_COOLDOWN_MS);
     this.notify();
     return null;
+  }
+
+  /** Puissance de flotte totale d'un empire (somme de toutes ses flottes). */
+  private empireFleetPower(empire: Empire): number {
+    let power = 0;
+    for (const fleet of empire.fleetMap.values()) power += fleetPower(fleet.ships as FleetComposition);
+    return power;
+  }
+
+  /** Action joueur : proposer un pacte (NAP ou alliance) — exige le consentement de la cible. */
+  proposeRelation(empire: Empire, targetEmpireId: string, kind: ProposalKind): string | null {
+    if (targetEmpireId === empire.id) return "Cible invalide";
+    const target = this.empires.get(targetEmpireId);
+    if (!target) return "Empire inconnu";
+    const current = this.relationEntry(empire.id, targetEmpireId).state;
+    const reason = proposeRelationReason(current, kind);
+    if (reason) return reason;
+    const key = relationKey(empire.id, targetEmpireId);
+    const alreadyPending = [...this.proposalMap.values()].some(
+      (p) => relationKey(p.fromEmpireId, p.toEmpireId) === key,
+    );
+    if (alreadyPending) return "Une proposition est déjà en attente entre ces deux empires";
+
+    const proposal: RelationProposal = {
+      id: randomUUID(),
+      fromEmpireId: empire.id,
+      toEmpireId: targetEmpireId,
+      kind,
+      createdAt: Date.now(),
+    };
+    this.proposalMap.set(proposal.id, proposal);
+    this.insertProposal(proposal);
+    // Un PNJ ne « joue » jamais : il répond tout de suite, pas d'attente indéfinie.
+    if (target.kind === "npc") {
+      this.resolveProposal(
+        proposal,
+        npcAcceptsProposal(kind, this.empireFleetPower(target), this.empireFleetPower(empire)),
+      );
+    }
+    this.notify();
+    return null;
+  }
+
+  /** Action joueur : répondre (accepter/refuser) une proposition qui lui est adressée. */
+  respondRelation(empire: Empire, proposalId: string, accept: boolean): string | null {
+    const proposal = this.proposalMap.get(proposalId);
+    if (!proposal || proposal.toEmpireId !== empire.id) return "Proposition inconnue";
+    this.resolveProposal(proposal, accept);
+    this.notify();
+    return null;
+  }
+
+  /** Action joueur : retirer sa propre proposition avant qu'elle ne reçoive de réponse. */
+  cancelProposal(empire: Empire, proposalId: string): string | null {
+    const proposal = this.proposalMap.get(proposalId);
+    if (!proposal || proposal.fromEmpireId !== empire.id) return "Proposition inconnue";
+    this.proposalMap.delete(proposalId);
+    this.deleteProposal(proposalId);
+    this.notify();
+    return null;
+  }
+
+  /** Action joueur : rompre un pacte (NAP ou alliance) en vigueur — retour à neutre. */
+  breakRelation(empire: Empire, targetEmpireId: string): string | null {
+    if (targetEmpireId === empire.id) return "Cible invalide";
+    const current = this.relationEntry(empire.id, targetEmpireId).state;
+    const reason = breakRelationReason(current);
+    if (reason) return reason;
+    this.setRelation(empire.id, targetEmpireId, "neutral", null);
+    this.notify();
+    return null;
+  }
+
+  /** Accepte ou refuse une proposition en attente, et la retire dans tous les cas. */
+  private resolveProposal(proposal: RelationProposal, accept: boolean): void {
+    this.proposalMap.delete(proposal.id);
+    this.deleteProposal(proposal.id);
+    if (accept) this.setRelation(proposal.fromEmpireId, proposal.toEmpireId, proposal.kind, null);
+  }
+
+  private loadProposals(): void {
+    for (const row of db.select().from(schema.relationProposals).all()) {
+      this.proposalMap.set(row.id, {
+        id: row.id,
+        fromEmpireId: row.fromEmpireId,
+        toEmpireId: row.toEmpireId,
+        kind: row.kind as ProposalKind,
+        createdAt: row.createdAt,
+      });
+    }
+  }
+
+  private insertProposal(proposal: RelationProposal): void {
+    db.insert(schema.relationProposals)
+      .values({
+        id: proposal.id,
+        gameId: this.clock.id,
+        fromEmpireId: proposal.fromEmpireId,
+        toEmpireId: proposal.toEmpireId,
+        kind: proposal.kind,
+        createdAt: proposal.createdAt,
+      })
+      .run();
+  }
+
+  private deleteProposal(id: string): void {
+    db.delete(schema.relationProposals).where(eq(schema.relationProposals.id, id)).run();
   }
 
   /** Retire une flotte (survivants nuls) ou la met à jour (chantier 7d — PvP). */

@@ -118,6 +118,37 @@ export interface FactionState {
   moodUntil: number | null;
 }
 
+export type RelationState = "neutral" | "nap" | "alliance" | "war";
+
+/**
+ * Relation entre deux empires (chantier 16). Paire canonique (`empireA` < `empireB`) :
+ * une seule ligne décrit une relation symétrique. `until` est un cooldown (ex. guerre
+ * interdite peu après une paix), pas une durée de pacte — NAP et alliance restent en
+ * vigueur tant qu'aucune des parties ne les rompt. Visibilité : redactée par empire
+ * (seules les relations qui le concernent), à la différence de contrats/factions.
+ */
+export interface Relation {
+  empireA: string;
+  empireB: string;
+  state: RelationState;
+  since: number;
+  until: number | null;
+}
+
+export type ProposalKind = "nap" | "alliance";
+
+/**
+ * Proposition de pacte en attente d'une réponse (chantier 16) : NAP ou alliance exigent
+ * le consentement de la cible, à la différence de la guerre (unilatérale).
+ */
+export interface RelationProposal {
+  id: string;
+  fromEmpireId: string;
+  toEmpireId: string;
+  kind: ProposalKind;
+  createdAt: number;
+}
+
 export type ContractStatus = "open" | "fulfilled" | "expired" | "cancelled";
 
 /**
@@ -468,6 +499,10 @@ export type ServerMessage =
       contracts: Contract[];
       /** Humeur courante de chaque faction (chantier 15, non brouillardée). */
       factionStates: FactionState[];
+      /** Relations impliquant l'empire (chantier 16) — redactées, pas de fuite vers un tiers. */
+      relations: Relation[];
+      /** Propositions de pacte en attente le concernant (chantier 16), émises ou reçues. */
+      proposals: RelationProposal[];
     }
   | {
       type: "tick";
@@ -494,6 +529,10 @@ export type ServerMessage =
       contracts: Contract[];
       /** Humeur courante de chaque faction (chantier 15, non brouillardée). */
       factionStates: FactionState[];
+      /** Relations impliquant l'empire (chantier 16) — redactées, pas de fuite vers un tiers. */
+      relations: Relation[];
+      /** Propositions de pacte en attente le concernant (chantier 16), émises ou reçues. */
+      proposals: RelationProposal[];
       /** Présent quand l'exploration a changé depuis le dernier message. */
       universe?: Universe;
     }
@@ -561,4 +600,8 @@ export type ClientMessage =
       durationMs: number;
     }
   | { type: "acceptContract"; colonyId: string; contractId: string; quantity: number }
-  | { type: "cancelContract"; contractId: string };
+  | { type: "cancelContract"; contractId: string }
+  | { type: "proposeRelation"; targetEmpireId: string; kind: ProposalKind }
+  | { type: "respondRelation"; proposalId: string; accept: boolean }
+  | { type: "cancelProposal"; proposalId: string }
+  | { type: "breakRelation"; targetEmpireId: string };
