@@ -32,6 +32,10 @@ import {
   embargoBlocks,
   enqueueBuilding,
   enqueueShip,
+  FACTION_CONTRACT_DURATION_MS,
+  FACTION_CONTRACT_PRICE_MULT,
+  FACTION_CONTRACT_QUANTITY_MAX,
+  FACTION_CONTRACT_QUANTITY_MIN,
   FACTION_IDS,
   FACTION_MOOD_DURATION_MS,
   FACTIONS,
@@ -126,6 +130,7 @@ import {
   type Mission,
   type Planet,
   type ResourceId,
+  type Rng,
   type Route,
   type RouteRule,
   type ShipId,
@@ -1311,7 +1316,58 @@ export class GameEngine {
       this.factionStateMap.set(factionId, next);
       this.persistFactionState(next);
       console.log(`[game] humeur de ${FACTIONS[factionId as FactionId].name} : ${next.mood}`);
+      // La pénurie se traduit en demande concrète : un contrat qu'un joueur peut honorer.
+      if (next.mood === "shortage") this.factionPostShortageContract(factionId, rng);
     }
+  }
+
+  /**
+   * Publie un contrat pour un intrant manquant d'une faction en pénurie (chantier 15).
+   * Sans séquestre : une faction n'a pas de colonie ni de solde de crédits propre, à la
+   * différence d'un empire — c'est le marché lui-même qui l'honore, standing à la clé.
+   */
+  private factionPostShortageContract(factionId: string, rng: Rng): void {
+    const def = FACTIONS[factionId as FactionId];
+    const consumed = Object.keys(def.consumes) as MarketResource[];
+    if (consumed.length === 0) return;
+    const alreadyOpen = [...this.contractMap.values()].some(
+      (c) => c.issuerId === factionId && c.status === "open",
+    );
+    if (alreadyOpen) return;
+    const station = [...this.stationsById.values()].find((s) => s.factionId === factionId);
+    if (!station) return;
+
+    const resource = consumed[Math.floor(rng() * consumed.length)]!;
+    const stocks = this.marketMap.get(station.id);
+    const price =
+      Math.round(
+        stationPrice(resource, stocks?.[resource] ?? TARGET_STOCK, this.priceContextOf(station.id)) *
+          FACTION_CONTRACT_PRICE_MULT *
+          100,
+      ) / 100;
+    const quantity = randInt(rng, FACTION_CONTRACT_QUANTITY_MIN, FACTION_CONTRACT_QUANTITY_MAX);
+
+    const now = Date.now();
+    const contract: Contract = {
+      id: randomUUID(),
+      issuerId: factionId,
+      issuerName: def.name,
+      issuerColor: def.color,
+      colonyId: station.id,
+      colonyName: station.name,
+      systemId: station.systemId,
+      resource,
+      quantity,
+      remaining: quantity,
+      pricePerUnit: price,
+      createdAt: now,
+      deadline: now + FACTION_CONTRACT_DURATION_MS,
+      status: "open",
+    };
+    this.contractMap.set(contract.id, contract);
+    this.insertContract(contract);
+    console.log(`[game] ${def.name} publie un contrat de pénurie : ${quantity} ${resource}`);
+    this.notify();
   }
 
   /** Fait tourner l'économie d'un empire PNJ : vend le surplus, contractualise les besoins. */
@@ -2751,6 +2807,11 @@ export class GameEngine {
     };
     this.factionStateMap.set(factionId, state);
     this.persistFactionState(state);
+    // Même effet de bord qu'une bascule naturelle : sinon l'outil de dev mentirait sur
+    // ce qu'une pénurie déclenche réellement.
+    if (mood === "shortage") {
+      this.factionPostShortageContract(factionId, createRng(`dev-shortage-${factionId}-${Date.now()}`));
+    }
     this.notify();
     return true;
   }
@@ -3156,17 +3217,31 @@ export class GameEngine {
         case "deliver_contract": {
           // Livraison cross-empire (chantier 14) : le cargo appartient à `empire`, la
           // colonie destinataire à l'émetteur du contrat — deux empires distincts.
+          // Livraison à une FACTION (chantier 15) : pas de colonie émettrice — `colonyId`
+          // porte alors l'id d'un comptoir, honoré au marché, standing à la clé.
           const contract = mission.contractId ? this.contractMap.get(mission.contractId) : undefined;
-          const issuer = contract ? this.empires.get(contract.issuerId) : undefined;
-          const destColony = contract && issuer ? issuer.colonyMap.get(contract.colonyId) : undefined;
-          if (contract && issuer && destColony && mission.cargo) {
-            const delivered = deliverToOrbit(destColony, mission.cargo, issuer.effects);
-            issuer.colonyMap.set(destColony.id, delivered);
-            this.persistColony(delivered);
+          const issuerEmpire = contract ? this.empires.get(contract.issuerId) : undefined;
+          const cargoQty = Object.values(mission.cargo ?? {}).reduce((s, n) => s + (n ?? 0), 0);
+          if (contract && issuerEmpire && mission.cargo) {
+            const destColony = issuerEmpire.colonyMap.get(contract.colonyId);
+            if (destColony) {
+              const delivered = deliverToOrbit(destColony, mission.cargo, issuerEmpire.effects);
+              issuerEmpire.colonyMap.set(destColony.id, delivered);
+              this.persistColony(delivered);
+            }
+          } else if (contract && mission.cargo) {
+            const stocks = this.marketMap.get(contract.colonyId);
+            if (stocks) {
+              // `resolveSale` ne sert ici qu'à faire bouger le stock/prix du comptoir —
+              // sa recette est ignorée : l'accepteur est payé au prix FIXE du contrat.
+              const result = resolveSale(stocks, mission.cargo, this.priceContextOf(contract.colonyId));
+              this.marketMap.set(contract.colonyId, result.stocks);
+              this.persistMarket(contract.colonyId);
+              this.addFactionRep(empire, contract.colonyId, cargoQty * contract.pricePerUnit);
+            }
           }
           const payer = empire.colonyMap.get(mission.fromColonyId);
           if (contract && payer) {
-            const cargoQty = Object.values(mission.cargo ?? {}).reduce((s, n) => s + (n ?? 0), 0);
             const payout = contractPayout(contract, cargoQty);
             const resources = { ...payer.resources, credits: payer.resources.credits + payout };
             empire.colonyMap.set(payer.id, { ...payer, resources });

@@ -45,3 +45,12 @@ export function moodRebateBonus(mood: FactionMood): number {
 export function embargoBlocks(mood: FactionMood, standing: number): boolean {
   return mood === "embargo" && standing < FACTION_EMBARGO_STANDING_THRESHOLD;
 }
+
+/**
+ * Contrat publié par une faction en pénurie (chantier 15) : au-dessus du spot pour
+ * inciter à livrer, borné dans le temps comme l'humeur qui l'a déclenché.
+ */
+export const FACTION_CONTRACT_PRICE_MULT = 1.25;
+export const FACTION_CONTRACT_DURATION_MS = FACTION_MOOD_DURATION_MS;
+export const FACTION_CONTRACT_QUANTITY_MIN = 40;
+export const FACTION_CONTRACT_QUANTITY_MAX = 120;

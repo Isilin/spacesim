@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  FACTIONS,
   FRONTIER_GALAXIES,
   GATEWAY_COST,
   gatewayCost,
@@ -936,5 +937,100 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
     }
     // Chance de bascule 8 %/tick éco/faction : probabilité d'échec conjointe ~1e-6 sur 60 essais.
     expect(sawNonNeutral).toBe(true);
+  });
+});
+
+describe("GameEngine — contrats de faction (chantier 15)", () => {
+  /** Faction d'une station de la galaxie d'origine : garantit que le contrat de pénurie
+   * déclenché cible une station à portée (pas de portail requis pour l'atteindre). */
+  const homeGalaxyFactionId = (engine: GameEngine) =>
+    engine.universe.galaxies[0]!.systems.find((s) => s.station)!.station!.factionId;
+
+  it("une pénurie publie un contrat pour un besoin réel, sans séquestre prélevé", () => {
+    const engine = GameEngine.load();
+    const factionId = homeGalaxyFactionId(engine);
+    expect(engine.devSetFactionMood(factionId, "shortage")).toBe(true);
+
+    const contract = engine.contracts.find((c) => c.issuerId === factionId);
+    expect(contract).toBeDefined();
+    expect(contract!.status).toBe("open");
+    expect(contract!.issuerName).toBe(FACTIONS[factionId as keyof typeof FACTIONS].name);
+    expect(Object.keys(FACTIONS[factionId as keyof typeof FACTIONS].consumes)).toContain(
+      contract!.resource,
+    );
+  });
+
+  it("ne double jamais un contrat de pénurie tant qu'un autre est ouvert", () => {
+    const engine = GameEngine.load();
+    const factionId = homeGalaxyFactionId(engine);
+    engine.devSetFactionMood(factionId, "shortage");
+    engine.devSetFactionMood(factionId, "neutral");
+    engine.devSetFactionMood(factionId, "shortage");
+
+    expect(engine.contracts.filter((c) => c.issuerId === factionId && c.status === "open")).toHaveLength(
+      1,
+    );
+  });
+
+  it("honoré, un contrat de faction livre au comptoir, paie au prix fixé et crédite le standing", () => {
+    const engine = GameEngine.load();
+    const empire = engine.defaultEmpireForDev;
+    const colony = engine.colonies[0]!;
+    const factionId = homeGalaxyFactionId(engine);
+
+    expect(engine.devSetFactionMood(factionId, "shortage")).toBe(true);
+    const contract = engine.contracts.find((c) => c.issuerId === factionId)!;
+
+    // Lève d'abord l'énergie du carburant, SEULE et en quantité MODESTE : l'orbite n'a
+    // que 600 de capacité totale (dock unique), déjà entamée par le minerai/vivres de
+    // la colonie mère (200) — trop d'énergie la remplirait avant même d'y loger la
+    // cargaison. Le débit de l'ascenseur est aussi partagé entre consignes "up"
+    // (RESOURCES itère l'énergie en premier), donc lever les deux à la fois affamerait
+    // la cargaison derrière l'énergie.
+    engine.devGrant({ energy: 200, credits: 500 });
+    engine.setLiftRule(empire, colony.id, "energy", { keepGround: 0, direction: "up" });
+    advanceTicks(engine, 15);
+    engine.setLiftRule(empire, colony.id, "energy", null);
+
+    // Puis la cargaison demandée (quelle qu'elle soit), seule à son tour. La colonie mère
+    // naît avec sa PROPRE consigne "up" sur le minerai (chantier 12) — sans la couper, elle
+    // continuerait de disputer le même débit et pourrait affamer la cargaison demandée.
+    engine.setLiftRule(empire, colony.id, "ore", null);
+    engine.devGrant({ [contract.resource]: 150 } as Record<string, number>);
+    engine.setLiftRule(empire, colony.id, contract.resource, { keepGround: 0, direction: "up" });
+    advanceTicks(engine, 30);
+
+    const repBefore = empire.factionRep[factionId] ?? 0;
+    expect(engine.acceptContract(empire, colony.id, contract.id, contract.quantity)).toBeNull();
+
+    const mission = engine
+      .snapshotForEmpire(empire)
+      .missions.find((m) => m.kind === "deliver_contract")!;
+    expect(mission).toBeDefined();
+    const creditsBeforeDelivery = engine.colonies[0]!.resources.credits;
+
+    const durationS = Math.ceil((mission.arrivesAt - mission.departedAt) / 1000);
+    advanceTicks(engine, Math.ceil((durationS + 5) / 5));
+
+    // Payé au prix fixé du contrat, standing crédité — même mécanique qu'un empire émetteur.
+    expect(engine.colonies[0]!.resources.credits).toBeGreaterThanOrEqual(
+      creditsBeforeDelivery + Math.floor(contract.quantity * contract.pricePerUnit),
+    );
+    expect(empire.factionRep[factionId] ?? 0).toBeGreaterThan(repBefore);
+    expect(engine.snapshotForEmpire(empire).missions).toHaveLength(0);
+    expect(engine.contracts.find((c) => c.id === contract.id)!.status).toBe("fulfilled");
+  });
+
+  it("un contrat de faction expiré sans être honoré n'entraîne aucun remboursement", () => {
+    const engine = GameEngine.load();
+    const factionId = homeGalaxyFactionId(engine);
+    expect(engine.devSetFactionMood(factionId, "shortage")).toBe(true);
+    const contractId = engine.contracts.find((c) => c.issuerId === factionId)!.id;
+
+    // Échéance du contrat = FACTION_CONTRACT_DURATION_MS (1800 s = 360 ticks), indépendante
+    // de la durée d'humeur passée à devSetFactionMood — marge large pour la dépasser.
+    advanceTicks(engine, 370);
+
+    expect(engine.contracts.find((c) => c.id === contractId)!.status).toBe("expired");
   });
 });
