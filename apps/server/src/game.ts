@@ -24,6 +24,7 @@ import {
   convoyFuel,
   CONTIGUOUS_CLAIM_BONUS,
   createRng,
+  declareWarReason,
   decideColonyEconomy,
   ECONOMY_TICK_TICKS,
   deliverToOrbit,
@@ -59,6 +60,7 @@ import {
   pickStarterGalaxy,
   influencePerTick,
   jumpDistanceInUniverse,
+  makePeaceReason,
   MARKET_RESOURCES,
   marketTick,
   initialStocks,
@@ -84,6 +86,7 @@ import {
   PROBE_COST_CREDITS,
   probeDurationMs,
   redactUniverse,
+  relationKey,
   REP_PER_CREDIT,
   repBonus,
   resolveBattle,
@@ -98,6 +101,7 @@ import {
   storageCap,
   takeFromOrbit,
   TARGET_STOCK,
+  WAR_COOLDOWN_MS,
   WARSHIPS,
   TICK_MS,
   transferCostCredits,
@@ -130,6 +134,8 @@ import {
   type Mission,
   type Planet,
   type ResourceId,
+  type Relation,
+  type RelationState,
   type Rng,
   type Route,
   type RouteRule,
@@ -232,8 +238,8 @@ export class GameEngine {
   private factionStateMap = new Map<string, FactionState>();
   private lairMap = new Map<string, PirateLair>();
   private battleLog: StoredBattle[] = [];
-  /** Guerres en cours (paires canoniques `a|b`, a<b) ; absence = paix (chantier 7e). */
-  private warKeys = new Set<string>();
+  /** Relations entre empires (paires canoniques `a|b`, a<b) ; absence = neutre (chantier 16). */
+  private relationMap = new Map<string, Relation>();
   private beltsById: Map<string, AsteroidBelt>;
   private listeners = new Set<StateListener>();
   private interval: NodeJS.Timeout | null = null;
@@ -320,7 +326,7 @@ export class GameEngine {
     });
     engine.ensureDefaultPlayer();
     engine.loadPlayers();
-    engine.loadWars();
+    engine.loadRelations();
     if (isNew) {
       engine.createHomeColony();
     } else {
@@ -2039,22 +2045,69 @@ export class GameEngine {
     return null;
   }
 
-  // ─────────────────────────── Diplomatie (7e) ───────────────────────────
+  // ─────────────────────────── Diplomatie (chantier 16) ───────────────────────────
 
-  /** Clé canonique d'une relation (paire ordonnée). */
-  private warKey(a: string, b: string): string {
-    return a < b ? `${a}|${b}` : `${b}|${a}`;
+  /** Relation entre deux empires, "neutre" par défaut en l'absence de ligne. */
+  private relationEntry(a: string, b: string): Relation {
+    return (
+      this.relationMap.get(relationKey(a, b)) ?? {
+        empireA: a < b ? a : b,
+        empireB: a < b ? b : a,
+        state: "neutral",
+        since: 0,
+        until: null,
+      }
+    );
   }
 
-  /** Deux empires sont-ils en guerre ? (absence de relation = paix). */
+  /** Deux empires sont-ils en guerre ? */
   private atWar(a: string, b: string): boolean {
-    return this.warKeys.has(this.warKey(a, b));
+    return this.relationEntry(a, b).state === "war";
   }
 
-  private loadWars(): void {
-    for (const row of db.select().from(schema.wars).all()) {
-      this.warKeys.add(this.warKey(row.empireA, row.empireB));
+  /** Écrit une relation (créée ou mise à jour), symétrique et persistée. */
+  private setRelation(a: string, b: string, state: RelationState, until: number | null): void {
+    const key = relationKey(a, b);
+    const existed = this.relationMap.has(key);
+    const [empireA, empireB] = a < b ? [a, b] : [b, a];
+    const relation: Relation = { empireA, empireB, state, since: Date.now(), until };
+    this.relationMap.set(key, relation);
+    if (existed) this.persistRelation(relation);
+    else this.insertRelation(relation);
+  }
+
+  private loadRelations(): void {
+    for (const row of db.select().from(schema.relations).all()) {
+      this.relationMap.set(relationKey(row.empireA, row.empireB), {
+        empireA: row.empireA,
+        empireB: row.empireB,
+        state: row.state as RelationState,
+        since: row.since,
+        until: row.until,
+      });
     }
+  }
+
+  private insertRelation(relation: Relation): void {
+    db.insert(schema.relations)
+      .values({
+        gameId: this.clock.id,
+        empireA: relation.empireA,
+        empireB: relation.empireB,
+        state: relation.state,
+        since: relation.since,
+        until: relation.until,
+      })
+      .run();
+  }
+
+  private persistRelation(relation: Relation): void {
+    db.update(schema.relations)
+      .set({ state: relation.state, since: relation.since, until: relation.until })
+      .where(
+        and(eq(schema.relations.empireA, relation.empireA), eq(schema.relations.empireB, relation.empireB)),
+      )
+      .run();
   }
 
   /** Action joueur : déclarer la guerre à un empire (relation symétrique). */
@@ -2062,26 +2115,22 @@ export class GameEngine {
     if (targetEmpireId === empire.id) return "Cible invalide";
     const target = this.empires.get(targetEmpireId);
     if (!target) return "Empire inconnu";
-    const key = this.warKey(empire.id, targetEmpireId);
-    if (this.warKeys.has(key)) return "Déjà en guerre";
-    this.warKeys.add(key);
-    const [a, b] = key.split("|") as [string, string];
-    db.insert(schema.wars).values({ gameId: this.clock.id, empireA: a, empireB: b }).run();
+    const current = this.relationEntry(empire.id, targetEmpireId);
+    const reason = declareWarReason(current.state, Date.now(), current.until);
+    if (reason) return reason;
+    this.setRelation(empire.id, targetEmpireId, "war", null);
     console.log(`[game] « ${empire.name} » déclare la guerre à « ${target.name} »`);
     this.notify();
     return null;
   }
 
-  /** Action joueur : faire la paix avec un empire (rompt l'état de guerre). */
+  /** Action joueur : faire la paix avec un empire — rouvre un cooldown avant re-déclaration. */
   makePeace(empire: Empire, targetEmpireId: string): string | null {
     if (targetEmpireId === empire.id) return "Cible invalide";
-    const key = this.warKey(empire.id, targetEmpireId);
-    if (!this.warKeys.has(key)) return "Déjà en paix";
-    this.warKeys.delete(key);
-    const [a, b] = key.split("|") as [string, string];
-    db.delete(schema.wars)
-      .where(and(eq(schema.wars.empireA, a), eq(schema.wars.empireB, b)))
-      .run();
+    const current = this.relationEntry(empire.id, targetEmpireId);
+    const reason = makePeaceReason(current.state);
+    if (reason) return reason;
+    this.setRelation(empire.id, targetEmpireId, "neutral", Date.now() + WAR_COOLDOWN_MS);
     this.notify();
     return null;
   }
@@ -2737,6 +2786,13 @@ export class GameEngine {
       const next: FactionState = { ...state, moodUntil: state.moodUntil - delta };
       this.factionStateMap.set(id, next);
       this.persistFactionState(next);
+    }
+    // Cooldown de guerre : même décalage, pour qu'un fast-forward de dev/test le résolve.
+    for (const [id, relation] of this.relationMap) {
+      if (relation.until === null) continue;
+      const next: Relation = { ...relation, until: relation.until - delta };
+      this.relationMap.set(id, next);
+      this.persistRelation(next);
     }
     for (const [id, fleet] of this.fleetMap) {
       if (fleet.queue.length === 0 && !fleet.movement) continue;

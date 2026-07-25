@@ -36,6 +36,7 @@ const ALL_TABLES = [
   schema.fleets,
   schema.contracts,
   schema.factionStates,
+  schema.relations,
   schema.gateways,
   schema.claims,
   schema.players,
@@ -313,6 +314,21 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(engine.declareWar(a, b.id)).toBe("Déjà en guerre");
     expect(engine.makePeace(a, b.id)).toBeNull();
     expect(rowB().atWar).toBe(false);
+  });
+
+  it("makePeace impose un cooldown avant de pouvoir redéclarer la guerre au même empire", () => {
+    const engine = GameEngine.load();
+    const a = empireFor(engine, "alpha");
+    const b = empireFor(engine, "bravo");
+
+    expect(engine.declareWar(a, b.id)).toBeNull();
+    expect(engine.makePeace(a, b.id)).toBeNull();
+    // Juste après la paix : le cooldown est actif.
+    expect(engine.declareWar(a, b.id)).toMatch(/Cooldown/);
+
+    // Largement de quoi dépasser WAR_COOLDOWN_MS (10 min = 120 ticks).
+    advanceTicks(engine, 130);
+    expect(engine.declareWar(a, b.id)).toBeNull();
   });
 
   it("préserve l'état d'empire (influence, brouillard) au rechargement", () => {

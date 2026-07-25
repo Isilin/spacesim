@@ -73,13 +73,18 @@ export const players = sqliteTable("players", {
 });
 
 /**
- * États de guerre entre empires (chantier 7e — diplomatie minimale). Absence de ligne
- * = paix. Paire canonique (`empireA` < `empireB`) pour une relation symétrique unique.
+ * Relations entre empires (chantier 16 — remplace `wars`, diplomatie 7e minimale).
+ * Absence de ligne = neutre. Paire canonique (`empireA` < `empireB`) pour une relation
+ * symétrique unique. `until` : échéance de cooldown (ex. guerre interdite peu après une
+ * paix) — sans rapport avec la durée d'un pacte, qui n'expire pas de lui-même.
  */
-export const wars = sqliteTable("wars", {
+export const relations = sqliteTable("relations", {
   gameId: text("game_id").notNull(),
   empireA: text("empire_a").notNull(),
   empireB: text("empire_b").notNull(),
+  state: text("state").notNull().default("neutral"),
+  since: integer("since").notNull(),
+  until: integer("until"),
 });
 
 /** Systèmes revendiqués par un joueur (bonus locaux, entretien en influence). */
