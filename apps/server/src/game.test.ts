@@ -791,3 +791,37 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     expect(engine.acceptContract(other, otherColony.id, contractId, 999)).toMatch(/indisponible/);
   });
 });
+
+describe("GameEngine — pilote économique PNJ (chantier 14)", () => {
+  it("un PNJ vend son surplus orbital et finit par contractualiser un besoin", () => {
+    const engine = GameEngine.load();
+    engine.ensureNpcPopulation(1);
+    const npcId = summaries(engine).find((e) => e.kind === "npc")!.id;
+    const npc = engine.empireById(npcId)!;
+
+    // Assez de cycles économiques (tick éco = 12 ticks) pour que le minerai excédentaire
+    // se vende plusieurs fois et que les crédits accumulés couvrent enfin le séquestre
+    // d'un contrat. La vitesse dépend de l'habitabilité/des gisements tirés par la seed :
+    // marge large pour rester fiable sur toutes les parties générées.
+    advanceTicks(engine, 900);
+
+    const colony = engine.snapshotForEmpire(npc).colonies[0]!;
+    // Le PNJ vend dès que l'orbite dépasse le seuil : elle reste bornée, jamais au plafond.
+    expect(colony.orbitalResources.ore).toBeLessThan(500);
+
+    const npcContracts = engine.snapshotForEmpire(npc).contracts.filter((c) => c.issuerId === npcId);
+    expect(npcContracts.length).toBeGreaterThan(0);
+    // Publié pour un besoin réel (métaux/biens/composants : jamais produits localement).
+    expect(["metals", "goods", "components"]).toContain(npcContracts[0]!.resource);
+    expect(npcContracts[0]!.issuerColor).toBe(npc.color);
+  });
+
+  it("un empire humain n'a aucun pilotage automatique (npcTick n'agit que sur les PNJ)", () => {
+    const engine = GameEngine.load();
+    advanceTicks(engine, 350);
+    // L'empire par défaut est humain : aucun contrat n'a dû être publié en son nom.
+    expect(engine.contracts.filter((c) => c.issuerId === engine.defaultEmpireForDev.id)).toHaveLength(
+      0,
+    );
+  });
+});

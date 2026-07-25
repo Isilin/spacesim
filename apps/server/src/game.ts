@@ -24,6 +24,7 @@ import {
   convoyFuel,
   CONTIGUOUS_CLAIM_BONUS,
   createRng,
+  decideColonyEconomy,
   ECONOMY_TICK_TICKS,
   deliverToOrbit,
   emptyOrbital,
@@ -58,6 +59,8 @@ import {
   NEW_COLONY_ORBITAL,
   NEW_COLONY_POPULATION,
   NEW_COLONY_RESOURCES,
+  NPC_CONTRACT_DURATION_MS,
+  NPC_CONTRACT_PRICE_MULT,
   OUTPOST_COST,
   OUTPOST_UPKEEP_CREDITS,
   outpostTick,
@@ -82,8 +85,10 @@ import {
   RESOURCES,
   routeCargoQuantity,
   SHIPS,
+  stationPrice,
   storageCap,
   takeFromOrbit,
+  TARGET_STOCK,
   WARSHIPS,
   TICK_MS,
   transferCostCredits,
@@ -1210,6 +1215,86 @@ export class GameEngine {
       Math.round(((factionRep[station.factionId] ?? 0) + creditsExchanged * REP_PER_CREDIT) * 10) /
       10;
     empire.factionRep = factionRep;
+  }
+
+  // ─────────────────────────── Économie PNJ (chantier 14) ───────────────────────────
+
+  /** Comptoir le plus proche dans la MÊME galaxie (un PNJ ne commerce pas à l'échelle de l'univers). */
+  private nearestStation(systemId: string): TradeStation | null {
+    const galaxyIndex = this.galaxyIndexOfSystem.get(systemId);
+    let best: TradeStation | null = null;
+    let bestJumps = Infinity;
+    for (const station of this.stationsById.values()) {
+      if (this.galaxyIndexOfSystem.get(station.systemId) !== galaxyIndex) continue;
+      const jumps = jumpDistanceInUniverse(this.universe, systemId, station.systemId, this.portalLinks);
+      if (jumps < 0 || jumps >= bestJumps) continue;
+      bestJumps = jumps;
+      best = station;
+    }
+    return best;
+  }
+
+  /**
+   * Vend directement l'excédent orbital d'un PNJ au comptoir le plus proche — sans convoi
+   * ni trajet : un PNJ n'est pas un joueur affrétant des vaisseaux, seul son résultat
+   * économique (stocks de marché, crédits) compte pour le reste de l'univers.
+   */
+  private npcSellSurplus(empire: Empire, colony: Colony, resource: MarketResource, quantity: number): void {
+    if (quantity <= 0) return;
+    const planet = this.planetsById.get(colony.planetId);
+    const station = planet ? this.nearestStation(planet.systemId) : null;
+    if (!station) return;
+    const stocks = this.marketMap.get(station.id);
+    if (!stocks) return;
+    const loaded = takeFromOrbit(colony, { [resource]: quantity });
+    if (!loaded) return;
+    const result = resolveSale(stocks, { [resource]: quantity }, this.priceContextOf(station.id));
+    this.marketMap.set(station.id, result.stocks);
+    this.persistMarket(station.id);
+    const updated: Colony = {
+      ...loaded,
+      resources: { ...loaded.resources, credits: loaded.resources.credits + result.revenue },
+    };
+    empire.colonyMap.set(colony.id, updated);
+    this.persistColony(updated);
+  }
+
+  /** Publie un contrat pour un besoin PNJ — un joueur peut le servir contre rémunération. */
+  private npcPostContract(empire: Empire, colony: Colony, resource: MarketResource, quantity: number): void {
+    if (quantity <= 0) return;
+    // Pas d'empilement : un contrat déjà ouvert pour cette ressource suffit à couvrir le besoin.
+    const alreadyOpen = [...this.contractMap.values()].some(
+      (c) =>
+        c.issuerId === empire.id &&
+        c.colonyId === colony.id &&
+        c.resource === resource &&
+        c.status === "open",
+    );
+    if (alreadyOpen) return;
+    const planet = this.planetsById.get(colony.planetId);
+    const station = planet ? this.nearestStation(planet.systemId) : null;
+    const stocks = station ? this.marketMap.get(station.id) : undefined;
+    const price =
+      Math.round(
+        stationPrice(resource, stocks?.[resource] ?? TARGET_STOCK, station ? this.priceContextOf(station.id) : undefined) *
+          NPC_CONTRACT_PRICE_MULT *
+          100,
+      ) / 100;
+    this.postContract(empire, colony.id, resource, quantity, price, NPC_CONTRACT_DURATION_MS);
+  }
+
+  /** Fait tourner l'économie d'un empire PNJ : vend le surplus, contractualise les besoins. */
+  private npcTick(empire: Empire): void {
+    if (empire.kind !== "npc") return;
+    for (const colony of empire.colonyMap.values()) {
+      for (const intent of decideColonyEconomy(colony)) {
+        if (intent.kind === "sell") {
+          this.npcSellSurplus(empire, colony, intent.resource, intent.quantity);
+        } else {
+          this.npcPostContract(empire, colony, intent.resource, intent.quantity);
+        }
+      }
+    }
   }
 
   /**
@@ -3341,7 +3426,12 @@ export class GameEngine {
       if (isEconomyTick) this.spawnPirates(tickNumber);
       for (const empire of this.empires.values()) this.influenceTick(empire);
       // Marchés PNJ : univers partagé, une fois par tick éco.
-      if (isEconomyTick) this.economyTick(tickNumber);
+      if (isEconomyTick) {
+        this.economyTick(tickNumber);
+        // Économie des empires PNJ (chantier 14) : après les marchés, pour tarifer
+        // leurs contrats sur des cours à jour.
+        for (const empire of this.empires.values()) this.npcTick(empire);
+      }
       // Front de peuplement : une colonisation a pu entamer la frontière (chantier 9).
       if (isEconomyTick) this.ensureFrontier();
       for (const empire of this.empires.values()) this.colonyProductionTick(empire, t);
