@@ -1,6 +1,7 @@
 import type {
   ClientMessage,
   Contract,
+  FactionState,
   Gateway,
   Colony,
   Fleet,
@@ -38,6 +39,7 @@ export interface GameConnection {
   outposts: MiningOutpost[];
   gateways: Gateway[];
   contracts: Contract[];
+  factionStates: FactionState[];
   fleets: Fleet[];
   pirateLairs: PirateLair[];
   battles: StoredBattle[];
@@ -69,6 +71,7 @@ export function useGameSocket(sessionToken: string, onUnauthorized: () => void):
   const [outposts, setOutposts] = useState<MiningOutpost[]>([]);
   const [gateways, setGateways] = useState<Gateway[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [factionStates, setFactionStates] = useState<FactionState[]>([]);
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [pirateLairs, setPirateLairs] = useState<PirateLair[]>([]);
   const [battles, setBattles] = useState<StoredBattle[]>([]);
@@ -110,6 +113,7 @@ export function useGameSocket(sessionToken: string, onUnauthorized: () => void):
           setOutposts(msg.outposts);
           setGateways(msg.gateways);
           setContracts(msg.contracts);
+          setFactionStates(msg.factionStates);
           setFleets(msg.fleets);
           setPirateLairs(msg.pirateLairs);
           setBattles(msg.battles);
@@ -128,6 +132,7 @@ export function useGameSocket(sessionToken: string, onUnauthorized: () => void):
           setOutposts(msg.outposts);
           setGateways(msg.gateways);
           setContracts(msg.contracts);
+          setFactionStates(msg.factionStates);
           setFleets(msg.fleets);
           setPirateLairs(msg.pirateLairs);
           setBattles(msg.battles);
@@ -183,6 +188,7 @@ export function useGameSocket(sessionToken: string, onUnauthorized: () => void):
     outposts,
     gateways,
     contracts,
+    factionStates,
     fleets,
     pirateLairs,
     battles,

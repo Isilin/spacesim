@@ -79,6 +79,7 @@ export function App({ auth }: Props) {
     outposts,
     gateways,
     contracts,
+    factionStates,
     fleets,
     pirateLairs,
     battles,
@@ -325,6 +326,8 @@ export function App({ auth }: Props) {
             universe={universe}
             exploredSystemIds={exploredSystemIds}
             leaderboard={leaderboard}
+            factionStates={factionStates}
+            contracts={contracts}
             playerId={playerId}
             effects={effects}
             send={send}

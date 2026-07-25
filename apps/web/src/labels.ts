@@ -2,6 +2,7 @@ import type {
   BuildingId,
   CombatDirective,
   FactionId,
+  FactionMood,
   PlanetType,
   ResourceId,
   ShipId,
@@ -9,6 +10,14 @@ import type {
   TechId,
   WarshipId,
 } from "@spacesim/shared";
+
+/** Humeur de faction (chantier 15) : nom + ton d'affichage (neutre/positif/négatif). */
+export const FACTION_MOOD_LABELS: Record<FactionMood, { name: string; tone: "muted" | "ok" | "ko" }> = {
+  neutral: { name: "Calme", tone: "muted" },
+  boom: { name: "Essor — achats bonifiés", tone: "ok" },
+  shortage: { name: "Pénurie — contrat en cours", tone: "ok" },
+  embargo: { name: "Embargo — commerce fermé aux inconnus", tone: "ko" },
+};
 
 export const PLANET_TYPE_LABELS: Record<PlanetType, string> = {
   telluric: "Tellurique",

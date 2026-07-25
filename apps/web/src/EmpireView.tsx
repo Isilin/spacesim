@@ -7,13 +7,15 @@ import {
   REP_TIERS,
   type ClientMessage,
   type Colony,
+  type Contract,
   type EmpireEffects,
+  type FactionState,
   type GameState,
   type LeaderboardEntry,
   type MilestoneMetric,
   type Universe,
 } from "@spacesim/shared";
-import { repTierName } from "./labels.js";
+import { FACTION_MOOD_LABELS, RESOURCE_LABELS, repTierName } from "./labels.js";
 
 interface Props {
   game: GameState;
@@ -21,6 +23,8 @@ interface Props {
   universe: Universe;
   exploredSystemIds: string[];
   leaderboard: LeaderboardEntry[];
+  factionStates: FactionState[];
+  contracts: Contract[];
   playerId: string | null;
   effects: EmpireEffects;
   send: (msg: ClientMessage) => void;
@@ -39,6 +43,8 @@ export function EmpireView({
   universe,
   exploredSystemIds,
   leaderboard,
+  factionStates,
+  contracts,
   playerId,
   effects,
   send,
@@ -133,6 +139,11 @@ export function EmpireView({
           const rep = game.factionRep[factionId] ?? 0;
           const nextTier = [...REP_TIERS].reverse().find((t) => rep < t.min);
           const progress = nextTier ? Math.min(1, rep / nextTier.min) : 1;
+          const state = factionStates.find((s) => s.factionId === factionId);
+          const mood = FACTION_MOOD_LABELS[state?.mood ?? "neutral"];
+          const openContract = contracts.find(
+            (c) => c.issuerId === factionId && c.status === "open",
+          );
           return (
             <li key={factionId} className={`milestone ${!nextTier ? "reached" : ""}`}>
               <div className="queue-head">
@@ -150,6 +161,14 @@ export function EmpireView({
                   style={{ width: `${progress * 100}%` }}
                 />
               </div>
+              <span className={`small ${mood.tone}`}>{mood.name}</span>
+              {openContract && (
+                <span className="small muted">
+                  {" · "}
+                  Demande {openContract.remaining} {RESOURCE_LABELS[openContract.resource]} à{" "}
+                  {openContract.pricePerUnit} cr/u — voir Logistique › Contrats
+                </span>
+              )}
             </li>
           );
         })}
