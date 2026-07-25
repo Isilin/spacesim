@@ -1,4 +1,6 @@
 import { BASE_BUILDINGS, TECHS, type TechId } from "../content/techs.js";
+import { BASE_CHASSIS, CHASSIS, CHASSIS_IDS, type ChassisId } from "../content/chassis.js";
+import { BASE_MODULES, MODULES, MODULE_IDS, type ModuleId } from "../content/modules.js";
 import type { BuildingId } from "../types.js";
 
 /** Effets d'empire agrégés depuis les techs recherchées. */
@@ -31,6 +33,10 @@ export interface EmpireEffects {
   fuelMult: number;
   /** Marge commerciale en station : ventes majorées, achats minorés. */
   tradeMargin: number;
+  /** Châssis débloqués pour le concepteur (chantier 13). */
+  unlockedChassis: Set<ChassisId>;
+  /** Modules débloqués pour le concepteur (chantier 13). */
+  unlockedModules: Set<ModuleId>;
 }
 
 export function computeEffects(researched: readonly TechId[]): EmpireEffects {
@@ -59,10 +65,19 @@ export function computeEffects(researched: readonly TechId[]): EmpireEffects {
     liftThroughputMult: 1,
     fuelMult: 1,
     tradeMargin: 0,
+    unlockedChassis: new Set(BASE_CHASSIS),
+    unlockedModules: new Set(BASE_MODULES),
   };
   for (const id of researched) {
     const tech = TECHS[id];
     if (!tech) continue;
+    // Déblocages de conception (chantier 13) : source unique = `requiresTech` des défs.
+    for (const cid of CHASSIS_IDS) {
+      if (CHASSIS[cid].requiresTech === id) effects.unlockedChassis.add(cid);
+    }
+    for (const mid of MODULE_IDS) {
+      if (MODULES[mid].requiresTech === id) effects.unlockedModules.add(mid);
+    }
     const e = tech.effects;
     for (const b of e.unlockBuildings ?? []) effects.unlockedBuildings.add(b);
     for (const [building, mult] of Object.entries(e.outputMult ?? {}) as [BuildingId, number][]) {

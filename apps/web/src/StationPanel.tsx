@@ -1,15 +1,21 @@
 import {
   BASE_PRICES,
-  FACTIONS,
+  blueprintValue,
+  BLUEPRINT_BUY_MARKUP,
+  BLUEPRINT_SELL_FRACTION,
+  idleShips,
   jumpDistanceInUniverse,
   MARKET_RESOURCES,
   maxConvoyCapacity,
+  PRESETS,
   repBonus,
+  resolveBlueprint,
   resolvePurchase,
   resolveSale,
   stationPrice,
   transferCostCredits,
   transferDurationMs,
+  type Blueprint,
   type ClientMessage,
   type Colony,
   type FactionId,
@@ -23,7 +29,7 @@ import {
 } from "@spacesim/shared";
 import { useState } from "react";
 import { formatDuration, systemIdOf } from "./format.js";
-import { FACTION_DESCRIPTIONS, RESOURCE_LABELS, repTierName } from "./labels.js";
+import { FACTION_LABELS, RESOURCE_LABELS, repTierName, shipLabel } from "./labels.js";
 
 interface Props {
   station: TradeStation;
@@ -34,6 +40,8 @@ interface Props {
   transferSpeedMult: number;
   factionRep: Record<string, number>;
   routes: Route[];
+  /** Plans de vaisseaux de l'empire (chantier 13) : marché de plans en station. */
+  blueprints: Blueprint[];
   portalLinks: [string, string][];
   now: number;
   send: (msg: ClientMessage) => void;
@@ -50,6 +58,7 @@ export function StationPanel({
   transferSpeedMult,
   factionRep,
   routes,
+  blueprints,
   portalLinks,
   now,
   send,
@@ -57,8 +66,7 @@ export function StationPanel({
   const [sellAmounts, setSellAmounts] = useState<Partial<Record<ResourceId, string>>>({});
   const [buyResource, setBuyResource] = useState<MarketResource>("metals");
   const [buyBudget, setBuyBudget] = useState("");
-  const faction = FACTIONS[station.factionId as FactionId];
-  const factionDescription = FACTION_DESCRIPTIONS[station.factionId as FactionId];
+  const faction = FACTION_LABELS[station.factionId as FactionId];
 
   // Contexte régional (chantier 12) : le comptoir a son propre barème selon son
   // éloignement — c'est ce qui fait qu'un aller-retour peut valoir le carburant.
@@ -103,7 +111,7 @@ export function StationPanel({
     <div className="station-panel">
       <h2>⬡ {station.name}</h2>
       <p className="muted small">
-        {faction?.name ?? station.factionId} — {factionDescription ?? ""}
+        {faction?.name ?? station.factionId} — {faction?.description ?? ""}
       </p>
       {jumps >= 0 && (
         <p className="small muted">
@@ -268,6 +276,139 @@ export function StationPanel({
               Envoyer le convoi d'achat
             </button>
           </div>
+
+          <BlueprintMarket
+            activeColony={activeColony}
+            station={station}
+            blueprints={blueprints}
+            routes={routes}
+            send={send}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Marché de plans en station (chantier 13) : acheter un design tout fait au catalogue,
+ * revendre un plan possédé ou des vaisseaux civils désœuvrés — transaction instantanée
+ * (contrairement au commerce de ressources, rien n'est chargé sur un convoi).
+ */
+function BlueprintMarket({
+  activeColony,
+  station,
+  blueprints,
+  routes,
+  send,
+}: {
+  activeColony: Colony;
+  station: TradeStation;
+  blueprints: Blueprint[];
+  routes: Route[];
+  send: (msg: ClientMessage) => void;
+}) {
+  const idle = idleShips(activeColony, routes);
+  const idleShipEntries = Object.entries(activeColony.ships).filter(([, n]) => (n ?? 0) > 0);
+
+  return (
+    <div className="transfer-form">
+      <strong className="small">Plans de vaisseaux</strong>
+
+      <span className="muted small">Catalogue de la station (marge {Math.round((BLUEPRINT_BUY_MARKUP - 1) * 100)} %)</span>
+      <ul className="building-list">
+        {PRESETS.map((preset) => {
+          const price = Math.round(blueprintValue(resolveBlueprint(preset)) * BLUEPRINT_BUY_MARKUP);
+          const affordable = activeColony.resources.credits >= price;
+          return (
+            <li key={preset.id} className="building">
+              <div className="building-info">
+                <strong className="small">{preset.name}</strong>
+                <span className="muted small">{price} crédits</span>
+              </div>
+              <button
+                disabled={!affordable}
+                title={affordable ? "" : "Crédits insuffisants"}
+                onClick={() =>
+                  send({
+                    type: "buyBlueprintFromStation",
+                    colonyId: activeColony.id,
+                    stationId: station.id,
+                    presetId: preset.id,
+                  })
+                }
+              >
+                Acheter
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      {blueprints.length > 0 && (
+        <>
+          <span className="muted small">
+            Revendre un plan (décote {Math.round((1 - BLUEPRINT_SELL_FRACTION) * 100)} %)
+          </span>
+          <ul className="building-list">
+            {blueprints.map((bp) => {
+              const price = Math.round(blueprintValue(resolveBlueprint(bp)) * BLUEPRINT_SELL_FRACTION);
+              return (
+                <li key={bp.id} className="building">
+                  <div className="building-info">
+                    <strong className="small">{bp.name}</strong>
+                    <span className="muted small">{price} crédits</span>
+                  </div>
+                  <button
+                    onClick={() =>
+                      send({
+                        type: "sellBlueprint",
+                        colonyId: activeColony.id,
+                        stationId: station.id,
+                        blueprintId: bp.id,
+                      })
+                    }
+                  >
+                    Vendre
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+
+      {idleShipEntries.length > 0 && (
+        <>
+          <span className="muted small">Vendre un vaisseau assemblé (désœuvré)</span>
+          <ul className="building-list">
+            {idleShipEntries.map(([shipId, owned]) => {
+              const dispo = Math.min(idle[shipId] ?? 0, owned ?? 0);
+              const name = blueprints.find((b) => b.id === shipId)?.name ?? shipLabel(shipId).name;
+              return (
+                <li key={shipId} className="building">
+                  <div className="building-info">
+                    <strong className="small">{name}</strong>
+                    <span className="muted small">{dispo} disponible(s)</span>
+                  </div>
+                  <button
+                    disabled={dispo === 0}
+                    onClick={() =>
+                      send({
+                        type: "sellShip",
+                        colonyId: activeColony.id,
+                        stationId: station.id,
+                        shipId,
+                        count: 1,
+                      })
+                    }
+                  >
+                    Vendre ×1
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </>
       )}
     </div>

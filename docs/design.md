@@ -13,6 +13,12 @@
 > zoom parasite), galaxies rendues en spirales, et **réseau inter-galactique de voisinage** —
 > chaque galaxie ne s'ouvre un trou de ver que vers sa plus proche voisine (arbre couvrant
 > enraciné sur la mère), les chemins découverts (chaîne de portails active) sont mis en valeur.
+> **Chantier 13 — conception de vaisseaux (25/07/2026)** : les classes figées (`SHIPS`/`WARSHIPS`)
+> laissent place à des **plans** assemblés par le joueur — châssis (génériques ou spécialisés)
+> garnis de modules dans des emplacements typés, sous budget énergie/tonnage/calcul (EVE-like).
+> La recherche débloque châssis et modules sur tous les fronts (armes, défenses, propulsion,
+> soute, extraction, habitat). Plans commercialisables en station PNJ (achat au catalogue, revente
+> de plans et de vaisseaux assemblés). Voir « Chantier 13 » en fin de document. **Livré.**
 >
 > **État (21/07/2026)** : jalons 1 à 7 implémentés et vérifiés — le MVP décrit ici est jouable.
 > **Pivot EVE-like (13/07/2026)** : plus de niveaux de bâtiments — on empile des **instances**
@@ -468,3 +474,55 @@ dans `LogisticsView` (Routes / Convois / Orbite / Marchés).
 
 **Techs dédiées** : `space_elevator` (débit, capacité, carburant −20 %, débloque le transporteur),
 `trade_charters` (marge en station, cumulée à la réputation).
+
+### Chantier 13 — Conception de vaisseaux ✅ (25/07/2026)
+
+Fin des classes de vaisseaux figées (`content/ships.ts`, `content/warships.ts`) : un vaisseau
+est désormais un **plan** (`Blueprint`) — un châssis garni de modules, sauvegardé, produit,
+commercialisé. Le langage de conception est **hybride à la Endless Space** (châssis génériques
+ou spécialisés, chacun avec un rôle) et **EVE-like côté contraintes** (emplacements typés en
+nombre fixe **et** budgets partagés énergie/tonnage/calcul).
+
+**Contenu** (`content/chassis.ts`, `content/modules.ts`, `content/presets.ts`). Un `ChassisDef`
+fixe la coque de base, les budgets, les emplacements par type (`weapon`/`defense`/`propulsion`/
+`utility`) et un `domain` (`fleet` = flotte militaire, `colony` = pool civil de la colonie) — le
+seul reliquat de l'ancienne séparation civil/militaire, tous les rôles de module restant
+montables sur les deux domaines. Un `ModuleDef` occupe un emplacement, consomme des budgets et
+porte des effets cumulables (arme, bouclier, coque, soute, vitesse, carburant, minage,
+colonisation, soutien de flotte, initiative). Les 4 classes civiles et 7 classes militaires
+historiques sont réexprimées en `PRESETS` : preuve que le langage couvre l'existant, base
+d'amorçage des nouveaux empires et catalogue des stations PNJ.
+
+**Résolveur pur** (`sim/design.ts`, testé) : `resolveBlueprint` calcule les stats effectives
+(base du châssis + somme des effets de modules, majorés par le `roleBonus` du châssis pour son
+rôle de prédilection) ; `validateBlueprint` contrôle emplacements, budgets et déblocages par la
+recherche. Le triangle de forces du combat (`content/warships.ts`) est passé de classes figées à
+des **catégories** (`skirmisher`/`line`/`capital`/`support`) dérivées des stats résolues —
+`sim/combat.ts`, `sim/ships.ts` et `sim/travel.ts` acceptent désormais des stats injectées
+(défaut : tables historiques, zéro régression) au lieu d'importer les tables globales.
+
+**Recherche débloque tout.** `EmpireEffects` gagne `unlockedChassis`/`unlockedModules`, dérivés
+de la seule source `requiresTech` des définitions — militaire (armes, défenses), industrie
+(propulsion, soute), colonisation/industrie (extraction), colonisation (habitat). Quatre techs
+dédiées à la conception, croisées entre branches : armement plasma, blindage réactif, propulsion
+à graviton, prospection xéno (débloque aussi le châssis éclaireur lointain, spécialisé senseurs
+et minage).
+
+**Serveur autoritaire** (`apps/server`). Table `blueprints` (migration 0012, changement cassant —
+`spacesim.db` supprimée). `Empire.blueprintMap` chargée/persistée, amorcée aux presets de départ
+à la création d'un empire. Actions `createBlueprint`/`updateBlueprint`/`deleteBlueprint`
+(revalidées côté serveur) et `buildBlueprint` (routé par `domain` vers le chantier civil ou la
+file de la flotte). Le combat (`attackLair`/`attackFleet`/`attackColony`) construit une carte de
+définitions de combat à partir des plans des empires impliqués.
+
+**UI** : nouvel onglet **Chantier** — `ShipDesigner` (choix du châssis débloqué, grille de
+slots avec ajout/retrait de modules, jauges de budget et récap de stats en direct, sauvegarde) et
+`BlueprintList` (production vers la colonie ou une flotte, édition, suppression).
+
+**Marché de plans PNJ.** `StationPanel` gagne une section « Plans de vaisseaux » : achat d'un
+preset au catalogue (marge +40 %), revente d'un plan possédé ou d'un vaisseau assemblé désœuvré
+(décote −50 %), au prix de référence des ressources (`sim/design.ts`, `costValue`/
+`blueprintValue`) — transaction instantanée, un plan n'étant pas une cargaison physique à
+convoyer contrairement aux ressources.
+
+**Chantier 13 (conception de vaisseaux) : terminé.**

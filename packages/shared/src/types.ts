@@ -270,9 +270,12 @@ export const BUILDING_IDS = [
 
 export type BuildingId = (typeof BUILDING_IDS)[number];
 
+/** Classes civiles historiques (chantier 12). Depuis le chantier 13, un vaisseau civil
+ * est identifié par l'id de son **plan** — d'où `ShipId = string`. Cette liste reste
+ * la référence des classes héritées (presets, UI de transition). */
 export const SHIP_IDS = ["cargo_small", "cargo_large", "hauler", "courier"] as const;
 
-export type ShipId = (typeof SHIP_IDS)[number];
+export type ShipId = string;
 
 /** Une instance de vaisseau en production au chantier naval. */
 export interface ShipQueueItem {
@@ -285,6 +288,22 @@ export interface ShipQueueItem {
 export interface BusyShip {
   shipId: ShipId;
   freeAt: number;
+}
+
+/**
+ * Plan de vaisseau (chantier 13) : un châssis garni de modules, propre à un empire.
+ * Les ids restent `string` ici (types.ts est la base, importée par `content/*`) ;
+ * le typage fort (ChassisId/ModuleId) et la validation vivent dans `sim/design`.
+ */
+export interface Blueprint {
+  id: string;
+  /** Empire propriétaire du plan. */
+  ownerId: string;
+  name: string;
+  chassisId: string;
+  /** Un module par emplacement rempli (validé contre les slots + budgets du châssis). */
+  modules: string[];
+  createdAt: number;
 }
 
 /** Une instance de bâtiment en construction (pas de niveaux : on empile les instances). */
@@ -526,6 +545,8 @@ export type ServerMessage =
       outposts: MiningOutpost[];
       gateways: Gateway[];
       fleets: Fleet[];
+      /** Plans de vaisseaux de l'empire (chantier 13). */
+      blueprints: Blueprint[];
       pirateLairs: PirateLair[];
       battles: StoredBattle[];
       /** Entités étrangères visibles dans le brouillard de l'empire (chantier 7d). */
@@ -560,6 +581,8 @@ export type ServerMessage =
       outposts: MiningOutpost[];
       gateways: Gateway[];
       fleets: Fleet[];
+      /** Plans de vaisseaux de l'empire (chantier 13). */
+      blueprints: Blueprint[];
       pirateLairs: PirateLair[];
       battles: StoredBattle[];
       /** Entités étrangères visibles dans le brouillard de l'empire (chantier 7d). */
@@ -607,6 +630,16 @@ export type ClientMessage =
   | { type: "sell"; colonyId: string; stationId: string; resources: Partial<Record<ResourceId, number>> }
   | { type: "buy"; colonyId: string; stationId: string; resource: ResourceId; budget: number }
   | { type: "buildShip"; colonyId: string; shipId: ShipId }
+  /** Conception de vaisseaux (chantier 13). */
+  | { type: "createBlueprint"; name: string; chassisId: string; modules: string[] }
+  | { type: "updateBlueprint"; blueprintId: string; name: string; chassisId: string; modules: string[] }
+  | { type: "deleteBlueprint"; blueprintId: string }
+  /** Produit un vaisseau depuis un plan : `colonyId` (domaine colonie) ou `fleetId` (flotte). */
+  | { type: "buildBlueprint"; blueprintId: string; colonyId?: string; fleetId?: string }
+  /** Marché de plans en station (chantier 13). */
+  | { type: "buyBlueprintFromStation"; colonyId: string; stationId: string; presetId: string }
+  | { type: "sellBlueprint"; colonyId: string; stationId: string; blueprintId: string }
+  | { type: "sellShip"; colonyId: string; stationId: string; shipId: string; count: number }
   | { type: "buildOutpost"; colonyId: string; beltId: string }
   | {
       type: "createRoute";

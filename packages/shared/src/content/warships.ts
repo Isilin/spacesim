@@ -116,19 +116,34 @@ export const WARSHIPS: Record<WarshipId, WarshipDef> = {
 };
 
 /**
- * Matrice d'efficacité du triangle : multiplicateur des dégâts infligés
- * par [attaquant][défenseur]. > 1 = avantage.
+ * Catégorie de rôle d'un vaisseau au combat. Depuis le chantier 13, les vaisseaux ne sont
+ * plus des classes figées mais des plans ; le triangle de forces s'exprime donc entre
+ * **catégories** (dérivées du plan, cf. sim/design) plutôt qu'entre ids précis.
  */
-export const CLASS_ADVANTAGE: Record<WarshipId, Partial<Record<WarshipId, number>>> = {
-  fighter: { cruiser: 1.5, frigate: 0.7, dreadnought: 1.3 },
-  frigate: { fighter: 1.5, cruiser: 0.7, corvette: 1.3 },
-  cruiser: { frigate: 1.5, fighter: 0.7, bomber: 1.3 },
+export const COMBAT_CATEGORIES = ["skirmisher", "line", "capital", "support"] as const;
+
+export type CombatCategory = (typeof COMBAT_CATEGORIES)[number];
+
+/**
+ * Triangle de forces (à la Endless Space) : escarmoucheur > capital > ligne > escarmoucheur.
+ * Le soutien est neutre. Multiplicateur des dégâts infligés par [attaquant][défenseur].
+ */
+export const CATEGORY_ADVANTAGE: Record<CombatCategory, Partial<Record<CombatCategory, number>>> = {
+  skirmisher: { capital: 1.5, line: 0.7 },
+  line: { skirmisher: 1.5, capital: 0.7 },
+  capital: { line: 1.5, skirmisher: 0.7 },
   support: {},
-  // La corvette prolonge le rôle du chasseur, le bombardier celui du croiseur,
-  // le cuirassé écrase tout sauf les nuées légères.
-  corvette: { cruiser: 1.4, dreadnought: 1.4, frigate: 0.7 },
-  bomber: { frigate: 1.4, dreadnought: 1.2, fighter: 0.6 },
-  dreadnought: { frigate: 1.3, cruiser: 1.2, fighter: 0.7, corvette: 0.6 },
+};
+
+/** Catégorie des classes historiques (presets/PNJ), conservée pour la compat. */
+export const WARSHIP_CATEGORY: Record<WarshipId, CombatCategory> = {
+  fighter: "skirmisher",
+  corvette: "skirmisher",
+  frigate: "line",
+  bomber: "line",
+  cruiser: "capital",
+  dreadnought: "capital",
+  support: "support",
 };
 
 export const COMBAT_DIRECTIVES = ["barrage", "shields", "evasive", "focus_fire"] as const;

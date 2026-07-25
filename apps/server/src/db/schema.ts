@@ -141,6 +141,21 @@ export const gateways = sqliteTable("gateways", {
   active: integer("active").notNull().default(0),
 });
 
+/**
+ * Plans de vaisseaux (chantier 13) : un châssis garni de modules, propre à un empire.
+ * `modules` en JSON (tableau d'ids). Les stats sont recalculées à la volée (sim/design),
+ * jamais persistées — le contenu d'équilibrage peut évoluer sans migrer la DB.
+ */
+export const blueprints = sqliteTable("blueprints", {
+  id: text("id").primaryKey(),
+  gameId: text("game_id").notNull(),
+  ownerId: text("owner_id").notNull(),
+  name: text("name").notNull(),
+  chassisId: text("chassis_id").notNull(),
+  modules: text("modules").notNull().default("[]"),
+  createdAt: integer("created_at").notNull(),
+});
+
 /** Flottes militaires du joueur (ships/directives/queue/movement en JSON). */
 export const fleets = sqliteTable("fleets", {
   id: text("id").primaryKey(),

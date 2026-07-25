@@ -1,13 +1,18 @@
 import {
   allSystems,
+  combatDefFromStats,
   COMBAT_DIRECTIVES,
   COMBAT_PHASES,
   fleetPower,
+  resolveBlueprint,
+  WARSHIP_COMBAT_DEFS,
   WARSHIP_IDS,
   WARSHIPS,
   type BattleReport,
+  type Blueprint,
   type ClientMessage,
   type Colony,
+  type CombatDef,
   type Fleet,
   type FleetComposition,
   type ForeignColony,
@@ -19,7 +24,7 @@ import {
   type Universe,
   type WarshipId,
 } from "@spacesim/shared";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { formatDuration } from "./format.js";
 import { DIRECTIVE_LABELS, RESOURCE_LABELS, WARSHIP_LABELS } from "./labels.js";
 
@@ -28,6 +33,8 @@ interface Props {
   pirateLairs: PirateLair[];
   battles: StoredBattle[];
   colonies: Colony[];
+  /** Plans de vaisseaux de l'empire (chantier 13) : résout le nom des ids de plan en flotte. */
+  blueprints: Blueprint[];
   foreignFleets: ForeignFleet[];
   foreignColonies: ForeignColony[];
   universe: Universe;
@@ -51,10 +58,10 @@ const PHASE_LABELS: Record<string, string> = {
 };
 
 
-function compositionText(comp: FleetComposition): string {
-  const parts = (Object.entries(comp) as [WarshipId, number][])
-    .filter(([, n]) => n > 0)
-    .map(([id, n]) => `${n} ${WARSHIP_LABELS[id].name}`);
+function compositionText(comp: FleetComposition, nameOf: (id: string) => string): string {
+  const parts = Object.entries(comp)
+    .filter(([, n]) => (n ?? 0) > 0)
+    .map(([id, n]) => `${n} ${nameOf(id)}`);
   return parts.length > 0 ? parts.join(" · ") : "vide";
 }
 
@@ -63,6 +70,7 @@ export function FleetsView({
   pirateLairs,
   battles,
   colonies,
+  blueprints,
   foreignFleets,
   foreignColonies,
   universe,
@@ -74,6 +82,15 @@ export function FleetsView({
   const [newFleetName, setNewFleetName] = useState("");
   const [openBattle, setOpenBattle] = useState<string | null>(null);
   const systemName = (id: string) => allSystems(universe).find((s) => s.id === id)?.name ?? id;
+  /** Nom d'un id de vaisseau : classe historique, ou nom du plan (chantier 13), ou l'id brut. */
+  const nameOf = (id: string): string =>
+    WARSHIP_LABELS[id as WarshipId]?.name ?? blueprints.find((b) => b.id === id)?.name ?? id;
+  /** Defs de combat pour l'affichage de puissance : classes historiques + plans de l'empire. */
+  const combatDefs = useMemo((): Record<string, CombatDef> => {
+    const defs: Record<string, CombatDef> = { ...WARSHIP_COMBAT_DEFS };
+    for (const bp of blueprints) defs[bp.id] = combatDefFromStats(resolveBlueprint(bp));
+    return defs;
+  }, [blueprints]);
 
   const colony = colonies.find((c) => c.id === newFleetColony) ?? colonies[0];
 
@@ -101,12 +118,13 @@ export function FleetsView({
                     </span>
                   </div>
                   <span className="small">
-                    {compositionText(fleet.ships)} · puissance {fleetPower(fleet.ships)}
+                    {compositionText(fleet.ships, nameOf)} · puissance{" "}
+                    {fleetPower(fleet.ships, combatDefs)}
                   </span>
 
                   {fleet.queue.length > 0 && (
                     <span className="small muted">
-                      Production : {WARSHIP_LABELS[fleet.queue[0]!.warshipId as WarshipId].name} —{" "}
+                      Production : {nameOf(fleet.queue[0]!.warshipId)} —{" "}
                       {formatDuration(fleet.queue[0]!.finishesAt - now)}
                       {fleet.queue.length > 1 ? ` (+${fleet.queue.length - 1})` : ""}
                     </span>
@@ -198,7 +216,7 @@ export function FleetsView({
                   {lairsHere.map((lair) => (
                     <div key={lair.id} className="lair-target">
                       <span className="small ko">
-                        ☠ Repaire pirate — {compositionText(lair.ships)} · butin {lair.bounty} ✧
+                        ☠ Repaire pirate — {compositionText(lair.ships, nameOf)} · butin {lair.bounty} ✧
                       </span>
                       <button
                         className="action-button"
@@ -216,7 +234,7 @@ export function FleetsView({
                       <span className="small ko">
                         ⚔ Flotte {ef.name}{" "}
                         <span style={{ color: ef.ownerColor }}>({ef.ownerName})</span> —{" "}
-                        {compositionText(ef.ships as FleetComposition)}
+                        {compositionText(ef.ships as FleetComposition, nameOf)}
                       </span>
                       <button
                         className="action-button"
@@ -294,9 +312,9 @@ export function FleetsView({
                 <li key={lair.id} className="queue-item">
                   <div className="queue-head">
                     <span className="ko">☠ {systemName(lair.systemId)}</span>
-                    <span className="muted small">{fleetPower(lair.ships)}</span>
+                    <span className="muted small">{fleetPower(lair.ships, combatDefs)}</span>
                   </div>
-                  <span className="small muted">{compositionText(lair.ships)}</span>
+                  <span className="small muted">{compositionText(lair.ships, nameOf)}</span>
                 </li>
               ))}
             </ul>
@@ -349,13 +367,13 @@ export function FleetsView({
                             {DIRECTIVE_LABELS[p.attackerDirective].name} vs{" "}
                             {DIRECTIVE_LABELS[p.defenderDirective].name}
                             <div className="muted">
-                              Pertes : {compositionText(p.attackerLosses)} / ennemi{" "}
-                              {compositionText(p.defenderLosses)}
+                              Pertes : {compositionText(p.attackerLosses, nameOf)} / ennemi{" "}
+                              {compositionText(p.defenderLosses, nameOf)}
                             </div>
                           </div>
                         ))}
                         <div className="muted">
-                          Survivants : {compositionText(report.attackerSurvivors)}
+                          Survivants : {compositionText(report.attackerSurvivors, nameOf)}
                         </div>
                       </div>
                     )}

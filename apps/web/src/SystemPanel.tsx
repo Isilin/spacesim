@@ -3,6 +3,7 @@ import {
   OUTPOST_COST,
   OUTPOST_STOCK_CAP,
   PROBE_COST_CREDITS,
+  type Blueprint,
   type ClientMessage,
   type Colony,
   type EmpireEffects,
@@ -34,6 +35,8 @@ interface Props {
   outposts: MiningOutpost[];
   game: GameState;
   routes: Route[];
+  /** Plans de vaisseaux de l'empire (chantier 13) : marché de plans en station. */
+  blueprints: Blueprint[];
   portalLinks: [string, string][];
   now: number;
   send: (msg: ClientMessage) => void;
@@ -57,6 +60,7 @@ export function SystemPanel({
   outposts,
   game,
   routes,
+  blueprints,
   portalLinks,
   now,
   send,
@@ -184,6 +188,7 @@ export function SystemPanel({
           transferSpeedMult={effects.transferSpeedMult}
           factionRep={game.factionRep}
           routes={routes}
+          blueprints={blueprints}
           portalLinks={portalLinks}
           now={now}
           send={send}

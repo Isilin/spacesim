@@ -1,1 +1,0 @@
-ALTER TABLE `missions` ADD `contract_id` text;

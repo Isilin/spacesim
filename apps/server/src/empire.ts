@@ -1,6 +1,7 @@
 import {
   computeEffects,
   type ActiveResearch,
+  type Blueprint,
   type Colony,
   type EmpireEffects,
   type Fleet,
@@ -44,6 +45,8 @@ export class Empire {
   readonly outpostMap = new Map<string, MiningOutpost>();
   /** Flottes militaires. */
   readonly fleetMap = new Map<string, Fleet>();
+  /** Plans de vaisseaux conçus par cet empire (chantier 13). */
+  readonly blueprintMap = new Map<string, Blueprint>();
 
   // ── État d'empire ──────────────────────────────────────────────────────
   /** Effets cumulés des techs acquises (recomputés à chaque recherche terminée). */

@@ -1,55 +1,74 @@
-import { MAX_SHIP_QUEUE_LENGTH, SHIPS } from "../content/ships.js";
+import { MAX_SHIP_QUEUE_LENGTH, SHIPS, type LegacyShipId, type ShipDef } from "../content/ships.js";
 import type { TechId } from "../content/techs.js";
 import { canAfford } from "./colony.js";
+import type { ShipStats } from "./design.js";
 import { NO_EFFECTS, type EmpireEffects } from "./research.js";
-import { SHIP_IDS, type Colony, type ResourceId, type Route, type ShipId } from "../types.js";
+import { type Colony, type ResourceId, type Route, type ShipId } from "../types.js";
 
-/** Vaisseaux disponibles à la colonie : possédés − occupés − réservés aux routes. */
-export function idleShips(colony: Colony, routes: readonly Route[]): Record<ShipId, number> {
-  const idle = Object.fromEntries(SHIP_IDS.map((id) => [id, 0])) as Record<ShipId, number>;
-  for (const [shipId, count] of Object.entries(colony.ships) as [ShipId, number][]) {
-    idle[shipId] = count ?? 0;
+/** Soute d'un id de vaisseau selon les classes historiques (défaut des providers). */
+export function legacyCapacity(id: string): number {
+  return SHIPS[id as LegacyShipId]?.capacity ?? 0;
+}
+
+/**
+ * Vaisseaux disponibles à la colonie : possédés − occupés − réservés aux routes.
+ * Les clés sont dérivées des données de la colonie → compatible avec les ids de plan.
+ */
+export function idleShips(colony: Colony, routes: readonly Route[]): Record<string, number> {
+  const idle: Record<string, number> = {};
+  for (const [shipId, count] of Object.entries(colony.ships)) {
+    idle[shipId] = (idle[shipId] ?? 0) + (count ?? 0);
   }
   for (const busy of colony.shipsBusy) {
-    idle[busy.shipId] -= 1;
+    idle[busy.shipId] = (idle[busy.shipId] ?? 0) - 1;
   }
   for (const route of routes) {
     if (route.ownerColonyId !== colony.id) continue;
-    for (const [shipId, count] of Object.entries(route.ships) as [ShipId, number][]) {
-      idle[shipId] -= count ?? 0;
+    for (const [shipId, count] of Object.entries(route.ships)) {
+      idle[shipId] = (idle[shipId] ?? 0) - (count ?? 0);
     }
   }
-  for (const shipId of Object.keys(idle) as ShipId[]) {
-    idle[shipId] = Math.max(0, idle[shipId]);
+  for (const shipId of Object.keys(idle)) {
+    idle[shipId] = Math.max(0, idle[shipId] ?? 0);
   }
   return idle;
 }
 
 /** Capacité de soute totale d'un lot de vaisseaux. */
-export function fleetCapacity(ships: Partial<Record<ShipId, number>>): number {
+export function fleetCapacity(
+  ships: Partial<Record<string, number>>,
+  capacityOf: (id: string) => number = legacyCapacity,
+): number {
   let capacity = 0;
-  for (const [shipId, count] of Object.entries(ships) as [ShipId, number][]) {
-    capacity += SHIPS[shipId].capacity * (count ?? 0);
+  for (const [shipId, count] of Object.entries(ships)) {
+    capacity += capacityOf(shipId) * (count ?? 0);
   }
   return capacity;
 }
 
 /** Le plus gros vaisseau disponible (repli quand aucun convoi n'est précisé). */
-export function pickShip(idle: Partial<Record<ShipId, number>>): ShipId | null {
-  const available = SHIP_IDS.filter((id) => (idle[id] ?? 0) > 0);
+export function pickShip(
+  idle: Partial<Record<string, number>>,
+  capacityOf: (id: string) => number = legacyCapacity,
+): string | null {
+  const available = Object.keys(idle).filter((id) => (idle[id] ?? 0) > 0);
   if (available.length === 0) return null;
-  return available.reduce((best, id) => (SHIPS[id].capacity > SHIPS[best].capacity ? id : best));
+  return available.reduce((best, id) => (capacityOf(id) > capacityOf(best) ? id : best));
 }
 
 /** Soute du plus gros cargo disponible (0 si aucun) — borne des convois manuels. */
-export function maxConvoyCapacity(colony: Colony, routes: readonly Route[]): number {
-  const ship = pickShip(idleShips(colony, routes));
-  return ship ? SHIPS[ship].capacity : 0;
+export function maxConvoyCapacity(
+  colony: Colony,
+  routes: readonly Route[],
+  capacityOf: (id: string) => number = legacyCapacity,
+): number {
+  const ship = pickShip(idleShips(colony, routes), capacityOf);
+  return ship ? capacityOf(ship) : 0;
 }
 
 export type ShipEnqueueResult = { ok: true; colony: Colony } | { ok: false; reason: string };
 
-/** Valide et paie la production d'un vaisseau au chantier naval. */
+/** Valide et paie la production d'un vaisseau au chantier naval (classes historiques). */
 export function enqueueShip(
   colony: Colony,
   shipId: ShipId,
@@ -57,26 +76,56 @@ export function enqueueShip(
   researched: readonly TechId[],
   effects: EmpireEffects = NO_EFFECTS,
 ): ShipEnqueueResult {
-  const def = SHIPS[shipId];
+  const def = SHIPS[shipId as LegacyShipId] as ShipDef | undefined;
   if (!def) return { ok: false, reason: `Vaisseau inconnu : ${shipId}` };
-  if ((colony.buildings.shipyard ?? 0) < 1) {
-    return { ok: false, reason: "Chantier naval requis" };
-  }
   if (def.requiresTech && !researched.includes(def.requiresTech)) {
     return { ok: false, reason: "Technologie requise non recherchée" };
+  }
+  return enqueueBuild(colony, shipId, def.cost, def.buildMs, now, effects);
+}
+
+/**
+ * Valide et paie la production d'un vaisseau **depuis un plan** (chantier 13) : coût et
+ * durée viennent des stats résolues. La validation du plan (slots/budgets/déblocages)
+ * incombe à l'appelant (serveur autoritaire).
+ */
+export function enqueueShipFromStats(
+  colony: Colony,
+  blueprintId: string,
+  stats: ShipStats,
+  now: number,
+  effects: EmpireEffects = NO_EFFECTS,
+): ShipEnqueueResult {
+  if (stats.domain !== "colony") {
+    return { ok: false, reason: "Ce plan se produit en flotte, pas au chantier civil" };
+  }
+  return enqueueBuild(colony, blueprintId, stats.cost, stats.buildMs, now, effects);
+}
+
+/** Cœur commun : chantier naval requis, file, coût, timer. */
+function enqueueBuild(
+  colony: Colony,
+  shipId: string,
+  cost: Partial<Record<ResourceId, number>>,
+  buildMs: number,
+  now: number,
+  effects: EmpireEffects,
+): ShipEnqueueResult {
+  if ((colony.buildings.shipyard ?? 0) < 1) {
+    return { ok: false, reason: "Chantier naval requis" };
   }
   if (colony.shipQueue.length >= MAX_SHIP_QUEUE_LENGTH) {
     return { ok: false, reason: "File navale pleine" };
   }
-  if (!canAfford(colony, def.cost)) return { ok: false, reason: "Ressources insuffisantes" };
+  if (!canAfford(colony, cost)) return { ok: false, reason: "Ressources insuffisantes" };
 
   const resources = { ...colony.resources };
-  for (const [res, amount] of Object.entries(def.cost) as [ResourceId, number][]) {
+  for (const [res, amount] of Object.entries(cost) as [ResourceId, number][]) {
     resources[res] -= amount;
   }
   const lastFinish = colony.shipQueue.at(-1)?.finishesAt ?? now;
   const startedAt = Math.max(now, lastFinish);
-  const finishesAt = startedAt + Math.round(def.buildMs * effects.shipBuildSpeedMult);
+  const finishesAt = startedAt + Math.round(buildMs * effects.shipBuildSpeedMult);
   return {
     ok: true,
     colony: {
