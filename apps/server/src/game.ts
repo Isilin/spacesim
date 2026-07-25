@@ -557,7 +557,7 @@ export class GameEngine {
         claimed,
         influence: Math.floor(empire.influence),
         score: Math.round(score),
-        atWar: empire.id !== viewer.id && this.atWar(viewer.id, empire.id),
+        relation: empire.id === viewer.id ? "neutral" : this.relationEntry(viewer.id, empire.id).state,
       });
     }
     return rows.sort((a, b) => b.score - a.score);

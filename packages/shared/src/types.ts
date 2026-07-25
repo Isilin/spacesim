@@ -393,8 +393,8 @@ export interface LeaderboardEntry {
   influence: number;
   /** Score composite servant au tri du classement. */
   score: number;
-  /** L'empire qui reçoit ce classement est-il en guerre avec celui-ci ? (chantier 7e) */
-  atWar: boolean;
+  /** Relation de l'empire qui reçoit ce classement envers celui-ci (chantier 16). */
+  relation: RelationState;
 }
 
 /** Repaire de pirates PNJ : menace un système, à nettoyer par une flotte. */

@@ -4,6 +4,7 @@ import type {
   FactionId,
   FactionMood,
   PlanetType,
+  RelationState,
   ResourceId,
   ShipId,
   TechBranch,
@@ -17,6 +18,14 @@ export const FACTION_MOOD_LABELS: Record<FactionMood, { name: string; tone: "mut
   boom: { name: "Essor — achats bonifiés", tone: "ok" },
   shortage: { name: "Pénurie — contrat en cours", tone: "ok" },
   embargo: { name: "Embargo — commerce fermé aux inconnus", tone: "ko" },
+};
+
+/** Badge de relation diplomatique (chantier 16), affiché à côté du nom d'un empire. */
+export const RELATION_BADGES: Record<RelationState, string> = {
+  neutral: "",
+  nap: " 🤝 pacte de non-agression",
+  alliance: " ⭐ allié",
+  war: " ⚔ en guerre",
 };
 
 export const PLANET_TYPE_LABELS: Record<PlanetType, string> = {

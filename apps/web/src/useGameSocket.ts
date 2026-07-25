@@ -12,6 +12,8 @@ import type {
   MiningOutpost,
   Mission,
   PirateLair,
+  Relation,
+  RelationProposal,
   Route,
   ServerMessage,
   StationMarket,
@@ -40,6 +42,8 @@ export interface GameConnection {
   gateways: Gateway[];
   contracts: Contract[];
   factionStates: FactionState[];
+  relations: Relation[];
+  proposals: RelationProposal[];
   fleets: Fleet[];
   pirateLairs: PirateLair[];
   battles: StoredBattle[];
@@ -72,6 +76,8 @@ export function useGameSocket(sessionToken: string, onUnauthorized: () => void):
   const [gateways, setGateways] = useState<Gateway[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [factionStates, setFactionStates] = useState<FactionState[]>([]);
+  const [relations, setRelations] = useState<Relation[]>([]);
+  const [proposals, setProposals] = useState<RelationProposal[]>([]);
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [pirateLairs, setPirateLairs] = useState<PirateLair[]>([]);
   const [battles, setBattles] = useState<StoredBattle[]>([]);
@@ -114,6 +120,8 @@ export function useGameSocket(sessionToken: string, onUnauthorized: () => void):
           setGateways(msg.gateways);
           setContracts(msg.contracts);
           setFactionStates(msg.factionStates);
+          setRelations(msg.relations);
+          setProposals(msg.proposals);
           setFleets(msg.fleets);
           setPirateLairs(msg.pirateLairs);
           setBattles(msg.battles);
@@ -133,6 +141,8 @@ export function useGameSocket(sessionToken: string, onUnauthorized: () => void):
           setGateways(msg.gateways);
           setContracts(msg.contracts);
           setFactionStates(msg.factionStates);
+          setRelations(msg.relations);
+          setProposals(msg.proposals);
           setFleets(msg.fleets);
           setPirateLairs(msg.pirateLairs);
           setBattles(msg.battles);
@@ -189,6 +199,8 @@ export function useGameSocket(sessionToken: string, onUnauthorized: () => void):
     gateways,
     contracts,
     factionStates,
+    relations,
+    proposals,
     fleets,
     pirateLairs,
     battles,

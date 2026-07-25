@@ -80,6 +80,7 @@ export function App({ auth }: Props) {
     gateways,
     contracts,
     factionStates,
+    proposals,
     fleets,
     pirateLairs,
     battles,
@@ -328,6 +329,7 @@ export function App({ auth }: Props) {
             leaderboard={leaderboard}
             factionStates={factionStates}
             contracts={contracts}
+            proposals={proposals}
             playerId={playerId}
             effects={effects}
             send={send}

@@ -13,9 +13,10 @@ import {
   type GameState,
   type LeaderboardEntry,
   type MilestoneMetric,
+  type RelationProposal,
   type Universe,
 } from "@spacesim/shared";
-import { FACTION_MOOD_LABELS, RESOURCE_LABELS, repTierName } from "./labels.js";
+import { FACTION_MOOD_LABELS, RELATION_BADGES, RESOURCE_LABELS, repTierName } from "./labels.js";
 
 interface Props {
   game: GameState;
@@ -25,6 +26,7 @@ interface Props {
   leaderboard: LeaderboardEntry[];
   factionStates: FactionState[];
   contracts: Contract[];
+  proposals: RelationProposal[];
   playerId: string | null;
   effects: EmpireEffects;
   send: (msg: ClientMessage) => void;
@@ -45,6 +47,7 @@ export function EmpireView({
   leaderboard,
   factionStates,
   contracts,
+  proposals,
   playerId,
   effects,
   send,
@@ -95,40 +98,105 @@ export function EmpireView({
         <>
           <h3 className="milestones-title">Classement des empires</h3>
           <ul className="milestone-list">
-            {leaderboard.map((e, i) => (
-              <li key={e.id} className={`milestone ${e.id === playerId ? "reached" : ""}`}>
-                <div className="queue-head">
-                  <span>
-                    <span style={{ color: e.color }}>◆</span> #{i + 1} {e.name}
-                    {e.id === playerId ? " (vous)" : e.atWar ? " ⚔ en guerre" : ""}
-                  </span>
-                  <span className="muted small">score {e.score}</span>
-                </div>
-                <span className="small muted">
-                  {e.colonies} colonie{e.colonies > 1 ? "s" : ""} · {e.claimed} système
-                  {e.claimed > 1 ? "s" : ""} · ✦ {e.influence} · pop {e.population}
-                </span>
-                {e.id !== playerId && (
-                  <div className="route-actions">
-                    {e.atWar ? (
-                      <button
-                        className="action-button small"
-                        onClick={() => send({ type: "makePeace", targetEmpireId: e.id })}
-                      >
-                        Faire la paix
-                      </button>
-                    ) : (
-                      <button
-                        className="action-button small"
-                        onClick={() => send({ type: "declareWar", targetEmpireId: e.id })}
-                      >
-                        Déclarer la guerre
-                      </button>
-                    )}
+            {leaderboard.map((e, i) => {
+              // Une proposition en cours (émise ou reçue) prime sur les boutons de relation :
+              // il faut d'abord y répondre / l'annuler avant de proposer autre chose.
+              const incoming = proposals.find((p) => p.fromEmpireId === e.id && p.toEmpireId === playerId);
+              const outgoing = proposals.find((p) => p.fromEmpireId === playerId && p.toEmpireId === e.id);
+              return (
+                <li key={e.id} className={`milestone ${e.id === playerId ? "reached" : ""}`}>
+                  <div className="queue-head">
+                    <span>
+                      <span style={{ color: e.color }}>◆</span> #{i + 1} {e.name}
+                      {e.id === playerId ? " (vous)" : RELATION_BADGES[e.relation]}
+                    </span>
+                    <span className="muted small">score {e.score}</span>
                   </div>
-                )}
-              </li>
-            ))}
+                  <span className="small muted">
+                    {e.colonies} colonie{e.colonies > 1 ? "s" : ""} · {e.claimed} système
+                    {e.claimed > 1 ? "s" : ""} · ✦ {e.influence} · pop {e.population}
+                  </span>
+                  {e.id !== playerId && (
+                    <div className="route-actions">
+                      {incoming ? (
+                        <>
+                          <span className="small muted">
+                            Propose {incoming.kind === "nap" ? "un pacte" : "une alliance"}
+                          </span>
+                          <button
+                            className="action-button small"
+                            onClick={() =>
+                              send({ type: "respondRelation", proposalId: incoming.id, accept: true })
+                            }
+                          >
+                            Accepter
+                          </button>
+                          <button
+                            className="action-button small"
+                            onClick={() =>
+                              send({ type: "respondRelation", proposalId: incoming.id, accept: false })
+                            }
+                          >
+                            Refuser
+                          </button>
+                        </>
+                      ) : outgoing ? (
+                        <>
+                          <span className="small muted">
+                            Proposition envoyée ({outgoing.kind === "nap" ? "pacte" : "alliance"})
+                          </span>
+                          <button
+                            className="action-button small"
+                            onClick={() => send({ type: "cancelProposal", proposalId: outgoing.id })}
+                          >
+                            Annuler
+                          </button>
+                        </>
+                      ) : e.relation === "war" ? (
+                        <button
+                          className="action-button small"
+                          onClick={() => send({ type: "makePeace", targetEmpireId: e.id })}
+                        >
+                          Faire la paix
+                        </button>
+                      ) : e.relation === "alliance" || e.relation === "nap" ? (
+                        <button
+                          className="action-button small"
+                          onClick={() => send({ type: "breakRelation", targetEmpireId: e.id })}
+                        >
+                          {e.relation === "alliance" ? "Rompre l'alliance" : "Rompre le pacte"}
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            className="action-button small"
+                            onClick={() => send({ type: "declareWar", targetEmpireId: e.id })}
+                          >
+                            Déclarer la guerre
+                          </button>
+                          <button
+                            className="action-button small"
+                            onClick={() =>
+                              send({ type: "proposeRelation", targetEmpireId: e.id, kind: "nap" })
+                            }
+                          >
+                            Proposer un pacte
+                          </button>
+                          <button
+                            className="action-button small"
+                            onClick={() =>
+                              send({ type: "proposeRelation", targetEmpireId: e.id, kind: "alliance" })
+                            }
+                          >
+                            Proposer une alliance
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </>
       )}

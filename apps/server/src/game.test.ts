@@ -302,22 +302,17 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     a.influence = 1000; // déclarer la guerre coûte de l'influence (chantier 16)
-    const rowB = () =>
-      (engine.snapshotForEmpire(a).leaderboard as { id: string; atWar: boolean }[]).find(
-        (e) => e.id === b.id,
-      )!;
+    const rowB = () => engine.snapshotForEmpire(a).leaderboard.find((e) => e.id === b.id)!;
 
-    expect(rowB().atWar).toBe(false);
+    expect(rowB().relation).toBe("neutral");
     expect(engine.declareWar(a, b.id)).toBeNull();
-    expect(rowB().atWar).toBe(true);
+    expect(rowB().relation).toBe("war");
     // La relation est symétrique : b voit aussi la guerre.
-    const rowAfromB = (engine.snapshotForEmpire(b).leaderboard as { id: string; atWar: boolean }[]).find(
-      (e) => e.id === a.id,
-    )!;
-    expect(rowAfromB.atWar).toBe(true);
+    const rowAfromB = engine.snapshotForEmpire(b).leaderboard.find((e) => e.id === a.id)!;
+    expect(rowAfromB.relation).toBe("war");
     expect(engine.declareWar(a, b.id)).toBe("Déjà en guerre");
     expect(engine.makePeace(a, b.id)).toBeNull();
-    expect(rowB().atWar).toBe(false);
+    expect(rowB().relation).toBe("neutral");
   });
 
   it("makePeace impose un cooldown avant de pouvoir redéclarer la guerre au même empire", () => {
