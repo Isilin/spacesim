@@ -60,6 +60,8 @@ export interface EmpireSnapshot {
   objectives: Objective[];
   /** Événements de monde actifs (chantier 17), non brouillardés. */
   worldEvents: WorldEvent[];
+  /** Présent quand l'exploration ou l'univers a changé depuis le dernier message. */
+  universe?: Universe;
 }
 
 /** Messages WebSocket serveur → client. L'univers envoyé est expurgé du non-exploré. */
@@ -70,9 +72,5 @@ export type ServerMessage =
       playerId: string;
       universe: Universe;
     } & EmpireSnapshot)
-  | ({
-      type: "tick";
-      /** Présent quand l'exploration a changé depuis le dernier message. */
-      universe?: Universe;
-    } & EmpireSnapshot)
+  | ({ type: "tick" } & EmpireSnapshot)
   | { type: "actionError"; message: string };

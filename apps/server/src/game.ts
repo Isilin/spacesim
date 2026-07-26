@@ -105,7 +105,6 @@ import {
   PROBE_COST_CREDITS,
   probeDurationMs,
   proposeRelationReason,
-  redactUniverse,
   relationKey,
   REP_PER_CREDIT,
   repBonus,
@@ -141,12 +140,8 @@ import {
   type FactionState,
   type Fleet,
   type FleetComposition,
-  type ForeignColony,
-  type ForeignFleet,
   type GalaxyOccupancy,
-  type LeaderboardEntry,
   type LiftRule,
-  type Territory,
   type GameState,
   type Gateway,
   type PirateLair,
@@ -177,49 +172,19 @@ import {
   type WorldEvent,
   type WorldEventKind,
 } from "@spacesim/shared";
+import type { EmpireSnapshot } from "@spacesim/protocol";
 import { and, eq, isNull } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { db, schema } from "./db/index.js";
 import { Empire, type Clock } from "./empire.js";
 import { GameRuntime } from "./runtime/game-runtime.js";
-
-export interface EngineSnapshot {
-  game: GameState;
-  colonies: Colony[];
-  transfers: Transfer[];
-  missions: Mission[];
-  exploredSystemIds: string[];
-  markets: StationMarket[];
-  routes: Route[];
-  outposts: MiningOutpost[];
-  gateways: Gateway[];
-  fleets: Fleet[];
-  /** Plans de vaisseaux de l'empire (chantier 13). */
-  blueprints: Blueprint[];
-  pirateLairs: PirateLair[];
-  battles: StoredBattle[];
-  /** Entités étrangères visibles dans le brouillard de l'empire (chantier 7d). */
-  foreignFleets: ForeignFleet[];
-  foreignColonies: ForeignColony[];
-  /** Classement de tous les empires (chantier 7e). */
-  leaderboard: LeaderboardEntry[];
-  /** Systèmes revendiqués visibles, colorés par empire (chantier 7e). */
-  territories: Territory[];
-  /** Contrats de fourniture actifs de toute la partie (chantier 14, non brouillardés). */
-  contracts: Contract[];
-  /** Humeur courante de chaque faction (chantier 15, non brouillardée). */
-  factionStates: FactionState[];
-  /** Relations impliquant l'empire (chantier 16) — redactées, pas de fuite vers un tiers. */
-  relations: Relation[];
-  /** Propositions de pacte en attente le concernant (chantier 16), émises ou reçues. */
-  proposals: RelationProposal[];
-  /** Objectifs éphémères de l'empire (chantier 17) — personnels, jamais visibles d'un tiers. */
-  objectives: Objective[];
-  /** Événements de monde actifs (chantier 17), non brouillardés. */
-  worldEvents: WorldEvent[];
-  /** Présent si l'exploration a changé depuis la dernière notification. */
-  universe?: Universe;
-}
+import {
+  clientUniverseForEmpire,
+  marketsForEmpire,
+  objectivesForEmpire,
+  pirateLairsForEmpire,
+  snapshotForEmpire as projectSnapshotForEmpire,
+} from "./runtime/projections.js";
 
 /** Directives par défaut d'une flotte neuve. */
 const DEFAULT_DIRECTIVES: Record<CombatPhase, string> = {
@@ -476,7 +441,7 @@ export class GameEngine {
 
   /** Univers vu par le client : planètes masquées hors systèmes explorés. */
   get clientUniverse(): Universe {
-    return this.clientUniverseFor(this.defaultEmpire);
+    return clientUniverseForEmpire(this.runtime, this.defaultEmpire);
   }
 
   get routes(): Route[] {
@@ -505,7 +470,7 @@ export class GameEngine {
 
   /** Repaires dans les systèmes explorés uniquement (fog). */
   get pirateLairs(): PirateLair[] {
-    return this.pirateLairsFor(this.defaultEmpire);
+    return pirateLairsForEmpire(this.runtime, this.defaultEmpire);
   }
 
   get battles(): StoredBattle[] {
@@ -531,164 +496,7 @@ export class GameEngine {
 
   /** Marchés des seules stations situées dans des systèmes explorés. */
   get markets(): StationMarket[] {
-    return this.marketsFor(this.defaultEmpire);
-  }
-
-  /** Univers redacté au brouillard de l'empire (planètes masquées hors systèmes explorés). */
-  private clientUniverseFor(empire: Empire): Universe {
-    return redactUniverse(this.universe, empire.explored);
-  }
-
-  /** Marchés des stations situées dans les systèmes explorés par l'empire. */
-  private marketsFor(empire: Empire): StationMarket[] {
-    const markets: StationMarket[] = [];
-    for (const [stationId, stocks] of this.marketMap) {
-      const station = this.stationsById.get(stationId);
-      if (station && empire.explored.has(station.systemId)) {
-        markets.push({ stationId, stocks });
-      }
-    }
-    return markets;
-  }
-
-  /** Repaires PNJ visibles dans le brouillard de l'empire. */
-  private pirateLairsFor(empire: Empire): PirateLair[] {
-    return [...this.lairMap.values()].filter((l) => empire.explored.has(l.systemId));
-  }
-
-  /**
-   * Compose le snapshot (forme externe WS) d'un empire : ses entités + l'horloge et
-   * les PNJ partagés, redactés à son brouillard. En 7c, un snapshot distinct sera
-   * diffusé par connexion ; ici un seul empire est instancié.
-   */
-  private snapshotFor(empire: Empire): EngineSnapshot {
-    const { foreignFleets, foreignColonies } = this.foreignPresenceFor(empire);
-    return {
-      game: empire.toGameState(this.clock),
-      colonies: [...empire.colonyMap.values()],
-      transfers: [...empire.transferMap.values()],
-      missions: [...empire.missionMap.values()],
-      exploredSystemIds: [...empire.explored],
-      markets: this.marketsFor(empire),
-      routes: [...empire.routeMap.values()],
-      outposts: [...empire.outpostMap.values()],
-      gateways: [...this.gatewayMap.values()],
-      fleets: [...empire.fleetMap.values()],
-      blueprints: [...empire.blueprintMap.values()],
-      pirateLairs: this.pirateLairsFor(empire),
-      battles: this.battleLog,
-      foreignFleets,
-      foreignColonies,
-      leaderboard: this.leaderboard(empire),
-      territories: this.territoriesFor(empire),
-      contracts: this.contracts,
-      factionStates: this.factionStates,
-      relations: this.relationsFor(empire),
-      proposals: this.proposalsFor(empire),
-      objectives: this.objectivesFor(empire),
-      worldEvents: [...this.worldEventMap.values()],
-      // L'univers n'est réémis qu'en cas de changement : nouvelle exploration (brouillard
-      // levé) ou extension de l'univers (galaxies apparues).
-      ...(empire.explorationDirty || empire.universeDirty
-        ? { universe: this.clientUniverseFor(empire) }
-        : {}),
-    };
-  }
-
-  /** Relations impliquant l'empire (chantier 16) — jamais celles entre deux tiers. */
-  private relationsFor(empire: Empire): Relation[] {
-    return [...this.relationMap.values()].filter(
-      (r) => r.empireA === empire.id || r.empireB === empire.id,
-    );
-  }
-
-  /** Propositions en attente où l'empire est émetteur ou destinataire (chantier 16). */
-  private proposalsFor(empire: Empire): RelationProposal[] {
-    return [...this.proposalMap.values()].filter(
-      (p) => p.fromEmpireId === empire.id || p.toEmpireId === empire.id,
-    );
-  }
-
-  /**
-   * Systèmes revendiqués visibles d'un empire (chantier 7e) : ses propres claims + ceux
-   * des autres empires situés dans son brouillard, colorés par propriétaire.
-   */
-  private territoriesFor(empire: Empire): Territory[] {
-    const out: Territory[] = [];
-    for (const other of this.empires.values()) {
-      const own = other.id === empire.id;
-      for (const systemId of other.claimedSystemIds) {
-        if (!own && !empire.explored.has(systemId)) continue;
-        out.push({ systemId, ownerId: other.id, ownerColor: other.color });
-      }
-    }
-    return out;
-  }
-
-  /** Classement public de tous les empires, trié par score composite décroissant. */
-  private leaderboard(viewer: Empire): LeaderboardEntry[] {
-    const rows: LeaderboardEntry[] = [];
-    for (const empire of this.empires.values()) {
-      const colonies = [...empire.colonyMap.values()];
-      const population = colonies.reduce((s, c) => s + c.population, 0);
-      const claimed = empire.claimedSystemIds.length;
-      const score =
-        colonies.length * 100 + claimed * 40 + Math.floor(population) + empire.influence / 10;
-      rows.push({
-        id: empire.id,
-        name: empire.name,
-        color: empire.color,
-        colonies: colonies.length,
-        population: Math.floor(population),
-        claimed,
-        influence: Math.floor(empire.influence),
-        score: Math.round(score),
-        relation:
-          empire.id === viewer.id ? "neutral" : this.relationEntry(viewer.id, empire.id).state,
-      });
-    }
-    return rows.sort((a, b) => b.score - a.score);
-  }
-
-  /**
-   * Présence étrangère visible d'un empire : flottes et colonies des AUTRES empires
-   * situées dans un système de son brouillard (chantier 7d — cible PvP potentielle).
-   */
-  private foreignPresenceFor(empire: Empire): {
-    foreignFleets: ForeignFleet[];
-    foreignColonies: ForeignColony[];
-  } {
-    const foreignFleets: ForeignFleet[] = [];
-    const foreignColonies: ForeignColony[] = [];
-    for (const other of this.empires.values()) {
-      if (other.id === empire.id) continue;
-      for (const fleet of other.fleetMap.values()) {
-        if (!empire.explored.has(fleet.systemId)) continue;
-        foreignFleets.push({
-          id: fleet.id,
-          ownerId: other.id,
-          ownerName: other.name,
-          ownerColor: other.color,
-          name: fleet.name,
-          systemId: fleet.systemId,
-          ships: fleet.ships,
-        });
-      }
-      for (const colony of other.colonyMap.values()) {
-        const systemId = this.planetsById.get(colony.planetId)?.systemId;
-        if (!systemId || !empire.explored.has(systemId)) continue;
-        foreignColonies.push({
-          id: colony.id,
-          ownerId: other.id,
-          ownerName: other.name,
-          ownerColor: other.color,
-          name: colony.name,
-          systemId,
-          planetId: colony.planetId,
-        });
-      }
-    }
-    return { foreignFleets, foreignColonies };
+    return marketsForEmpire(this.runtime, this.defaultEmpire);
   }
 
   /** Localise une flotte parmi tous les empires (cible PvP). */
@@ -2842,11 +2650,6 @@ export class GameEngine {
       .run();
   }
 
-  /** Objectifs de l'empire — personnels, jamais ceux d'un tiers (chantier 17). */
-  private objectivesFor(empire: Empire): Objective[] {
-    return [...this.objectiveMap.values()].filter((o) => o.empireId === empire.id);
-  }
-
   /** Empires en tête de population/influence — sert à évaluer lead_population/lead_influence. */
   private empireLeaders(): { populationLeaderId: string | null; influenceLeaderId: string | null } {
     let popLeader: { id: string; value: number } | null = null;
@@ -2865,7 +2668,7 @@ export class GameEngine {
   private generateObjectives(tickNumber: number, now: number): void {
     for (const empire of this.empires.values()) {
       if (empire.kind !== "human") continue;
-      const mine = this.objectivesFor(empire);
+      const mine = objectivesForEmpire(this.runtime, empire);
       const open = mine.filter((o) => o.status === "open");
       if (open.length >= MAX_OPEN_OBJECTIVES_PER_EMPIRE) continue;
       // Cooldown : pas de nouveau tirage juste après complétion/expiration, sinon un but
@@ -4050,13 +3853,13 @@ export class GameEngine {
   }
 
   /** Snapshot (forme externe WS) redacté au brouillard d'un empire (chantier 7c-B). */
-  snapshotForEmpire(empire: Empire): EngineSnapshot {
-    return this.snapshotFor(empire);
+  snapshotForEmpire(empire: Empire): EmpireSnapshot {
+    return projectSnapshotForEmpire(this.runtime, empire);
   }
 
   /** Univers redacté au brouillard d'un empire — payload initial du message `hello`. */
   clientUniverseForEmpire(empire: Empire): Universe {
-    return this.clientUniverseFor(empire);
+    return clientUniverseForEmpire(this.runtime, empire);
   }
 
   /** Outil de dev uniquement : résumé par empire (état en mémoire) pour l'observation. */
