@@ -1,5 +1,7 @@
 import websocket from "@fastify/websocket";
-import type { ClientMessage, ServerMessage } from "@spacesim/shared";
+import { ClientMessageSchema } from "@spacesim/protocol";
+import type { ClientMessage } from "@spacesim/protocol";
+import type { ServerMessage } from "@spacesim/shared";
 import Fastify from "fastify";
 import {
   bearerToken,
@@ -181,13 +183,19 @@ app.get("/ws", { websocket: true }, (socket, request) => {
   );
 
   socket.on("message", (raw: Buffer) => {
-    let msg: ClientMessage;
+    let payload: unknown;
     try {
-      msg = JSON.parse(raw.toString());
+      payload = JSON.parse(raw.toString());
     } catch {
       send({ type: "actionError", message: "Message illisible" });
       return;
     }
+    const parsed = ClientMessageSchema.safeParse(payload);
+    if (!parsed.success) {
+      send({ type: "actionError", message: "Commande invalide" });
+      return;
+    }
+    const msg: ClientMessage = parsed.data;
     let error: string | null = null;
     if (msg.type === "build") {
       error = engine.build(empire, msg.colonyId, msg.buildingId);
