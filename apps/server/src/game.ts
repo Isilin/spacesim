@@ -1,7 +1,4 @@
 import {
-  allBelts,
-  allPlanets,
-  allStations,
   allSystems,
   applyColonyTick,
   applyLift,
@@ -58,7 +55,6 @@ import {
   galaxyParentIndex,
   researchPath,
   generateGalaxyAt,
-  generateUniverse,
   idleShips,
   INITIAL_GALAXIES,
   isContractExpired,
@@ -185,6 +181,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { db, schema } from "./db/index.js";
 import { Empire, type Clock } from "./empire.js";
+import { GameRuntime } from "./runtime/game-runtime.js";
 
 export interface EngineSnapshot {
   game: GameState;
@@ -275,42 +272,81 @@ const consoleLogger: Logger = {
  * Serveur autoritaire : le client ne fait qu'afficher.
  */
 export class GameEngine {
-  /** Non figé : `growUniverse` le remplace quand de nouvelles galaxies s'ouvrent (chantier 9). */
-  universe: Universe;
+  /** Composé au boot : univers, horloge, index et entités partagées (game-scoped). */
+  private runtime: GameRuntime;
   /** Injecté depuis le boot (`setLogger`) ; console brute par défaut (tests, scripts). */
   private logger: Logger = consoleLogger;
-  /** Horloge et identité de l'univers partagé. */
-  private clock: Clock;
-  private planetsById: Map<string, Planet>;
-  private stationsById: Map<string, TradeStation>;
-  /** Index de galaxie par système — sert aux règles d'expansion (chantier 9). */
-  private galaxyIndexOfSystem = new Map<string, number>();
-  private marketMap = new Map<string, Stocks>();
-  // Portails inter-galactiques : mégastructures d'univers PARTAGÉES (game-scoped, décision
-  // Phase D). N'importe quel empire y contribue via `contributeGateway` ; une fois actif, le
-  // portail bénéficie à tous. Pas de portail par-empire — cohérent avec les marchés/pirates PNJ.
-  private gatewayMap = new Map<string, Gateway>();
-  /** Contrats de fourniture (chantier 14) : partagés comme les portails, pas de fog. */
-  private contractMap = new Map<string, Contract>();
-  /** Humeur des factions (chantier 15) : partagée, pas de fog. */
-  private factionStateMap = new Map<string, FactionState>();
-  private lairMap = new Map<string, PirateLair>();
-  private battleLog: StoredBattle[] = [];
-  /** Relations entre empires (paires canoniques `a|b`, a<b) ; absence = neutre (chantier 16). */
-  private relationMap = new Map<string, Relation>();
-  /** Propositions de pacte en attente (chantier 16). */
-  private proposalMap = new Map<string, RelationProposal>();
-  /** Objectifs éphémères personnels (chantier 17). */
-  private objectiveMap = new Map<string, Objective>();
-  /** Événements de monde actifs, partagés (chantier 17). */
-  private worldEventMap = new Map<string, WorldEvent>();
-  private beltsById: Map<string, AsteroidBelt>;
   private listeners = new Set<StateListener>();
   private interval: NodeJS.Timeout | null = null;
+
+  // Accesseurs délégant à `runtime` — préservent chaque site d'appel existant (`this.clock`,
+  // `this.empires`, etc.) tel quel pendant que l'état bascule dans GameRuntime.
+  /** Non figé : `growUniverse` le remplace quand de nouvelles galaxies s'ouvrent (chantier 9). */
+  get universe(): Universe {
+    return this.runtime.universe;
+  }
+  private set universe(value: Universe) {
+    this.runtime.universe = value;
+  }
+  private get clock(): Clock {
+    return this.runtime.clock;
+  }
+  private get planetsById(): Map<string, Planet> {
+    return this.runtime.planetsById;
+  }
+  private get stationsById(): Map<string, TradeStation> {
+    return this.runtime.stationsById;
+  }
+  private get beltsById(): Map<string, AsteroidBelt> {
+    return this.runtime.beltsById;
+  }
+  private get galaxyIndexOfSystem(): Map<string, number> {
+    return this.runtime.galaxyIndexOfSystem;
+  }
+  private get marketMap(): Map<string, Stocks> {
+    return this.runtime.marketMap;
+  }
+  private get gatewayMap(): Map<string, Gateway> {
+    return this.runtime.gatewayMap;
+  }
+  private get contractMap(): Map<string, Contract> {
+    return this.runtime.contractMap;
+  }
+  private get factionStateMap(): Map<string, FactionState> {
+    return this.runtime.factionStateMap;
+  }
+  private get lairMap(): Map<string, PirateLair> {
+    return this.runtime.lairMap;
+  }
+  private get battleLog(): StoredBattle[] {
+    return this.runtime.battleLog;
+  }
+  private set battleLog(value: StoredBattle[]) {
+    this.runtime.battleLog = value;
+  }
+  private get relationMap(): Map<string, Relation> {
+    return this.runtime.relationMap;
+  }
+  private get proposalMap(): Map<string, RelationProposal> {
+    return this.runtime.proposalMap;
+  }
+  private get objectiveMap(): Map<string, Objective> {
+    return this.runtime.objectiveMap;
+  }
+  private get worldEventMap(): Map<string, WorldEvent> {
+    return this.runtime.worldEventMap;
+  }
   /** Empires partageant cet univers (chantier 7b). Un seul instancié à ce stade. */
-  private empires = new Map<string, Empire>();
+  private get empires(): Map<string, Empire> {
+    return this.runtime.empires;
+  }
   /** Empire propriétaire par défaut (solo). Posé par `ensureDefaultPlayer`. */
-  private defaultEmpire!: Empire;
+  private get defaultEmpire(): Empire {
+    return this.runtime.defaultEmpire;
+  }
+  private set defaultEmpire(value: Empire) {
+    this.runtime.defaultEmpire = value;
+  }
 
   // Données par-empire portées par l'empire par défaut (délégation le temps du mono-empire).
   private get colonyMap(): Map<string, Colony> {
@@ -348,22 +384,12 @@ export class GameEngine {
   }
 
   private constructor(clock: Clock) {
-    this.clock = { ...clock };
-    this.universe = generateUniverse(clock.seed, clock.galaxyCount);
-    this.planetsById = new Map();
-    this.stationsById = new Map();
-    this.beltsById = new Map();
-    this.reindexUniverse();
+    this.runtime = new GameRuntime(clock);
   }
 
   /** (Ré)indexe les entités d'univers — appelé à la construction et après chaque extension. */
   private reindexUniverse(): void {
-    this.planetsById = new Map(allPlanets(this.universe).map((p) => [p.id, p]));
-    this.stationsById = new Map(allStations(this.universe).map((s) => [s.id, s]));
-    this.beltsById = new Map(allBelts(this.universe).map((b) => [b.id, b]));
-    this.galaxyIndexOfSystem = new Map(
-      this.universe.galaxies.flatMap((g, index) => g.systems.map((s) => [s.id, index] as const)),
-    );
+    this.runtime.reindexUniverse();
   }
 
   /** Charge la partie existante ou en crée une, puis rattrape le temps hors-ligne (borné). */
