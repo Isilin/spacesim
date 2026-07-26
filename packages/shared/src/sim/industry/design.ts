@@ -4,7 +4,6 @@ import { COMBAT_PHASES, type CombatCategory, type CombatPhase } from "../../cont
 import type { Blueprint } from "../../model/industry.js";
 import type { ResourceId } from "../../model/resources.js";
 import type { EmpireEffects } from "../empire/research.js";
-import { BASE_PRICES, type MarketResource } from "../economy/market.js";
 
 /** Marché des plans en station (chantier 13) : marge à l'achat, décote à la revente. */
 export const BLUEPRINT_BUY_MARKUP = 1.4;
@@ -203,22 +202,4 @@ export function dominantSlot(bp: BlueprintShape): SlotType {
 /** Convertit un plan complet (Blueprint) en sa forme nue pour le résolveur. */
 export function shapeOf(bp: Blueprint): BlueprintShape {
   return { chassisId: bp.chassisId, modules: bp.modules };
-}
-
-/**
- * Valeur marchande d'un coût en ressources (chantier 13) : converti en crédits au prix de
- * référence. Sert de base au marché de plans/vaisseaux des stations PNJ — pas de contexte
- * régional ici (contrairement à `stationPrice`, rien n'est stocké physiquement en station).
- */
-export function costValue(cost: Partial<Record<ResourceId, number>>): number {
-  let value = 0;
-  for (const [res, amount] of Object.entries(cost) as [ResourceId, number][]) {
-    value += (BASE_PRICES[res as MarketResource] ?? 0) * amount;
-  }
-  return Math.round(value);
-}
-
-/** Valeur marchande d'un plan résolu. */
-export function blueprintValue(stats: ShipStats): number {
-  return costValue(stats.cost);
 }

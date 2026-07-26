@@ -285,11 +285,10 @@ export {
   blueprintLoad,
   dominantSlot,
   shapeOf,
-  costValue,
-  blueprintValue,
   type BlueprintShape,
   type ShipStats,
 } from "./sim/industry/design.js";
+export { costValue, blueprintValue } from "./sim/industry/blueprint-pricing.js";
 export {
   emptyOrbital,
   orbitalCap,
