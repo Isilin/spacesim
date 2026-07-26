@@ -191,14 +191,14 @@ export {
   type CombatDef,
   type PhaseReport,
   type BattleReport,
-} from "./sim/combat.js";
+} from "./sim/military/combat.js";
 export {
   PIRATE_SPAWN_CHANCE,
   PIRATE_TAX_PER_TICK,
   pirateDirectives,
   pirateComposition,
   pirateBounty,
-} from "./sim/pirates.js";
+} from "./sim/military/pirates.js";
 export {
   MARKET_RESOURCES,
   BASE_PRICES,
@@ -216,7 +216,7 @@ export {
   type MarketResource,
   type Stocks,
   type PriceContext,
-} from "./sim/market.js";
+} from "./sim/economy/market.js";
 export {
   legacyCapacity,
   idleShips,
@@ -227,8 +227,8 @@ export {
   enqueueShipFromStats,
   resolveShips,
   type ShipEnqueueResult,
-} from "./sim/ships.js";
-export { routeCargoQuantity } from "./sim/routes.js";
+} from "./sim/industry/ships.js";
+export { routeCargoQuantity } from "./sim/economy/routes.js";
 export {
   MINING_RATE,
   OUTPOST_STOCK_CAP,
@@ -236,7 +236,7 @@ export {
   OUTPOST_UPKEEP_CREDITS,
   beltRichness,
   outpostTick,
-} from "./sim/outposts.js";
+} from "./sim/industry/outposts.js";
 export {
   INFLUENCE_PER_COLONIST,
   MONUMENT_INFLUENCE,
@@ -250,21 +250,21 @@ export {
   repBonus,
   colonizeInfluenceCost,
   influencePerTick,
-} from "./sim/influence.js";
+} from "./sim/empire/influence.js";
 export {
   DEFAULT_FRONTIER,
   galaxiesToAdd,
   pickStarterGalaxy,
   type GalaxyOccupancy,
   type FrontierConfig,
-} from "./sim/expansion.js";
+} from "./sim/exploration/expansion.js";
 export {
   ATMOSPHERES,
   bodyPhysicals,
   isBreathable,
   type Atmosphere,
   type BodyPhysicals,
-} from "./sim/bodies.js";
+} from "./sim/exploration/bodies.js";
 export {
   techDepth,
   techLayout,
@@ -275,7 +275,7 @@ export {
   descendants,
   validateTree,
   type TechPosition,
-} from "./sim/techtree.js";
+} from "./sim/empire/techtree.js";
 export {
   BLUEPRINT_BUY_MARKUP,
   BLUEPRINT_SELL_FRACTION,
@@ -289,7 +289,7 @@ export {
   blueprintValue,
   type BlueprintShape,
   type ShipStats,
-} from "./sim/design.js";
+} from "./sim/industry/design.js";
 export {
   emptyOrbital,
   orbitalCap,
@@ -298,7 +298,7 @@ export {
   applyLift,
   takeFromOrbit,
   deliverToOrbit,
-} from "./sim/orbital.js";
+} from "./sim/industry/orbital.js";
 export {
   GATEWAY_COST,
   GATEWAY_BUILD_MS,
@@ -311,8 +311,13 @@ export {
   galaxyLinks,
   gatewayLinks,
   type GalaxyLink,
-} from "./sim/gateways.js";
-export { computeEffects, NO_EFFECTS, canResearch, type EmpireEffects } from "./sim/research.js";
+} from "./sim/exploration/gateways.js";
+export {
+  computeEffects,
+  NO_EFFECTS,
+  canResearch,
+  type EmpireEffects,
+} from "./sim/empire/research.js";
 export {
   emptyResources,
   buildingCost,
@@ -333,7 +338,7 @@ export {
   colonyShortages,
   type EnqueueResult,
   type Shortage,
-} from "./sim/colony.js";
+} from "./sim/industry/colony.js";
 export {
   jumpDistance,
   jumpDistanceInUniverse,
@@ -346,14 +351,18 @@ export {
   convoyCapacity,
   type ConvoyShips,
   type ConvoyStat,
-} from "./sim/travel.js";
+} from "./sim/exploration/travel.js";
 export {
   CONTIGUOUS_CLAIM_BONUS,
   systemNeighbors,
   contiguousClaims,
   isFrontierSystem,
-} from "./sim/territory.js";
-export { redactUniverse, probeDurationMs, colonyShipDurationMs } from "./sim/fog.js";
+} from "./sim/exploration/territory.js";
+export {
+  redactUniverse,
+  probeDurationMs,
+  colonyShipDurationMs,
+} from "./sim/exploration/fog.js";
 export {
   CONTRACT_MIN_DURATION_MS,
   CONTRACT_MAX_DURATION_MS,
@@ -363,7 +372,7 @@ export {
   isContractExpired,
   contractAcceptable,
   contractPayout,
-} from "./sim/contracts.js";
+} from "./sim/economy/contracts.js";
 export {
   NPC_SURPLUS_THRESHOLD,
   NPC_DEFICIT_THRESHOLD,
@@ -373,7 +382,7 @@ export {
   type NpcSellIntent,
   type NpcContractIntent,
   type NpcIntent,
-} from "./sim/npc.js";
+} from "./sim/economy/npc.js";
 export {
   FACTION_MOOD_SHIFT_CHANCE,
   FACTION_MOOD_DURATION_MS,
@@ -386,7 +395,7 @@ export {
   FACTION_CONTRACT_DURATION_MS,
   FACTION_CONTRACT_QUANTITY_MIN,
   FACTION_CONTRACT_QUANTITY_MAX,
-} from "./sim/factions.js";
+} from "./sim/economy/factions.js";
 export {
   relationKey,
   WAR_COOLDOWN_MS,
@@ -398,7 +407,7 @@ export {
   NPC_ALLIANCE_MIN_POWER_RATIO,
   NPC_ALLIANCE_MAX_POWER_RATIO,
   npcAcceptsProposal,
-} from "./sim/diplomacy.js";
+} from "./sim/empire/diplomacy.js";
 export {
   OBJECTIVE_KINDS,
   OBJECTIVE_DURATION_MS,
@@ -408,7 +417,7 @@ export {
   objectiveMet,
   type ObjectiveSpec,
   type ObjectiveProgress,
-} from "./sim/objectives.js";
+} from "./sim/empire/objectives.js";
 export {
   WORLD_EVENT_KINDS,
   WORLD_EVENT_DURATION_MS,
@@ -418,5 +427,5 @@ export {
   WORLD_EVENT_PIRATE_MULT,
   rollWorldEvent,
   worldEventPriceBonus,
-} from "./sim/worldEvents.js";
-export { galaxyActivity, normalizedActivity } from "./sim/economicZones.js";
+} from "./sim/empire/worldEvents.js";
+export { galaxyActivity, normalizedActivity } from "./sim/economy/economicZones.js";
