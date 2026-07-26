@@ -22,6 +22,9 @@ export function registerWsRoutes(app: FastifyInstance, engine: GameEngine): void
       socket.close(WS_UNAUTHORIZED, "Aucun empire pour ce compte");
       return;
     }
+    // Contexte d'acteur : chaque log de cette connexion porte l'empire concerné.
+    const log = request.log.child({ empireId: empire.id });
+    log.info("connexion WS ouverte");
     send({
       type: "hello",
       playerId: empire.id,
@@ -49,6 +52,9 @@ export function registerWsRoutes(app: FastifyInstance, engine: GameEngine): void
       if (error) send({ type: "actionError", message: error });
     });
 
-    socket.on("close", unsubscribe);
+    socket.on("close", () => {
+      unsubscribe();
+      log.info("connexion WS fermée");
+    });
   });
 }

@@ -258,6 +258,18 @@ const NPC_EMPIRE_NAMES = [
 /** Signal « l'état a changé » : chaque connexion recompose alors le snapshot de son empire. */
 export type StateListener = () => void;
 
+/** Sous-ensemble de l'API pino utilisé par le moteur — un message par appel, pas d'objet fusionné. */
+export interface Logger {
+  info(message: string): void;
+  warn(message: string): void;
+}
+
+/** Logger par défaut : console brute, comme avant l'injection (utilisé hors boot, ex. tests). */
+const consoleLogger: Logger = {
+  info: (message) => console.log(message),
+  warn: (message) => console.warn(message),
+};
+
 /**
  * Détient l'état de la partie et fait avancer la simulation.
  * Serveur autoritaire : le client ne fait qu'afficher.
@@ -265,6 +277,8 @@ export type StateListener = () => void;
 export class GameEngine {
   /** Non figé : `growUniverse` le remplace quand de nouvelles galaxies s'ouvrent (chantier 9). */
   universe: Universe;
+  /** Injecté depuis le boot (`setLogger`) ; console brute par défaut (tests, scripts). */
+  private logger: Logger = consoleLogger;
   /** Horloge et identité de l'univers partagé. */
   private clock: Clock;
   private planetsById: Map<string, Planet>;
@@ -676,6 +690,11 @@ export class GameEngine {
   onChange(listener: StateListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /** Remplace le logger console par défaut — appelé une fois au boot avec le logger Fastify. */
+  setLogger(logger: Logger): void {
+    this.logger = logger;
   }
 
   start(): void {
@@ -1786,7 +1805,7 @@ export class GameEngine {
       if (next === state) continue;
       this.factionStateMap.set(factionId, next);
       this.persistFactionState(next);
-      console.log(`[game] humeur de ${FACTIONS[factionId as FactionId].name} : ${next.mood}`);
+      this.logger.info(`[game] humeur de ${FACTIONS[factionId as FactionId].name} : ${next.mood}`);
       // La pénurie se traduit en demande concrète : un contrat qu'un joueur peut honorer.
       if (next.mood === "shortage") this.factionPostShortageContract(factionId, rng);
     }
@@ -1841,7 +1860,7 @@ export class GameEngine {
     };
     this.contractMap.set(contract.id, contract);
     this.insertContract(contract);
-    console.log(`[game] ${def.name} publie un contrat de pénurie : ${quantity} ${resource}`);
+    this.logger.info(`[game] ${def.name} publie un contrat de pénurie : ${quantity} ${resource}`);
     this.notify();
   }
 
@@ -2032,7 +2051,7 @@ export class GameEngine {
       empire.researched = [...empire.researched, finished.techId];
       empire.research = null;
       empire.effects = computeEffects(empire.researched as TechId[]);
-      console.log(`[game] recherche terminée : ${finished.techId}`);
+      this.logger.info(`[game] recherche terminée : ${finished.techId}`);
     }
     // Enchaînement de la file, y compris quand la science manquait au tick précédent.
     const beforeQueue = empire.research;
@@ -2524,7 +2543,7 @@ export class GameEngine {
       }
       this.lairMap.delete(lairId);
       db.delete(schema.pirateLairs).where(eq(schema.pirateLairs.id, lairId)).run();
-      console.log(`[game] repaire nettoyé (butin ${lair.bounty})`);
+      this.logger.info(`[game] repaire nettoyé (butin ${lair.bounty})`);
     } else {
       // Le repaire survivant est réduit à ses rescapés.
       const survivingLair: PirateLair = { ...lair, ships: report.defenderSurvivors };
@@ -2631,7 +2650,7 @@ export class GameEngine {
     }
     empire.influence -= DECLARE_WAR_INFLUENCE_COST;
     this.setRelation(empire.id, targetEmpireId, "war", null);
-    console.log(`[game] « ${empire.name} » déclare la guerre à « ${target.name} »`);
+    this.logger.info(`[game] « ${empire.name} » déclare la guerre à « ${target.name} »`);
     this.notify();
     return null;
   }
@@ -2867,7 +2886,7 @@ export class GameEngine {
         const next: Objective = { ...objective, status: "completed" };
         this.objectiveMap.set(id, next);
         this.persistObjective(next);
-        console.log(`[game] « ${empire.name} » a rempli son objectif : ${objective.kind}`);
+        this.logger.info(`[game] « ${empire.name} » a rempli son objectif : ${objective.kind}`);
       } else if (t >= objective.deadline) {
         const next: Objective = { ...objective, status: "expired" };
         this.objectiveMap.set(id, next);
@@ -2939,7 +2958,7 @@ export class GameEngine {
       this.insertWorldEvent(event);
       // Effet immédiat : force le boom, comme une pénurie de faction poste aussitôt un contrat.
       this.setFactionMood(factionId, "boom", expiresAt);
-      console.log(`[game] essor de faction : ${FACTIONS[factionId as FactionId].name}`);
+      this.logger.info(`[game] essor de faction : ${FACTIONS[factionId as FactionId].name}`);
       this.notify();
       return;
     }
@@ -2958,7 +2977,7 @@ export class GameEngine {
     };
     this.worldEventMap.set(event.id, event);
     this.insertWorldEvent(event);
-    console.log(`[game] événement de monde : ${kind} sur ${galaxy.name}`);
+    this.logger.info(`[game] événement de monde : ${kind} sur ${galaxy.name}`);
     this.notify();
   }
 
@@ -3090,7 +3109,7 @@ export class GameEngine {
       raid: true,
       stolen,
     });
-    console.log(`[game] raid sur ${victim.name} par « ${empire.name} »`);
+    this.logger.info(`[game] raid sur ${victim.name} par « ${empire.name} »`);
     this.notify();
     return null;
   }
@@ -3423,7 +3442,7 @@ export class GameEngine {
     // Tous les clients doivent recevoir la nouvelle carte, y compris ceux qui n'ont
     // rien exploré depuis leur dernier message.
     for (const empire of this.empires.values()) empire.universeDirty = true;
-    console.log(
+    this.logger.info(
       `[game] univers étendu : +${count} galaxie(s) (${added.map((g) => g.name).join(", ")}) — ${this.clock.galaxyCount} au total`,
     );
     this.notify();
@@ -3462,7 +3481,7 @@ export class GameEngine {
       if (gateway.active || !gateway.activatesAt || gateway.activatesAt > t) continue;
       this.gatewayMap.set(id, { ...gateway, active: true });
       this.persistGateway(this.gatewayMap.get(id)!);
-      console.log(`[game] portail actif vers ${id}`);
+      this.logger.info(`[game] portail actif vers ${id}`);
     }
   }
 
@@ -3717,7 +3736,7 @@ export class GameEngine {
 
     const missed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);
     if (missed > 0) this.advance(Math.min(missed, MAX_CATCHUP_TICKS));
-    console.log(`[game] fast-forward de ${seconds}s (${missed} ticks)`);
+    this.logger.info(`[game] fast-forward de ${seconds}s (${missed} ticks)`);
   }
 
   /**
@@ -3902,7 +3921,7 @@ export class GameEngine {
     // L'arrivant peut avoir entamé la dernière galaxie vierge : on repousse le bord.
     this.ensureFrontier();
     this.notify();
-    console.log(`[game] empire « ${empireName} » instancié (${this.empires.size} au total)`);
+    this.logger.info(`[game] empire « ${empireName} » instancié (${this.empires.size} au total)`);
     return empire;
   }
 
@@ -3956,7 +3975,7 @@ export class GameEngine {
         .set({ accountId, name: orphan.name })
         .where(eq(schema.players.id, orphan.id))
         .run();
-      console.log(`[game] empire « ${orphan.name} » adopté par un compte`);
+      this.logger.info(`[game] empire « ${orphan.name} » adopté par un compte`);
       this.notify();
       return orphan;
     }
@@ -4126,7 +4145,7 @@ export class GameEngine {
               shipsBusy: [],
               shipQueue: [],
             });
-            console.log(`[game] colonie fondée sur ${planet.name}`);
+            this.logger.info(`[game] colonie fondée sur ${planet.name}`);
           }
           break;
         }
@@ -4201,7 +4220,7 @@ export class GameEngine {
             if (!next.activatesAt && gatewayCovered(next)) {
               // Coût couvert : le chantier final démarre.
               next = { ...next, activatesAt: mission.arrivesAt + GATEWAY_BUILD_MS };
-              console.log(`[game] chantier final du portail vers ${next.galaxyId}`);
+              this.logger.info(`[game] chantier final du portail vers ${next.galaxyId}`);
             }
             this.gatewayMap.set(gateway.galaxyId, next);
             this.persistGateway(next);
@@ -4265,7 +4284,7 @@ export class GameEngine {
             db.insert(schema.outposts)
               .values({ ...outpost, gameId: this.clock.id, createdAt: Date.now() })
               .run();
-            console.log(`[game] avant-poste minier fondé sur ${belt.name}`);
+            this.logger.info(`[game] avant-poste minier fondé sur ${belt.name}`);
           }
           break;
         }
@@ -4338,7 +4357,7 @@ export class GameEngine {
       const dropped = empire.claimedSystemIds.at(-1)!;
       this.dropClaim(empire, dropped);
       influence = 0;
-      console.log(`[game] revendication perdue faute d'influence : ${dropped}`);
+      this.logger.info(`[game] revendication perdue faute d'influence : ${dropped}`);
     }
     empire.influence = Math.max(0, influence);
   }
@@ -4496,7 +4515,7 @@ export class GameEngine {
       shipQueue: [],
     });
     this.markExplored(empire, planet.systemId);
-    console.log(
+    this.logger.info(
       `[game] colonie mère fondée sur ${planet.name} (habitabilité ${planet.habitability}) pour « ${empire.name} »`,
     );
   }
@@ -4572,7 +4591,7 @@ export class GameEngine {
     const elapsed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);
     if (elapsed <= 0) return;
     const ticks = Math.min(elapsed, MAX_CATCHUP_TICKS);
-    console.log(`[game] catch-up: ${ticks} ticks (${elapsed} écoulés)`);
+    this.logger.info(`[game] catch-up: ${ticks} ticks (${elapsed} écoulés)`);
     this.advance(ticks);
   }
 

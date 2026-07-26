@@ -15,8 +15,11 @@ export async function buildApp(
   engine: GameEngine,
   opts: BuildAppOptions = {},
 ): Promise<FastifyInstance> {
-  const app = Fastify({ logger: { level: "warn" } });
+  // Niveau par défaut inchangé (warn) ; LOG_LEVEL permet de le baisser en dev sans redéploiement.
+  const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "warn" } });
   await app.register(websocket);
+  // Le moteur journalise désormais via ce même logger (mêmes messages, même niveau).
+  engine.setLogger(app.log);
 
   app.get("/health", () => ({ ok: true, tick: engine.game.tick }));
 
