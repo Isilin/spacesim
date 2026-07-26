@@ -1327,11 +1327,11 @@ describe("GameEngine — événements de monde (chantier 17)", () => {
   it("un événement finit par se déclencher naturellement au fil des ticks économiques", () => {
     const engine = GameEngine.load();
     let sawEvent = false;
-    for (let i = 0; i < 60 && !sawEvent; i++) {
+    for (let i = 0; i < 300 && !sawEvent; i++) {
       advanceTicks(engine, 12); // un tick économique par itération
       sawEvent = engine.snapshotForEmpire(engine.defaultEmpireForDev).worldEvents.length > 0;
     }
-    // Chance de déclenchement 5 %/tick éco : probabilité d'échec sur 60 essais ~4.6e-2 —
+    // Chance de déclenchement 5 %/tick éco : probabilité d'échec sur 300 essais ~2e-7 —
     // marge large (le module pur est déjà testé en détail, ceci ne vérifie que le câblage).
     expect(sawEvent).toBe(true);
   });
