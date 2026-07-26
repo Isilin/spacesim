@@ -2,7 +2,8 @@ import { CHASSIS, type ChassisId, type ShipDomain } from "../content/chassis.js"
 import { MODULES, SLOT_TYPES, type ModuleId, type SlotType } from "../content/modules.js";
 import { COMBAT_PHASES, type CombatCategory, type CombatPhase } from "../content/warships.js";
 import { BASE_PRICES, type MarketResource } from "./market.js";
-import type { Blueprint, ResourceId } from "../types.js";
+import type { Blueprint } from "../model/industry.js";
+import type { ResourceId } from "../model/resources.js";
 import type { EmpireEffects } from "./research.js";
 
 /** Marché des plans en station (chantier 13) : marge à l'achat, décote à la revente. */

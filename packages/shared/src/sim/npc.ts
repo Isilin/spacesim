@@ -1,4 +1,4 @@
-import type { Colony } from "../types.js";
+import type { Colony } from "../model/industry.js";
 import { MARKET_RESOURCES, type MarketResource } from "./market.js";
 
 /** Stock ORBITAL au-delà duquel un PNJ considère la ressource en surplus vendable. */

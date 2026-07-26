@@ -1,5 +1,6 @@
 import type { TechId } from "./techs.js";
-import { SHIP_IDS, type ResourceId } from "../types.js";
+import { SHIP_IDS } from "../model/industry.js";
+import type { ResourceId } from "../model/resources.js";
 
 /** Ids concrets des classes civiles historiques (clés connues, cf. types `ShipId = string`). */
 export type LegacyShipId = (typeof SHIP_IDS)[number];

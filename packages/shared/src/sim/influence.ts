@@ -1,4 +1,4 @@
-import type { Colony } from "../types.js";
+import type { Colony } from "../model/industry.js";
 
 /** Influence par colon et par tick, à satisfaction 100. */
 export const INFLUENCE_PER_COLONIST = 0.005;

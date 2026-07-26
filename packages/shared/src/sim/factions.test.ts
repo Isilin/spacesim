@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Rng } from "../rng.js";
-import type { FactionState } from "../types.js";
+import type { FactionState } from "../model/social.js";
 import {
   embargoBlocks,
   FACTION_EMBARGO_STANDING_THRESHOLD,

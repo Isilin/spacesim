@@ -1,5 +1,5 @@
 import type { Rng } from "../rng.js";
-import type { FactionMood, FactionState } from "../types.js";
+import type { FactionMood, FactionState } from "../model/social.js";
 
 /** Chance qu'une faction neutre bascule d'humeur, à chaque tick économique. */
 export const FACTION_MOOD_SHIFT_CHANCE = 0.08;

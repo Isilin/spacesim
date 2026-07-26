@@ -4,7 +4,7 @@ import {
   PROBE_BASE_MS,
   PROBE_MS_PER_JUMP,
 } from "../constants.js";
-import type { Universe } from "../types.js";
+import type { Universe } from "../model/universe.js";
 
 /**
  * Expurge l'univers pour le client : les systèmes non explorés gardent leur

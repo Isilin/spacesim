@@ -1,4 +1,4 @@
-import type { ResourceId } from "../types.js";
+import type { ResourceId } from "../model/resources.js";
 
 export const FACTION_IDS = ["ferride", "ostara_league", "aether_cartel"] as const;
 

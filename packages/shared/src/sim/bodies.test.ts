@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { allPlanets, generateUniverse } from "../universe.js";
 import { ATMOSPHERES, bodyPhysicals, isBreathable } from "./bodies.js";
-import type { Planet, PlanetType } from "../types.js";
+import type { Planet, PlanetType } from "../model/universe.js";
 
 /** Corps de test : seul l'id, le type et l'orbite influent sur la fiche. */
 function body(over: Partial<Planet> & { id: string; type: PlanetType }): Planet {

@@ -1,4 +1,4 @@
-import type { ProposalKind, RelationState } from "../types.js";
+import type { ProposalKind, RelationState } from "../model/social.js";
 
 /** Clé canonique d'une paire d'empires — ordre stable, indépendant de qui appelle. */
 export function relationKey(a: string, b: string): string {

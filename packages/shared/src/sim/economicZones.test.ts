@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Contract } from "../types.js";
+import type { Contract } from "../model/social.js";
 import { generateUniverse } from "../universe.js";
 import { galaxyActivity, normalizedActivity } from "./economicZones.js";
 

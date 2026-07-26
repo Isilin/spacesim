@@ -7,7 +7,7 @@ import {
   TRANSFER_MS_PER_JUMP,
 } from "../constants.js";
 import { SHIPS, type LegacyShipId } from "../content/ships.js";
-import type { Galaxy, Universe } from "../types.js";
+import type { Galaxy, Universe } from "../model/universe.js";
 import { findGalaxyOfSystem } from "../universe.js";
 
 /** Distance en sauts entre deux systèmes d'une galaxie (BFS), -1 si inaccessible. */

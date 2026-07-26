@@ -13,7 +13,9 @@ import {
 } from "../constants.js";
 import { BUILDINGS, type BuildingDef } from "../content/buildings.js";
 import { NO_EFFECTS, type EmpireEffects } from "./research.js";
-import { RESOURCES, type BuildingId, type Colony, type Planet, type ResourceId } from "../types.js";
+import { type BuildingId, type Colony } from "../model/industry.js";
+import { RESOURCES, type ResourceId } from "../model/resources.js";
+import type { Planet } from "../model/universe.js";
 
 export function emptyResources(): Record<ResourceId, number> {
   return Object.fromEntries(RESOURCES.map((r) => [r, 0])) as Record<ResourceId, number>;

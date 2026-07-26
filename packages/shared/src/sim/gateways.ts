@@ -1,4 +1,5 @@
-import type { Galaxy, Gateway, ResourceId, Universe } from "../types.js";
+import type { ResourceId } from "../model/resources.js";
+import type { Galaxy, Gateway, Universe } from "../model/universe.js";
 
 /** Coût de référence d'un portail (galaxie voisine) — pharaonique, couvert par convois. */
 export const GATEWAY_COST: Partial<Record<ResourceId, number>> = {

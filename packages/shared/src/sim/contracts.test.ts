@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Contract } from "../types.js";
+import type { Contract } from "../model/social.js";
 import {
   CONTRACT_MAX_DURATION_MS,
   CONTRACT_MIN_DURATION_MS,

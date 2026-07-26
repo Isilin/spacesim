@@ -1,4 +1,4 @@
-import type { RouteRule } from "../types.js";
+import type { RouteRule } from "../model/transport.js";
 
 /**
  * Quantité à charger pour un cycle de route, 0 = pas de départ.

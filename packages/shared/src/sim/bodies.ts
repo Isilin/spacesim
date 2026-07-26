@@ -1,5 +1,5 @@
 import { createRng, type Rng } from "../rng.js";
-import type { Planet, PlanetType } from "../types.js";
+import type { Planet, PlanetType } from "../model/universe.js";
 
 /** Type d'atmosphère, du vide au voile écrasant. */
 export const ATMOSPHERES = ["none", "thin", "breathable", "toxic", "dense"] as const;

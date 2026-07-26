@@ -1,5 +1,5 @@
 import type { TechId } from "./techs.js";
-import type { ResourceId } from "../types.js";
+import type { ResourceId } from "../model/resources.js";
 
 export const WARSHIP_IDS = [
   "fighter",

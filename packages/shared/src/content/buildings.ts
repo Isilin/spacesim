@@ -1,4 +1,5 @@
-import type { BuildingId, ResourceId } from "../types.js";
+import type { BuildingId } from "../model/industry.js";
+import type { ResourceId } from "../model/resources.js";
 
 export interface BuildingDef {
   id: BuildingId;

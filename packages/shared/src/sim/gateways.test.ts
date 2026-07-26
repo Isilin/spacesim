@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateUniverse } from "../universe.js";
-import type { Gateway } from "../types.js";
+import type { Gateway } from "../model/universe.js";
 import {
   GATEWAY_COST,
   galaxyLinks,

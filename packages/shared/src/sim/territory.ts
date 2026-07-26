@@ -1,4 +1,4 @@
-import type { Galaxy, Universe } from "../types.js";
+import type { Galaxy, Universe } from "../model/universe.js";
 
 /**
  * Territoire & frontières (chantier 7d). Fonctions pures sur le graphe de l'univers :

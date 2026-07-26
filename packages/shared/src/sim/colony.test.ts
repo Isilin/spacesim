@@ -3,7 +3,8 @@ import { BASE_STORAGE, MAX_QUEUE_LENGTH } from "../constants.js";
 import { BUILDINGS } from "../content/buildings.js";
 import { emptyOrbital } from "./orbital.js";
 import { computeEffects } from "./research.js";
-import type { Colony, Planet } from "../types.js";
+import type { Colony } from "../model/industry.js";
+import type { Planet } from "../model/universe.js";
 import {
   applyColonyTick,
   buildingCost,

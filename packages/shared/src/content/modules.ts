@@ -1,6 +1,6 @@
 import type { CombatPhase } from "./warships.js";
 import type { TechId } from "./techs.js";
-import type { ResourceId } from "../types.js";
+import type { ResourceId } from "../model/resources.js";
 
 /**
  * Conception de vaisseaux (chantier 13). Un vaisseau = un **châssis** (content/chassis)

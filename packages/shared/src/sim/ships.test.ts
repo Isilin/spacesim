@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SHIPS } from "../content/ships.js";
-import type { Colony, Route } from "../types.js";
+import type { Colony } from "../model/industry.js";
+import type { Route } from "../model/transport.js";
 import { emptyResources } from "./colony.js";
 import { emptyOrbital } from "./orbital.js";
 import { enqueueShip, fleetCapacity, idleShips, pickShip, resolveShips } from "./ships.js";

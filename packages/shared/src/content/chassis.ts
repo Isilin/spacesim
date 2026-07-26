@@ -1,6 +1,6 @@
 import type { ModuleRole, SlotType } from "./modules.js";
 import type { TechId } from "./techs.js";
-import type { ResourceId } from "../types.js";
+import type { ResourceId } from "../model/resources.js";
 
 /**
  * Châssis d'un vaisseau (chantier 13). Fournit la coque de base, des emplacements typés

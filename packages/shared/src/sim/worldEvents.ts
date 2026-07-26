@@ -1,5 +1,5 @@
 import type { Rng } from "../rng.js";
-import type { WorldEventKind } from "../types.js";
+import type { WorldEventKind } from "../model/social.js";
 
 export const WORLD_EVENT_KINDS: readonly WorldEventKind[] = [
   "economic_crisis",

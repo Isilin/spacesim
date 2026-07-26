@@ -1,5 +1,6 @@
 import { findGalaxyOfSystem } from "../universe.js";
-import type { Contract, Universe } from "../types.js";
+import type { Universe } from "../model/universe.js";
+import type { Contract } from "../model/social.js";
 
 /**
  * Activité économique par galaxie (chantier 17.3) : dérivée, jamais stockée — la somme

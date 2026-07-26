@@ -1,5 +1,5 @@
 import type { Rng } from "../rng.js";
-import type { Objective, ObjectiveKind } from "../types.js";
+import type { Objective, ObjectiveKind } from "../model/social.js";
 
 export const OBJECTIVE_KINDS: readonly ObjectiveKind[] = [
   "colonize_n_systems",

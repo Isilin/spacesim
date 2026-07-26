@@ -1,4 +1,4 @@
-import type { Contract } from "../types.js";
+import type { Contract } from "../model/social.js";
 
 /** Bornes de durée d'un contrat : ni instantané, ni éternel. */
 export const CONTRACT_MIN_DURATION_MS = 5 * 60_000;

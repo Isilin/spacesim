@@ -1,4 +1,4 @@
-import type { BuildingId } from "../types.js";
+import type { BuildingId } from "../model/industry.js";
 
 export type TechBranch = "industry" | "colonization" | "society" | "military";
 

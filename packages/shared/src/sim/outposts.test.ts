@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AsteroidBelt } from "../types.js";
+import type { AsteroidBelt } from "../model/universe.js";
 import { beltRichness, MINING_RATE, OUTPOST_STOCK_CAP, outpostTick } from "./outposts.js";
 import { routeCargoQuantity } from "./routes.js";
 

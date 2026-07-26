@@ -3,7 +3,9 @@ import type { TechId } from "../content/techs.js";
 import { canAfford } from "./colony.js";
 import type { ShipStats } from "./design.js";
 import { NO_EFFECTS, type EmpireEffects } from "./research.js";
-import { type Colony, type ResourceId, type Route, type ShipId } from "../types.js";
+import { type Colony, type ShipId } from "../model/industry.js";
+import type { ResourceId } from "../model/resources.js";
+import type { Route } from "../model/transport.js";
 
 /** Soute d'un id de vaisseau selon les classes historiques (défaut des providers). */
 export function legacyCapacity(id: string): number {

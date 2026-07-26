@@ -1,4 +1,5 @@
-import type { AsteroidBelt, ResourceId } from "../types.js";
+import type { ResourceId } from "../model/resources.js";
+import type { AsteroidBelt } from "../model/universe.js";
 
 /** Minerai extrait par tick et par avant-poste, avant modificateur de richesse. */
 export const MINING_RATE = 1.5;

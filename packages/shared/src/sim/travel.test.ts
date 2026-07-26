@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TRANSFER_BASE_MS, TRANSFER_MS_PER_JUMP } from "../constants.js";
 import { SHIPS } from "../content/ships.js";
-import type { Galaxy, Universe } from "../types.js";
+import type { Galaxy, Universe } from "../model/universe.js";
 import {
   convoyCapacity,
   convoyDurationMs,

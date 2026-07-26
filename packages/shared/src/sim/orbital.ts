@@ -1,5 +1,6 @@
 import { LIFT_ENERGY_PER_UNIT, LIFT_PER_DOCK, ORBITAL_CAP_PER_DOCK } from "../constants.js";
-import { RESOURCES, type Colony, type ResourceId } from "../types.js";
+import type { Colony } from "../model/industry.js";
+import { RESOURCES, type ResourceId } from "../model/resources.js";
 import { NO_EFFECTS, type EmpireEffects } from "./research.js";
 
 /** Stock orbital vide (toutes ressources à zéro). */

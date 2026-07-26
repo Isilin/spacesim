@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Colony } from "../types.js";
+import type { Colony } from "../model/industry.js";
 import { emptyResources } from "./colony.js";
 import { emptyOrbital } from "./orbital.js";
 import {

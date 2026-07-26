@@ -1,6 +1,6 @@
 import type { FactionDef } from "../content/factions.js";
 import type { Rng } from "../rng.js";
-import type { ResourceId } from "../types.js";
+import type { ResourceId } from "../model/resources.js";
 
 /** Ressources échangeables en station (la science et les crédits restent hors marché). */
 export const MARKET_RESOURCES = ["ore", "energy", "food", "metals", "goods", "components"] as const;

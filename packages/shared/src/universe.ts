@@ -17,7 +17,7 @@ import type {
   StarSystem,
   TradeStation,
   Universe,
-} from "./types.js";
+} from "./model/universe.js";
 
 /** Part des systèmes accueillant une station de commerce PNJ. */
 const STATION_PROBABILITY = 0.35;

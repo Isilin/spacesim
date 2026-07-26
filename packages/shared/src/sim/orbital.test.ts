@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { LIFT_ENERGY_PER_UNIT, LIFT_PER_DOCK, ORBITAL_CAP_PER_DOCK } from "../constants.js";
-import type { Colony, ResourceId } from "../types.js";
+import type { Colony } from "../model/industry.js";
+import type { ResourceId } from "../model/resources.js";
 import { emptyResources } from "./colony.js";
 import {
   applyLift,
