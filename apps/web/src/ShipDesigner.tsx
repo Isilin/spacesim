@@ -1,3 +1,4 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   blueprintLoad,
   CHASSIS,
@@ -9,7 +10,6 @@ import {
   validateBlueprint,
   type Blueprint,
   type ChassisId,
-  type ClientMessage,
   type Colony,
   type EmpireEffects,
   type Fleet,

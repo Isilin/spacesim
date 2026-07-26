@@ -1,3 +1,4 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   convoyCapacity,
   convoyDurationMs,
@@ -8,7 +9,6 @@ import {
   jumpDistanceInUniverse,
   maxConvoyCapacity,
   SHIP_IDS,
-  type ClientMessage,
   type Colony,
   type ResourceId,
   type Route,

@@ -1,3 +1,4 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   BASE_PRICES,
   blueprintValue,
@@ -16,7 +17,6 @@ import {
   transferCostCredits,
   transferDurationMs,
   type Blueprint,
-  type ClientMessage,
   type Colony,
   type FactionId,
   type MarketResource,

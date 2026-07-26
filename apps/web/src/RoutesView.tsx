@@ -1,3 +1,4 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   allBelts,
   allStations,
@@ -7,7 +8,6 @@ import {
   MARKET_RESOURCES,
   RESOURCES,
   SHIP_IDS,
-  type ClientMessage,
   type Colony,
   type MiningOutpost,
   type ResourceId,

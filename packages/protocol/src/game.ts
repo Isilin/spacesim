@@ -1,14 +1,13 @@
-import {
-  BUILDING_IDS,
-  RESOURCES,
-  type ClientMessage as SharedClientMessage,
-} from "@spacesim/shared";
+import { BUILDING_IDS, RESOURCES } from "@spacesim/shared";
 import { z } from "zod";
 
 const idSchema = z.string();
 const resourceSchema = z.enum(RESOURCES);
 const resourcesSchema = z.record(resourceSchema, z.number());
-const shipsSchema = z.record(z.string(), z.number());
+// `.optional()` on the value (not just the field) makes Zod infer `Partial<Record<string,
+// number>>` instead of a plain index signature — matching `Partial<Record<ShipId, number>>`
+// in @spacesim/shared, which callers like `idleShips()` actually return.
+const shipsSchema = z.record(z.string(), z.number().optional());
 const liftRuleSchema = z.object({
   keepGround: z.number(),
   direction: z.enum(["up", "down"]),
@@ -155,13 +154,3 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
-
-// Parity check, temporary until 1.2 moves ClientMessage out of @spacesim/shared: fails
-// `tsc --noEmit` the moment the Zod-inferred type and the legacy shared type diverge.
-// One-directional on purpose: what matters is that every Zod-validated command still fits
-// the shapes `GameEngine` methods expect (still typed against the legacy shared union). The
-// reverse direction trips on a harmless TS quirk — `z.record(z.string(), V)` infers a plain
-// index signature, not `Partial<Record<string, V>>` — that has no runtime or call-site effect.
-type _ClientMessageFitsShared = ClientMessage extends SharedClientMessage ? true : never;
-const _clientMessageParity: _ClientMessageFitsShared = true;
-void _clientMessageParity;

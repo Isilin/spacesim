@@ -1,3 +1,4 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   allSystems,
   combatDefFromStats,
@@ -10,7 +11,6 @@ import {
   WARSHIPS,
   type BattleReport,
   type Blueprint,
-  type ClientMessage,
   type Colony,
   type CombatDef,
   type Fleet,

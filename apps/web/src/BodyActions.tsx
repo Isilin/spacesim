@@ -1,7 +1,7 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   COLONY_SHIP_COST,
   colonizeInfluenceCost,
-  type ClientMessage,
   type Colony,
   type GameState,
   type Mission,

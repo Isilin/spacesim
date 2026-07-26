@@ -1,5 +1,5 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import type {
-  ClientMessage,
   Colony,
   Contract,
   EmpireEffects,

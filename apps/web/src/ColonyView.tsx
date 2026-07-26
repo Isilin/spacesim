@@ -1,3 +1,4 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   BUILDING_IDS,
   BUILDINGS,
@@ -16,7 +17,6 @@ import {
   usedSlots,
   workforceEfficiency,
   TECHS,
-  type ClientMessage,
   type Colony,
   type EmpireEffects,
   type Planet,

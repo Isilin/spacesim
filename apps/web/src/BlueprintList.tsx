@@ -1,8 +1,8 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   CHASSIS,
   resolveBlueprint,
   type Blueprint,
-  type ClientMessage,
   type Colony,
   type Fleet,
   type ModuleId,

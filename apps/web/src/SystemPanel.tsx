@@ -1,10 +1,10 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   CLAIM_COST,
   OUTPOST_COST,
   OUTPOST_STOCK_CAP,
   PROBE_COST_CREDITS,
   type Blueprint,
-  type ClientMessage,
   type Colony,
   type EmpireEffects,
   type GameState,

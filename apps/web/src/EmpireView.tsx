@@ -1,3 +1,4 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   allSystems,
   FACTION_IDS,
@@ -5,7 +6,6 @@ import {
   influencePerTick,
   MILESTONES,
   REP_TIERS,
-  type ClientMessage,
   type Colony,
   type Contract,
   type EmpireEffects,

@@ -1,9 +1,9 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   liftThroughput,
   MARKET_RESOURCES,
   orbitalCap,
   orbitalUsed,
-  type ClientMessage,
   type Colony,
   type EmpireEffects,
   type LiftRule,

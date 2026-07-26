@@ -1,7 +1,6 @@
 import websocket from "@fastify/websocket";
 import { ClientMessageSchema } from "@spacesim/protocol";
-import type { ClientMessage } from "@spacesim/protocol";
-import type { ServerMessage } from "@spacesim/shared";
+import type { ClientMessage, ServerMessage } from "@spacesim/protocol";
 import Fastify from "fastify";
 import {
   bearerToken,

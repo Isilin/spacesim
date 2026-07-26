@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@spacesim/protocol": "workspace:*",
     "@spacesim/shared": "workspace:*",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"

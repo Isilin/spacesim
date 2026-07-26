@@ -1,10 +1,10 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   canAfford,
   idleShips,
   MAX_SHIP_QUEUE_LENGTH,
   SHIP_IDS,
   SHIPS,
-  type ClientMessage,
   type Colony,
   type ResourceId,
   type Route,

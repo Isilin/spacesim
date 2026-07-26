@@ -1,3 +1,4 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   canResearch,
   pathCost,
@@ -5,7 +6,6 @@ import {
   TECH_IDS,
   TECHS,
   techLayout,
-  type ClientMessage,
   type Colony,
   type GameState,
   type TechBranch,

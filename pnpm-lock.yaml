@@ -57,6 +57,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@spacesim/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       '@spacesim/shared':
         specifier: workspace:*
         version: link:../../packages/shared

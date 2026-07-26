@@ -1,7 +1,7 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   contractEscrow,
   MARKET_RESOURCES,
-  type ClientMessage,
   type Colony,
   type Contract,
   type MarketResource,

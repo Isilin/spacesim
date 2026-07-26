@@ -1,6 +1,6 @@
+import type { ClientMessage, ServerMessage } from "@spacesim/protocol";
 import type {
   Blueprint,
-  ClientMessage,
   Contract,
   FactionState,
   Gateway,
@@ -17,7 +17,6 @@ import type {
   Relation,
   RelationProposal,
   Route,
-  ServerMessage,
   StationMarket,
   StoredBattle,
   Territory,

@@ -1,3 +1,4 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   bodyPhysicals,
   isBreathable,
@@ -7,7 +8,6 @@ import {
   usedSlots,
   type Atmosphere,
   type BuildingId,
-  type ClientMessage,
   type Colony,
   type EmpireEffects,
   type GameState,

@@ -1,10 +1,10 @@
+import type { ClientMessage } from "@spacesim/protocol";
 import {
   GATEWAY_COST,
   galaxyIndexOfId,
   gatewayProgressRatio,
   gatewayRemaining,
   maxConvoyCapacity,
-  type ClientMessage,
   type Colony,
   type Gateway,
   type ResourceId,
