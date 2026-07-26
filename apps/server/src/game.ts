@@ -26,7 +26,6 @@ import {
   DECLARE_WAR_INFLUENCE_COST,
   declareWarReason,
   decideColonyEconomy,
-  ECONOMY_TICK_TICKS,
   deliverToOrbit,
   emptyOrbital,
   emptyResources,
@@ -178,6 +177,7 @@ import { randomUUID } from "node:crypto";
 import { db, schema } from "./db/index.js";
 import { Empire, type Clock } from "./empire.js";
 import { GameRuntime } from "./runtime/game-runtime.js";
+import { TickRunner } from "./runtime/tick-runner.js";
 import {
   clientUniverseForEmpire,
   marketsForEmpire,
@@ -239,6 +239,8 @@ const consoleLogger: Logger = {
 export class GameEngine {
   /** Composé au boot : univers, horloge, index et entités partagées (game-scoped). */
   private runtime: GameRuntime;
+  /** Déroule un tick dans l'ordre exact observé en production (runtime/tick-runner.ts). */
+  private tickRunner: TickRunner;
   /** Injecté depuis le boot (`setLogger`) ; console brute par défaut (tests, scripts). */
   private logger: Logger = consoleLogger;
   private listeners = new Set<StateListener>();
@@ -350,6 +352,7 @@ export class GameEngine {
 
   private constructor(clock: Clock) {
     this.runtime = new GameRuntime(clock);
+    this.tickRunner = new TickRunner(this.runtime, this);
   }
 
   /** (Ré)indexe les entités d'univers — appelé à la construction et après chaque extension. */
@@ -1230,7 +1233,7 @@ export class GameEngine {
   }
 
   /** Production des avant-postes + entretien payé par la colonie propriétaire. */
-  private outpostsTick(empire: Empire): void {
+  outpostsTick(empire: Empire): void {
     for (const [id, outpost] of empire.outpostMap) {
       const belt = this.beltsById.get(outpost.beltId);
       if (!belt) continue;
@@ -1387,7 +1390,7 @@ export class GameEngine {
   }
 
   /** Ordonnanceur : départs et résolutions de cycles à l'instant `t`. */
-  private processRoutes(empire: Empire, t: number): void {
+  processRoutes(empire: Empire, t: number): void {
     for (const [id, route] of empire.routeMap) {
       let current = route;
 
@@ -1632,7 +1635,7 @@ export class GameEngine {
   }
 
   /** Fait évoluer l'humeur de chaque faction à un tick économique (chantier 15). */
-  private factionMoodTick(now: number, tickNumber: number): void {
+  factionMoodTick(now: number, tickNumber: number): void {
     for (const [factionId, state] of this.factionStateMap) {
       const rng = createRng(`faction-${this.clock.seed}-${factionId}-${tickNumber}`);
       const next = factionTick(state, rng, now);
@@ -1699,7 +1702,7 @@ export class GameEngine {
   }
 
   /** Fait tourner l'économie d'un empire PNJ : vend le surplus, contractualise les besoins. */
-  private npcTick(empire: Empire): void {
+  npcTick(empire: Empire): void {
     if (empire.kind !== "npc") return;
     for (const colony of empire.colonyMap.values()) {
       for (const intent of decideColonyEconomy(colony)) {
@@ -1768,7 +1771,7 @@ export class GameEngine {
     }
   }
 
-  private persistOutposts(empire: Empire): void {
+  persistOutposts(empire: Empire): void {
     for (const outpost of empire.outpostMap.values()) {
       db.update(schema.outposts)
         .set({ oreStock: outpost.oreStock })
@@ -1879,7 +1882,7 @@ export class GameEngine {
     }
   }
 
-  private resolveResearch(empire: Empire, t: number): void {
+  resolveResearch(empire: Empire, t: number): void {
     const finished = empire.research && empire.research.finishesAt <= t ? empire.research : null;
     if (finished) {
       empire.researched = [...empire.researched, finished.techId];
@@ -2665,7 +2668,7 @@ export class GameEngine {
   }
 
   /** Tire un nouvel objectif éphémère pour chaque empire humain qui n'en a pas déjà un ouvert. */
-  private generateObjectives(tickNumber: number, now: number): void {
+  generateObjectives(tickNumber: number, now: number): void {
     for (const empire of this.empires.values()) {
       if (empire.kind !== "human") continue;
       const mine = objectivesForEmpire(this.runtime, empire);
@@ -2690,7 +2693,7 @@ export class GameEngine {
   }
 
   /** Valide ou expire les objectifs ouverts, contre l'état courant du jeu. */
-  private resolveObjectives(t: number): void {
+  resolveObjectives(t: number): void {
     const { populationLeaderId, influenceLeaderId } = this.empireLeaders();
     for (const [id, objective] of this.objectiveMap) {
       if (objective.status !== "open") continue;
@@ -2754,7 +2757,7 @@ export class GameEngine {
   }
 
   /** Retire les événements de monde expirés (pas de statut : ils disparaissent, point). */
-  private resolveWorldEvents(t: number): void {
+  resolveWorldEvents(t: number): void {
     for (const [id, event] of this.worldEventMap) {
       if (t < event.expiresAt) continue;
       this.worldEventMap.delete(id);
@@ -2770,7 +2773,7 @@ export class GameEngine {
   }
 
   /** Tire un nouvel événement de monde et l'applique — cadence lente, un à la fois par cible. */
-  private worldEventTick(tickNumber: number, now: number): void {
+  worldEventTick(tickNumber: number, now: number): void {
     const rng = createRng(`worldevent-${this.clock.seed}-${tickNumber}`);
     const kind = rollWorldEvent(rng);
     if (!kind) return;
@@ -2981,7 +2984,7 @@ export class GameEngine {
    * pirate sur ses colonies. Repaires pirates = PNJ partagés (l'apparition est
    * résolue une fois par tick au niveau univers, cf. `advance`).
    */
-  private fleetsTick(empire: Empire, t: number): void {
+  fleetsTick(empire: Empire, t: number): void {
     for (const [id, fleet] of empire.fleetMap) {
       let current = fleet;
       // Livraison des vaisseaux produits.
@@ -3037,7 +3040,7 @@ export class GameEngine {
    * Apparition de repaires pirates PNJ (univers partagé, une fois par tick éco).
    * Brouillard univers (union des empires) ; jamais dans un système revendiqué.
    */
-  private spawnPirates(tickNumber: number): void {
+  spawnPirates(tickNumber: number): void {
     for (const systemId of this.universeExplored()) {
       if (this.claimOwner(systemId)) continue;
       if ([...this.lairMap.values()].some((l) => l.systemId === systemId)) continue;
@@ -3278,7 +3281,7 @@ export class GameEngine {
   }
 
   /** Maintient la frontière glissante : toujours des galaxies vierges devant les joueurs. */
-  private ensureFrontier(): void {
+  ensureFrontier(): void {
     this.growUniverse(galaxiesToAdd(this.galaxyOccupancy()));
   }
 
@@ -3305,7 +3308,7 @@ export class GameEngine {
   }
 
   /** Active les portails dont le chantier final est terminé. */
-  private resolveGateways(t: number): void {
+  resolveGateways(t: number): void {
     for (const [id, gateway] of this.gatewayMap) {
       if (gateway.active || !gateway.activatesAt || gateway.activatesAt > t) continue;
       this.gatewayMap.set(id, { ...gateway, active: true });
@@ -3366,7 +3369,7 @@ export class GameEngine {
   }
 
   /** Expire les contrats dépassés et rembourse le séquestre du reliquat non honoré. */
-  private resolveContracts(t: number): void {
+  resolveContracts(t: number): void {
     for (const [id, contract] of this.contractMap) {
       if (contract.status !== "open" || !isContractExpired(contract, t)) continue;
       const issuer = this.empires.get(contract.issuerId);
@@ -3943,7 +3946,7 @@ export class GameEngine {
    * commerce. Marchés et portails restent partagés (univers) ; `insertMission` (trajet
    * retour d'achat) reste sur le defaultEmpire — threadé en 7c.
    */
-  private resolveMissions(empire: Empire, t: number): void {
+  resolveMissions(empire: Empire, t: number): void {
     for (const [id, mission] of empire.missionMap) {
       if (mission.arrivesAt > t) continue;
       switch (mission.kind) {
@@ -4171,7 +4174,7 @@ export class GameEngine {
   }
 
   /** Génération d'influence ; entretien impayé = la revendication la plus récente tombe. */
-  private influenceTick(empire: Empire): void {
+  influenceTick(empire: Empire): void {
     // Bonus de territoire soudé : les claims contigus rapportent un supplément d'influence.
     const contiguous = contiguousClaims(this.universe, empire.claimedSystemIds).size;
     const net =
@@ -4192,7 +4195,7 @@ export class GameEngine {
   }
 
   /** Tick économique : les stocks PNJ de chaque station évoluent selon leur faction. */
-  private economyTick(tickNumber: number): void {
+  economyTick(tickNumber: number): void {
     for (const station of this.stationsById.values()) {
       const stocks = this.marketMap.get(station.id);
       if (!stocks) continue;
@@ -4215,7 +4218,7 @@ export class GameEngine {
   }
 
   /** Livre les convois arrivés à l'instant `t` (surplus au-delà du stockage perdu). */
-  private deliverTransfers(empire: Empire, t: number): void {
+  deliverTransfers(empire: Empire, t: number): void {
     for (const [id, transfer] of empire.transferMap) {
       if (transfer.arrivesAt > t) continue;
       const to = empire.colonyMap.get(transfer.toColonyId);
@@ -4398,7 +4401,7 @@ export class GameEngine {
     }
   }
 
-  private persistColony(colony: Colony): void {
+  persistColony(colony: Colony): void {
     db.update(schema.colonies)
       .set({
         resources: JSON.stringify(colony.resources),
@@ -4429,71 +4432,13 @@ export class GameEngine {
    * timestamp de chaque tick : un bâtiment fini en cours de catch-up produit
    * pour les ticks restants.
    */
+  /** Encodé nommément, dans l'ordre exact, par `TickRunner` (voir runtime/tick-runner.ts). */
   private advance(ticks: number): void {
-    for (let i = 1; i <= ticks; i++) {
-      const t = this.clock.lastTickAt + i * TICK_MS;
-      const tickNumber = this.clock.tick + i;
-      const isEconomyTick = tickNumber % ECONOMY_TICK_TICKS === 0;
-      // Étapes par empire (un seul instancié à ce stade — la boucle tourne une fois).
-      for (const empire of this.empires.values()) {
-        this.deliverTransfers(empire, t);
-        this.resolveMissions(empire, t);
-        this.resolveResearch(empire, t);
-      }
-      // Portails et contrats : univers partagé, résolus une fois par tick.
-      this.resolveGateways(t);
-      this.resolveContracts(t);
-      // Objectifs éphémères : réactifs à tout changement (colonisation, claim…), pas
-      // seulement au tick éco.
-      this.resolveObjectives(t);
-      // Événements de monde : expiration à chaque tick, nouveau tirage au tick éco (avant
-      // spawnPirates, pour qu'une vague pirate fraîchement déclenchée s'applique tout de suite).
-      this.resolveWorldEvents(t);
-      if (isEconomyTick) this.worldEventTick(tickNumber, t);
-      for (const empire of this.empires.values()) {
-        this.processRoutes(empire, t);
-        this.outpostsTick(empire);
-        this.fleetsTick(empire, t);
-      }
-      // Apparition de repaires (PNJ partagés) : après les mouvements de flotte, avant
-      // l'entretien d'influence — position historique (fin de `fleetsTick`), tick éco.
-      if (isEconomyTick) this.spawnPirates(tickNumber);
-      for (const empire of this.empires.values()) this.influenceTick(empire);
-      // Marchés PNJ : univers partagé, une fois par tick éco.
-      if (isEconomyTick) {
-        this.economyTick(tickNumber);
-        // Humeurs de faction (chantier 15) : après les marchés, avant les PNJ qui
-        // tarifent leurs contrats sur les cours (et bientôt les humeurs) à jour.
-        this.factionMoodTick(t, tickNumber);
-        // Économie des empires PNJ (chantier 14) : après les marchés, pour tarifer
-        // leurs contrats sur des cours à jour.
-        for (const empire of this.empires.values()) this.npcTick(empire);
-        // Objectifs éphémères (chantier 17) : un nouveau tirage par cycle éco, pas par tick.
-        this.generateObjectives(tickNumber, t);
-      }
-      // Front de peuplement : une colonisation a pu entamer la frontière (chantier 9).
-      if (isEconomyTick) this.ensureFrontier();
-      for (const empire of this.empires.values()) this.colonyProductionTick(empire, t);
-    }
-    this.clock.tick += ticks;
-    this.clock.lastTickAt += ticks * TICK_MS;
-    db.update(schema.games)
-      .set({ tick: this.clock.tick, lastTickAt: this.clock.lastTickAt })
-      .where(eq(schema.games.id, this.clock.id))
-      .run();
-    for (const empire of this.empires.values()) {
-      db.update(schema.players)
-        .set({ influence: empire.influence, factionRep: JSON.stringify(empire.factionRep) })
-        .where(eq(schema.players.id, empire.id))
-        .run();
-      for (const colony of empire.colonyMap.values()) this.persistColony(colony);
-      this.persistOutposts(empire);
-    }
-    this.notify();
+    this.tickRunner.run(ticks);
   }
 
   /** Production/économie d'une colonie à chaque tick, avec bonus territorial des claims. */
-  private colonyProductionTick(empire: Empire, t: number): void {
+  colonyProductionTick(empire: Empire, t: number): void {
     for (const [id, colony] of empire.colonyMap) {
       const planet = this.planetsById.get(colony.planetId);
       if (!planet) continue;
@@ -4547,7 +4492,7 @@ export class GameEngine {
     }
   }
 
-  private notify(): void {
+  notify(): void {
     // Signal seul : chaque connexion recompose le snapshot redacté de son empire
     // (7c-B). Le marqueur d'exploration se réarme par empire après diffusion.
     for (const listener of this.listeners) listener();
