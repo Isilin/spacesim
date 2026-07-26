@@ -1,44 +1,422 @@
-export * from "./model/resources.js";
-export * from "./model/universe.js";
-export * from "./model/empire.js";
-export * from "./model/industry.js";
-export * from "./model/transport.js";
-export * from "./model/military.js";
-export * from "./model/social.js";
-export * from "./constants.js";
-export * from "./rng.js";
-export * from "./universe.js";
-export * from "./content/buildings.js";
-export * from "./content/techs.js";
-export * from "./content/milestones.js";
-export * from "./content/factions.js";
-export * from "./content/ships.js";
-export * from "./content/warships.js";
-export * from "./content/chassis.js";
-export * from "./content/modules.js";
-export * from "./content/presets.js";
-export * from "./sim/combat.js";
-export * from "./sim/pirates.js";
-export * from "./sim/market.js";
-export * from "./sim/ships.js";
-export * from "./sim/routes.js";
-export * from "./sim/outposts.js";
-export * from "./sim/influence.js";
-export * from "./sim/expansion.js";
-export * from "./sim/bodies.js";
-export * from "./sim/techtree.js";
-export * from "./sim/design.js";
-export * from "./sim/orbital.js";
-export * from "./sim/gateways.js";
-export * from "./sim/research.js";
-export * from "./sim/colony.js";
-export * from "./sim/travel.js";
-export * from "./sim/territory.js";
-export * from "./sim/fog.js";
-export * from "./sim/contracts.js";
-export * from "./sim/npc.js";
-export * from "./sim/factions.js";
-export * from "./sim/diplomacy.js";
-export * from "./sim/objectives.js";
-export * from "./sim/worldEvents.js";
-export * from "./sim/economicZones.js";
+export { RESOURCES, type ResourceId } from "./model/resources.js";
+export {
+  PLANET_TYPES,
+  type PlanetType,
+  type Deposits,
+  type Planet,
+  type AsteroidBelt,
+  type TradeStation,
+  type StarSystem,
+  type Galaxy,
+  type Gateway,
+  type Universe,
+} from "./model/universe.js";
+export {
+  type ActiveResearch,
+  type Player,
+  type GameState,
+  type LeaderboardEntry,
+  type Territory,
+} from "./model/empire.js";
+export {
+  BUILDING_IDS,
+  SHIP_IDS,
+  type BuildingId,
+  type ShipId,
+  type ShipQueueItem,
+  type BusyShip,
+  type Blueprint,
+  type BuildQueueItem,
+  type Colony,
+  type MiningOutpost,
+  type StationMarket,
+} from "./model/industry.js";
+export {
+  type LiftRule,
+  type RouteRule,
+  type Route,
+  type Transfer,
+  type Mission,
+} from "./model/transport.js";
+export {
+  type Fleet,
+  type ForeignFleet,
+  type PirateLair,
+  type StoredBattle,
+} from "./model/military.js";
+export {
+  type FactionMood,
+  type FactionState,
+  type RelationState,
+  type Relation,
+  type ProposalKind,
+  type RelationProposal,
+  type ObjectiveKind,
+  type ObjectiveStatus,
+  type Objective,
+  type WorldEventKind,
+  type WorldEvent,
+  type ContractStatus,
+  type Contract,
+  type ForeignColony,
+} from "./model/social.js";
+export {
+  TICK_MS,
+  MAX_CATCHUP_TICKS,
+  MAP_WIDTH,
+  MAP_HEIGHT,
+  UNIVERSE_CENTER_X,
+  UNIVERSE_CENTER_Y,
+  GALAXY_SPACING,
+  INITIAL_GALAXIES,
+  FRONTIER_GALAXIES,
+  MAX_EMPIRES_PER_GALAXY,
+  MAX_GALAXIES,
+  SYSTEM_VIEW_SIZE,
+  BASE_STORAGE,
+  STORAGE_PER_DEPOT,
+  UNCAPPED_RESOURCES,
+  MAX_QUEUE_LENGTH,
+  NO_DEPOSIT_MODIFIER,
+  FOOD_PER_COLONIST,
+  HOUSING_PER_HABITAT,
+  CREDITS_PER_COLONIST,
+  POP_GROWTH_BASE,
+  SATISFACTION_GROWTH_THRESHOLD,
+  GOODS_PER_COLONIST,
+  RAID_FRACTION,
+  TRANSFER_BASE_MS,
+  TRANSFER_MS_PER_JUMP,
+  TRANSFER_BASE_CREDITS,
+  TRANSFER_CREDITS_PER_JUMP,
+  FUEL_PER_MASS_JUMP,
+  GATEWAY_TOLL_CREDITS,
+  PROBE_COST_CREDITS,
+  PROBE_BASE_MS,
+  PROBE_MS_PER_JUMP,
+  COLONY_SHIP_COST,
+  COLONY_SHIP_BASE_MS,
+  COLONY_SHIP_MS_PER_JUMP,
+  NEW_COLONY_POPULATION,
+  NEW_COLONY_RESOURCES,
+  NEW_COLONY_ORBITAL,
+  ORBITAL_CAP_PER_DOCK,
+  LIFT_PER_DOCK,
+  LIFT_ENERGY_PER_UNIT,
+} from "./constants.js";
+export { hashSeed, mulberry32, createRng, randInt, pick, pickWeighted, type Rng } from "./rng.js";
+export {
+  galaxyDefAt,
+  generateGalaxyAt,
+  generateUniverse,
+  allSystems,
+  allStations,
+  allPlanets,
+  findGalaxyOfSystem,
+  allBelts,
+  type GalaxyDef,
+} from "./universe.js";
+export { BUILDINGS, type BuildingDef } from "./content/buildings.js";
+export {
+  TECH_IDS,
+  TECHS,
+  BASE_BUILDINGS,
+  type TechBranch,
+  type TechId,
+  type TechEffects,
+  type TechDef,
+} from "./content/techs.js";
+export { MILESTONES, type MilestoneMetric, type MilestoneDef } from "./content/milestones.js";
+export { FACTION_IDS, FACTIONS, type FactionId, type FactionDef } from "./content/factions.js";
+export {
+  SHIPS,
+  MAX_SHIP_QUEUE_LENGTH,
+  type LegacyShipId,
+  type ShipDef,
+} from "./content/ships.js";
+export {
+  WARSHIP_IDS,
+  COMBAT_PHASES,
+  WARSHIPS,
+  COMBAT_CATEGORIES,
+  CATEGORY_ADVANTAGE,
+  WARSHIP_CATEGORY,
+  COMBAT_DIRECTIVES,
+  DIRECTIVES,
+  DIRECTIVE_COUNTER,
+  COUNTER_BONUS,
+  type WarshipId,
+  type CombatPhase,
+  type WarshipDef,
+  type CombatCategory,
+  type CombatDirective,
+  type DirectiveDef,
+} from "./content/warships.js";
+export {
+  CHASSIS_IDS,
+  CHASSIS,
+  BASE_CHASSIS,
+  type ChassisKind,
+  type ShipDomain,
+  type ChassisDef,
+  type ChassisId,
+} from "./content/chassis.js";
+export {
+  SLOT_TYPES,
+  MODULE_ROLES,
+  MODULE_IDS,
+  MODULES,
+  BASE_MODULES,
+  type SlotType,
+  type ModuleRole,
+  type ModuleEffects,
+  type ModuleId,
+  type ModuleDef,
+} from "./content/modules.js";
+export {
+  PRESETS,
+  STARTER_PRESET_IDS,
+  presetById,
+  type PresetDef,
+} from "./content/presets.js";
+export {
+  ROUNDS_PER_PHASE,
+  WARSHIP_COMBAT_DEFS,
+  combatDefFromStats,
+  resolveBattle,
+  fleetPower,
+  fleetIsEmpty,
+  type FleetComposition,
+  type Directives,
+  type CombatDef,
+  type PhaseReport,
+  type BattleReport,
+} from "./sim/combat.js";
+export {
+  PIRATE_SPAWN_CHANCE,
+  PIRATE_TAX_PER_TICK,
+  pirateDirectives,
+  pirateComposition,
+  pirateBounty,
+} from "./sim/pirates.js";
+export {
+  MARKET_RESOURCES,
+  BASE_PRICES,
+  TARGET_STOCK,
+  PRICE_MULT_MIN,
+  PRICE_MULT_MAX,
+  MAX_STOCK,
+  ECONOMY_TICK_TICKS,
+  regionalMultiplier,
+  stationPrice,
+  initialStocks,
+  marketTick,
+  resolveSale,
+  resolvePurchase,
+  type MarketResource,
+  type Stocks,
+  type PriceContext,
+} from "./sim/market.js";
+export {
+  legacyCapacity,
+  idleShips,
+  fleetCapacity,
+  pickShip,
+  maxConvoyCapacity,
+  enqueueShip,
+  enqueueShipFromStats,
+  resolveShips,
+  type ShipEnqueueResult,
+} from "./sim/ships.js";
+export { routeCargoQuantity } from "./sim/routes.js";
+export {
+  MINING_RATE,
+  OUTPOST_STOCK_CAP,
+  OUTPOST_COST,
+  OUTPOST_UPKEEP_CREDITS,
+  beltRichness,
+  outpostTick,
+} from "./sim/outposts.js";
+export {
+  INFLUENCE_PER_COLONIST,
+  MONUMENT_INFLUENCE,
+  COLONIZE_INFLUENCE_BASE,
+  COLONIZE_INFLUENCE_GROWTH,
+  CLAIM_COST,
+  CLAIM_UPKEEP,
+  CLAIM_PRODUCTION_BONUS,
+  REP_PER_CREDIT,
+  REP_TIERS,
+  repBonus,
+  colonizeInfluenceCost,
+  influencePerTick,
+} from "./sim/influence.js";
+export {
+  DEFAULT_FRONTIER,
+  galaxiesToAdd,
+  pickStarterGalaxy,
+  type GalaxyOccupancy,
+  type FrontierConfig,
+} from "./sim/expansion.js";
+export {
+  ATMOSPHERES,
+  bodyPhysicals,
+  isBreathable,
+  type Atmosphere,
+  type BodyPhysicals,
+} from "./sim/bodies.js";
+export {
+  techDepth,
+  techLayout,
+  missingPrereqs,
+  researchPath,
+  pathCost,
+  pathDurationMs,
+  descendants,
+  validateTree,
+  type TechPosition,
+} from "./sim/techtree.js";
+export {
+  BLUEPRINT_BUY_MARKUP,
+  BLUEPRINT_SELL_FRACTION,
+  categoryOf,
+  resolveBlueprint,
+  validateBlueprint,
+  blueprintLoad,
+  dominantSlot,
+  shapeOf,
+  costValue,
+  blueprintValue,
+  type BlueprintShape,
+  type ShipStats,
+} from "./sim/design.js";
+export {
+  emptyOrbital,
+  orbitalCap,
+  liftThroughput,
+  orbitalUsed,
+  applyLift,
+  takeFromOrbit,
+  deliverToOrbit,
+} from "./sim/orbital.js";
+export {
+  GATEWAY_COST,
+  GATEWAY_BUILD_MS,
+  galaxyIndexOfId,
+  gatewayCost,
+  gatewayRemaining,
+  gatewayCovered,
+  gatewayProgressRatio,
+  galaxyParentIndex,
+  galaxyLinks,
+  gatewayLinks,
+  type GalaxyLink,
+} from "./sim/gateways.js";
+export { computeEffects, NO_EFFECTS, canResearch, type EmpireEffects } from "./sim/research.js";
+export {
+  emptyResources,
+  buildingCost,
+  buildingBuildMs,
+  storageCap,
+  usedSlots,
+  canAfford,
+  enqueueBuilding,
+  resolveQueue,
+  housing,
+  effectiveHabitability,
+  popCap,
+  totalJobs,
+  workforceEfficiency,
+  computeSatisfaction,
+  applyColonyTick,
+  colonyRates,
+  colonyShortages,
+  type EnqueueResult,
+  type Shortage,
+} from "./sim/colony.js";
+export {
+  jumpDistance,
+  jumpDistanceInUniverse,
+  transferDurationMs,
+  transferCostCredits,
+  legacyConvoyStat,
+  convoyDurationMs,
+  convoyFuel,
+  convoyFees,
+  convoyCapacity,
+  type ConvoyShips,
+  type ConvoyStat,
+} from "./sim/travel.js";
+export {
+  CONTIGUOUS_CLAIM_BONUS,
+  systemNeighbors,
+  contiguousClaims,
+  isFrontierSystem,
+} from "./sim/territory.js";
+export { redactUniverse, probeDurationMs, colonyShipDurationMs } from "./sim/fog.js";
+export {
+  CONTRACT_MIN_DURATION_MS,
+  CONTRACT_MAX_DURATION_MS,
+  MAX_OPEN_CONTRACTS_PER_EMPIRE,
+  clampContractDuration,
+  contractEscrow,
+  isContractExpired,
+  contractAcceptable,
+  contractPayout,
+} from "./sim/contracts.js";
+export {
+  NPC_SURPLUS_THRESHOLD,
+  NPC_DEFICIT_THRESHOLD,
+  NPC_CONTRACT_PRICE_MULT,
+  NPC_CONTRACT_DURATION_MS,
+  decideColonyEconomy,
+  type NpcSellIntent,
+  type NpcContractIntent,
+  type NpcIntent,
+} from "./sim/npc.js";
+export {
+  FACTION_MOOD_SHIFT_CHANCE,
+  FACTION_MOOD_DURATION_MS,
+  FACTION_BOOM_REBATE,
+  FACTION_EMBARGO_STANDING_THRESHOLD,
+  factionTick,
+  moodRebateBonus,
+  embargoBlocks,
+  FACTION_CONTRACT_PRICE_MULT,
+  FACTION_CONTRACT_DURATION_MS,
+  FACTION_CONTRACT_QUANTITY_MIN,
+  FACTION_CONTRACT_QUANTITY_MAX,
+} from "./sim/factions.js";
+export {
+  relationKey,
+  WAR_COOLDOWN_MS,
+  DECLARE_WAR_INFLUENCE_COST,
+  declareWarReason,
+  makePeaceReason,
+  proposeRelationReason,
+  breakRelationReason,
+  NPC_ALLIANCE_MIN_POWER_RATIO,
+  NPC_ALLIANCE_MAX_POWER_RATIO,
+  npcAcceptsProposal,
+} from "./sim/diplomacy.js";
+export {
+  OBJECTIVE_KINDS,
+  OBJECTIVE_DURATION_MS,
+  OBJECTIVE_REWARD_CREDITS,
+  MAX_OPEN_OBJECTIVES_PER_EMPIRE,
+  generateObjectiveSpec,
+  objectiveMet,
+  type ObjectiveSpec,
+  type ObjectiveProgress,
+} from "./sim/objectives.js";
+export {
+  WORLD_EVENT_KINDS,
+  WORLD_EVENT_DURATION_MS,
+  WORLD_EVENT_TRIGGER_CHANCE,
+  WORLD_EVENT_PRICE_PENALTY,
+  WORLD_EVENT_PRICE_BONUS,
+  WORLD_EVENT_PIRATE_MULT,
+  rollWorldEvent,
+  worldEventPriceBonus,
+} from "./sim/worldEvents.js";
+export { galaxyActivity, normalizedActivity } from "./sim/economicZones.js";
