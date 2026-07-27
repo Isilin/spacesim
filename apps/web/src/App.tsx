@@ -17,6 +17,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Button } from "@spacesim/ui";
 import {
   Navigate,
   NavLink,
@@ -391,9 +392,9 @@ export function App({ auth }: Props) {
           />
           {auth.empire?.name ?? "Empire"}
         </span>
-        <button className="link-button" onClick={() => void auth.logout()}>
+        <Button variant="link" onClick={() => void auth.logout()}>
           Déconnexion
-        </button>
+        </Button>
       </header>
 
       {actionError && <div className="toast-error">{actionError}</div>}

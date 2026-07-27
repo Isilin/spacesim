@@ -1,0 +1,68 @@
+.ss-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 8px 18px;
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--text);
+  cursor: pointer;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  transition: background var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast);
+}
+.ss-btn:hover:not(:disabled) {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+.ss-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ss-btn--sm {
+  padding: 5px 12px;
+  font-size: var(--fs-xs);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+.ss-btn--primary {
+  background: var(--cyan-dim);
+  border-color: var(--cyan);
+  color: var(--cyan);
+  box-shadow: var(--glow-cyan);
+}
+.ss-btn--primary:hover:not(:disabled) {
+  background: var(--cyan);
+  color: var(--bg);
+}
+.ss-btn--ghost {
+  border-color: var(--border);
+}
+.ss-btn--ghost:hover:not(:disabled) {
+  background: var(--border);
+}
+.ss-btn--link {
+  border-color: transparent;
+  padding: 2px 0;
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--cyan);
+}
+.ss-btn--link:hover:not(:disabled) {
+  color: #8fe6ff;
+  background: none;
+}
+.ss-btn--danger {
+  border-color: var(--ko);
+  color: var(--ko);
+}
+.ss-btn--danger:hover:not(:disabled) {
+  background: var(--ko);
+  color: var(--bg);
+}

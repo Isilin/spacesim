@@ -11,7 +11,8 @@
       "apps/web/test-results/**",
       "apps/web/playwright-report/**",
       "pnpm-lock.yaml",
-      "packages/shared/src/universe.fixture.json"
+      "packages/shared/src/universe.fixture.json",
+      "packages/ui/.claude-export/**"
     ]
   },
   "formatter": {
