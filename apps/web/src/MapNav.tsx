@@ -1,5 +1,6 @@
 import type { Colony, Universe } from "@spacesim/shared";
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 /** Cible de navigation : ce que la recherche et les raccourcis savent ouvrir. */
 export type NavTarget =
@@ -15,10 +16,6 @@ interface Props {
   fleetSystemIds: string[];
   /** Système de la colonie active — cible du raccourci « ma capitale ». */
   homeSystemId: string | null;
-  canGoBack: boolean;
-  canGoForward: boolean;
-  onBack: () => void;
-  onForward: () => void;
   onGo: (target: NavTarget) => void;
 }
 
@@ -45,13 +42,10 @@ export function MapNav({
   exploredSystemIds,
   fleetSystemIds,
   homeSystemId,
-  canGoBack,
-  canGoForward,
-  onBack,
-  onForward,
   onGo,
 }: Props) {
   const [query, setQuery] = useState("");
+  const navigate = useNavigate();
 
   const index = useMemo<Suggestion[]>(() => {
     const explored = new Set(exploredSystemIds);
@@ -113,10 +107,10 @@ export function MapNav({
   return (
     <div className="map-nav">
       <div className="map-nav-history">
-        <button type="button" disabled={!canGoBack} title="Précédent" onClick={onBack}>
+        <button type="button" title="Précédent" onClick={() => navigate(-1)}>
           ‹
         </button>
-        <button type="button" disabled={!canGoForward} title="Suivant" onClick={onForward}>
+        <button type="button" title="Suivant" onClick={() => navigate(1)}>
           ›
         </button>
       </div>
