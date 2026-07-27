@@ -1,6 +1,5 @@
 import {
   breakRelationReason,
-  combatDefFromStats,
   computeEffects,
   createRng,
   DECLARE_WAR_INFLUENCE_COST,
@@ -10,7 +9,6 @@ import {
   FACTION_IDS,
   FACTION_MOOD_DURATION_MS,
   FACTIONS,
-  fleetIsEmpty,
   fleetPower,
   GATEWAY_BUILD_MS,
   gatewayCost,
@@ -18,7 +16,6 @@ import {
   gatewayLinks,
   INITIAL_GALAXIES,
   pickStarterGalaxy,
-  jumpDistanceInUniverse,
   makePeaceReason,
   MAX_CATCHUP_TICKS,
   npcAcceptsProposal,
@@ -26,30 +23,17 @@ import {
   MAX_OPEN_OBJECTIVES_PER_EMPIRE,
   objectiveMet,
   OBJECTIVE_DURATION_MS,
-  PIRATE_SPAWN_CHANCE,
-  PIRATE_TAX_PER_TICK,
   rollWorldEvent,
   WORLD_EVENT_DURATION_MS,
-  WORLD_EVENT_PIRATE_MULT,
-  RAID_FRACTION,
   pirateBounty,
   pirateComposition,
   pirateDirectives,
-  resolveBlueprint,
-  WARSHIP_COMBAT_DEFS,
-  randInt,
   proposeRelationReason,
   relationKey,
-  resolveBattle,
-  RESOURCES,
-  storageCap,
   WAR_COOLDOWN_MS,
-  WARSHIPS,
   TICK_MS,
-  transferDurationMs,
   type AsteroidBelt,
   type BuildingId,
-  type CombatDef,
   type Colony,
   type Contract,
   type EmpireEffects,
@@ -64,7 +48,6 @@ import {
   type PirateLair,
   type PriceContext,
   type StoredBattle,
-  type WarshipId,
   type MiningOutpost,
   type Mission,
   type Objective,
@@ -95,6 +78,7 @@ import { Empire, type Clock } from "./empire.js";
 import { GameRuntime } from "./runtime/game-runtime.js";
 import { consoleLogger, type Logger } from "./runtime/logger.js";
 import { ExplorationService } from "./runtime/services/exploration-service.js";
+import { FleetService } from "./runtime/services/fleet-service.js";
 import { IndustryService } from "./runtime/services/industry-service.js";
 import { LogisticsService } from "./runtime/services/logistics-service.js";
 import { TickRunner } from "./runtime/tick-runner.js";
@@ -155,6 +139,8 @@ export class GameEngine {
   private logistics: LogisticsService;
   /** Sondes, colonisation, revendications de systèmes, croissance de l'univers (chantier 9). */
   private exploration: ExplorationService;
+  /** Flottes, combat (repaire/PvP), production/déplacement et repaires pirates PNJ. */
+  private fleetService: FleetService;
   /** Injecté depuis le boot (`setLogger`) ; console brute par défaut (tests, scripts). */
   private logger: Logger = consoleLogger;
   private listeners = new Set<StateListener>();
@@ -299,6 +285,16 @@ export class GameEngine {
         this.logistics.insertMission(empire, kind, fromColonyId, targetId, durationMs),
       () => this.initMarkets(),
       () => this.initGateways(),
+    );
+    this.fleetService = new FleetService(
+      this.runtime,
+      () => this.notify(),
+      logger,
+      (colony) => this.persistColony(colony),
+      (empire, systemId) => this.exploration.dropClaim(empire, systemId),
+      (empire, systemId) => this.markExplored(empire, systemId),
+      (a, b) => this.atWar(a, b),
+      (galaxyId) => this.worldEventKindsOnGalaxy(galaxyId),
     );
   }
 
@@ -449,24 +445,6 @@ export class GameEngine {
     return marketsForEmpire(this.runtime, this.defaultEmpire);
   }
 
-  /** Localise une flotte parmi tous les empires (cible PvP). */
-  private findFleet(fleetId: string): { empire: Empire; fleet: Fleet } | null {
-    for (const empire of this.empires.values()) {
-      const fleet = empire.fleetMap.get(fleetId);
-      if (fleet) return { empire, fleet };
-    }
-    return null;
-  }
-
-  /** Localise une colonie parmi tous les empires (cible PvP). */
-  private findColony(colonyId: string): { empire: Empire; colony: Colony } | null {
-    for (const empire of this.empires.values()) {
-      const colony = empire.colonyMap.get(colonyId);
-      if (colony) return { empire, colony };
-    }
-    return null;
-  }
-
   planet(planetId: string): Planet | undefined {
     return this.planetsById.get(planetId);
   }
@@ -559,20 +537,6 @@ export class GameEngine {
 
   private seedStarterBlueprintsForAll(): void {
     this.industry.seedStarterBlueprintsForAll();
-  }
-
-  /**
-   * Définitions de combat couvrant les classes historiques (défaut/PNJ) + les plans des
-   * empires impliqués dans la bataille — le combat résout ainsi n'importe quel id présent.
-   */
-  private combatDefs(...empires: Empire[]): Record<string, CombatDef> {
-    const defs: Record<string, CombatDef> = { ...WARSHIP_COMBAT_DEFS };
-    for (const empire of empires) {
-      for (const bp of empire.blueprintMap.values()) {
-        defs[bp.id] = combatDefFromStats(resolveBlueprint(bp));
-      }
-    }
-    return defs;
   }
 
   /** Action joueur : créer un plan (validé contre les techs débloquées). */
@@ -814,61 +778,12 @@ export class GameEngine {
 
   /** Action joueur : créer une flotte vide rattachée à une colonie. */
   createFleet(empire: Empire, colonyId: string, name: string): string | null {
-    const colony = empire.colonyMap.get(colonyId);
-    if (!colony) return "Colonie inconnue";
-    const systemId = this.planetsById.get(colony.planetId)?.systemId;
-    if (!systemId) return "Système inconnu";
-    const fleet: Fleet = {
-      id: randomUUID(),
-      ownerId: empire.id,
-      name: name.trim().slice(0, 40) || "Flotte",
-      systemId,
-      homeColonyId: colonyId,
-      ships: {},
-      directives: { ...DEFAULT_DIRECTIVES },
-      queue: [],
-      movement: null,
-    };
-    empire.fleetMap.set(fleet.id, fleet);
-    this.persistFleet(fleet, true);
-    this.notify();
-    return null;
+    return this.fleetService.createFleet(empire, colonyId, name);
   }
 
   /** Action joueur : produire un vaisseau de guerre (file de la flotte, tech requise). */
   buildWarship(empire: Empire, fleetId: string, warshipId: string): string | null {
-    const fleet = empire.fleetMap.get(fleetId);
-    if (!fleet) return "Flotte inconnue";
-    if (fleet.movement) return "Flotte en déplacement";
-    const def = WARSHIPS[warshipId as WarshipId];
-    if (!def) return "Vaisseau inconnu";
-    const home = empire.colonyMap.get(fleet.homeColonyId);
-    if (!home) return "Colonie de rattachement inconnue";
-    if ((home.buildings.shipyard ?? 0) < 1) return "Chantier naval requis";
-    if (!empire.researched.includes(def.requiresTech)) {
-      return "Technologie militaire requise";
-    }
-    if (fleet.queue.length >= 5) return "File de production pleine";
-    const resources = { ...home.resources };
-    for (const [res, amount] of Object.entries(def.cost) as [ResourceId, number][]) {
-      if (resources[res] < amount) return `Ressources insuffisantes (${amount} ${res})`;
-    }
-    for (const [res, amount] of Object.entries(def.cost) as [ResourceId, number][]) {
-      resources[res] -= amount;
-    }
-    empire.colonyMap.set(home.id, { ...home, resources });
-    this.persistColony(empire.colonyMap.get(home.id)!);
-    const now = Date.now();
-    const lastFinish = fleet.queue.at(-1)?.finishesAt ?? now;
-    const startedAt = Math.max(now, lastFinish);
-    const next: Fleet = {
-      ...fleet,
-      queue: [...fleet.queue, { warshipId, startedAt, finishesAt: startedAt + def.buildMs }],
-    };
-    empire.fleetMap.set(fleetId, next);
-    this.persistFleet(next);
-    this.notify();
-    return null;
+    return this.fleetService.buildWarship(empire, fleetId, warshipId);
   }
 
   setFleetDirectives(
@@ -876,111 +791,21 @@ export class GameEngine {
     fleetId: string,
     directives: Record<string, string>,
   ): string | null {
-    const fleet = empire.fleetMap.get(fleetId);
-    if (!fleet) return "Flotte inconnue";
-    const next: Fleet = {
-      ...fleet,
-      directives: {
-        long: directives.long ?? fleet.directives.long ?? "focus_fire",
-        medium: directives.medium ?? fleet.directives.medium ?? "focus_fire",
-        short: directives.short ?? fleet.directives.short ?? "focus_fire",
-      },
-    };
-    empire.fleetMap.set(fleetId, next);
-    this.persistFleet(next);
-    this.notify();
-    return null;
+    return this.fleetService.setFleetDirectives(empire, fleetId, directives);
   }
 
   /** Action joueur : déplacer une flotte vers un système accessible. */
   moveFleet(empire: Empire, fleetId: string, toSystemId: string): string | null {
-    const fleet = empire.fleetMap.get(fleetId);
-    if (!fleet) return "Flotte inconnue";
-    if (fleet.movement) return "Flotte déjà en déplacement";
-    if (fleet.queue.length > 0) return "Production en cours au chantier";
-    if (toSystemId === fleet.systemId) return "Déjà sur place";
-    const jumps = jumpDistanceInUniverse(
-      this.universe,
-      fleet.systemId,
-      toSystemId,
-      this.portalLinks,
-    );
-    if (jumps < 0) return "Système inaccessible";
-    const now = Date.now();
-    const next: Fleet = {
-      ...fleet,
-      movement: {
-        toSystemId,
-        departedAt: now,
-        arrivesAt: now + transferDurationMs(jumps) * empire.effects.transferSpeedMult,
-      },
-    };
-    empire.fleetMap.set(fleetId, next);
-    this.persistFleet(next);
-    this.notify();
-    return null;
+    return this.fleetService.moveFleet(empire, fleetId, toSystemId);
   }
 
   /** Action joueur : attaquer un repaire pirate présent dans le système de la flotte. */
   attackLair(empire: Empire, fleetId: string, lairId: string): string | null {
-    const fleet = empire.fleetMap.get(fleetId);
-    if (!fleet) return "Flotte inconnue";
-    if (fleet.movement) return "Flotte en déplacement";
-    const lair = this.lairMap.get(lairId);
-    if (!lair) return "Repaire inconnu";
-    if (lair.systemId !== fleet.systemId) return "Flotte pas sur zone";
-    if (fleetIsEmpty(fleet.ships)) return "Flotte sans vaisseau";
-
-    const report = resolveBattle(
-      fleet.ships as FleetComposition,
-      lair.ships as FleetComposition,
-      fleet.directives as never,
-      lair.directives as never,
-      this.combatDefs(empire),
-    );
-    this.archiveBattle(fleet.systemId, fleet.name, "Repaire pirate", report);
-
-    // Mise à jour de la flotte (survivants).
-    const updatedFleet: Fleet = { ...fleet, ships: report.attackerSurvivors };
-    empire.fleetMap.set(fleetId, updatedFleet);
-    this.persistFleet(updatedFleet);
-
-    if (report.winner === "attacker") {
-      // Butin crédité à la colonie de rattachement, repaire détruit.
-      const home = empire.colonyMap.get(fleet.homeColonyId);
-      if (home) {
-        empire.colonyMap.set(home.id, {
-          ...home,
-          resources: { ...home.resources, credits: home.resources.credits + lair.bounty },
-        });
-        this.persistColony(empire.colonyMap.get(home.id)!);
-      }
-      this.lairMap.delete(lairId);
-      db.delete(schema.pirateLairs).where(eq(schema.pirateLairs.id, lairId)).run();
-      this.logger.info(`[game] repaire nettoyé (butin ${lair.bounty})`);
-    } else {
-      // Le repaire survivant est réduit à ses rescapés.
-      const survivingLair: PirateLair = { ...lair, ships: report.defenderSurvivors };
-      if (fleetIsEmpty(survivingLair.ships)) {
-        this.lairMap.delete(lairId);
-        db.delete(schema.pirateLairs).where(eq(schema.pirateLairs.id, lairId)).run();
-      } else {
-        this.lairMap.set(lairId, survivingLair);
-        this.persistLair(survivingLair);
-      }
-    }
-    this.notify();
-    return null;
+    return this.fleetService.attackLair(empire, fleetId, lairId);
   }
 
   disbandFleet(empire: Empire, fleetId: string): string | null {
-    const fleet = empire.fleetMap.get(fleetId);
-    if (!fleet) return "Flotte inconnue";
-    if (fleet.movement) return "Flotte en déplacement";
-    empire.fleetMap.delete(fleetId);
-    db.delete(schema.fleets).where(eq(schema.fleets.id, fleetId)).run();
-    this.notify();
-    return null;
+    return this.fleetService.disbandFleet(empire, fleetId);
   }
 
   // ─────────────────────────── Diplomatie (chantier 16) ───────────────────────────
@@ -1390,52 +1215,9 @@ export class GameEngine {
     this.notify();
   }
 
-  /** Retire une flotte (survivants nuls) ou la met à jour (chantier 7d — PvP). */
-  private applyFleetSurvivors(empire: Empire, fleet: Fleet, ships: FleetComposition): void {
-    if (fleetIsEmpty(ships)) {
-      empire.fleetMap.delete(fleet.id);
-      db.delete(schema.fleets).where(eq(schema.fleets.id, fleet.id)).run();
-    } else {
-      const next: Fleet = { ...fleet, ships };
-      empire.fleetMap.set(fleet.id, next);
-      this.persistFleet(next);
-    }
-  }
-
   /** Action joueur : attaquer une flotte ennemie stationnée dans le même système (PvP). */
   attackFleet(empire: Empire, fleetId: string, targetFleetId: string): string | null {
-    const fleet = empire.fleetMap.get(fleetId);
-    if (!fleet) return "Flotte inconnue";
-    if (fleet.movement) return "Flotte en déplacement";
-    if (fleetIsEmpty(fleet.ships)) return "Flotte sans vaisseau";
-    const target = this.findFleet(targetFleetId);
-    if (!target || target.empire.id === empire.id) return "Cible inconnue";
-    if (!this.atWar(empire.id, target.empire.id)) return "En paix — déclarez la guerre d'abord";
-    if (target.fleet.movement) return "Cible en déplacement";
-    if (target.fleet.systemId !== fleet.systemId) return "Cible hors de portée";
-    if (fleetIsEmpty(target.fleet.ships)) return "Cible sans vaisseau";
-
-    const report = resolveBattle(
-      fleet.ships as FleetComposition,
-      target.fleet.ships as FleetComposition,
-      fleet.directives as never,
-      target.fleet.directives as never,
-      this.combatDefs(empire, target.empire),
-    );
-    this.archiveBattle(
-      fleet.systemId,
-      fleet.name,
-      `${target.empire.name} — ${target.fleet.name}`,
-      report,
-    );
-    this.applyFleetSurvivors(empire, fleet, report.attackerSurvivors as FleetComposition);
-    this.applyFleetSurvivors(
-      target.empire,
-      target.fleet,
-      report.defenderSurvivors as FleetComposition,
-    );
-    this.notify();
-    return null;
+    return this.fleetService.attackFleet(empire, fleetId, targetFleetId);
   }
 
   /**
@@ -1445,117 +1227,7 @@ export class GameEngine {
    * claim ennemi sur le système. Pas de capture de colonie à ce stade.
    */
   attackColony(empire: Empire, fleetId: string, targetColonyId: string): string | null {
-    const fleet = empire.fleetMap.get(fleetId);
-    if (!fleet) return "Flotte inconnue";
-    if (fleet.movement) return "Flotte en déplacement";
-    if (fleetIsEmpty(fleet.ships)) return "Flotte sans vaisseau";
-    const target = this.findColony(targetColonyId);
-    if (!target || target.empire.id === empire.id) return "Colonie cible inconnue";
-    if (!this.atWar(empire.id, target.empire.id)) return "En paix — déclarez la guerre d'abord";
-    const systemId = this.planetsById.get(target.colony.planetId)?.systemId;
-    if (!systemId) return "Système inconnu";
-    if (systemId !== fleet.systemId) return "Cible hors de portée";
-
-    // Défense : la flotte ennemie la plus fournie stationnée dans le système.
-    const shipCount = (ships: Fleet["ships"]): number => {
-      let total = 0;
-      for (const n of Object.values(ships)) total += n ?? 0;
-      return total;
-    };
-    const defender = [...target.empire.fleetMap.values()]
-      .filter((f) => f.systemId === systemId && !f.movement && !fleetIsEmpty(f.ships))
-      .sort((a, b) => shipCount(b.ships) - shipCount(a.ships))[0];
-
-    if (defender) {
-      const report = resolveBattle(
-        fleet.ships as FleetComposition,
-        defender.ships as FleetComposition,
-        fleet.directives as never,
-        defender.directives as never,
-        this.combatDefs(empire, target.empire),
-      );
-      this.archiveBattle(systemId, fleet.name, `${target.empire.name} — ${defender.name}`, report);
-      this.applyFleetSurvivors(
-        target.empire,
-        defender,
-        report.defenderSurvivors as FleetComposition,
-      );
-      this.applyFleetSurvivors(empire, fleet, report.attackerSurvivors as FleetComposition);
-      // Attaquant anéanti ou défense victorieuse → pas de raid.
-      if (fleetIsEmpty(report.attackerSurvivors) || report.winner !== "attacker") {
-        this.notify();
-        return null;
-      }
-    }
-
-    // Raid : pillage d'une fraction des ressources, crédité à la colonie de rattachement.
-    const home = empire.colonyMap.get(fleet.homeColonyId);
-    const victim = target.empire.colonyMap.get(targetColonyId)!;
-    const stolen: Partial<Record<ResourceId, number>> = {};
-    const victimResources = { ...victim.resources };
-    for (const res of RESOURCES) {
-      const take = Math.floor(victimResources[res] * RAID_FRACTION);
-      if (take <= 0) continue;
-      stolen[res] = take;
-      victimResources[res] -= take;
-    }
-    target.empire.colonyMap.set(victim.id, { ...victim, resources: victimResources });
-    this.persistColony(target.empire.colonyMap.get(victim.id)!);
-    if (home) {
-      const homeResources = { ...home.resources };
-      for (const [res, amount] of Object.entries(stolen) as [ResourceId, number][]) {
-        homeResources[res] = Math.min(
-          homeResources[res] + amount,
-          storageCap(home, res, empire.effects),
-        );
-      }
-      empire.colonyMap.set(home.id, { ...home, resources: homeResources });
-      this.persistColony(empire.colonyMap.get(home.id)!);
-    }
-    // Rupture du claim ennemi sur le système pillé.
-    if (target.empire.claimedSystemIds.includes(systemId)) {
-      this.exploration.dropClaim(target.empire, systemId);
-    }
-    this.archiveBattle(systemId, fleet.name, `${target.empire.name} — ${victim.name} (raid)`, {
-      raid: true,
-      stolen,
-    });
-    this.logger.info(`[game] raid sur ${victim.name} par « ${empire.name} »`);
-    this.notify();
-    return null;
-  }
-
-  private archiveBattle(
-    systemId: string,
-    attackerName: string,
-    defenderName: string,
-    report: unknown,
-  ): void {
-    const battle: StoredBattle = {
-      id: randomUUID(),
-      at: Date.now(),
-      systemId,
-      attackerName,
-      defenderName,
-      report,
-    };
-    this.battleLog = [battle, ...this.battleLog].slice(0, MAX_BATTLES);
-    db.insert(schema.battles)
-      .values({
-        id: battle.id,
-        gameId: this.clock.id,
-        at: battle.at,
-        systemId,
-        attackerName,
-        defenderName,
-        report: JSON.stringify(report),
-      })
-      .run();
-    // Purge des batailles au-delà de la limite.
-    const keep = new Set(this.battleLog.map((b) => b.id));
-    for (const row of db.select().from(schema.battles).all()) {
-      if (!keep.has(row.id)) db.delete(schema.battles).where(eq(schema.battles.id, row.id)).run();
-    }
+    return this.fleetService.attackColony(empire, fleetId, targetColonyId);
   }
 
   /**
@@ -1564,38 +1236,7 @@ export class GameEngine {
    * résolue une fois par tick au niveau univers, cf. `advance`).
    */
   fleetsTick(empire: Empire, t: number): void {
-    for (const [id, fleet] of empire.fleetMap) {
-      let current = fleet;
-      // Livraison des vaisseaux produits.
-      const done = current.queue.filter((q) => q.finishesAt <= t);
-      if (done.length > 0) {
-        const ships = { ...current.ships };
-        for (const item of done) ships[item.warshipId] = (ships[item.warshipId] ?? 0) + 1;
-        current = { ...current, ships, queue: current.queue.filter((q) => q.finishesAt > t) };
-      }
-      // Arrivée d'un déplacement : la flotte révèle son système de destination.
-      if (current.movement && current.movement.arrivesAt <= t) {
-        const arrivedAt = current.movement.toSystemId;
-        current = { ...current, systemId: arrivedAt, movement: null };
-        this.markExplored(empire, arrivedAt);
-      }
-      if (current !== fleet) {
-        empire.fleetMap.set(id, current);
-        this.persistFleet(current);
-      }
-    }
-
-    // Piraterie : ponction de crédits aux colonies partageant un système avec un repaire.
-    for (const lair of this.lairMap.values()) {
-      for (const colony of empire.colonyMap.values()) {
-        if (this.planetsById.get(colony.planetId)?.systemId !== lair.systemId) continue;
-        const credits = Math.max(0, colony.resources.credits - PIRATE_TAX_PER_TICK);
-        empire.colonyMap.set(colony.id, {
-          ...colony,
-          resources: { ...colony.resources, credits },
-        });
-      }
-    }
+    this.fleetService.fleetsTick(empire, t);
   }
 
   /**
@@ -1603,119 +1244,29 @@ export class GameEngine {
    * Brouillard univers (union des empires) ; jamais dans un système revendiqué.
    */
   spawnPirates(tickNumber: number): void {
-    for (const systemId of this.exploration.universeExplored()) {
-      if (this.exploration.claimOwner(systemId)) continue;
-      if ([...this.lairMap.values()].some((l) => l.systemId === systemId)) continue;
-      const galaxy = this.universe.galaxies.find((g) => g.systems.some((s) => s.id === systemId));
-      // Vague pirate majeure (chantier 17) : la galaxie touchée voit sa chance de spawn multipliée.
-      const surging = galaxy
-        ? this.worldEventKindsOnGalaxy(galaxy.id).includes("pirate_surge")
-        : false;
-      const chance = surging
-        ? Math.min(1, PIRATE_SPAWN_CHANCE * WORLD_EVENT_PIRATE_MULT)
-        : PIRATE_SPAWN_CHANCE;
-      const rng = createRng(`pirate-${this.clock.seed}-${systemId}-${tickNumber}`);
-      if (rng() > chance) continue;
-      // Menace croissante selon l'éloignement de la galaxie d'origine.
-      const threat = galaxy && galaxy.id !== "gal-0" ? 3 : randInt(rng, 1, 2);
-      const ships = pirateComposition(rng, threat);
-      const lair: PirateLair = {
-        id: randomUUID(),
-        systemId,
-        ships,
-        directives: pirateDirectives(rng),
-        bounty: pirateBounty(ships),
-      };
-      this.lairMap.set(lair.id, lair);
-      this.persistLair(lair, true);
-    }
+    this.fleetService.spawnPirates(tickNumber, this.exploration.universeExplored(), (systemId) =>
+      this.exploration.claimOwner(systemId),
+    );
   }
 
   private persistFleet(fleet: Fleet, insert = false): void {
-    const values = {
-      name: fleet.name,
-      systemId: fleet.systemId,
-      homeColonyId: fleet.homeColonyId,
-      ships: JSON.stringify(fleet.ships),
-      directives: JSON.stringify(fleet.directives),
-      queue: JSON.stringify(fleet.queue),
-      movement: fleet.movement ? JSON.stringify(fleet.movement) : null,
-    };
-    if (insert) {
-      db.insert(schema.fleets)
-        .values({
-          id: fleet.id,
-          gameId: this.clock.id,
-          ownerId: fleet.ownerId ?? this.defaultEmpire.id,
-          ...values,
-        })
-        .run();
-    } else {
-      db.update(schema.fleets).set(values).where(eq(schema.fleets.id, fleet.id)).run();
-    }
+    this.fleetService.persistFleet(fleet, insert);
   }
 
   private persistLair(lair: PirateLair, insert = false): void {
-    const values = {
-      systemId: lair.systemId,
-      ships: JSON.stringify(lair.ships),
-      directives: JSON.stringify(lair.directives),
-      bounty: lair.bounty,
-    };
-    if (insert) {
-      db.insert(schema.pirateLairs)
-        .values({ id: lair.id, gameId: this.clock.id, ...values })
-        .run();
-    } else {
-      db.update(schema.pirateLairs).set(values).where(eq(schema.pirateLairs.id, lair.id)).run();
-    }
+    this.fleetService.persistLair(lair, insert);
   }
 
   private loadFleets(): void {
-    for (const row of db.select().from(schema.fleets).all()) {
-      const ownerId = row.ownerId ?? this.defaultEmpire.id;
-      const empire = this.empires.get(ownerId) ?? this.defaultEmpire;
-      empire.fleetMap.set(row.id, {
-        id: row.id,
-        ownerId,
-        name: row.name,
-        systemId: row.systemId,
-        homeColonyId: row.homeColonyId,
-        ships: JSON.parse(row.ships),
-        directives: JSON.parse(row.directives),
-        queue: JSON.parse(row.queue),
-        movement: row.movement ? JSON.parse(row.movement) : null,
-      });
-    }
+    this.fleetService.loadFleets();
   }
 
   private loadPirates(): void {
-    for (const row of db.select().from(schema.pirateLairs).all()) {
-      this.lairMap.set(row.id, {
-        id: row.id,
-        systemId: row.systemId,
-        ships: JSON.parse(row.ships),
-        directives: JSON.parse(row.directives),
-        bounty: row.bounty,
-      });
-    }
+    this.fleetService.loadPirates();
   }
 
   private loadBattles(): void {
-    this.battleLog = db
-      .select()
-      .from(schema.battles)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        at: row.at,
-        systemId: row.systemId,
-        attackerName: row.attackerName,
-        defenderName: row.defenderName,
-        report: JSON.parse(row.report),
-      }))
-      .sort((a, b) => b.at - a.at)
-      .slice(0, MAX_BATTLES);
+    this.fleetService.loadBattles();
   }
 
   /**
