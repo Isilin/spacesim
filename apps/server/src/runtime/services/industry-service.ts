@@ -37,6 +37,7 @@ import { db, schema } from "../../db/index.js";
 import type { Empire } from "../../empire.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
+import { BlueprintRepository } from "../repositories/blueprint-repository.js";
 
 const MAX_BLUEPRINTS = 40;
 
@@ -47,12 +48,16 @@ const MAX_BLUEPRINTS = 40;
  * seul point de contact avec un autre domaine.
  */
 export class IndustryService {
+  private readonly blueprintRepo: BlueprintRepository;
+
   constructor(
     private readonly runtime: GameRuntime,
     private readonly notify: () => void,
     private readonly logger: Logger,
     private readonly persistFleet: (fleet: Fleet) => void,
-  ) {}
+  ) {
+    this.blueprintRepo = new BlueprintRepository(runtime.clock.id);
+  }
 
   private get portalLinks(): [string, string][] {
     return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
@@ -92,40 +97,16 @@ export class IndustryService {
 
   // ── Conception de vaisseaux (chantier 13) ────────────────────────────────
 
-  loadBlueprints(): void {
-    for (const row of db.select().from(schema.blueprints).all()) {
-      const empire = this.runtime.empires.get(row.ownerId);
+  async loadBlueprints(): Promise<void> {
+    for (const bp of await this.blueprintRepo.loadAll()) {
+      const empire = this.runtime.empires.get(bp.ownerId);
       if (!empire) continue;
-      empire.blueprintMap.set(row.id, {
-        id: row.id,
-        ownerId: row.ownerId,
-        name: row.name,
-        chassisId: row.chassisId,
-        modules: JSON.parse(row.modules),
-        createdAt: row.createdAt,
-      });
+      empire.blueprintMap.set(bp.id, bp);
     }
   }
 
   private persistBlueprint(bp: Blueprint, insert = false): void {
-    if (insert) {
-      db.insert(schema.blueprints)
-        .values({
-          id: bp.id,
-          gameId: this.runtime.clock.id,
-          ownerId: bp.ownerId,
-          name: bp.name,
-          chassisId: bp.chassisId,
-          modules: JSON.stringify(bp.modules),
-          createdAt: bp.createdAt,
-        })
-        .run();
-      return;
-    }
-    db.update(schema.blueprints)
-      .set({ name: bp.name, chassisId: bp.chassisId, modules: JSON.stringify(bp.modules) })
-      .where(eq(schema.blueprints.id, bp.id))
-      .run();
+    this.blueprintRepo.save(bp, insert);
   }
 
   /** Amorce un empire sans plan avec les designs de départ (presets constructibles). */
@@ -200,7 +181,7 @@ export class IndustryService {
   deleteBlueprint(empire: Empire, blueprintId: string): string | null {
     if (!empire.blueprintMap.has(blueprintId)) return "Plan inconnu";
     empire.blueprintMap.delete(blueprintId);
-    db.delete(schema.blueprints).where(eq(schema.blueprints.id, blueprintId)).run();
+    this.blueprintRepo.remove(blueprintId);
     this.notify();
     return null;
   }
@@ -324,7 +305,7 @@ export class IndustryService {
 
     const price = Math.round(costValue(resolveBlueprint(bp).cost) * BLUEPRINT_SELL_FRACTION);
     empire.blueprintMap.delete(blueprintId);
-    db.delete(schema.blueprints).where(eq(schema.blueprints.id, blueprintId)).run();
+    this.blueprintRepo.remove(blueprintId);
     empire.colonyMap.set(colony.id, {
       ...colony,
       resources: { ...colony.resources, credits: colony.resources.credits + price },

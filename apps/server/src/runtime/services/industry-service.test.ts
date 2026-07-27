@@ -9,8 +9,8 @@ describe("GameEngine — file de recherche (chantier 11)", () => {
   /** Science offerte à la colonie mère pour dérouler une chaîne sans attendre. */
   const grantScience = (engine: GameEngine, amount: number) => engine.devGrant({ science: amount });
 
-  it("planifie une chaîne et l'enchaîne recherche après recherche", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("planifie une chaîne et l'enchaîne recherche après recherche", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const empire = empireFor(engine, "alice");
     grantScience(engine, 5000);
 
@@ -32,8 +32,8 @@ describe("GameEngine — file de recherche (chantier 11)", () => {
     expect(state.research).toBeNull();
   });
 
-  it("refuse une chaîne déjà acquise et sait se vider", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("refuse une chaîne déjà acquise et sait se vider", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const empire = empireFor(engine, "alice");
     grantScience(engine, 5000);
 
@@ -48,8 +48,8 @@ describe("GameEngine — file de recherche (chantier 11)", () => {
     expect(engine.queueResearch(empire, "metallurgy")).toBe("Technologie déjà acquise");
   });
 
-  it("la file patiente au lieu de se vider quand la science manque", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("la file patiente au lieu de se vider quand la science manque", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const empire = empireFor(engine, "alice");
     // Juste de quoi payer la première tech de la chaîne.
     grantScience(engine, TECHS.metallurgy.cost);
@@ -82,16 +82,16 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     return station;
   };
 
-  it("un empire neuf est amorcé avec les plans de départ", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("un empire neuf est amorcé avec les plans de départ", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alice");
     const plans = snap(engine, a).blueprints;
     expect(plans.length).toBeGreaterThanOrEqual(2);
     expect(plans.every((p) => p.ownerId === a.id)).toBe(true);
   });
 
-  it("crée un plan valide, rejette un plan qui dépasse les emplacements", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("crée un plan valide, rejette un plan qui dépasse les emplacements", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alice");
     const before = snap(engine, a).blueprints.length;
     expect(
@@ -104,8 +104,8 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     ).not.toBeNull();
   });
 
-  it("les plans sont isolés par empire", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("les plans sont isolés par empire", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alice");
     const b = empireFor(engine, "bob");
     engine.createBlueprint(a, "Secret d'Alice", COLONY_BP.chassisId, COLONY_BP.modules);
@@ -113,8 +113,8 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     expect(namesB).not.toContain("Secret d'Alice");
   });
 
-  it("construit un plan de domaine colonie : file navale puis livraison", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("construit un plan de domaine colonie : file navale puis livraison", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alice");
     engine.devGrant({ metals: 1000, components: 500 });
     const colony = snap(engine, a).colonies[0]!;
@@ -125,8 +125,8 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     expect(snap(engine, a).colonies[0]!.ships[plan.id] ?? 0).toBeGreaterThanOrEqual(1);
   });
 
-  it("construit un plan de domaine flotte : file de la flotte", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("construit un plan de domaine flotte : file de la flotte", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alice");
     const colony = snap(engine, a).colonies[0]!;
     // Grant pour couvrir le coût du châssis + modules.
@@ -139,26 +139,26 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     expect(snap(engine, a).fleets[0]!.queue.some((q) => q.warshipId === plan.id)).toBe(true);
   });
 
-  it("refuse de bâtir un plan de flotte au chantier civil (mauvais domaine)", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("refuse de bâtir un plan de flotte au chantier civil (mauvais domaine)", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alice");
     const colony = snap(engine, a).colonies[0]!;
     const fleetPlan = snap(engine, a).blueprints.find((p) => p.chassisId === "scout_frame")!;
     expect(engine.buildBlueprint(a, fleetPlan.id, colony.id)).not.toBeNull();
   });
 
-  it("les plans survivent au rechargement", () => {
-    const e1 = GameEngine.loadOrBootstrap();
+  it("les plans survivent au rechargement", async () => {
+    const e1 = await GameEngine.loadOrBootstrap();
     const a = empireFor(e1, "alice");
     engine_createNamed(e1, a);
-    const e2 = GameEngine.loadOrBootstrap();
+    const e2 = await GameEngine.loadOrBootstrap();
     const a2 = e2.empireForAccount("alice")!;
     expect(e2.snapshotForEmpire(a2).blueprints.map((p) => p.name)).toContain("Persistant");
   });
 
   describe("marché de plans en station", () => {
-    it("achète un plan de départ : crédits débités, plan ajouté", () => {
-      const engine = GameEngine.loadOrBootstrap();
+    it("achète un plan de départ : crédits débités, plan ajouté", async () => {
+      const engine = await GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
       const station = reachableStation(engine, a);
       engine.devGrant({ credits: 5000 });
@@ -172,8 +172,8 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
       expect(after.colonies[0]!.resources.credits).toBeLessThan(colony.resources.credits);
     });
 
-    it("refuse l'achat sans crédits suffisants", () => {
-      const engine = GameEngine.loadOrBootstrap();
+    it("refuse l'achat sans crédits suffisants", async () => {
+      const engine = await GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
       const station = reachableStation(engine, a);
       const colony = snap(engine, a).colonies[0]!;
@@ -182,8 +182,8 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
       );
     });
 
-    it("refuse l'achat d'un preset inconnu", () => {
-      const engine = GameEngine.loadOrBootstrap();
+    it("refuse l'achat d'un preset inconnu", async () => {
+      const engine = await GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
       const station = reachableStation(engine, a);
       const colony = snap(engine, a).colonies[0]!;
@@ -193,8 +193,8 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
       );
     });
 
-    it("revend un plan : crédité, plan retiré", () => {
-      const engine = GameEngine.loadOrBootstrap();
+    it("revend un plan : crédité, plan retiré", async () => {
+      const engine = await GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
       const station = reachableStation(engine, a);
       const colony = snap(engine, a).colonies[0]!;
@@ -208,8 +208,8 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
       expect(after.colonies[0]!.resources.credits).toBeGreaterThan(creditsBefore);
     });
 
-    it("revend un vaisseau assemblé (classe historique) : décompte le pool, crédite", () => {
-      const engine = GameEngine.loadOrBootstrap();
+    it("revend un vaisseau assemblé (classe historique) : décompte le pool, crédite", async () => {
+      const engine = await GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
       const station = reachableStation(engine, a);
       const colony = snap(engine, a).colonies[0]!;
@@ -223,8 +223,8 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
       expect(after.resources.credits).toBeGreaterThan(creditsBefore);
     });
 
-    it("refuse de vendre plus de vaisseaux que disponibles", () => {
-      const engine = GameEngine.loadOrBootstrap();
+    it("refuse de vendre plus de vaisseaux que disponibles", async () => {
+      const engine = await GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
       const station = reachableStation(engine, a);
       const colony = snap(engine, a).colonies[0]!;

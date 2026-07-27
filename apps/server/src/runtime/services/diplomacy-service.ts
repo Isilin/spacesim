@@ -22,7 +22,6 @@ import {
   type FactionState,
   type FleetComposition,
   type Objective,
-  type ObjectiveKind,
   type ProposalKind,
   type Relation,
   type RelationProposal,
@@ -30,13 +29,15 @@ import {
   type WorldEvent,
   type WorldEventKind,
 } from "@spacesim/shared";
-import { and, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { db, schema } from "../../db/index.js";
 import type { Empire } from "../../empire.js";
 import { objectivesForEmpire } from "../projections.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
+import { DiplomacyRepository } from "../repositories/diplomacy-repository.js";
+import { FactionRepository } from "../repositories/faction-repository.js";
+import { ObjectiveRepository } from "../repositories/objective-repository.js";
+import { WorldEventRepository } from "../repositories/world-event-repository.js";
 
 /**
  * Diplomatie (chantier 16), objectifs éphémères (chantier 17) et événements de monde
@@ -44,12 +45,22 @@ import type { Logger } from "../logger.js";
  * (récompense d'objectif) : ce domaine n'a par ailleurs aucune dépendance externe.
  */
 export class DiplomacyService {
+  private readonly relationsRepo: DiplomacyRepository;
+  private readonly objectiveRepo: ObjectiveRepository;
+  private readonly worldEventRepo: WorldEventRepository;
+  private readonly factionRepo: FactionRepository;
+
   constructor(
     private readonly runtime: GameRuntime,
     private readonly notify: () => void,
     private readonly logger: Logger,
     private readonly persistColony: (colony: Colony) => void,
-  ) {}
+  ) {
+    this.relationsRepo = new DiplomacyRepository(runtime.clock.id);
+    this.objectiveRepo = new ObjectiveRepository(runtime.clock.id);
+    this.worldEventRepo = new WorldEventRepository(runtime.clock.id);
+    this.factionRepo = new FactionRepository(runtime.clock.id);
+  }
 
   // ─────────────────────────── Diplomatie (chantier 16) ───────────────────────────
 
@@ -82,41 +93,18 @@ export class DiplomacyService {
     else this.insertRelation(relation);
   }
 
-  loadRelations(): void {
-    for (const row of db.select().from(schema.relations).all()) {
-      this.runtime.relationMap.set(relationKey(row.empireA, row.empireB), {
-        empireA: row.empireA,
-        empireB: row.empireB,
-        state: row.state as RelationState,
-        since: row.since,
-        until: row.until,
-      });
+  async loadRelations(): Promise<void> {
+    for (const relation of await this.relationsRepo.loadRelations()) {
+      this.runtime.relationMap.set(relationKey(relation.empireA, relation.empireB), relation);
     }
   }
 
   private insertRelation(relation: Relation): void {
-    db.insert(schema.relations)
-      .values({
-        gameId: this.runtime.clock.id,
-        empireA: relation.empireA,
-        empireB: relation.empireB,
-        state: relation.state,
-        since: relation.since,
-        until: relation.until,
-      })
-      .run();
+    this.relationsRepo.insertRelation(relation);
   }
 
   persistRelation(relation: Relation): void {
-    db.update(schema.relations)
-      .set({ state: relation.state, since: relation.since, until: relation.until })
-      .where(
-        and(
-          eq(schema.relations.empireA, relation.empireA),
-          eq(schema.relations.empireB, relation.empireB),
-        ),
-      )
-      .run();
+    this.relationsRepo.saveRelation(relation);
   }
 
   /** Action joueur : déclarer la guerre à un empire — unilatérale, mais coûteuse en influence. */
@@ -227,75 +215,34 @@ export class DiplomacyService {
     if (accept) this.setRelation(proposal.fromEmpireId, proposal.toEmpireId, proposal.kind, null);
   }
 
-  loadProposals(): void {
-    for (const row of db.select().from(schema.relationProposals).all()) {
-      this.runtime.proposalMap.set(row.id, {
-        id: row.id,
-        fromEmpireId: row.fromEmpireId,
-        toEmpireId: row.toEmpireId,
-        kind: row.kind as ProposalKind,
-        createdAt: row.createdAt,
-      });
+  async loadProposals(): Promise<void> {
+    for (const proposal of await this.relationsRepo.loadProposals()) {
+      this.runtime.proposalMap.set(proposal.id, proposal);
     }
   }
 
   private insertProposal(proposal: RelationProposal): void {
-    db.insert(schema.relationProposals)
-      .values({
-        id: proposal.id,
-        gameId: this.runtime.clock.id,
-        fromEmpireId: proposal.fromEmpireId,
-        toEmpireId: proposal.toEmpireId,
-        kind: proposal.kind,
-        createdAt: proposal.createdAt,
-      })
-      .run();
+    this.relationsRepo.insertProposal(proposal);
   }
 
   private deleteProposal(id: string): void {
-    db.delete(schema.relationProposals).where(eq(schema.relationProposals.id, id)).run();
+    this.relationsRepo.removeProposal(id);
   }
 
   // ─────────────────────────── Objectifs éphémères (chantier 17) ───────────────────────────
 
-  loadObjectives(): void {
-    for (const row of db.select().from(schema.objectives).all()) {
-      this.runtime.objectiveMap.set(row.id, {
-        id: row.id,
-        empireId: row.empireId,
-        kind: row.kind as ObjectiveKind,
-        ...(row.targetCount !== null ? { targetCount: row.targetCount } : {}),
-        ...(row.targetSystemId !== null ? { targetSystemId: row.targetSystemId } : {}),
-        reward: row.reward,
-        createdAt: row.createdAt,
-        deadline: row.deadline,
-        status: row.status as Objective["status"],
-      });
+  async loadObjectives(): Promise<void> {
+    for (const objective of await this.objectiveRepo.loadAll()) {
+      this.runtime.objectiveMap.set(objective.id, objective);
     }
   }
 
   private insertObjective(objective: Objective): void {
-    db.insert(schema.objectives)
-      .values({
-        id: objective.id,
-        gameId: this.runtime.clock.id,
-        empireId: objective.empireId,
-        kind: objective.kind,
-        targetCount: objective.targetCount ?? null,
-        targetSystemId: objective.targetSystemId ?? null,
-        reward: objective.reward,
-        createdAt: objective.createdAt,
-        deadline: objective.deadline,
-        status: objective.status,
-      })
-      .run();
+    this.objectiveRepo.insert(objective);
   }
 
   persistObjective(objective: Objective): void {
-    db.update(schema.objectives)
-      .set({ status: objective.status, deadline: objective.deadline })
-      .where(eq(schema.objectives.id, objective.id))
-      .run();
+    this.objectiveRepo.save(objective);
   }
 
   /** Empires en tête de population/influence — sert à évaluer lead_population/lead_influence. */
@@ -374,31 +321,19 @@ export class DiplomacyService {
 
   // ─────────────────────────── Événements de monde (chantier 17) ───────────────────────────
 
-  loadWorldEvents(): void {
-    for (const row of db.select().from(schema.worldEvents).all()) {
-      this.runtime.worldEventMap.set(row.id, {
-        id: row.id,
-        kind: row.kind as WorldEventKind,
-        ...(row.galaxyId !== null ? { galaxyId: row.galaxyId } : {}),
-        ...(row.factionId !== null ? { factionId: row.factionId } : {}),
-        createdAt: row.createdAt,
-        expiresAt: row.expiresAt,
-      });
+  async loadWorldEvents(): Promise<void> {
+    for (const event of await this.worldEventRepo.loadAll()) {
+      this.runtime.worldEventMap.set(event.id, event);
     }
   }
 
   private insertWorldEvent(event: WorldEvent): void {
-    db.insert(schema.worldEvents)
-      .values({
-        id: event.id,
-        gameId: this.runtime.clock.id,
-        kind: event.kind,
-        galaxyId: event.galaxyId ?? null,
-        factionId: event.factionId ?? null,
-        createdAt: event.createdAt,
-        expiresAt: event.expiresAt,
-      })
-      .run();
+    this.worldEventRepo.insert(event);
+  }
+
+  /** Mise à jour d'échéance (décalage dev-fastforward) — la table reste possédée ici. */
+  persistWorldEvent(event: WorldEvent): void {
+    this.worldEventRepo.save(event);
   }
 
   /** Retire les événements de monde expirés (pas de statut : ils disparaissent, point). */
@@ -406,7 +341,7 @@ export class DiplomacyService {
     for (const [id, event] of this.runtime.worldEventMap) {
       if (t < event.expiresAt) continue;
       this.runtime.worldEventMap.delete(id);
-      db.delete(schema.worldEvents).where(eq(schema.worldEvents.id, id)).run();
+      this.worldEventRepo.remove(id);
     }
   }
 
@@ -471,32 +406,18 @@ export class DiplomacyService {
     }
   }
 
-  loadFactionStates(): void {
-    for (const row of db.select().from(schema.factionStates).all()) {
-      this.runtime.factionStateMap.set(row.factionId, {
-        factionId: row.factionId,
-        mood: row.mood as FactionState["mood"],
-        moodUntil: row.moodUntil,
-      });
+  async loadFactionStates(): Promise<void> {
+    for (const state of await this.factionRepo.loadAll()) {
+      this.runtime.factionStateMap.set(state.factionId, state);
     }
   }
 
   private insertFactionState(state: FactionState): void {
-    db.insert(schema.factionStates)
-      .values({
-        factionId: state.factionId,
-        gameId: this.runtime.clock.id,
-        mood: state.mood,
-        moodUntil: state.moodUntil,
-      })
-      .run();
+    this.factionRepo.insert(state);
   }
 
   persistFactionState(state: FactionState): void {
-    db.update(schema.factionStates)
-      .set({ mood: state.mood, moodUntil: state.moodUntil })
-      .where(eq(schema.factionStates.factionId, state.factionId))
-      .run();
+    this.factionRepo.save(state);
   }
 
   /** Force l'humeur d'une faction — partagé entre l'outil de dev et les événements de monde. */

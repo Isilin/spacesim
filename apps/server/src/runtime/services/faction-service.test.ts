@@ -5,8 +5,8 @@ import { resetDb, advanceTicks, empireFor } from "../../test-harness.js";
 beforeEach(() => resetDb());
 
 describe("GameEngine — état de faction (chantier 15)", () => {
-  it("une partie neuve amorce les trois factions, neutres", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("une partie neuve amorce les trois factions, neutres", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const states = engine.factionStates;
     expect(states).toHaveLength(3);
     for (const state of states) {
@@ -18,14 +18,14 @@ describe("GameEngine — état de faction (chantier 15)", () => {
     );
   });
 
-  it("initFactionStates est idempotent : un rechargement ne dédouble jamais les factions", () => {
-    GameEngine.loadOrBootstrap();
-    const reloaded = GameEngine.loadOrBootstrap();
+  it("initFactionStates est idempotent : un rechargement ne dédouble jamais les factions", async () => {
+    await GameEngine.loadOrBootstrap();
+    const reloaded = await GameEngine.loadOrBootstrap();
     expect(reloaded.factionStates).toHaveLength(3);
   });
 
-  it("l'état de faction est diffusé à tous les empires (pas de brouillard)", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("l'état de faction est diffusé à tous les empires (pas de brouillard)", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const other = engine.empireById(engine.devSpawnEmpire("Spectateur")!)!;
     expect(engine.snapshotForEmpire(other).factionStates).toHaveLength(3);
   });
@@ -40,8 +40,8 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
     return station;
   };
 
-  it("devSetFactionMood force l'humeur ; elle revient à neutre à l'échéance", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("devSetFactionMood force l'humeur ; elle revient à neutre à l'échéance", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const factionId = engine.factionStates[0]!.factionId;
     expect(engine.devSetFactionMood(factionId, "boom", 10_000)).toBe(true);
     expect(engine.factionStates.find((s) => s.factionId === factionId)!.mood).toBe("boom");
@@ -51,13 +51,13 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
     expect(engine.factionStates.find((s) => s.factionId === factionId)!.mood).toBe("neutral");
   });
 
-  it("devSetFactionMood refuse une faction inconnue", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("devSetFactionMood refuse une faction inconnue", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     expect(engine.devSetFactionMood("inconnue", "boom")).toBe(false);
   });
 
-  it("un embargo bloque sellToStation et buyFromStation sous le seuil de standing", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("un embargo bloque sellToStation et buyFromStation sous le seuil de standing", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
     const station = reachableStation(engine, empire);
@@ -68,8 +68,8 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
     expect(engine.buyFromStation(empire, colony.id, station.id, "ore", 10)).toMatch(/Embargo/);
   });
 
-  it("un partenaire établi (standing suffisant) échappe à l'embargo", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("un partenaire établi (standing suffisant) échappe à l'embargo", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
     const station = reachableStation(engine, empire);
@@ -80,8 +80,8 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
     expect(engine.sellToStation(empire, colony.id, station.id, { ore: 10 })).toBeNull();
   });
 
-  it("les humeurs finissent par bouger au fil des ticks économiques", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("les humeurs finissent par bouger au fil des ticks économiques", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     // Échantillonne à chaque tick éco plutôt qu'un seul gros bond : une humeur peut se
     // déclencher PUIS expirer dans la fenêtre, et l'état final seul ne le verrait pas.
     let sawNonNeutral = false;

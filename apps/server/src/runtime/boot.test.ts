@@ -5,8 +5,8 @@ import { resetDb, WARSHIP, advanceTicks, empireFor, summaries } from "../test-ha
 beforeEach(() => resetDb());
 
 describe("GameEngine — harnais & socle (Sprint 0)", () => {
-  it("crée une partie neuve : une colonie mère, un empire, tick 0", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("crée une partie neuve : une colonie mère, un empire, tick 0", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     expect(engine.game.tick).toBe(0);
     expect(engine.colonies).toHaveLength(1);
     const empires = summaries(engine);
@@ -17,15 +17,15 @@ describe("GameEngine — harnais & socle (Sprint 0)", () => {
     expect(engine.exploredSystemIds).toEqual([empires[0]!.exploredSystemIds[0]]);
   });
 
-  it("le tick est déterministe : N ticks avancent l'horloge d'exactement N", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("le tick est déterministe : N ticks avancent l'horloge d'exactement N", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const t0 = engine.game.tick;
     advanceTicks(engine, 10);
     expect(engine.game.tick).toBe(t0 + 10);
   });
 
-  it("le tick produit : les ressources de la colonie évoluent", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("le tick produit : les ressources de la colonie évoluent", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const before = engine.colonies[0]!.resources;
     advanceTicks(engine, 20);
     const after = engine.colonies[0]!.resources;
@@ -34,8 +34,8 @@ describe("GameEngine — harnais & socle (Sprint 0)", () => {
   });
 });
 describe("GameEngine — isolation multi-empire (Sprint 0)", () => {
-  it("devSpawnEmpire crée un second empire à l'état et au brouillard disjoints", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("devSpawnEmpire crée un second empire à l'état et au brouillard disjoints", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const id = engine.devSpawnEmpire("Colonia");
     expect(id).not.toBeNull();
 
@@ -50,8 +50,8 @@ describe("GameEngine — isolation multi-empire (Sprint 0)", () => {
     expect(b!.influence).toBe(0);
   });
 
-  it("les empires ticent indépendamment (influence par empire)", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("les empires ticent indépendamment (influence par empire)", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     engine.devSpawnEmpire("Colonia");
     const before = summaries(engine);
     advanceTicks(engine, 10);
@@ -64,8 +64,8 @@ describe("GameEngine — isolation multi-empire (Sprint 0)", () => {
     }
   });
 
-  it("le snapshot de l'empire par défaut ne fuit pas les entités d'un autre empire", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("le snapshot de l'empire par défaut ne fuit pas les entités d'un autre empire", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const defaultSystem = engine.exploredSystemIds[0];
     engine.devSpawnEmpire("Colonia");
 
@@ -76,9 +76,9 @@ describe("GameEngine — isolation multi-empire (Sprint 0)", () => {
   });
 });
 describe("GameEngine — chargement multi-empire (Phase A)", () => {
-  it("recharge tous les empires, entités routées par propriétaire", () => {
+  it("recharge tous les empires, entités routées par propriétaire", async () => {
     const key = (c: { systemId: string; name: string }) => `${c.systemId}/${c.name}`;
-    const e1 = GameEngine.loadOrBootstrap();
+    const e1 = await GameEngine.loadOrBootstrap();
     const defBefore = summaries(e1)[0]!;
     const defaultId = defBefore.id;
     const spawnedId = e1.devSpawnEmpire("Colonia")!;
@@ -88,7 +88,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(defBefore.colonies.map(key)).not.toEqual(colBefore.colonies.map(key));
 
     // Rechargement depuis la même DB en mémoire (simule un reboot serveur).
-    const e2 = GameEngine.loadOrBootstrap();
+    const e2 = await GameEngine.loadOrBootstrap();
     const reloaded = summaries(e2);
     expect(reloaded).toHaveLength(2);
 
@@ -105,8 +105,8 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(colonia.isDefault).toBe(false);
   });
 
-  it("createEmpireForAccount : le 1er compte adopte l'empire amorcé, le 2e en obtient un neuf", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("createEmpireForAccount : le 1er compte adopte l'empire amorcé, le 2e en obtient un neuf", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const seeded = summaries(engine)[0]!.id;
 
     // Premier compte : adoption — pas de second empire fantôme sur la meilleure planète.
@@ -130,8 +130,8 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(engine.empireForAccount("compte-inconnu")).toBeNull();
   });
 
-  it("le snapshot d'une connexion ne montre que les entités de son empire", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("le snapshot d'une connexion ne montre que les entités de son empire", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const alice = empireFor(engine, "alice");
     const snapDefault = engine.snapshotForEmpire(empireFor(engine, "defaut"));
     const snapAlice = engine.snapshotForEmpire(alice);
@@ -146,8 +146,8 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(snapDefault.exploredSystemIds.some((s) => aliceFog.has(s))).toBe(false);
   });
 
-  it("une action ne s'applique qu'aux entités de l'empire agissant (Phase C)", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("une action ne s'applique qu'aux entités de l'empire agissant (Phase C)", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const def = empireFor(engine, "alpha");
     const alice = empireFor(engine, "alice");
     const defColonyId = engine.snapshotForEmpire(def).colonies[0]!.id;
@@ -166,8 +166,8 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(engine.snapshotForEmpire(def).fleets).toHaveLength(0);
   });
 
-  it("attackFleet : la flotte ennemie écrasée est détruite, la bataille est archivée", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("attackFleet : la flotte ennemie écrasée est détruite, la bataille est archivée", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     a.influence = 1000; // déclarer la guerre coûte de l'influence (chantier 16)
@@ -186,8 +186,8 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(engine.snapshotForEmpire(a).battles.length).toBeGreaterThan(0);
   });
 
-  it("attackFleet : cible hors système ou amie rejetée", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("attackFleet : cible hors système ou amie rejetée", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     a.influence = 1000; // déclarer la guerre coûte de l'influence (chantier 16)
@@ -199,8 +199,8 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(engine.attackFleet(a, fa, fa2)).toBe("Cible inconnue"); // amie
   });
 
-  it("attackColony : raid pille des ressources et rompt le claim ennemi", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("attackColony : raid pille des ressources et rompt le claim ennemi", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "charlie");
     a.influence = 1000; // déclarer la guerre coûte de l'influence (chantier 16)
@@ -218,16 +218,16 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(oreAfter).toBeLessThan(oreBefore); // 25 % du minerai pillé
   });
 
-  it("attackColony : cible amie ou hors portée rejetée", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("attackColony : cible amie ou hors portée rejetée", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const own = engine.snapshotForEmpire(a).colonies[0]!;
     const fa = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
     expect(engine.attackColony(a, fa, own.id)).toBe("Colonie cible inconnue");
   });
 
-  it("diplomatie : declareWar/makePeace basculent l'état, reflété dans le classement", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("diplomatie : declareWar/makePeace basculent l'état, reflété dans le classement", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     a.influence = 1000; // déclarer la guerre coûte de l'influence (chantier 16)
@@ -244,8 +244,8 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(rowB().relation).toBe("neutral");
   });
 
-  it("makePeace impose un cooldown avant de pouvoir redéclarer la guerre au même empire", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("makePeace impose un cooldown avant de pouvoir redéclarer la guerre au même empire", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     a.influence = 1000; // déclarer la guerre coûte de l'influence (chantier 16)
@@ -260,13 +260,13 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(engine.declareWar(a, b.id)).toBeNull();
   });
 
-  it("préserve l'état d'empire (influence, brouillard) au rechargement", () => {
-    const e1 = GameEngine.loadOrBootstrap();
+  it("préserve l'état d'empire (influence, brouillard) au rechargement", async () => {
+    const e1 = await GameEngine.loadOrBootstrap();
     e1.devSpawnEmpire("Colonia");
     e1.devFastForward(50); // 10 ticks : l'influence de chaque empire progresse
     const before = summaries(e1);
 
-    const e2 = GameEngine.loadOrBootstrap();
+    const e2 = await GameEngine.loadOrBootstrap();
     const after = summaries(e2);
     for (const b of before) {
       const a = after.find((e) => e.id === b.id)!;

@@ -9,15 +9,15 @@ describe("GameEngine — logistique orbitale (chantier 12)", () => {
   const homeColony = (engine: GameEngine, empire: ReturnType<typeof empireFor>) =>
     engine.snapshotForEmpire(empire).colonies[0]!;
 
-  it("la colonie mère naît avec un dock et une soute orbitale", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("la colonie mère naît avec un dock et une soute orbitale", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const colony = engine.colonies[0]!;
     expect(colony.buildings.orbital_dock).toBe(1);
     expect(colony.orbitalResources.ore).toBeGreaterThan(0);
   });
 
-  it("l'ascenseur hisse le surplus au fil des ticks, en consommant de l'énergie", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("l'ascenseur hisse le surplus au fil des ticks, en consommant de l'énergie", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const before = engine.colonies[0]!;
     const orbitBefore = before.orbitalResources.ore;
     advanceTicks(engine, 20);
@@ -39,8 +39,8 @@ describe("GameEngine — logistique orbitale (chantier 12)", () => {
     return station;
   };
 
-  it("une expédition prélève l'orbite, jamais le sol", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("une expédition prélève l'orbite, jamais le sol", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const empire = empireFor(engine, "alice");
     const colony = homeColony(engine, empire);
     // La colonie mère n'a pas toujours une station chez elle : on en pose une à portée
@@ -57,8 +57,8 @@ describe("GameEngine — logistique orbitale (chantier 12)", () => {
     expect(after.resources.ore).toBe(groundBefore);
   });
 
-  it("le stock au sol ne se substitue pas à l'orbite quand elle est vide", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("le stock au sol ne se substitue pas à l'orbite quand elle est vide", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const empire = empireFor(engine, "alice");
     const colony = homeColony(engine, empire);
     const station = reachableStation(engine, empire);

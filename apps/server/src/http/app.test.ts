@@ -37,7 +37,7 @@ beforeEach(() => resetDb());
 
 describe("buildApp — routes HTTP", () => {
   it("GET /health renvoie le tick courant", async () => {
-    const app = await buildApp(GameEngine.loadOrBootstrap());
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
     const res = await app.inject({ method: "GET", url: "/health" });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ ok: true, tick: 0 });
@@ -45,7 +45,7 @@ describe("buildApp — routes HTTP", () => {
 
   describe("/auth/register", () => {
     it("refuse un e-mail invalide", async () => {
-      const app = await buildApp(GameEngine.loadOrBootstrap());
+      const app = await buildApp(await GameEngine.loadOrBootstrap());
       const res = await app.inject({
         method: "POST",
         url: "/auth/register",
@@ -55,7 +55,7 @@ describe("buildApp — routes HTTP", () => {
     });
 
     it("refuse un mot de passe trop court", async () => {
-      const app = await buildApp(GameEngine.loadOrBootstrap());
+      const app = await buildApp(await GameEngine.loadOrBootstrap());
       const res = await app.inject({
         method: "POST",
         url: "/auth/register",
@@ -65,7 +65,7 @@ describe("buildApp — routes HTTP", () => {
     });
 
     it("crée le compte et son empire", async () => {
-      const app = await buildApp(GameEngine.loadOrBootstrap());
+      const app = await buildApp(await GameEngine.loadOrBootstrap());
       const res = await app.inject({
         method: "POST",
         url: "/auth/register",
@@ -79,7 +79,7 @@ describe("buildApp — routes HTTP", () => {
   });
 
   it("POST /auth/login refuse des identifiants inconnus", async () => {
-    const app = await buildApp(GameEngine.loadOrBootstrap());
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
     const res = await app.inject({
       method: "POST",
       url: "/auth/login",
@@ -90,13 +90,13 @@ describe("buildApp — routes HTTP", () => {
 
   describe("/auth/me", () => {
     it("refuse sans jeton", async () => {
-      const app = await buildApp(GameEngine.loadOrBootstrap());
+      const app = await buildApp(await GameEngine.loadOrBootstrap());
       const res = await app.inject({ method: "GET", url: "/auth/me" });
       expect(res.statusCode).toBe(401);
     });
 
     it("répond avec le compte et l'empire une fois le jeton fourni", async () => {
-      const app = await buildApp(GameEngine.loadOrBootstrap());
+      const app = await buildApp(await GameEngine.loadOrBootstrap());
       const registered = await app.inject({
         method: "POST",
         url: "/auth/register",
@@ -114,13 +114,13 @@ describe("buildApp — routes HTTP", () => {
   });
 
   it("les routes /dev/* sont absentes quand devRoutes est désactivé", async () => {
-    const app = await buildApp(GameEngine.loadOrBootstrap(), { devRoutes: false });
+    const app = await buildApp(await GameEngine.loadOrBootstrap(), { devRoutes: false });
     const res = await app.inject({ method: "GET", url: "/dev/empires" });
     expect(res.statusCode).toBe(404);
   });
 
   it("les routes /dev/* répondent quand devRoutes est activé (défaut hors production)", async () => {
-    const app = await buildApp(GameEngine.loadOrBootstrap());
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
     const res = await app.inject({ method: "GET", url: "/dev/empires" });
     expect(res.statusCode).toBe(200);
   });

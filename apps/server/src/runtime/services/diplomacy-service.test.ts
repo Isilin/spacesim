@@ -5,8 +5,8 @@ import { resetDb, WARSHIP, empireFor } from "../../test-harness.js";
 beforeEach(() => resetDb());
 
 describe("GameEngine — propositions de pacte (chantier 16)", () => {
-  it("propose un NAP : visible des deux côtés, invisible d'un tiers", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("propose un NAP : visible des deux côtés, invisible d'un tiers", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     const c = empireFor(engine, "curieux");
@@ -23,8 +23,8 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     expect(engine.snapshotForEmpire(c).proposals).toHaveLength(0);
   });
 
-  it("respondRelation : accepter établit le pacte, refuser n'y change rien", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("respondRelation : accepter établit le pacte, refuser n'y change rien", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     engine.proposeRelation(a, b.id, "nap");
@@ -38,8 +38,8 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     expect(engine.snapshotForEmpire(a).proposals).toHaveLength(0);
   });
 
-  it("respondRelation : un refus retire la proposition sans créer de relation", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("respondRelation : un refus retire la proposition sans créer de relation", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     engine.proposeRelation(a, b.id, "nap");
@@ -50,8 +50,8 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     expect(engine.snapshotForEmpire(a).relations).toHaveLength(0);
   });
 
-  it("respondRelation : seul le destinataire peut répondre", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("respondRelation : seul le destinataire peut répondre", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     engine.proposeRelation(a, b.id, "nap");
@@ -60,8 +60,8 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     expect(engine.respondRelation(a, proposalId, true)).toBe("Proposition inconnue");
   });
 
-  it("proposeRelation : refuse un doublon tant qu'une proposition est en attente", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("proposeRelation : refuse un doublon tant qu'une proposition est en attente", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     expect(engine.proposeRelation(a, b.id, "nap")).toBeNull();
@@ -70,8 +70,8 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     expect(engine.proposeRelation(b, a.id, "nap")).toMatch(/déjà en attente/);
   });
 
-  it("cancelProposal : seul l'émetteur peut retirer sa propre proposition", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("cancelProposal : seul l'émetteur peut retirer sa propre proposition", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     engine.proposeRelation(a, b.id, "nap");
@@ -82,8 +82,8 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     expect(engine.snapshotForEmpire(a).proposals).toHaveLength(0);
   });
 
-  it("breakRelation : rompt un pacte en vigueur, refuse s'il n'y en a pas", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("breakRelation : rompt un pacte en vigueur, refuse s'il n'y en a pas", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     expect(engine.breakRelation(a, b.id)).toMatch(/Aucun pacte/);
@@ -97,8 +97,8 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     expect(relation?.state).toBe("neutral");
   });
 
-  it("un PNJ répond immédiatement à un NAP : jamais de proposition qui reste en attente", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("un PNJ répond immédiatement à un NAP : jamais de proposition qui reste en attente", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const npc = engine.empireById(engine.devSpawnNpcEmpire("Voisin")!)!;
 
@@ -110,8 +110,8 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     expect(relation?.state).toBe("nap");
   });
 
-  it("un PNJ refuse une alliance avec un partenaire de force très disproportionnée", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("un PNJ refuse une alliance avec un partenaire de force très disproportionnée", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const npc = engine.empireById(engine.devSpawnNpcEmpire("Voisin")!)!;
     // Écrase le ratio de puissance : le PNJ n'a aucune flotte, le proposeur en a une énorme.

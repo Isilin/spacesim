@@ -22,21 +22,21 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
     return engine.universe.galaxies.filter((g) => !colonized.has(g.id)).length;
   };
 
-  it("partie neuve : INITIAL_GALAXIES galaxies, frontière vierge intacte", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("partie neuve : INITIAL_GALAXIES galaxies, frontière vierge intacte", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     expect(engine.universe.galaxies).toHaveLength(INITIAL_GALAXIES);
     expect(emptyGalaxies(engine)).toBeGreaterThanOrEqual(FRONTIER_GALAXIES);
     // Chaque galaxie lointaine a son chantier de portail.
     expect(engine.gateways).toHaveLength(INITIAL_GALAXIES - 1);
   });
 
-  it("recharge l'univers à la taille persistée, galaxies connues inchangées", () => {
-    const e1 = GameEngine.loadOrBootstrap();
+  it("recharge l'univers à la taille persistée, galaxies connues inchangées", async () => {
+    const e1 = await GameEngine.loadOrBootstrap();
     const known = e1.universe.galaxies;
     // Simule une extension déjà survenue en partie (le compteur fait foi au boot).
     db.update(schema.games).set({ galaxyCount: 7 }).run();
 
-    const e2 = GameEngine.loadOrBootstrap();
+    const e2 = await GameEngine.loadOrBootstrap();
     expect(e2.universe.galaxies).toHaveLength(7);
     expect(e2.universe.galaxies.slice(0, known.length)).toEqual(known);
     // Les galaxies apparues sont équipées : portail et comptoirs approvisionnés.
@@ -54,8 +54,8 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
     expect(stationIds.every((id) => stocked.has(id))).toBe(true);
   });
 
-  it("les nouveaux empires naissent voisins, puis débordent en poussant la frontière", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("les nouveaux empires naissent voisins, puis débordent en poussant la frontière", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const galaxyOf = (systemId: string) => systemId.split("-sys-")[0];
 
     // MAX_EMPIRES_PER_GALAXY = 4 : les premiers arrivants partagent la galaxie d'origine.
@@ -77,8 +77,8 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
     expect(emptyGalaxies(engine)).toBeGreaterThanOrEqual(FRONTIER_GALAXIES);
   });
 
-  it("une extension pousse la nouvelle carte à tous les clients", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("une extension pousse la nouvelle carte à tous les clients", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const alice = empireFor(engine, "alice");
     // Abonnement d'une connexion, comme le fait le WebSocket : chaque notification
     // recompose le snapshot de l'empire.
@@ -97,7 +97,7 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
     expect(pushes).toContain(engine.universe.galaxies.length);
   });
 
-  it("le portail coûte plus cher à mesure qu'on vise loin", () => {
+  it("le portail coûte plus cher à mesure qu'on vise loin", async () => {
     const near = gatewayCost("gal-1");
     const far = gatewayCost("gal-6");
     expect(far.metals!).toBeGreaterThan(near.metals!);
@@ -105,12 +105,12 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
     expect(near).toEqual(GATEWAY_COST);
   });
 
-  it("étendre l'univers ne coûte rien aux empires en place", () => {
-    const e1 = GameEngine.loadOrBootstrap();
+  it("étendre l'univers ne coûte rien aux empires en place", async () => {
+    const e1 = await GameEngine.loadOrBootstrap();
     const before = summaries(e1);
     db.update(schema.games).set({ galaxyCount: 9 }).run();
 
-    const e2 = GameEngine.loadOrBootstrap();
+    const e2 = await GameEngine.loadOrBootstrap();
     expect(e2.universe.galaxies).toHaveLength(9);
     const after = summaries(e2);
     expect(after.map((e) => e.id)).toEqual(before.map((e) => e.id));
@@ -122,8 +122,8 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
   });
 });
 describe("GameEngine — univers persistant (chantier 18)", () => {
-  it("le boot matérialise l'univers : tables peuplées, compteur aligné", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("le boot matérialise l'univers : tables peuplées, compteur aligné", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const galaxies = db.select().from(schema.universeGalaxies).all();
     expect(galaxies).toHaveLength(engine.universe.galaxies.length);
     expect(db.select().from(schema.universeSystems).all().length).toBeGreaterThan(0);
@@ -135,27 +135,27 @@ describe("GameEngine — univers persistant (chantier 18)", () => {
     }
   });
 
-  it("reboot : l'univers rechargé est strictement identique", () => {
-    const e1 = GameEngine.loadOrBootstrap();
+  it("reboot : l'univers rechargé est strictement identique", async () => {
+    const e1 = await GameEngine.loadOrBootstrap();
     const before = e1.universe;
-    const e2 = GameEngine.loadOrBootstrap();
+    const e2 = await GameEngine.loadOrBootstrap();
     expect(e2.universe).toEqual(before);
   });
 
-  it("la DB est la vérité : une correction manuelle survit au reboot", () => {
-    const e1 = GameEngine.loadOrBootstrap();
+  it("la DB est la vérité : une correction manuelle survit au reboot", async () => {
+    const e1 = await GameEngine.loadOrBootstrap();
     const planet = e1.universe.galaxies[0]!.systems[0]!.planets[0]!;
     db.update(schema.universeBodies)
       .set({ name: "Monde corrigé" })
       .where(eq(schema.universeBodies.id, planet.id))
       .run();
-    const e2 = GameEngine.loadOrBootstrap();
+    const e2 = await GameEngine.loadOrBootstrap();
     const reloaded = e2.universe.galaxies[0]!.systems[0]!.planets[0]!;
     expect(reloaded.id).toBe(planet.id);
     expect(reloaded.name).toBe("Monde corrigé");
   });
 
-  it("rattrapage one-shot : une base d'avant le chantier 18 est matérialisée au boot", () => {
+  it("rattrapage one-shot : une base d'avant le chantier 18 est matérialisée au boot", async () => {
     // Simule une base legacy : ligne games seule, aucune table universe_* peuplée.
     db.insert(schema.games)
       .values({
@@ -167,17 +167,17 @@ describe("GameEngine — univers persistant (chantier 18)", () => {
         galaxyCount: INITIAL_GALAXIES,
       })
       .run();
-    const engine = GameEngine.load();
+    const engine = await GameEngine.load();
     expect(db.select().from(schema.universeGalaxies).all()).toHaveLength(INITIAL_GALAXIES);
     expect(engine.universe.galaxies).toHaveLength(engine.universe.galaxies.length);
     // Rejouer load() est un no-op : rien de plus n'est matérialisé.
     const before = db.select().from(schema.universeBodies).all().length;
-    GameEngine.load();
+    await GameEngine.load();
     expect(db.select().from(schema.universeBodies).all()).toHaveLength(before);
   });
 
-  it("étendre l'univers matérialise les galaxies neuves sans toucher aux anciennes", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("étendre l'univers matérialise les galaxies neuves sans toucher aux anciennes", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const before = engine.universe.galaxies.length;
     const namesBefore = db
       .select()
@@ -201,13 +201,13 @@ describe("GameEngine — univers persistant (chantier 18)", () => {
         .map((g) => [g.id, g.name] as const),
     );
     for (const [id, name] of namesBefore) expect(after.get(id)).toBe(name);
-    const reloaded = GameEngine.loadOrBootstrap();
+    const reloaded = await GameEngine.loadOrBootstrap();
     expect(reloaded.universe).toEqual(engine.universe);
   });
 
-  it("load() lève sur une base vierge ; bootstrap lève sur une base peuplée", () => {
-    expect(() => GameEngine.load()).toThrow(/bootstrapNewUniverse/);
-    GameEngine.bootstrapNewUniverse();
-    expect(() => GameEngine.bootstrapNewUniverse()).toThrow(/existe déjà/);
+  it("load() lève sur une base vierge ; bootstrap lève sur une base peuplée", async () => {
+    await expect(GameEngine.load()).rejects.toThrow(/bootstrapNewUniverse/);
+    await GameEngine.bootstrapNewUniverse();
+    await expect(GameEngine.bootstrapNewUniverse()).rejects.toThrow(/existe déjà/);
   });
 });

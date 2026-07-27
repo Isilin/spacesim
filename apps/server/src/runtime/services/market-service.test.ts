@@ -5,14 +5,14 @@ import { resetDb, advanceTicks, summaries } from "../../test-harness.js";
 beforeEach(() => resetDb());
 
 describe("GameEngine — empires PNJ (chantier 14)", () => {
-  it("un GameEngine.loadOrBootstrap() nu ne seme aucun PNJ : ensureNpcPopulation reste opt-in", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("un await GameEngine.loadOrBootstrap() nu ne seme aucun PNJ : ensureNpcPopulation reste opt-in", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     expect(summaries(engine)).toHaveLength(1);
     expect(summaries(engine)[0]!.kind).toBe("human");
   });
 
-  it("ensureNpcPopulation amorce des PNJ avec leur propre colonie mère", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("ensureNpcPopulation amorce des PNJ avec leur propre colonie mère", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     engine.ensureNpcPopulation(3);
     const all = summaries(engine);
     expect(all).toHaveLength(4);
@@ -24,8 +24,8 @@ describe("GameEngine — empires PNJ (chantier 14)", () => {
     }
   });
 
-  it("ensureNpcPopulation est idempotent : ne double jamais la population", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("ensureNpcPopulation est idempotent : ne double jamais la population", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     engine.ensureNpcPopulation(3);
     engine.ensureNpcPopulation(3);
     expect(summaries(engine).filter((e) => e.kind === "npc")).toHaveLength(3);
@@ -42,8 +42,8 @@ describe("GameEngine — empires PNJ (chantier 14)", () => {
     expect([...before].every((id) => after.some((e) => e.id === id))).toBe(true);
   });
 
-  it("un compte humain n'adopte jamais un empire PNJ (bug corrigé au chantier 14)", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("un compte humain n'adopte jamais un empire PNJ (bug corrigé au chantier 14)", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const bootId = summaries(engine)[0]!.id;
     engine.ensureNpcPopulation(3);
 
@@ -64,16 +64,16 @@ describe("GameEngine — empires PNJ (chantier 14)", () => {
     expect(npcIds).toHaveLength(3);
   });
 
-  it("devSpawnNpcEmpire instancie un PNJ isolé, hors du quota d'ensureNpcPopulation", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("devSpawnNpcEmpire instancie un PNJ isolé, hors du quota d'ensureNpcPopulation", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const id = engine.devSpawnNpcEmpire("Voisin");
     expect(id).not.toBeNull();
     expect(summaries(engine).find((e) => e.id === id)?.kind).toBe("npc");
   });
 });
 describe("GameEngine — pilote économique PNJ (chantier 14)", () => {
-  it("un PNJ vend son surplus orbital et finit par contractualiser un besoin", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("un PNJ vend son surplus orbital et finit par contractualiser un besoin", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     engine.ensureNpcPopulation(1);
     const npcId = summaries(engine).find((e) => e.kind === "npc")!.id;
     const npc = engine.empireById(npcId)!;
@@ -97,8 +97,8 @@ describe("GameEngine — pilote économique PNJ (chantier 14)", () => {
     expect(npcContracts[0]!.issuerColor).toBe(npc.color);
   });
 
-  it("un empire humain n'a aucun pilotage automatique (npcTick n'agit que sur les PNJ)", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("un empire humain n'a aucun pilotage automatique (npcTick n'agit que sur les PNJ)", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     advanceTicks(engine, 350);
     // L'empire par défaut est humain : aucun contrat n'a dû être publié en son nom.
     expect(

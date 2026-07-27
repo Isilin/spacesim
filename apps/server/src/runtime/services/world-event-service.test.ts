@@ -5,8 +5,8 @@ import { resetDb, advanceTicks } from "../../test-harness.js";
 beforeEach(() => resetDb());
 
 describe("GameEngine — événements de monde (chantier 17)", () => {
-  it("devTriggerWorldEvent (galaxie) crée un événement visible, non brouillardé", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("devTriggerWorldEvent (galaxie) crée un événement visible, non brouillardé", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const galaxyId = engine.universe.galaxies[0]!.id;
     const other = engine.empireById(engine.devSpawnEmpire("Spectateur")!)!;
 
@@ -19,8 +19,8 @@ describe("GameEngine — événements de monde (chantier 17)", () => {
     expect(theirs.some((e) => e.id === eventId)).toBe(true);
   });
 
-  it("devTriggerWorldEvent (faction_boom) force aussitôt l'humeur de la faction visée", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("devTriggerWorldEvent (faction_boom) force aussitôt l'humeur de la faction visée", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const factionId = engine.factionStates[0]!.factionId;
 
     const eventId = engine.devTriggerWorldEvent("faction_boom", factionId);
@@ -28,14 +28,14 @@ describe("GameEngine — événements de monde (chantier 17)", () => {
     expect(engine.factionStates.find((s) => s.factionId === factionId)!.mood).toBe("boom");
   });
 
-  it("devTriggerWorldEvent refuse une cible inconnue", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("devTriggerWorldEvent refuse une cible inconnue", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     expect(engine.devTriggerWorldEvent("faction_boom", "inconnue")).toBeNull();
     expect(engine.devTriggerWorldEvent("economic_crisis", "gal-inconnue")).toBeNull();
   });
 
-  it("un événement de monde expire et disparaît du flux", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("un événement de monde expire et disparaît du flux", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const galaxyId = engine.universe.galaxies[0]!.id;
     const eventId = engine.devTriggerWorldEvent("gold_rush", galaxyId, 10_000);
 
@@ -48,8 +48,8 @@ describe("GameEngine — événements de monde (chantier 17)", () => {
     ).toBe(false);
   });
 
-  it("un événement finit par se déclencher naturellement au fil des ticks économiques", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("un événement finit par se déclencher naturellement au fil des ticks économiques", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     let sawEvent = false;
     for (let i = 0; i < 300 && !sawEvent; i++) {
       advanceTicks(engine, 12); // un tick économique par itération

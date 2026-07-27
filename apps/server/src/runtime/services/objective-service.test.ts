@@ -6,8 +6,8 @@ import { resetDb, advanceTicks, summaries } from "../../test-harness.js";
 beforeEach(() => resetDb());
 
 describe("GameEngine — objectifs éphémères (chantier 17)", () => {
-  it("un empire humain se voit tirer un objectif éphémère au premier tick économique", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("un empire humain se voit tirer un objectif éphémère au premier tick économique", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     advanceTicks(engine, 12);
     const objectives = engine.snapshotForEmpire(empire).objectives;
@@ -15,16 +15,16 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
     expect(objectives[0]!.status).toBe("open");
   });
 
-  it("un empire PNJ ne reçoit jamais d'objectif éphémère", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("un empire PNJ ne reçoit jamais d'objectif éphémère", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     engine.ensureNpcPopulation(1);
     const npc = engine.empireById(summaries(engine).find((e) => e.kind === "npc")!.id)!;
     advanceTicks(engine, 100);
     expect(engine.snapshotForEmpire(npc).objectives).toHaveLength(0);
   });
 
-  it("les objectifs sont redactés : jamais visibles d'un tiers", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("les objectifs sont redactés : jamais visibles d'un tiers", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     // Aussi humain : reçoit son PROPRE objectif — la redaction se prouve en vérifiant
     // qu'il ne voit pas celui de l'autre, pas qu'il n'en a aucun.
@@ -37,8 +37,8 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
     expect(mine.some((o) => theirs.some((t) => t.id === o.id))).toBe(false);
   });
 
-  it("un objectif se résout toujours (rempli ou expiré), jamais bloqué indéfiniment", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("un objectif se résout toujours (rempli ou expiré), jamais bloqué indéfiniment", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     advanceTicks(engine, 12);
     const objective = engine.snapshotForEmpire(empire).objectives[0]!;
@@ -51,8 +51,8 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
     expect(["completed", "expired"]).toContain(resolved.status);
   });
 
-  it("rempli, un objectif verse sa récompense en crédits", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("rempli, un objectif verse sa récompense en crédits", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     advanceTicks(engine, 12);
     const objective = engine.snapshotForEmpire(empire).objectives[0]!;
@@ -72,8 +72,8 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
     );
   });
 
-  it("respecte un cooldown : pas de nouveau tirage juste après la résolution du précédent", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("respecte un cooldown : pas de nouveau tirage juste après la résolution du précédent", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     advanceTicks(engine, 12);
     const first = engine.snapshotForEmpire(empire).objectives[0]!;

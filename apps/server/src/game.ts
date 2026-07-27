@@ -290,7 +290,7 @@ export class GameEngine {
    * (`bootstrapNewUniverse`), jamais un effet de bord — un serveur officiel ne doit pas
    * pouvoir repartir de zéro parce que sa base était inaccessible.
    */
-  static load(): GameEngine {
+  static async load(): Promise<GameEngine> {
     const row = db.select().from(schema.games).limit(1).get();
     if (!row) {
       throw new Error("Aucun univers en base — utiliser GameEngine.bootstrapNewUniverse()");
@@ -337,7 +337,7 @@ export class GameEngine {
    * Crée l'univers — UNE fois dans la vie du serveur (geste explicite, voir `load`).
    * Lève si un univers existe déjà.
    */
-  static bootstrapNewUniverse(): GameEngine {
+  static async bootstrapNewUniverse(): Promise<GameEngine> {
     if (db.select().from(schema.games).limit(1).get()) {
       throw new Error("Un univers existe déjà en base — utiliser GameEngine.load()");
     }
@@ -363,21 +363,21 @@ export class GameEngine {
   }
 
   /** Charge l'univers s'il existe, sinon le crée — comportement dev/tests. */
-  static loadOrBootstrap(): GameEngine {
+  static async loadOrBootstrap(): Promise<GameEngine> {
     return db.select().from(schema.games).limit(1).get()
       ? GameEngine.load()
       : GameEngine.bootstrapNewUniverse();
   }
 
   /** Séquence de chargement commune (l'ordre des étapes est un contrat implicite). */
-  private static boot(clock: Clock, universe: Universe, isNew: boolean): GameEngine {
+  private static async boot(clock: Clock, universe: Universe, isNew: boolean): Promise<GameEngine> {
     const engine = new GameEngine(clock, universe);
     engine.ensureDefaultPlayer();
     engine.loadPlayers();
-    engine.loadRelations();
-    engine.loadProposals();
-    engine.loadObjectives();
-    engine.loadWorldEvents();
+    await engine.loadRelations();
+    await engine.loadProposals();
+    await engine.loadObjectives();
+    await engine.loadWorldEvents();
     if (isNew) {
       engine.createHomeColony();
     } else {
@@ -396,7 +396,7 @@ export class GameEngine {
     }
     // Plans de vaisseaux (chantier 13) : chargés puis amorcés pour tout empire qui n'en a
     // aucun (partie neuve, ou empire d'avant le chantier 13).
-    engine.loadBlueprints();
+    await engine.loadBlueprints();
     engine.seedStarterBlueprintsForAll();
     // Équipement des galaxies (idempotent) : couvre aussi bien la partie neuve que les
     // galaxies apparues par extension.
@@ -556,8 +556,8 @@ export class GameEngine {
 
   // ── Conception de vaisseaux (chantier 13) ────────────────────────────────
 
-  private loadBlueprints(): void {
-    this.industry.loadBlueprints();
+  private async loadBlueprints(): Promise<void> {
+    await this.industry.loadBlueprints();
   }
 
   /** Amorce un empire sans plan avec les designs de départ (presets constructibles). */
@@ -845,8 +845,8 @@ export class GameEngine {
     return this.diplomacy.atWar(a, b);
   }
 
-  private loadRelations(): void {
-    this.diplomacy.loadRelations();
+  private async loadRelations(): Promise<void> {
+    await this.diplomacy.loadRelations();
   }
 
   /** Action joueur : déclarer la guerre à un empire — unilatérale, mais coûteuse en influence. */
@@ -879,14 +879,14 @@ export class GameEngine {
     return this.diplomacy.breakRelation(empire, targetEmpireId);
   }
 
-  private loadProposals(): void {
-    this.diplomacy.loadProposals();
+  private async loadProposals(): Promise<void> {
+    await this.diplomacy.loadProposals();
   }
 
   // ─────────────────────────── Objectifs éphémères (chantier 17) ───────────────────────────
 
-  private loadObjectives(): void {
-    this.diplomacy.loadObjectives();
+  private async loadObjectives(): Promise<void> {
+    await this.diplomacy.loadObjectives();
   }
 
   /** Tire un nouvel objectif éphémère pour chaque empire humain qui n'en a pas déjà un ouvert. */
@@ -901,8 +901,8 @@ export class GameEngine {
 
   // ─────────────────────────── Événements de monde (chantier 17) ───────────────────────────
 
-  private loadWorldEvents(): void {
-    this.diplomacy.loadWorldEvents();
+  private async loadWorldEvents(): Promise<void> {
+    await this.diplomacy.loadWorldEvents();
   }
 
   /** Retire les événements de monde expirés (pas de statut : ils disparaissent, point). */
@@ -962,16 +962,16 @@ export class GameEngine {
     this.fleetService.persistLair(lair, insert);
   }
 
-  private loadFleets(): void {
-    this.fleetService.loadFleets();
+  private async loadFleets(): Promise<void> {
+    await this.fleetService.loadFleets();
   }
 
-  private loadPirates(): void {
-    this.fleetService.loadPirates();
+  private async loadPirates(): Promise<void> {
+    await this.fleetService.loadPirates();
   }
 
-  private loadBattles(): void {
-    this.fleetService.loadBattles();
+  private async loadBattles(): Promise<void> {
+    await this.fleetService.loadBattles();
   }
 
   /**
@@ -987,8 +987,8 @@ export class GameEngine {
     this.diplomacy.initFactionStates();
   }
 
-  private loadFactionStates(): void {
-    this.diplomacy.loadFactionStates();
+  private async loadFactionStates(): Promise<void> {
+    await this.diplomacy.loadFactionStates();
   }
 
   private persistFactionState(state: FactionState): void {
@@ -1142,10 +1142,7 @@ export class GameEngine {
     for (const [id, event] of this.worldEventMap) {
       const next: WorldEvent = { ...event, expiresAt: event.expiresAt - delta };
       this.worldEventMap.set(id, next);
-      db.update(schema.worldEvents)
-        .set({ expiresAt: next.expiresAt })
-        .where(eq(schema.worldEvents.id, id))
-        .run();
+      this.diplomacy.persistWorldEvent(next);
     }
     for (const [id, fleet] of this.fleetMap) {
       if (fleet.queue.length === 0 && !fleet.movement) continue;

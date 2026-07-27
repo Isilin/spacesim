@@ -30,12 +30,11 @@ import {
   type WarshipId,
   type WorldEventKind,
 } from "@spacesim/shared";
-import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { db, schema } from "../../db/index.js";
 import type { Empire } from "../../empire.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
+import { FleetRepository } from "../repositories/fleet-repository.js";
 
 /** Directives par défaut d'une flotte neuve. */
 const DEFAULT_DIRECTIVES = { long: "focus_fire", medium: "focus_fire", short: "focus_fire" };
@@ -51,6 +50,8 @@ const MAX_BATTLES = 20;
  * précédents.
  */
 export class FleetService {
+  private readonly repo: FleetRepository;
+
   constructor(
     private readonly runtime: GameRuntime,
     private readonly notify: () => void,
@@ -60,7 +61,9 @@ export class FleetService {
     private readonly markExplored: (empire: Empire, systemId: string) => void,
     private readonly atWar: (a: string, b: string) => boolean,
     private readonly worldEventKindsOnGalaxy: (galaxyId: string) => WorldEventKind[],
-  ) {}
+  ) {
+    this.repo = new FleetRepository(runtime.clock.id);
+  }
 
   private get portalLinks(): [string, string][] {
     return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
@@ -242,14 +245,14 @@ export class FleetService {
         this.persistColony(empire.colonyMap.get(home.id)!);
       }
       this.runtime.lairMap.delete(lairId);
-      db.delete(schema.pirateLairs).where(eq(schema.pirateLairs.id, lairId)).run();
+      this.repo.removeLair(lairId);
       this.logger.info(`[game] repaire nettoyé (butin ${lair.bounty})`);
     } else {
       // Le repaire survivant est réduit à ses rescapés.
       const survivingLair: PirateLair = { ...lair, ships: report.defenderSurvivors };
       if (fleetIsEmpty(survivingLair.ships)) {
         this.runtime.lairMap.delete(lairId);
-        db.delete(schema.pirateLairs).where(eq(schema.pirateLairs.id, lairId)).run();
+        this.repo.removeLair(lairId);
       } else {
         this.runtime.lairMap.set(lairId, survivingLair);
         this.persistLair(survivingLair);
@@ -264,7 +267,7 @@ export class FleetService {
     if (!fleet) return "Flotte inconnue";
     if (fleet.movement) return "Flotte en déplacement";
     empire.fleetMap.delete(fleetId);
-    db.delete(schema.fleets).where(eq(schema.fleets.id, fleetId)).run();
+    this.repo.removeFleet(fleetId);
     this.notify();
     return null;
   }
@@ -273,7 +276,7 @@ export class FleetService {
   private applyFleetSurvivors(empire: Empire, fleet: Fleet, ships: FleetComposition): void {
     if (fleetIsEmpty(ships)) {
       empire.fleetMap.delete(fleet.id);
-      db.delete(schema.fleets).where(eq(schema.fleets.id, fleet.id)).run();
+      this.repo.removeFleet(fleet.id);
     } else {
       const next: Fleet = { ...fleet, ships };
       empire.fleetMap.set(fleet.id, next);
@@ -419,22 +422,9 @@ export class FleetService {
       report,
     };
     this.runtime.battleLog = [battle, ...this.runtime.battleLog].slice(0, MAX_BATTLES);
-    db.insert(schema.battles)
-      .values({
-        id: battle.id,
-        gameId: this.runtime.clock.id,
-        at: battle.at,
-        systemId,
-        attackerName,
-        defenderName,
-        report: JSON.stringify(report),
-      })
-      .run();
+    this.repo.insertBattle(battle);
     // Purge des batailles au-delà de la limite.
-    const keep = new Set(this.runtime.battleLog.map((b) => b.id));
-    for (const row of db.select().from(schema.battles).all()) {
-      if (!keep.has(row.id)) db.delete(schema.battles).where(eq(schema.battles.id, row.id)).run();
-    }
+    this.repo.removeBattlesExcept(new Set(this.runtime.battleLog.map((b) => b.id)));
   }
 
   /**
@@ -517,88 +507,32 @@ export class FleetService {
   }
 
   persistFleet(fleet: Fleet, insert = false): void {
-    const values = {
-      name: fleet.name,
-      systemId: fleet.systemId,
-      homeColonyId: fleet.homeColonyId,
-      ships: JSON.stringify(fleet.ships),
-      directives: JSON.stringify(fleet.directives),
-      queue: JSON.stringify(fleet.queue),
-      movement: fleet.movement ? JSON.stringify(fleet.movement) : null,
-    };
-    if (insert) {
-      db.insert(schema.fleets)
-        .values({
-          id: fleet.id,
-          gameId: this.runtime.clock.id,
-          ownerId: fleet.ownerId ?? this.runtime.defaultEmpire.id,
-          ...values,
-        })
-        .run();
-    } else {
-      db.update(schema.fleets).set(values).where(eq(schema.fleets.id, fleet.id)).run();
-    }
+    this.repo.saveFleet(
+      { ...fleet, ownerId: fleet.ownerId ?? this.runtime.defaultEmpire.id },
+      insert,
+    );
   }
 
   persistLair(lair: PirateLair, insert = false): void {
-    const values = {
-      systemId: lair.systemId,
-      ships: JSON.stringify(lair.ships),
-      directives: JSON.stringify(lair.directives),
-      bounty: lair.bounty,
-    };
-    if (insert) {
-      db.insert(schema.pirateLairs)
-        .values({ id: lair.id, gameId: this.runtime.clock.id, ...values })
-        .run();
-    } else {
-      db.update(schema.pirateLairs).set(values).where(eq(schema.pirateLairs.id, lair.id)).run();
-    }
+    this.repo.saveLair(lair, insert);
   }
 
-  loadFleets(): void {
-    for (const row of db.select().from(schema.fleets).all()) {
-      const ownerId = row.ownerId ?? this.runtime.defaultEmpire.id;
+  async loadFleets(): Promise<void> {
+    for (const fleet of await this.repo.loadFleets(this.runtime.defaultEmpire.id)) {
+      const ownerId = fleet.ownerId ?? this.runtime.defaultEmpire.id;
       const empire = this.runtime.empires.get(ownerId) ?? this.runtime.defaultEmpire;
-      empire.fleetMap.set(row.id, {
-        id: row.id,
-        ownerId,
-        name: row.name,
-        systemId: row.systemId,
-        homeColonyId: row.homeColonyId,
-        ships: JSON.parse(row.ships),
-        directives: JSON.parse(row.directives),
-        queue: JSON.parse(row.queue),
-        movement: row.movement ? JSON.parse(row.movement) : null,
-      });
+      empire.fleetMap.set(fleet.id, fleet);
     }
   }
 
-  loadPirates(): void {
-    for (const row of db.select().from(schema.pirateLairs).all()) {
-      this.runtime.lairMap.set(row.id, {
-        id: row.id,
-        systemId: row.systemId,
-        ships: JSON.parse(row.ships),
-        directives: JSON.parse(row.directives),
-        bounty: row.bounty,
-      });
+  async loadPirates(): Promise<void> {
+    for (const lair of await this.repo.loadLairs()) {
+      this.runtime.lairMap.set(lair.id, lair);
     }
   }
 
-  loadBattles(): void {
-    this.runtime.battleLog = db
-      .select()
-      .from(schema.battles)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        at: row.at,
-        systemId: row.systemId,
-        attackerName: row.attackerName,
-        defenderName: row.defenderName,
-        report: JSON.parse(row.report),
-      }))
+  async loadBattles(): Promise<void> {
+    this.runtime.battleLog = (await this.repo.loadBattles())
       .sort((a, b) => b.at - a.at)
       .slice(0, MAX_BATTLES);
   }

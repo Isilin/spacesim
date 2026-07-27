@@ -35,8 +35,8 @@ function resetDb(): void {
 beforeEach(() => resetDb());
 
 describe("dispatchClientMessage — exhaustivité", () => {
-  it("chaque commande du schéma protocol a une branche dans le dispatcher", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("chaque commande du schéma protocol a une branche dans le dispatcher", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     // Parcourt le schéma runtime (pas seulement le typage) : un `type` ajouté au
     // protocole sans branche correspondante tombe dans `assertNever` et ce test échoue.
@@ -58,11 +58,11 @@ describe("dispatchClientMessage — exhaustivité", () => {
 });
 
 describe("dispatchClientMessage — passage d'arguments", () => {
-  it("build : construit sur la bonne colonie, refuse une colonie d'un autre empire", () => {
+  it("build : construit sur la bonne colonie, refuse une colonie d'un autre empire", async () => {
     // `createEmpireForAccount` adopte l'empire amorcé au premier appel (game.test.ts:185) :
     // les deux empires doivent donc naître d'un compte chacun, jamais l'un via
     // `defaultEmpireForDev` et l'autre via un premier appel — ce serait le même empire.
-    const engine = GameEngine.loadOrBootstrap();
+    const engine = await GameEngine.loadOrBootstrap();
     const owner = engine.createEmpireForAccount("compte-owner", "Owner")!;
     const stranger = engine.createEmpireForAccount("compte-bob", "Bob")!;
     const colonyId = engine.snapshotForEmpire(owner).colonies[0]!.id;
@@ -72,8 +72,8 @@ describe("dispatchClientMessage — passage d'arguments", () => {
     expect(dispatchClientMessage(engine, stranger, ok)).toBe("Colonie inconnue");
   });
 
-  it("claimSystem : revendique le système de la colonie mère", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("claimSystem : revendique le système de la colonie mère", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.createEmpireForAccount("compte-owner", "Owner")!;
     empire.influence = 1000; // le claim coûte de l'influence (chantier 7e)
     const colony = engine.snapshotForEmpire(empire).colonies[0]!;
@@ -86,8 +86,8 @@ describe("dispatchClientMessage — passage d'arguments", () => {
     expect(dispatchClientMessage(engine, empire, msg)).toBeNull();
   });
 
-  it("proposeRelation : cible bien l'empire passé en argument, pas l'appelant", () => {
-    const engine = GameEngine.loadOrBootstrap();
+  it("proposeRelation : cible bien l'empire passé en argument, pas l'appelant", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.createEmpireForAccount("compte-owner", "Owner")!;
     const other = engine.createEmpireForAccount("compte-bob", "Bob")!;
 
