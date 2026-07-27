@@ -1,4 +1,4 @@
-import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * L'univers n'est pas stocké : il est régénéré depuis la seed (déterministe).
@@ -15,6 +15,114 @@ export const games = sqliteTable("games", {
    * seed tronquée ici ; ce compteur croît quand le front de peuplement avance.
    */
   galaxyCount: integer("galaxy_count").notNull().default(3),
+});
+
+// ── Univers matérialisé (chantier 18) ────────────────────────────────────────
+// Ces tables sont la SOURCE DE VÉRITÉ de l'univers. Le générateur ne sert qu'à
+// matérialiser les galaxies neuves quand la frontière s'ouvre ; une ligne écrite ici
+// ne se régénère JAMAIS — corriger l'univers officiel = UPDATE ciblé, pas de reset.
+// Les colonnes `*_index` figent l'ordre des tableaux (systems, planets, links) pour
+// une reconstruction identique au généré. FKs déclaratives (non appliquées en SQLite,
+// réellement actives au passage Postgres — chantier 20).
+
+export const universeGalaxies = sqliteTable("universe_galaxies", {
+  /** "gal-7" — l'id d'univers est une clé naturelle éternelle. */
+  id: text("id").primaryKey(),
+  gameId: text("game_id").notNull(),
+  index: integer("galaxy_index").notNull(),
+  name: text("name").notNull(),
+  x: integer("x").notNull(),
+  y: integer("y").notNull(),
+  depositBonus: real("deposit_bonus").notNull(),
+  anchorSystemId: text("anchor_system_id").notNull(),
+  /**
+   * Parent dans l'arbre inter-galactique — FIGÉ ici à la matérialisation : un
+   * changement de GALAXY_SPACING/GOLDEN_ANGLE ne recâble plus rien. NULL pour gal-0.
+   */
+  parentGalaxyIndex: integer("parent_galaxy_index"),
+  /** Version du générateur qui a produit la galaxie (traçabilité, jamais rejouée). */
+  generatorVersion: integer("generator_version").notNull(),
+  materializedAt: integer("materialized_at").notNull(),
+});
+
+export const universeSystems = sqliteTable("universe_systems", {
+  /** "gal-7-sys-3" */
+  id: text("id").primaryKey(),
+  galaxyId: text("galaxy_id")
+    .notNull()
+    .references(() => universeGalaxies.id),
+  /** Position dans `galaxy.systems` (ordre de génération). */
+  systemIndex: integer("system_index").notNull(),
+  name: text("name").notNull(),
+  x: integer("x").notNull(),
+  y: integer("y").notNull(),
+});
+
+export const universeLinks = sqliteTable(
+  "universe_links",
+  {
+    galaxyId: text("galaxy_id")
+      .notNull()
+      .references(() => universeGalaxies.id),
+    /** Paire canonique (a < b), comme produite par le générateur. */
+    aSystemId: text("a_system_id")
+      .notNull()
+      .references(() => universeSystems.id),
+    bSystemId: text("b_system_id")
+      .notNull()
+      .references(() => universeSystems.id),
+    /** Position dans `galaxy.links`. */
+    linkIndex: integer("link_index").notNull(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.aSystemId, t.bSystemId] }) }),
+);
+
+/** Planètes ET lunes (comme `system.planets`, entrelacées dans l'ordre de génération). */
+export const universeBodies = sqliteTable("universe_bodies", {
+  /** "...-p2" (planète) ou "...-p2-m1" (lune). */
+  id: text("id").primaryKey(),
+  systemId: text("system_id")
+    .notNull()
+    .references(() => universeSystems.id),
+  /** Position dans `system.planets`. */
+  bodyIndex: integer("body_index").notNull(),
+  kind: text("kind").notNull(),
+  /** NULL pour une planète ; la planète orbitée pour une lune. */
+  parentPlanetId: text("parent_planet_id"),
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  habitability: integer("habitability").notNull(),
+  slots: integer("slots").notNull(),
+  /** JSON Deposits. */
+  deposits: text("deposits").notNull().default("{}"),
+  orbitRadius: real("orbit_radius").notNull(),
+  orbitAngle: real("orbit_angle").notNull(),
+});
+
+export const universeBelts = sqliteTable("universe_belts", {
+  /** "...-b1" */
+  id: text("id").primaryKey(),
+  systemId: text("system_id")
+    .notNull()
+    .references(() => universeSystems.id),
+  /** Position dans `system.belts`. */
+  beltIndex: integer("belt_index").notNull(),
+  name: text("name").notNull(),
+  orbitRadius: real("orbit_radius").notNull(),
+  /** JSON Deposits. */
+  deposits: text("deposits").notNull().default("{}"),
+});
+
+export const universeStations = sqliteTable("universe_stations", {
+  /** "...-st" */
+  id: text("id").primaryKey(),
+  /** Au plus une station par système. */
+  systemId: text("system_id")
+    .notNull()
+    .unique()
+    .references(() => universeSystems.id),
+  factionId: text("faction_id").notNull(),
+  name: text("name").notNull(),
 });
 
 /**
