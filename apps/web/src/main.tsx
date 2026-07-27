@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
 import { App } from "./App.js";
 import { AuthView } from "./AuthView.js";
 import { useAuth } from "./useAuth.js";
@@ -16,6 +17,8 @@ function AuthGate() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AuthGate />
+    <BrowserRouter>
+      <AuthGate />
+    </BrowserRouter>
   </StrictMode>,
 );
