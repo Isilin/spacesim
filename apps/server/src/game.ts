@@ -62,6 +62,8 @@ import { LogisticsService } from "./runtime/services/logistics-service.js";
 import { MarketService } from "./runtime/services/market-service.js";
 import { ObjectiveService } from "./runtime/services/objective-service.js";
 import { GameRepository } from "./runtime/repositories/game-repository.js";
+import { Notifier, type StateListener } from "./runtime/notifier.js";
+import { Scheduler } from "./runtime/scheduler.js";
 import { TickRunner } from "./runtime/tick-runner.js";
 import {
   appendGalaxies,
@@ -84,8 +86,7 @@ const DEFAULT_DIRECTIVES: Record<CombatPhase, string> = {
   short: "focus_fire",
 };
 
-/** Signal « l'état a changé » : chaque connexion recompose alors le snapshot de son empire. */
-export type StateListener = () => void;
+export type { StateListener };
 
 /**
  * Détient l'état de la partie et fait avancer la simulation.
@@ -118,8 +119,8 @@ export class GameEngine {
   private bootstrap: BootstrapService;
   /** Injecté depuis le boot (`setLogger`) ; console brute par défaut (tests, scripts). */
   private logger: Logger = consoleLogger;
-  private listeners = new Set<StateListener>();
-  private interval: NodeJS.Timeout | null = null;
+  private readonly notifier: Notifier;
+  private readonly scheduler: Scheduler;
 
   // Accesseurs délégant à `runtime` — préservent chaque site d'appel existant (`this.clock`,
   // `this.empires`, etc.) tel quel pendant que l'état bascule dans GameRuntime.
@@ -228,6 +229,11 @@ export class GameEngine {
   private constructor(clock: Clock, universe: Universe) {
     this.runtime = new GameRuntime(clock, universe);
     this.tickRunner = new TickRunner(this.runtime, this);
+    this.notifier = new Notifier(() => this.runtime.empires.values());
+    this.scheduler = new Scheduler({
+      lastTickAt: () => this.clock.lastTickAt,
+      advance: (ticks) => this.advance(ticks),
+    });
     // Proxy stable : `setLogger` remplace `this.logger` après construction (boot de
     // apps/server), les services doivent donc lire la valeur courante à chaque appel.
     const logger: Logger = {
@@ -552,8 +558,7 @@ export class GameEngine {
   }
 
   onChange(listener: StateListener): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return this.notifier.onChange(listener);
   }
 
   /** Remplace le logger console par défaut — appelé une fois au boot avec le logger Fastify. */
@@ -562,16 +567,11 @@ export class GameEngine {
   }
 
   start(): void {
-    if (this.interval) return;
-    this.interval = setInterval(() => {
-      const missed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);
-      if (missed > 0) this.advance(missed);
-    }, TICK_MS);
+    this.scheduler.start();
   }
 
   stop(): void {
-    if (this.interval) clearInterval(this.interval);
-    this.interval = null;
+    this.scheduler.stop();
   }
 
   /** Action joueur : lancer une construction. Retourne un message d'erreur ou null. */
@@ -1535,12 +1535,6 @@ export class GameEngine {
   }
 
   notify(): void {
-    // Signal seul : chaque connexion recompose le snapshot redacté de son empire
-    // (7c-B). Le marqueur d'exploration se réarme par empire après diffusion.
-    for (const listener of this.listeners) listener();
-    for (const empire of this.empires.values()) {
-      empire.explorationDirty = false;
-      empire.universeDirty = false;
-    }
+    this.notifier.notify();
   }
 }
