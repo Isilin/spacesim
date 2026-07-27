@@ -14,14 +14,12 @@ import {
   pirateDirectives,
   TICK_MS,
   type AsteroidBelt,
-  type BuildingId,
   type Colony,
   type Contract,
   type EmpireEffects,
   type CombatPhase,
   type FactionState,
   type Fleet,
-  type LiftRule,
   type GameState,
   type Gateway,
   type PirateLair,
@@ -30,13 +28,10 @@ import {
   type Mission,
   type Objective,
   type Planet,
-  type ProposalKind,
   type ResourceId,
   type Relation,
   type RelationProposal,
   type Route,
-  type RouteRule,
-  type ShipId,
   type StationMarket,
   type Stocks,
   type TradeStation,
@@ -96,26 +91,31 @@ export class GameEngine {
   private runtime: GameRuntime;
   /** Déroule un tick dans l'ordre exact observé en production (runtime/tick-runner.ts). */
   private tickRunner: TickRunner;
+  /**
+   * Services par domaine, publics : `ws/dispatch.ts` et `http/routes/dev.ts` les
+   * appellent directement (chantier 19.6) — `GameEngine` n'expose plus de façade de
+   * commande une-ligne par action.
+   */
   /** Bâtiments, chantier civil, plans de vaisseaux (chantier 13) et recherche. */
-  private industry: IndustryService;
+  readonly industry: IndustryService;
   /** Convois manuels, ascenseur orbital, routes automatiques, avant-postes, missions. */
-  private logistics: LogisticsService;
+  readonly logistics: LogisticsService;
   /** Portails inter-galactiques : chantiers, contribution, activation. */
-  private gateway: GatewayService;
+  readonly gateway: GatewayService;
   /** Contrats de fourniture : publication, acceptation, annulation, expiration. */
-  private contract: ContractService;
+  readonly contract: ContractService;
   /** Marché de station (joueur + PNJ), prix régionaux, réputation/embargo, humeur de faction. */
-  private market: MarketService;
+  readonly market: MarketService;
   /** Sondes, colonisation, revendications de systèmes, croissance de l'univers (chantier 9). */
-  private exploration: ExplorationService;
+  readonly exploration: ExplorationService;
   /** Flottes, combat (repaire/PvP), production/déplacement et repaires pirates PNJ. */
-  private fleetService: FleetService;
+  readonly fleetService: FleetService;
   /** Diplomatie, événements de monde et humeur de faction. */
-  private diplomacy: DiplomacyService;
+  readonly diplomacy: DiplomacyService;
   /** Objectifs éphémères personnels (chantier 17), domaine isolé. */
-  private objective: ObjectiveService;
+  readonly objective: ObjectiveService;
   /** Bootstrap des empires (compte joueur, PNJ, colonie mère) et outils de dev associés. */
-  private bootstrap: BootstrapService;
+  readonly bootstrap: BootstrapService;
   /** Injecté depuis le boot (`setLogger`) ; console brute par défaut (tests, scripts). */
   private logger: Logger = consoleLogger;
   private readonly notifier: Notifier;
@@ -587,58 +587,6 @@ export class GameEngine {
     this.scheduler.stop();
   }
 
-  /** Action joueur : lancer une construction. Retourne un message d'erreur ou null. */
-  build(empire: Empire, colonyId: string, buildingId: BuildingId): string | null {
-    return this.industry.build(empire, colonyId, buildingId);
-  }
-
-  /** Action joueur : régler (ou retirer) la consigne d'ascension d'une ressource. */
-  setLiftRule(
-    empire: Empire,
-    colonyId: string,
-    resource: ResourceId,
-    rule: LiftRule | null,
-  ): string | null {
-    return this.logistics.setLiftRule(empire, colonyId, resource, rule);
-  }
-
-  /** Action joueur : envoyer un convoi cargo. Retourne un message d'erreur ou null. */
-  sendTransfer(
-    empire: Empire,
-    fromColonyId: string,
-    toColonyId: string,
-    wanted: Partial<Record<ResourceId, number>>,
-    convoy?: Partial<Record<ShipId, number>>,
-  ): string | null {
-    return this.logistics.sendTransfer(empire, fromColonyId, toColonyId, wanted, convoy);
-  }
-
-  /** Action joueur : vendre une cargaison à une station (créditée au spot d'arrivée). */
-  sellToStation(
-    empire: Empire,
-    colonyId: string,
-    stationId: string,
-    wanted: Partial<Record<ResourceId, number>>,
-  ): string | null {
-    return this.market.sellToStation(empire, colonyId, stationId, wanted);
-  }
-
-  /** Action joueur : acheter au spot (le convoi part avec un budget, revient chargé). */
-  buyFromStation(
-    empire: Empire,
-    colonyId: string,
-    stationId: string,
-    resource: ResourceId,
-    budgetRaw: number,
-  ): string | null {
-    return this.market.buyFromStation(empire, colonyId, stationId, resource, budgetRaw);
-  }
-
-  /** Action joueur : produire un vaisseau au chantier naval (classe historique). */
-  buildShip(empire: Empire, colonyId: string, shipId: ShipId): string | null {
-    return this.industry.buildShip(empire, colonyId, shipId);
-  }
-
   // ── Conception de vaisseaux (chantier 13) ────────────────────────────────
 
   private async loadBlueprints(): Promise<void> {
@@ -654,123 +602,6 @@ export class GameEngine {
     this.industry.seedStarterBlueprintsForAll();
   }
 
-  /** Action joueur : créer un plan (validé contre les techs débloquées). */
-  createBlueprint(
-    empire: Empire,
-    name: string,
-    chassisId: string,
-    modules: string[],
-  ): string | null {
-    return this.industry.createBlueprint(empire, name, chassisId, modules);
-  }
-
-  /** Action joueur : remplacer le contenu d'un plan existant. */
-  updateBlueprint(
-    empire: Empire,
-    blueprintId: string,
-    name: string,
-    chassisId: string,
-    modules: string[],
-  ): string | null {
-    return this.industry.updateBlueprint(empire, blueprintId, name, chassisId, modules);
-  }
-
-  /** Action joueur : supprimer un plan. */
-  deleteBlueprint(empire: Empire, blueprintId: string): string | null {
-    return this.industry.deleteBlueprint(empire, blueprintId);
-  }
-
-  /**
-   * Action joueur : produire un vaisseau depuis un plan. Domaine colonie → pool civil
-   * (routes/convois) ; domaine flotte → file de production de la flotte.
-   */
-  buildBlueprint(
-    empire: Empire,
-    blueprintId: string,
-    colonyId?: string,
-    fleetId?: string,
-  ): string | null {
-    return this.industry.buildBlueprint(empire, blueprintId, colonyId, fleetId);
-  }
-
-  /**
-   * Action joueur : acheter un plan tout fait à une station PNJ (chantier 13). Transaction
-   * instantanée (un plan n'est pas une cargaison physique) : le prix majore la valeur en
-   * ressources du design, payé en crédits au sol.
-   */
-  buyBlueprintFromStation(
-    empire: Empire,
-    colonyId: string,
-    stationId: string,
-    presetId: string,
-  ): string | null {
-    return this.industry.buyBlueprintFromStation(empire, colonyId, stationId, presetId);
-  }
-
-  /** Action joueur : revendre un plan à une station PNJ, contre une fraction de sa valeur. */
-  sellBlueprint(
-    empire: Empire,
-    colonyId: string,
-    stationId: string,
-    blueprintId: string,
-  ): string | null {
-    return this.industry.sellBlueprint(empire, colonyId, stationId, blueprintId);
-  }
-
-  /**
-   * Action joueur : revendre des vaisseaux assemblés (civils, désœuvrés) à une station PNJ.
-   * Couvre aussi bien les classes historiques que les vaisseaux issus d'un plan.
-   */
-  sellShip(
-    empire: Empire,
-    colonyId: string,
-    stationId: string,
-    shipId: string,
-    countRaw: number,
-  ): string | null {
-    return this.industry.sellShip(empire, colonyId, stationId, shipId, countRaw);
-  }
-
-  /** Action joueur : fonder un avant-poste minier sur une ceinture. */
-  buildOutpost(empire: Empire, colonyId: string, beltId: string): string | null {
-    return this.logistics.buildOutpost(empire, colonyId, beltId);
-  }
-
-  /** Action joueur : créer une route logistique automatique. */
-  createRoute(
-    empire: Empire,
-    ownerColonyId: string,
-    fromId: string,
-    fromKind: "colony" | "outpost",
-    toId: string,
-    toKind: "colony" | "station",
-    resource: ResourceId,
-    rule: RouteRule,
-    ships: Partial<Record<ShipId, number>>,
-  ): string | null {
-    return this.logistics.createRoute(
-      empire,
-      ownerColonyId,
-      fromId,
-      fromKind,
-      toId,
-      toKind,
-      resource,
-      rule,
-      ships,
-    );
-  }
-
-  /** Action joueur : suspendre/reprendre une route (le cycle en cours se termine). */
-  setRoutePaused(empire: Empire, routeId: string, paused: boolean): string | null {
-    return this.logistics.setRoutePaused(empire, routeId, paused);
-  }
-
-  /** Action joueur : supprimer une route au repos (les vaisseaux redeviennent libres). */
-  deleteRoute(empire: Empire, routeId: string): string | null {
-    return this.logistics.deleteRoute(empire, routeId);
-  }
-
   private async loadRoutes(): Promise<void> {
     await this.logistics.loadRoutes();
   }
@@ -779,113 +610,7 @@ export class GameEngine {
     await this.logistics.loadOutposts();
   }
 
-  /** Action joueur : lancer une recherche (une seule à la fois, payée en science). */
-  startResearch(empire: Empire, techId: string): string | null {
-    return this.industry.startResearch(empire, techId);
-  }
-
-  /**
-   * Action joueur : planifier la chaîne menant à une tech (chantier 11.4).
-   * La file remplace la précédente ; sa tête démarre dès que la science suffit.
-   */
-  queueResearch(empire: Empire, techId: string): string | null {
-    return this.industry.queueResearch(empire, techId);
-  }
-
-  /** Action joueur : vider la file planifiée (la recherche en cours continue). */
-  clearResearchQueue(empire: Empire): string | null {
-    return this.industry.clearResearchQueue(empire);
-  }
-
-  /** Action joueur : envoyer une sonde révéler un système. */
-  probe(empire: Empire, colonyId: string, systemId: string): string | null {
-    return this.exploration.probe(empire, colonyId, systemId);
-  }
-
-  /** Action joueur : envoyer un vaisseau colonial fonder une colonie. */
-  colonize(empire: Empire, colonyId: string, planetId: string): string | null {
-    return this.exploration.colonize(empire, colonyId, planetId);
-  }
-
-  /** Action joueur : livrer des ressources au chantier de portail (tech requise). */
-  contributeGateway(
-    empire: Empire,
-    colonyId: string,
-    galaxyId: string,
-    wanted: Partial<Record<ResourceId, number>>,
-  ): string | null {
-    return this.gateway.contributeGateway(empire, colonyId, galaxyId, wanted);
-  }
-
-  // ─────────────────────────── Contrats de fourniture (chantier 14) ───────────────────────────
-
-  /** Action joueur : publier un contrat — crédits mis sous séquestre jusqu'à expiration/annulation. */
-  postContract(
-    empire: Empire,
-    colonyId: string,
-    resource: ResourceId,
-    quantity: number,
-    pricePerUnit: number,
-    durationMs: number,
-  ): string | null {
-    return this.contract.postContract(
-      empire,
-      colonyId,
-      resource,
-      quantity,
-      pricePerUnit,
-      durationMs,
-    );
-  }
-
-  /** Action joueur : accepter (tout ou partie d')un contrat étranger et affréter le convoi. */
-  acceptContract(
-    empire: Empire,
-    colonyId: string,
-    contractId: string,
-    quantity: number,
-  ): string | null {
-    return this.contract.acceptContract(empire, colonyId, contractId, quantity);
-  }
-
-  /** Action joueur : annuler son propre contrat — rembourse le séquestre du reliquat non honoré. */
-  cancelContract(empire: Empire, contractId: string): string | null {
-    return this.contract.cancelContract(empire, contractId);
-  }
-
   // ─────────────────────────── Flottes & combat ───────────────────────────
-
-  /** Action joueur : créer une flotte vide rattachée à une colonie. */
-  createFleet(empire: Empire, colonyId: string, name: string): string | null {
-    return this.fleetService.createFleet(empire, colonyId, name);
-  }
-
-  /** Action joueur : produire un vaisseau de guerre (file de la flotte, tech requise). */
-  buildWarship(empire: Empire, fleetId: string, warshipId: string): string | null {
-    return this.fleetService.buildWarship(empire, fleetId, warshipId);
-  }
-
-  setFleetDirectives(
-    empire: Empire,
-    fleetId: string,
-    directives: Record<string, string>,
-  ): string | null {
-    return this.fleetService.setFleetDirectives(empire, fleetId, directives);
-  }
-
-  /** Action joueur : déplacer une flotte vers un système accessible. */
-  moveFleet(empire: Empire, fleetId: string, toSystemId: string): string | null {
-    return this.fleetService.moveFleet(empire, fleetId, toSystemId);
-  }
-
-  /** Action joueur : attaquer un repaire pirate présent dans le système de la flotte. */
-  attackLair(empire: Empire, fleetId: string, lairId: string): string | null {
-    return this.fleetService.attackLair(empire, fleetId, lairId);
-  }
-
-  disbandFleet(empire: Empire, fleetId: string): string | null {
-    return this.fleetService.disbandFleet(empire, fleetId);
-  }
 
   // ─────────────────────────── Diplomatie (chantier 16) ───────────────────────────
 
@@ -896,36 +621,6 @@ export class GameEngine {
 
   private async loadRelations(): Promise<void> {
     await this.diplomacy.loadRelations();
-  }
-
-  /** Action joueur : déclarer la guerre à un empire — unilatérale, mais coûteuse en influence. */
-  declareWar(empire: Empire, targetEmpireId: string): string | null {
-    return this.diplomacy.declareWar(empire, targetEmpireId);
-  }
-
-  /** Action joueur : faire la paix avec un empire — rouvre un cooldown avant re-déclaration. */
-  makePeace(empire: Empire, targetEmpireId: string): string | null {
-    return this.diplomacy.makePeace(empire, targetEmpireId);
-  }
-
-  /** Action joueur : proposer un pacte (NAP ou alliance) — exige le consentement de la cible. */
-  proposeRelation(empire: Empire, targetEmpireId: string, kind: ProposalKind): string | null {
-    return this.diplomacy.proposeRelation(empire, targetEmpireId, kind);
-  }
-
-  /** Action joueur : répondre (accepter/refuser) une proposition qui lui est adressée. */
-  respondRelation(empire: Empire, proposalId: string, accept: boolean): string | null {
-    return this.diplomacy.respondRelation(empire, proposalId, accept);
-  }
-
-  /** Action joueur : retirer sa propre proposition avant qu'elle ne reçoive de réponse. */
-  cancelProposal(empire: Empire, proposalId: string): string | null {
-    return this.diplomacy.cancelProposal(empire, proposalId);
-  }
-
-  /** Action joueur : rompre un pacte (NAP ou alliance) en vigueur — retour à neutre. */
-  breakRelation(empire: Empire, targetEmpireId: string): string | null {
-    return this.diplomacy.breakRelation(empire, targetEmpireId);
   }
 
   private async loadProposals(): Promise<void> {

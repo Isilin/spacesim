@@ -16,7 +16,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     const colony = engine.colonies[0]!;
     const creditsBefore = colony.resources.credits;
 
-    expect(engine.postContract(empire, colony.id, "ore", 10, 1, 3_600_000)).toBeNull();
+    expect(engine.contract.postContract(empire, colony.id, "ore", 10, 1, 3_600_000)).toBeNull();
 
     // Séquestre = quantité × prix, prélevé au sol (les crédits ne sont pas orbitaux).
     expect(engine.colonies[0]!.resources.credits).toBe(creditsBefore - 10);
@@ -36,7 +36,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     // l'émetteur, jamais interagi avec lui.
     const bystander = engine.empireById(engine.devSpawnEmpire("Spectateur")!)!;
 
-    expect(engine.postContract(empire, colony.id, "ore", 10, 1, 3_600_000)).toBeNull();
+    expect(engine.contract.postContract(empire, colony.id, "ore", 10, 1, 3_600_000)).toBeNull();
     const contractId = engine.contracts[0]!.id;
 
     // Comme leaderboard/gateways : diffusé en entier, à la différence de markets/territories
@@ -53,7 +53,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
-    expect(engine.postContract(empire, colony.id, "credits", 10, 1, 3_600_000)).toMatch(
+    expect(engine.contract.postContract(empire, colony.id, "credits", 10, 1, 3_600_000)).toMatch(
       /non contractualisable/,
     );
   });
@@ -62,7 +62,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
-    expect(engine.postContract(empire, colony.id, "ore", 10_000, 1, 3_600_000)).toMatch(
+    expect(engine.contract.postContract(empire, colony.id, "ore", 10_000, 1, 3_600_000)).toMatch(
       /Crédits insuffisants/,
     );
   });
@@ -72,10 +72,10 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
     const creditsBefore = colony.resources.credits;
-    engine.postContract(empire, colony.id, "ore", 10, 1, 3_600_000);
+    engine.contract.postContract(empire, colony.id, "ore", 10, 1, 3_600_000);
     const contractId = engine.contracts[0]!.id;
 
-    expect(engine.cancelContract(empire, contractId)).toBeNull();
+    expect(engine.contract.cancelContract(empire, contractId)).toBeNull();
     expect(engine.colonies[0]!.resources.credits).toBe(creditsBefore);
     expect(engine.contracts[0]!.status).toBe("cancelled");
   });
@@ -84,13 +84,13 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     const engine = await GameEngine.loadOrBootstrap();
     const issuer = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
-    engine.postContract(issuer, colony.id, "ore", 10, 1, 3_600_000);
+    engine.contract.postContract(issuer, colony.id, "ore", 10, 1, 3_600_000);
     const contractId = engine.contracts[0]!.id;
     // devSpawnEmpire (pas empireFor) : un compte adopterait l'empire par défaut encore
     // libre, ce qui en ferait le même empire que l'émetteur au lieu d'un tiers.
     const other = engine.empireById(engine.devSpawnEmpire("Curieux")!)!;
 
-    expect(engine.cancelContract(other, contractId)).toMatch(/Seul l'émetteur/);
+    expect(engine.contract.cancelContract(other, contractId)).toMatch(/Seul l'émetteur/);
   });
 
   it("un contrat non honoré expire et rembourse le séquestre restant", async () => {
@@ -101,7 +101,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     // fenêtre du test (taxe par colon, quelques crédits) ne doit pas pouvoir la noyer.
     engine.devGrant({ credits: 2000 });
     const creditsAfterGrant = engine.colonies[0]!.resources.credits;
-    engine.postContract(empire, colony.id, "ore", 1000, 1, 300_000); // durée mini clampée
+    engine.contract.postContract(empire, colony.id, "ore", 1000, 1, 300_000); // durée mini clampée
 
     advanceTicks(engine, 400 / 5); // dépasse largement l'échéance
 
@@ -125,20 +125,25 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
 
     // Nourriture, pas minerai : le minerai a une consigne d'ascension par défaut (colonie
     // mère) qui ferait dériver l'orbite toute seule sur la longue avance de temps ci-dessous.
-    expect(engine.postContract(issuer, issuerColony.id, "food", 10, 2, 3_600_000)).toBeNull();
+    expect(
+      engine.contract.postContract(issuer, issuerColony.id, "food", 10, 2, 3_600_000),
+    ).toBeNull();
     const contractId = engine.contracts[0]!.id;
 
     // Amorce généreuse d'énergie en orbite et de crédits au sol : sans elles, aucun convoi
     // ne peut appareiller ni payer ses frais, et le nombre de sauts jusqu'à la colonie
     // émettrice (donc carburant et frais) dépend de la seed — pas de marge fixe fiable.
     engine.devGrant({ credits: 500 });
-    engine.setLiftRule(accepter, accepterColony.id, "energy", { keepGround: 0, direction: "up" });
+    engine.logistics.setLiftRule(accepter, accepterColony.id, "energy", {
+      keepGround: 0,
+      direction: "up",
+    });
     advanceTicks(engine, 60);
 
     const beforeAccept = engine.colonies[0]!;
     const orbitalFoodBefore = beforeAccept.orbitalResources.food;
 
-    expect(engine.acceptContract(accepter, accepterColony.id, contractId, 10)).toBeNull();
+    expect(engine.contract.acceptContract(accepter, accepterColony.id, contractId, 10)).toBeNull();
 
     const afterAccept = engine.colonies[0]!;
     expect(afterAccept.orbitalResources.food).toBe(orbitalFoodBefore - 10);
@@ -181,20 +186,24 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
-    engine.postContract(empire, colony.id, "ore", 10, 1, 3_600_000);
+    engine.contract.postContract(empire, colony.id, "ore", 10, 1, 3_600_000);
     const contractId = engine.contracts[0]!.id;
-    expect(engine.acceptContract(empire, colony.id, contractId, 10)).toMatch(/propre contrat/);
+    expect(engine.contract.acceptContract(empire, colony.id, contractId, 10)).toMatch(
+      /propre contrat/,
+    );
   });
 
   it("acceptContract : refuse une quantité au-delà du reliquat", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const issuer = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
-    engine.postContract(issuer, colony.id, "ore", 10, 1, 3_600_000);
+    engine.contract.postContract(issuer, colony.id, "ore", 10, 1, 3_600_000);
     const contractId = engine.contracts[0]!.id;
     const other = engine.empireById(engine.devSpawnEmpire("Voisin")!)!;
     const otherColony = homeColony(engine, other);
-    expect(engine.acceptContract(other, otherColony.id, contractId, 999)).toMatch(/indisponible/);
+    expect(engine.contract.acceptContract(other, otherColony.id, contractId, 999)).toMatch(
+      /indisponible/,
+    );
   });
 });
 describe("GameEngine — contrats de faction (chantier 15)", () => {
@@ -245,20 +254,25 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
     // (RESOURCES itère l'énergie en premier), donc lever les deux à la fois affamerait
     // la cargaison derrière l'énergie.
     engine.devGrant({ energy: 200, credits: 500 });
-    engine.setLiftRule(empire, colony.id, "energy", { keepGround: 0, direction: "up" });
+    engine.logistics.setLiftRule(empire, colony.id, "energy", { keepGround: 0, direction: "up" });
     advanceTicks(engine, 15);
-    engine.setLiftRule(empire, colony.id, "energy", null);
+    engine.logistics.setLiftRule(empire, colony.id, "energy", null);
 
     // Puis la cargaison demandée (quelle qu'elle soit), seule à son tour. La colonie mère
     // naît avec sa PROPRE consigne "up" sur le minerai (chantier 12) — sans la couper, elle
     // continuerait de disputer le même débit et pourrait affamer la cargaison demandée.
-    engine.setLiftRule(empire, colony.id, "ore", null);
+    engine.logistics.setLiftRule(empire, colony.id, "ore", null);
     engine.devGrant({ [contract.resource]: 150 } as Record<string, number>);
-    engine.setLiftRule(empire, colony.id, contract.resource, { keepGround: 0, direction: "up" });
+    engine.logistics.setLiftRule(empire, colony.id, contract.resource, {
+      keepGround: 0,
+      direction: "up",
+    });
     advanceTicks(engine, 30);
 
     const repBefore = empire.factionRep[factionId] ?? 0;
-    expect(engine.acceptContract(empire, colony.id, contract.id, contract.quantity)).toBeNull();
+    expect(
+      engine.contract.acceptContract(empire, colony.id, contract.id, contract.quantity),
+    ).toBeNull();
 
     const mission = engine
       .snapshotForEmpire(empire)

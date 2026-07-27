@@ -64,8 +64,12 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
 
     expect(engine.devSetFactionMood(station.factionId, "embargo")).toBe(true);
 
-    expect(engine.sellToStation(empire, colony.id, station.id, { ore: 10 })).toMatch(/Embargo/);
-    expect(engine.buyFromStation(empire, colony.id, station.id, "ore", 10)).toMatch(/Embargo/);
+    expect(engine.market.sellToStation(empire, colony.id, station.id, { ore: 10 })).toMatch(
+      /Embargo/,
+    );
+    expect(engine.market.buyFromStation(empire, colony.id, station.id, "ore", 10)).toMatch(
+      /Embargo/,
+    );
   });
 
   it("un partenaire établi (standing suffisant) échappe à l'embargo", async () => {
@@ -77,7 +81,7 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
 
     expect(engine.devSetFactionMood(station.factionId, "embargo")).toBe(true);
 
-    expect(engine.sellToStation(empire, colony.id, station.id, { ore: 10 })).toBeNull();
+    expect(engine.market.sellToStation(empire, colony.id, station.id, { ore: 10 })).toBeNull();
   });
 
   it("les humeurs finissent par bouger au fil des ticks économiques", async () => {

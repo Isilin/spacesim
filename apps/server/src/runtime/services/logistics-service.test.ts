@@ -49,7 +49,7 @@ describe("GameEngine — logistique orbitale (chantier 12)", () => {
 
     const orbitBefore = colony.orbitalResources.ore;
     const groundBefore = colony.resources.ore;
-    expect(engine.sellToStation(empire, colony.id, station.id, { ore: 10 })).toBeNull();
+    expect(engine.market.sellToStation(empire, colony.id, station.id, { ore: 10 })).toBeNull();
 
     const after = homeColony(engine, empire);
     expect(after.orbitalResources.ore).toBe(orbitBefore - 10);
@@ -65,7 +65,7 @@ describe("GameEngine — logistique orbitale (chantier 12)", () => {
 
     // Bien plus que l'orbite, mais couvert par le sol : doit être refusé quand même.
     const tooMuch = Math.floor(colony.orbitalResources.ore + colony.resources.ore);
-    expect(engine.sellToStation(empire, colony.id, station.id, { ore: tooMuch })).toMatch(
+    expect(engine.market.sellToStation(empire, colony.id, station.id, { ore: tooMuch })).toMatch(
       /Stock orbital insuffisant/,
     );
   });

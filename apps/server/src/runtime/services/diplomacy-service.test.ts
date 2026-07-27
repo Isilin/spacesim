@@ -11,7 +11,7 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     const b = empireFor(engine, "bravo");
     const c = empireFor(engine, "curieux");
 
-    expect(engine.proposeRelation(a, b.id, "nap")).toBeNull();
+    expect(engine.diplomacy.proposeRelation(a, b.id, "nap")).toBeNull();
 
     const proposalA = engine.snapshotForEmpire(a).proposals[0];
     const proposalB = engine.snapshotForEmpire(b).proposals[0];
@@ -27,10 +27,10 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
-    engine.proposeRelation(a, b.id, "nap");
+    engine.diplomacy.proposeRelation(a, b.id, "nap");
     const proposalId = engine.snapshotForEmpire(b).proposals[0]!.id;
 
-    expect(engine.respondRelation(b, proposalId, true)).toBeNull();
+    expect(engine.diplomacy.respondRelation(b, proposalId, true)).toBeNull();
     const relation = engine
       .snapshotForEmpire(a)
       .relations.find((r) => r.empireA === a.id || r.empireB === a.id);
@@ -42,10 +42,10 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
-    engine.proposeRelation(a, b.id, "nap");
+    engine.diplomacy.proposeRelation(a, b.id, "nap");
     const proposalId = engine.snapshotForEmpire(b).proposals[0]!.id;
 
-    expect(engine.respondRelation(b, proposalId, false)).toBeNull();
+    expect(engine.diplomacy.respondRelation(b, proposalId, false)).toBeNull();
     expect(engine.snapshotForEmpire(a).proposals).toHaveLength(0);
     expect(engine.snapshotForEmpire(a).relations).toHaveLength(0);
   });
@@ -54,31 +54,31 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
-    engine.proposeRelation(a, b.id, "nap");
+    engine.diplomacy.proposeRelation(a, b.id, "nap");
     const proposalId = engine.snapshotForEmpire(b).proposals[0]!.id;
 
-    expect(engine.respondRelation(a, proposalId, true)).toBe("Proposition inconnue");
+    expect(engine.diplomacy.respondRelation(a, proposalId, true)).toBe("Proposition inconnue");
   });
 
   it("proposeRelation : refuse un doublon tant qu'une proposition est en attente", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
-    expect(engine.proposeRelation(a, b.id, "nap")).toBeNull();
-    expect(engine.proposeRelation(a, b.id, "alliance")).toMatch(/déjà en attente/);
+    expect(engine.diplomacy.proposeRelation(a, b.id, "nap")).toBeNull();
+    expect(engine.diplomacy.proposeRelation(a, b.id, "alliance")).toMatch(/déjà en attente/);
     // Même dans l'autre sens : la clé de proposition est canonique.
-    expect(engine.proposeRelation(b, a.id, "nap")).toMatch(/déjà en attente/);
+    expect(engine.diplomacy.proposeRelation(b, a.id, "nap")).toMatch(/déjà en attente/);
   });
 
   it("cancelProposal : seul l'émetteur peut retirer sa propre proposition", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
-    engine.proposeRelation(a, b.id, "nap");
+    engine.diplomacy.proposeRelation(a, b.id, "nap");
     const proposalId = engine.snapshotForEmpire(a).proposals[0]!.id;
 
-    expect(engine.cancelProposal(b, proposalId)).toBe("Proposition inconnue");
-    expect(engine.cancelProposal(a, proposalId)).toBeNull();
+    expect(engine.diplomacy.cancelProposal(b, proposalId)).toBe("Proposition inconnue");
+    expect(engine.diplomacy.cancelProposal(a, proposalId)).toBeNull();
     expect(engine.snapshotForEmpire(a).proposals).toHaveLength(0);
   });
 
@@ -86,11 +86,11 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     const engine = await GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
-    expect(engine.breakRelation(a, b.id)).toMatch(/Aucun pacte/);
+    expect(engine.diplomacy.breakRelation(a, b.id)).toMatch(/Aucun pacte/);
 
-    engine.proposeRelation(a, b.id, "alliance");
-    engine.respondRelation(b, engine.snapshotForEmpire(b).proposals[0]!.id, true);
-    expect(engine.breakRelation(a, b.id)).toBeNull();
+    engine.diplomacy.proposeRelation(a, b.id, "alliance");
+    engine.diplomacy.respondRelation(b, engine.snapshotForEmpire(b).proposals[0]!.id, true);
+    expect(engine.diplomacy.breakRelation(a, b.id)).toBeNull();
     const relation = engine
       .snapshotForEmpire(a)
       .relations.find((r) => r.empireA === a.id || r.empireB === a.id);
@@ -102,7 +102,7 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     const a = empireFor(engine, "alpha");
     const npc = engine.empireById(engine.devSpawnNpcEmpire("Voisin")!)!;
 
-    expect(engine.proposeRelation(a, npc.id, "nap")).toBeNull();
+    expect(engine.diplomacy.proposeRelation(a, npc.id, "nap")).toBeNull();
     expect(engine.snapshotForEmpire(a).proposals).toHaveLength(0);
     const relation = engine
       .snapshotForEmpire(a)
@@ -118,7 +118,7 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 500 });
     engine.devArmFleet(npc, "gal-0-sys-0", { [WARSHIP]: 1 });
 
-    expect(engine.proposeRelation(a, npc.id, "alliance")).toBeNull();
+    expect(engine.diplomacy.proposeRelation(a, npc.id, "alliance")).toBeNull();
     expect(engine.snapshotForEmpire(a).proposals).toHaveLength(0);
     const relation = engine
       .snapshotForEmpire(a)

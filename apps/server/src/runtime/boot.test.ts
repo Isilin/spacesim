@@ -154,15 +154,15 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const aliceColonyId = engine.snapshotForEmpire(alice).colonies[0]!.id;
 
     // Colonie possédée : l'action passe la validation de propriété (pas d'erreur « inconnue »).
-    expect(engine.build(alice, aliceColonyId, "mine")).not.toBe("Colonie inconnue");
+    expect(engine.industry.build(alice, aliceColonyId, "mine")).not.toBe("Colonie inconnue");
     // Colonie d'un autre empire : rejetée dans les deux sens.
-    expect(engine.build(alice, defColonyId, "mine")).toBe("Colonie inconnue");
-    expect(engine.build(def, aliceColonyId, "mine")).toBe("Colonie inconnue");
+    expect(engine.industry.build(alice, defColonyId, "mine")).toBe("Colonie inconnue");
+    expect(engine.industry.build(def, aliceColonyId, "mine")).toBe("Colonie inconnue");
 
     // Flotte : alice en crée une ; l'empire par défaut ne peut pas la piloter.
-    expect(engine.createFleet(alice, aliceColonyId, "Garde")).toBeNull();
+    expect(engine.fleetService.createFleet(alice, aliceColonyId, "Garde")).toBeNull();
     const aliceFleetId = engine.snapshotForEmpire(alice).fleets[0]!.id;
-    expect(engine.moveFleet(def, aliceFleetId, "gal-0-sys-0")).toBe("Flotte inconnue");
+    expect(engine.fleetService.moveFleet(def, aliceFleetId, "gal-0-sys-0")).toBe("Flotte inconnue");
     expect(engine.snapshotForEmpire(def).fleets).toHaveLength(0);
   });
 
@@ -176,9 +176,9 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const fb = engine.devArmFleet(b, sys, { [WARSHIP]: 1 });
 
     // En paix par défaut : l'attaque est refusée tant que la guerre n'est pas déclarée.
-    expect(engine.attackFleet(a, fa, fb)).toBe("En paix — déclarez la guerre d'abord");
-    expect(engine.declareWar(a, b.id)).toBeNull();
-    expect(engine.attackFleet(a, fa, fb)).toBeNull();
+    expect(engine.fleetService.attackFleet(a, fa, fb)).toBe("En paix — déclarez la guerre d'abord");
+    expect(engine.diplomacy.declareWar(a, b.id)).toBeNull();
+    expect(engine.fleetService.attackFleet(a, fa, fb)).toBeNull();
     // La flotte faible du défenseur est anéantie (retirée de son empire).
     expect(engine.snapshotForEmpire(b).fleets.some((f) => f.id === fb)).toBe(false);
     // L'attaquant garde une flotte, une bataille est journalisée.
@@ -194,9 +194,9 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const fa = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
     const fb = engine.devArmFleet(b, "gal-0-sys-1", { [WARSHIP]: 5 });
     const fa2 = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
-    engine.declareWar(a, b.id);
-    expect(engine.attackFleet(a, fa, fb)).toBe("Cible hors de portée");
-    expect(engine.attackFleet(a, fa, fa2)).toBe("Cible inconnue"); // amie
+    engine.diplomacy.declareWar(a, b.id);
+    expect(engine.fleetService.attackFleet(a, fa, fb)).toBe("Cible hors de portée");
+    expect(engine.fleetService.attackFleet(a, fa, fa2)).toBe("Cible inconnue"); // amie
   });
 
   it("attackColony : raid pille des ressources et rompt le claim ennemi", async () => {
@@ -211,8 +211,8 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const oreBefore = bColony.resources.ore;
     // L'attaquant arrive sur zone ; le défenseur n'a aucune flotte → raid direct.
     const fa = engine.devArmFleet(a, bSystem, { [WARSHIP]: 5 });
-    engine.declareWar(a, b.id);
-    expect(engine.attackColony(a, fa, bColony.id)).toBeNull();
+    engine.diplomacy.declareWar(a, b.id);
+    expect(engine.fleetService.attackColony(a, fa, bColony.id)).toBeNull();
 
     const oreAfter = engine.snapshotForEmpire(b).colonies[0]!.resources.ore;
     expect(oreAfter).toBeLessThan(oreBefore); // 25 % du minerai pillé
@@ -223,7 +223,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const a = empireFor(engine, "alpha");
     const own = engine.snapshotForEmpire(a).colonies[0]!;
     const fa = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
-    expect(engine.attackColony(a, fa, own.id)).toBe("Colonie cible inconnue");
+    expect(engine.fleetService.attackColony(a, fa, own.id)).toBe("Colonie cible inconnue");
   });
 
   it("diplomatie : declareWar/makePeace basculent l'état, reflété dans le classement", async () => {
@@ -234,13 +234,13 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const rowB = () => engine.snapshotForEmpire(a).leaderboard.find((e) => e.id === b.id)!;
 
     expect(rowB().relation).toBe("neutral");
-    expect(engine.declareWar(a, b.id)).toBeNull();
+    expect(engine.diplomacy.declareWar(a, b.id)).toBeNull();
     expect(rowB().relation).toBe("war");
     // La relation est symétrique : b voit aussi la guerre.
     const rowAfromB = engine.snapshotForEmpire(b).leaderboard.find((e) => e.id === a.id)!;
     expect(rowAfromB.relation).toBe("war");
-    expect(engine.declareWar(a, b.id)).toBe("Déjà en guerre");
-    expect(engine.makePeace(a, b.id)).toBeNull();
+    expect(engine.diplomacy.declareWar(a, b.id)).toBe("Déjà en guerre");
+    expect(engine.diplomacy.makePeace(a, b.id)).toBeNull();
     expect(rowB().relation).toBe("neutral");
   });
 
@@ -250,14 +250,14 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const b = empireFor(engine, "bravo");
     a.influence = 1000; // déclarer la guerre coûte de l'influence (chantier 16)
 
-    expect(engine.declareWar(a, b.id)).toBeNull();
-    expect(engine.makePeace(a, b.id)).toBeNull();
+    expect(engine.diplomacy.declareWar(a, b.id)).toBeNull();
+    expect(engine.diplomacy.makePeace(a, b.id)).toBeNull();
     // Juste après la paix : le cooldown est actif.
-    expect(engine.declareWar(a, b.id)).toMatch(/Cooldown/);
+    expect(engine.diplomacy.declareWar(a, b.id)).toMatch(/Cooldown/);
 
     // Largement de quoi dépasser WAR_COOLDOWN_MS (10 min = 120 ticks).
     advanceTicks(engine, 130);
-    expect(engine.declareWar(a, b.id)).toBeNull();
+    expect(engine.diplomacy.declareWar(a, b.id)).toBeNull();
   });
 
   it("préserve l'état d'empire (influence, brouillard) au rechargement", async () => {
