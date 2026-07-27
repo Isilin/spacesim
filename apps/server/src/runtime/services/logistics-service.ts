@@ -866,4 +866,53 @@ export class LogisticsService {
   persistMissionTimes(mission: Mission): void {
     this.repo.saveMissionTimes(mission);
   }
+
+  /**
+   * Outil de dev uniquement : décale vers le passé les timers de son domaine — convois,
+   * missions, routes automatiques, réservations de vaisseaux (`shipsBusy`) — pour qu'un
+   * `devFastForward` les fasse arriver à échéance. Les colonies ne sont volontairement
+   * pas persistées ici : `devFastForward` ne le faisait pas non plus avant l'extraction.
+   */
+  shiftTime(empire: Empire, deltaMs: number): void {
+    for (const [id, colony] of empire.colonyMap) {
+      if (colony.shipsBusy.length === 0) continue;
+      empire.colonyMap.set(id, {
+        ...colony,
+        shipsBusy: colony.shipsBusy.map((b) => ({ ...b, freeAt: b.freeAt - deltaMs })),
+      });
+    }
+    for (const [id, transfer] of empire.transferMap) {
+      empire.transferMap.set(id, {
+        ...transfer,
+        departedAt: transfer.departedAt - deltaMs,
+        arrivesAt: transfer.arrivesAt - deltaMs,
+      });
+    }
+    for (const [id, mission] of empire.missionMap) {
+      empire.missionMap.set(id, {
+        ...mission,
+        departedAt: mission.departedAt - deltaMs,
+        arrivesAt: mission.arrivesAt - deltaMs,
+      });
+    }
+    for (const [id, route] of empire.routeMap) {
+      if (!route.activeCycle) continue;
+      empire.routeMap.set(id, {
+        ...route,
+        activeCycle: {
+          ...route.activeCycle,
+          departedAt: route.activeCycle.departedAt - deltaMs,
+          arrivesAt: route.activeCycle.arrivesAt - deltaMs,
+          backAt: route.activeCycle.backAt - deltaMs,
+        },
+      });
+      this.persistRoute(empire.routeMap.get(id)!);
+    }
+    for (const transfer of empire.transferMap.values()) {
+      this.persistTransferTimes(transfer);
+    }
+    for (const mission of empire.missionMap.values()) {
+      this.persistMissionTimes(mission);
+    }
+  }
 }

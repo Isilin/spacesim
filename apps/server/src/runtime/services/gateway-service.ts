@@ -165,4 +165,13 @@ export class GatewayService {
       this.logger.info(`[game] portail actif vers ${id}`);
     }
   }
+
+  /** Outil de dev uniquement : décale l'échéance du chantier final (dev-fastforward). */
+  shiftTime(deltaMs: number): void {
+    for (const [id, gateway] of this.runtime.gatewayMap) {
+      if (gateway.activatesAt === null) continue;
+      this.runtime.gatewayMap.set(id, { ...gateway, activatesAt: gateway.activatesAt - deltaMs });
+      this.persistGateway(this.runtime.gatewayMap.get(id)!);
+    }
+  }
 }

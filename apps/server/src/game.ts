@@ -697,13 +697,7 @@ export class GameEngine {
       };
     }
     for (const [id, colony] of this.colonyMap) {
-      if (
-        colony.queue.length === 0 &&
-        colony.shipQueue.length === 0 &&
-        colony.shipsBusy.length === 0
-      ) {
-        continue;
-      }
+      if (colony.queue.length === 0 && colony.shipQueue.length === 0) continue;
       this.colonyMap.set(id, {
         ...colony,
         queue: colony.queue.map((q) => ({
@@ -716,41 +710,13 @@ export class GameEngine {
           startedAt: q.startedAt - delta,
           finishesAt: q.finishesAt - delta,
         })),
-        shipsBusy: colony.shipsBusy.map((b) => ({ ...b, freeAt: b.freeAt - delta })),
       });
     }
-    for (const [id, transfer] of this.transferMap) {
-      this.transferMap.set(id, {
-        ...transfer,
-        departedAt: transfer.departedAt - delta,
-        arrivesAt: transfer.arrivesAt - delta,
-      });
-    }
-    for (const [id, mission] of this.missionMap) {
-      this.missionMap.set(id, {
-        ...mission,
-        departedAt: mission.departedAt - delta,
-        arrivesAt: mission.arrivesAt - delta,
-      });
-    }
-    for (const [id, route] of this.routeMap) {
-      if (!route.activeCycle) continue;
-      this.routeMap.set(id, {
-        ...route,
-        activeCycle: {
-          ...route.activeCycle,
-          departedAt: route.activeCycle.departedAt - delta,
-          arrivesAt: route.activeCycle.arrivesAt - delta,
-          backAt: route.activeCycle.backAt - delta,
-        },
-      });
-      this.logistics.persistRoute(this.routeMap.get(id)!);
-    }
-    for (const [id, gateway] of this.gatewayMap) {
-      if (gateway.activatesAt === null) continue;
-      this.gatewayMap.set(id, { ...gateway, activatesAt: gateway.activatesAt - delta });
-      this.gateway.persistGateway(this.gatewayMap.get(id)!);
-    }
+    // Convois, missions, routes automatiques, réservations de vaisseaux : domaine de
+    // LogisticsService (chantier 19.8).
+    this.logistics.shiftTime(this.defaultEmpire, delta);
+    // Chantiers de portail : domaine de GatewayService (chantier 19.8).
+    this.gateway.shiftTime(delta);
     // Contrats : partagés comme les portails — l'échéance suit le même décalage.
     for (const [id, contract] of this.contractMap) {
       if (contract.status !== "open") continue;
@@ -807,12 +773,6 @@ export class GameEngine {
       this.persistFleet(next);
     }
     this.persistResearch(this.defaultEmpire);
-    for (const transfer of this.transferMap.values()) {
-      this.logistics.persistTransferTimes(transfer);
-    }
-    for (const mission of this.missionMap.values()) {
-      this.logistics.persistMissionTimes(mission);
-    }
 
     const missed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);
     if (missed > 0) this.advance(Math.min(missed, MAX_CATCHUP_TICKS));
