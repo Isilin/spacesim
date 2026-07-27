@@ -4,7 +4,6 @@ import {
   GATEWAY_BUILD_MS,
   gatewayCost,
   gatewayCovered,
-  gatewayLinks,
   generateGalaxyAt,
   generateUniverse,
   INITIAL_GALAXIES,
@@ -48,7 +47,7 @@ import {
   type WorldEventKind,
 } from "@spacesim/shared";
 import type { EmpireSnapshot } from "@spacesim/protocol";
-import { and, eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { db, schema } from "./db/index.js";
 import { Empire, type Clock } from "./empire.js";
@@ -81,9 +80,6 @@ const DEFAULT_DIRECTIVES: Record<CombatPhase, string> = {
   medium: "focus_fire",
   short: "focus_fire",
 };
-
-/** Batailles archivées conservées. */
-const MAX_BATTLES = 20;
 
 /** Signal « l'état a changé » : chaque connexion recompose alors le snapshot de son empire. */
 export type StateListener = () => void;
@@ -472,23 +468,6 @@ export class GameEngine {
 
   get battles(): StoredBattle[] {
     return this.battleLog;
-  }
-
-  /** Liaisons inter-galactiques des portails actifs. */
-  private get portalLinks(): [string, string][] {
-    return gatewayLinks(this.universe, this.gateways);
-  }
-
-  /**
-   * Nombre de portails empruntés entre deux systèmes (chantier 12). Tous les portails
-   * partent de l'ancrage de la galaxie d'origine : rejoindre une galaxie lointaine en
-   * traverse un, passer d'une lointaine à une autre en traverse deux.
-   */
-  private portalsCrossed(fromSystemId: string, toSystemId: string): number {
-    const from = this.galaxyIndexOfSystem.get(fromSystemId);
-    const to = this.galaxyIndexOfSystem.get(toSystemId);
-    if (from === undefined || to === undefined || from === to) return 0;
-    return from === 0 || to === 0 ? 1 : 2;
   }
 
   /** Marchés des seules stations situées dans des systèmes explorés. */
@@ -1366,26 +1345,6 @@ export class GameEngine {
   /** Outil de dev uniquement : injecte des ressources pour tester sans attendre. */
   devGrant(resources: Partial<Record<ResourceId, number>>): void {
     this.bootstrap.devGrant(resources);
-  }
-
-  private insertMission(
-    empire: Empire,
-    kind: Mission["kind"],
-    fromColonyId: string,
-    targetId: string,
-    durationMs: number,
-    extras: Pick<Mission, "cargo" | "budget" | "buyResource" | "capacity" | "contractId"> = {},
-    departedAt = Date.now(),
-  ): void {
-    this.logistics.insertMission(
-      empire,
-      kind,
-      fromColonyId,
-      targetId,
-      durationMs,
-      extras,
-      departedAt,
-    );
   }
 
   /**
