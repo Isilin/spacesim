@@ -8,8 +8,10 @@ Design complet et roadmap : [docs/design.md](docs/design.md).
 Monorepo pnpm workspaces, TypeScript partout :
 
 - `packages/shared` — types du modèle de jeu, constantes d'équilibrage, génération d'univers et logique de simulation **pure et déterministe** (testée avec vitest). Aucune dépendance runtime.
+- `packages/protocol` — contrats HTTP/WebSocket et schémas Zod (`ClientMessage`, `ServerMessage`, `EmpireSnapshot`). Dépend de `shared` ; `apps/server` et `apps/web` en dépendent, jamais l'inverse.
+- `packages/ui` — feuille de styles partagée (tokens de couleur, primitives CSS génériques : `.tabs`, `.action-button`, `.chip`, `.field`…), importée une fois par `apps/web`. Pas encore de composants React : à ajouter seulement quand un vrai doublon d'interface (pas juste une classe CSS) apparaît.
 - `apps/server` — Fastify + WebSocket (`/ws`), moteur de ticks, SQLite (better-sqlite3 + drizzle). **Serveur autoritaire** : toute la simulation vit ici, le client n'est qu'un dashboard.
-- `apps/web` — React + Vite. Proxy Vite `/ws` → serveur :3001.
+- `apps/web` — React + Vite + React Router. Proxy Vite `/ws` → serveur :3001.
 
 Principes :
 - L'univers n'est **pas stocké en DB** : régénéré depuis la seed (générateur déterministe, `packages/shared/src/universe.ts`). La DB ne contient que l'état dynamique.
@@ -43,21 +45,31 @@ La séparation des responsabilités est stricte :
 
 - `packages/shared` reste le noyau de domaine : modèles, contenu, génération d'univers et
   simulation pure. Il ne dépend d'aucune bibliothèque runtime, d'I/O ou de transport.
-- `packages/protocol` portera les contrats HTTP/WebSocket et leurs schémas Zod. Il peut dépendre
-  de `shared`; les applications peuvent dépendre de lui, jamais l'inverse.
-- `apps/server` reste un serveur Fastify. Il sépare les adaptateurs HTTP/WS, les services
-  applicatifs, le runtime de jeu mutable, les projections client et les repositories Drizzle.
-  `GameEngine` demeure une façade de compatibilité pendant les extractions. Ne pas introduire
-  NestJS ou un conteneur DI : la composition explicite au boot est suffisante pour le moteur à
-  ticks et WebSocket.
-- L'API de jeu publique et la future API protégée `/api/admin` utilisent les mêmes services
-  applicatifs. Une route admin ne modifie jamais Drizzle ni les maps du runtime directement.
-  Les actions administratives sont autorisées par rôle, nommées, auditées et validées.
-- `apps/web` est le client joueur. Son état poussé par WebSocket est centralisé, puis les
-  features consomment des sélecteurs plutôt que de faire transiter le snapshot par props.
-- `packages/ui` hébergera les tokens, styles de base et primitives React génériques, sans logique
-  de jeu. Les cartes SVG, labels, calculs d'affichage et interactions métier restent dans les
-  features de `apps/web`. Le futur client admin réutilisera `protocol` et `ui`.
+- `packages/protocol` porte les contrats HTTP/WebSocket et leurs schémas Zod. Il dépend de
+  `shared` ; les applications en dépendent, jamais l'inverse.
+- `apps/server` est un serveur Fastify découpé par frontière : adaptateurs HTTP/WS
+  (`src/routes/`), six services applicatifs par domaine (`runtime/services/` — industrie,
+  logistique, exploration, flottes, diplomatie, bootstrap), un `GameRuntime` pour l'état mutable,
+  des projections en lecture seule, un `TickRunner` explicite pour l'ordre d'un tick, et les
+  repositories Drizzle. `GameEngine` reste une façade de compatibilité, composée au boot à
+  partir de ces pièces — pas une couche à supprimer, le point d'entrée stable du moteur. Ne pas
+  introduire NestJS ou un conteneur DI : la composition explicite au boot suffit.
+- L'API de jeu publique et la future API protégée `/api/admin` utiliseront les mêmes services
+  applicatifs (socle admin différé, non commencé). Une route admin ne devra jamais modifier
+  Drizzle ni les maps du runtime directement ; les actions administratives seront autorisées par
+  rôle, nommées, auditées et validées.
+- `apps/web` est le client joueur : état poussé par WebSocket centralisé dans un store Zustand
+  (`state/game-store.ts`), navigation par URL (React Router — 6 onglets plats + carte en routes
+  imbriquées `/map/galaxy/:id/system/:id/body/:id`, résolues par `hooks/useMapLevel.ts`). Les
+  features qui n'ont qu'un seul consommateur d'une valeur continuent de la recevoir en prop
+  depuis leur parent ; celles où une dérivation (colonie active, système exploré…) apparaît
+  dupliquée passent par un sélecteur (`state/selectors.ts`), consommé directement via
+  `useGameStore(selectXxx(...))` plutôt que transitée par une chaîne de props.
+- `packages/ui` héberge pour l'instant une feuille de styles (tokens, primitives CSS génériques
+  identifiées par audit de `styles.css`), sans composant React ni logique de jeu. Les cartes SVG,
+  labels, calculs d'affichage et interactions métier restent dans les features de `apps/web`. Des
+  primitives React n'y entreront que si un vrai doublon d'interface (pas seulement une classe
+  CSS partagée) apparaît. Le futur client admin réutilisera `protocol` et `ui`.
 
 ## Workflow de changement
 
@@ -81,8 +93,8 @@ les sauvegardes et la sémantique de tick existants.
 ```
 pnpm dev:server    # serveur de jeu (port 3001)
 pnpm dev:web       # client web (port 5173)
-pnpm test          # tests unitaires de la simulation (shared)
-pnpm typecheck     # tsc sur les 3 packages
+pnpm test          # tests unitaires (shared, protocol, server, web — vitest par paquet)
+pnpm typecheck     # tsc sur shared/protocol/server/web
 pnpm format        # normalise le formatage avec Biome
 pnpm format:check  # vérifie le formatage sans modifier les fichiers
 pnpm lint          # règles Biome adoptées progressivement
@@ -103,13 +115,17 @@ Le CLI docker n'est pas sur le PATH — il vit sous
 
 ```
 docker compose up app              # serveur (3001) + client web (5173), hot reload
-docker compose run --rm test       # tests unitaires (packages/shared)
-docker compose run --rm typecheck  # tsc sur les 3 packages
+docker compose run --rm test       # tests unitaires (tous les paquets avec un script test)
+docker compose run --rm typecheck  # tsc sur shared/protocol/server/web
 docker compose run --rm test sh -c "pnpm lint"
 docker compose run --rm test sh -c "pnpm format:check"
+docker compose run --rm e2e        # Playwright, pile serveur+web sur SPACESIM_DB=:memory:
 ```
 
 `Dockerfile` = toolchain (node 22 + pnpm via corepack, épinglé par `packageManager`).
+`Dockerfile.e2e` l'étend avec les dépendances système de Chromium (service `e2e` seulement, pour
+ne pas alourdir `app`/`test`/`typecheck` — le binaire du navigateur s'installe au premier
+`docker compose run e2e`, mis en cache dans le volume nommé `playwright_browsers`).
 `docker-compose.yml` monte le code depuis l'hôte ; les `node_modules` vivent dans des volumes
 nommés (binaires natifs Linux isolés de l'hôte). Après un changement de dépendances, l'install
 se relance au prochain `up`/`run` (lockfile figé).
