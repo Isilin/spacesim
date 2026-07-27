@@ -6,3 +6,7 @@ dist/
 *.db-wal
 *.db-shm
 .env
+
+# Playwright (chantier 5.3)
+apps/web/test-results/
+apps/web/playwright-report/

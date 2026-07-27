@@ -3,6 +3,7 @@
 #   docker compose up app            → serveur (3001) + client web (5173)
 #   docker compose run --rm test     → tests unitaires de la simulation
 #   docker compose run --rm typecheck→ tsc sur les 3 packages
+#   docker compose run --rm e2e      → Playwright (pile serveur+web en base mémoire)
 #
 # Le code est monté depuis l'hôte (hot reload) ; les node_modules vivent dans
 # des volumes nommés pour ne pas mélanger les binaires natifs Linux avec l'hôte.
@@ -43,9 +44,31 @@ services:
     command: sh -c "pnpm install --frozen-lockfile && pnpm typecheck"
     profiles: ["tools"]
 
+  # E2E (chantier 5.3) : Playwright lance sa propre pile serveur+web (voir
+  # apps/web/playwright.config.ts) sur SPACESIM_DB=:memory:, isolée de spacesim.db.
+  e2e:
+    <<: *base
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    volumes:
+      - .:/app
+      - root_modules:/app/node_modules
+      - shared_modules:/app/packages/shared/node_modules
+      - protocol_modules:/app/packages/protocol/node_modules
+      - server_modules:/app/apps/server/node_modules
+      - web_modules:/app/apps/web/node_modules
+      - playwright_browsers:/root/.cache/ms-playwright
+    command: >
+      sh -c "pnpm install --frozen-lockfile &&
+             pnpm --filter @spacesim/web exec playwright install chromium &&
+             pnpm --filter @spacesim/web e2e"
+    profiles: ["tools"]
+
 volumes:
   root_modules:
   shared_modules:
   protocol_modules:
   server_modules:
   web_modules:
+  playwright_browsers:
