@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { App } from "./App.js";
 import { AuthView } from "./AuthView.js";
 import { useAuth } from "./useAuth.js";
+import "@spacesim/ui/styles.css";
 import "./styles.css";
 
 /** Rien du jeu n'est monté tant que la session n'est pas validée par le serveur. */

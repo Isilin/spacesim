@@ -1,29 +1,9 @@
+/* Schéma de coque (chantier 13) : une couleur par type d'emplacement. */
 :root {
-  --bg: #0a0e14;
-  --panel: #10161f;
-  --border: #1e2836;
-  --text: #c8d3e0;
-  --muted: #5f7089;
-  --accent: #4fc1ff;
-  --ok: #56d364;
-  --ko: #f85149;
-  /* Schéma de coque (chantier 13) : une couleur par type d'emplacement. */
   --slot-weapon: #f85149;
   --slot-defense: #4fc1ff;
   --slot-propulsion: #56d364;
   --slot-utility: #e3b341;
-  font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-}
-
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-size: 14px;
 }
 
 .loading {
@@ -151,10 +131,6 @@ body {
   letter-spacing: 1px;
 }
 
-.muted {
-  color: var(--muted);
-}
-
 .planet-list {
   list-style: none;
   padding: 0;
@@ -198,30 +174,6 @@ body {
   color: var(--accent);
 }
 
-.tabs {
-  display: flex;
-  gap: 4px;
-}
-
-.tabs button {
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--muted);
-  font: inherit;
-  padding: 4px 12px;
-  cursor: pointer;
-  border-radius: 3px;
-}
-
-.tabs button:hover {
-  color: var(--text);
-}
-.tabs button.active {
-  color: var(--accent);
-  border-color: var(--border);
-  background: var(--bg);
-}
-
 .toast-error {
   position: fixed;
   top: 52px;
@@ -246,10 +198,6 @@ body {
   color: var(--accent);
   font-size: 18px;
   letter-spacing: 1px;
-}
-
-.small {
-  font-size: 12px;
 }
 
 .resource-bar {
@@ -452,28 +400,6 @@ body {
 }
 
 .transfer-form button:disabled {
-  border-color: var(--border);
-  color: var(--muted);
-  cursor: not-allowed;
-}
-
-.action-button {
-  background: var(--bg);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  font: inherit;
-  padding: 6px 14px;
-  border-radius: 3px;
-  cursor: pointer;
-  margin-top: 8px;
-}
-
-.action-button:hover:not(:disabled) {
-  background: var(--accent);
-  color: var(--bg);
-}
-
-.action-button:disabled {
   border-color: var(--border);
   color: var(--muted);
   cursor: not-allowed;
@@ -863,12 +789,6 @@ body {
   gap: 6px;
 }
 
-.action-button.small {
-  padding: 3px 8px;
-  font-size: 12px;
-  margin-top: 0;
-}
-
 .directives {
   display: flex;
   flex-wrap: wrap;
@@ -1039,20 +959,6 @@ body {
   height: 9px;
   border-radius: 50%;
   display: inline-block;
-}
-
-.link-button {
-  background: none;
-  border: none;
-  color: var(--muted);
-  font: inherit;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-}
-
-.link-button:hover {
-  color: var(--accent);
 }
 
 /* ── Cartes déplaçables et zoomables (chantier 9) ────────────────────────── */
@@ -1632,16 +1538,6 @@ body {
   align-items: center;
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.field input,
-.field select,
 .fleet-select {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -1713,33 +1609,6 @@ body {
 
 .fit-add {
   margin-top: 6px;
-}
-
-.chip {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font: inherit;
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 12px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.chip:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.chip.add {
-  border-style: dashed;
-  color: var(--muted);
-}
-
-.chip:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 .stats-recap {
