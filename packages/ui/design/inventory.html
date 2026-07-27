@@ -1,0 +1,99 @@
+<!-- @dsCard group="Contrôles actuels" -->
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Inventaire des contrôles — état actuel</title>
+<style>
+  :root {
+    --bg: #0a0e14; --panel: #10161f; --border: #1e2836;
+    --text: #c8d3e0; --muted: #5f7089;
+    --accent: #4fc1ff; --ok: #56d364; --ko: #f85149;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 14px "Cascadia Code", "JetBrains Mono", Consolas, monospace; padding: 20px; }
+  h2 { font-size: 12px; color: var(--text); text-transform: uppercase; letter-spacing: 2px; margin: 18px 0 8px; }
+  h2:first-child { margin-top: 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  p.note { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+  .action-button { background: var(--bg); border: 1px solid var(--accent); color: var(--accent); font: inherit; padding: 6px 14px; border-radius: 3px; cursor: pointer; }
+  .action-button:hover:not(:disabled) { background: var(--accent); color: var(--bg); }
+  .action-button:disabled { border-color: var(--border); color: var(--muted); cursor: not-allowed; }
+  .action-button.small { padding: 3px 8px; font-size: 12px; }
+  .link-button { background: none; border: none; color: var(--muted); font: inherit; cursor: pointer; padding: 0; text-decoration: underline; }
+  .link-button:hover { color: var(--accent); }
+
+  .tabs { display: flex; gap: 4px; }
+  .tabs button { background: transparent; border: 1px solid transparent; color: var(--muted); font: inherit; padding: 4px 12px; cursor: pointer; border-radius: 3px; }
+  .tabs button.active { color: var(--accent); border-color: var(--border); background: var(--bg); }
+
+  .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  .field input, .field select { background: var(--bg); border: 1px solid var(--border); color: var(--text); font: inherit; padding: 6px 8px; border-radius: 3px; }
+
+  .chip { background: var(--bg); border: 1px solid var(--border); color: var(--text); font: inherit; font-size: 11px; padding: 3px 8px; border-radius: 12px; cursor: pointer; white-space: nowrap; }
+  .chip:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .chip.add { border-style: dashed; color: var(--muted); }
+
+  .deposit { border: 1px solid var(--border); border-radius: 3px; padding: 2px 6px; font-size: 11px; color: var(--accent); }
+  .shortage { color: var(--ko); font-size: 11px; border: 1px solid var(--ko); border-radius: 3px; padding: 1px 5px; }
+  .level { color: var(--accent); font-size: 12px; }
+  .claim-badge { color: #b48fe0; font-size: 11px; }
+
+  .progress { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; width: 220px; }
+  .progress-fill { height: 100%; background: var(--accent); }
+  .gauge-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; width: 220px; }
+  .gauge-fill { height: 100%; background: var(--accent); }
+  .gauge-fill.over { background: var(--ko); }
+</style>
+</head>
+<body>
+  <h2>Boutons — 5 recettes CSS pour le même visuel (~45 usages)</h2>
+  <div class="row">
+    <button class="action-button">Coloniser</button>
+    <button class="action-button" disabled>Ressources insuffisantes</button>
+    <button class="action-button small">Vendre</button>
+    <button class="link-button">vider la file</button>
+  </div>
+
+  <h2>Onglets — 3 implémentations concurrentes</h2>
+  <div class="tabs">
+    <button class="active">Routes</button>
+    <button>Convois</button>
+    <button>Orbite</button>
+    <button>Marchés</button>
+    <button>Contrats</button>
+  </div>
+
+  <h2>Champs — ~11 recettes concurrentes (~40 contrôles)</h2>
+  <div class="row">
+    <label class="field">Ressource
+      <select><option>Minerai</option><option>Métaux</option></select>
+    </label>
+    <label class="field">Quantité
+      <input type="number" value="250" />
+    </label>
+    <label class="field">Nom de flotte
+      <input type="text" value="Escadre Aurore" />
+    </label>
+  </div>
+
+  <h2>Chips et badges — 6 classes pour la même intention</h2>
+  <div class="row">
+    <button class="chip">bouclier mk2</button>
+    <button class="chip add">+ module</button>
+    <span class="deposit">minerai riche</span>
+    <span class="shortage">pénurie</span>
+    <span class="level">niv. 3</span>
+    <span class="claim-badge">◆ revendiqué</span>
+  </div>
+
+  <h2>Progression — 2 implémentations (barres) + anneau SVG</h2>
+  <div class="row" style="flex-direction:column;align-items:flex-start;gap:8px">
+    <div class="progress"><div class="progress-fill" style="width:64%"></div></div>
+    <div class="gauge-track"><div class="gauge-fill" style="width:80%"></div></div>
+    <div class="gauge-track"><div class="gauge-fill over" style="width:100%"></div></div>
+  </div>
+  <p class="note">Tout ceci doit devenir : Button, Tabs, Field/Select/NumberInput, Badge, Chip, ProgressBar/Gauge — variantes par data-attributes, une seule source CSS chacun.</p>
+</body>
+</html>
