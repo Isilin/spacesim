@@ -1,4 +1,4 @@
-import { emptyOrbital, emptyResources } from "@spacesim/shared";
+import { emptyOrbital, emptyResources, generateUniverse } from "@spacesim/shared";
 import { describe, expect, it } from "vitest";
 import { Empire } from "../empire.js";
 import { GameRuntime } from "./game-runtime.js";
@@ -17,13 +17,16 @@ import {
  * mémoire, donc ces tests n'ont besoin ni de db/index.js ni de resetDb().
  */
 function twoEmpireFixture() {
-  const runtime = new GameRuntime({
-    id: "game-1",
-    seed: "projections-test",
-    tick: 0,
-    lastTickAt: Date.now(),
-    galaxyCount: 1,
-  });
+  const runtime = new GameRuntime(
+    {
+      id: "game-1",
+      seed: "projections-test",
+      tick: 0,
+      lastTickAt: Date.now(),
+      galaxyCount: 1,
+    },
+    generateUniverse("projections-test", 1),
+  );
   const systems = runtime.universe.galaxies[0]!.systems;
   const systemA = systems[0]!.id;
   const systemB = systems[1]!.id;

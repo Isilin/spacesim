@@ -5,6 +5,8 @@ import {
   gatewayCost,
   gatewayCovered,
   gatewayLinks,
+  generateGalaxyAt,
+  generateUniverse,
   INITIAL_GALAXIES,
   MAX_CATCHUP_TICKS,
   WORLD_EVENT_DURATION_MS,
@@ -59,6 +61,12 @@ import { FleetService } from "./runtime/services/fleet-service.js";
 import { IndustryService } from "./runtime/services/industry-service.js";
 import { LogisticsService } from "./runtime/services/logistics-service.js";
 import { TickRunner } from "./runtime/tick-runner.js";
+import {
+  appendGalaxies,
+  loadUniverse,
+  materializedGalaxyCount,
+  withParentIndexes,
+} from "./runtime/universe-store.js";
 import {
   clientUniverseForEmpire,
   marketsForEmpire,
@@ -210,8 +218,8 @@ export class GameEngine {
     this.defaultEmpire.explorationDirty = value;
   }
 
-  private constructor(clock: Clock) {
-    this.runtime = new GameRuntime(clock);
+  private constructor(clock: Clock, universe: Universe) {
+    this.runtime = new GameRuntime(clock, universe);
     this.tickRunner = new TickRunner(this.runtime, this);
     // Proxy stable : `setLogger` remplace `this.logger` après construction (boot de
     // apps/server), les services doivent donc lire la valeur courante à chaque appel.
@@ -280,28 +288,94 @@ export class GameEngine {
     this.runtime.reindexUniverse();
   }
 
-  /** Charge la partie existante ou en crée une, puis rattrape le temps hors-ligne (borné). */
+  /**
+   * Charge l'univers existant depuis la base, puis rattrape le temps hors-ligne (borné).
+   * Lève si la base est vierge : la création d'un univers est un geste explicite
+   * (`bootstrapNewUniverse`), jamais un effet de bord — un serveur officiel ne doit pas
+   * pouvoir repartir de zéro parce que sa base était inaccessible.
+   */
   static load(): GameEngine {
-    let row = db.select().from(schema.games).limit(1).get();
-    const isNew = !row;
+    const row = db.select().from(schema.games).limit(1).get();
     if (!row) {
-      row = {
-        id: randomUUID(),
-        seed: randomUUID().slice(0, 8),
-        tick: 0,
-        lastTickAt: Date.now(),
-        createdAt: Date.now(),
-        galaxyCount: INITIAL_GALAXIES,
-      };
-      db.insert(schema.games).values(row).run();
+      throw new Error("Aucun univers en base — utiliser GameEngine.bootstrapNewUniverse()");
     }
-    const engine = new GameEngine({
+    const clock: Clock = {
       id: row.id,
       seed: row.seed,
       tick: row.tick,
       lastTickAt: row.lastTickAt,
       galaxyCount: row.galaxyCount,
-    });
+    };
+
+    // Rattrapage one-shot : base d'avant le chantier 18 (compteur seul persisté) —
+    // matérialise les galaxies manquantes depuis la seed, parents figés sur les
+    // positions RÉELLES déjà en base. Idempotent, rejouable après un crash.
+    const done = materializedGalaxyCount(clock.id);
+    if (done < clock.galaxyCount) {
+      const existing = loadUniverse(clock.id, clock.seed) ?? { seed: clock.seed, galaxies: [] };
+      const missing: Universe["galaxies"] = [];
+      for (let i = done; i < clock.galaxyCount; i++) missing.push(generateGalaxyAt(clock.seed, i));
+      const stamped = withParentIndexes({
+        seed: clock.seed,
+        galaxies: [...existing.galaxies, ...missing],
+      });
+      appendGalaxies(clock.id, stamped.galaxies.slice(done), clock.galaxyCount);
+      console.log(
+        `[game] rattrapage one-shot : ${clock.galaxyCount - done} galaxie(s) matérialisée(s) depuis la seed`,
+      );
+    } else if (done > clock.galaxyCount) {
+      // Les tables font autorité : le compteur se réaligne sur elles.
+      appendGalaxies(clock.id, [], done);
+      clock.galaxyCount = done;
+      console.warn(`[game] games.galaxyCount réaligné sur les tables univers (${done})`);
+    }
+
+    const universe = loadUniverse(clock.id, clock.seed);
+    if (!universe) {
+      throw new Error("Univers introuvable en base malgré une ligne games — base corrompue ?");
+    }
+    return GameEngine.boot(clock, universe, false);
+  }
+
+  /**
+   * Crée l'univers — UNE fois dans la vie du serveur (geste explicite, voir `load`).
+   * Lève si un univers existe déjà.
+   */
+  static bootstrapNewUniverse(): GameEngine {
+    if (db.select().from(schema.games).limit(1).get()) {
+      throw new Error("Un univers existe déjà en base — utiliser GameEngine.load()");
+    }
+    const row = {
+      id: randomUUID(),
+      seed: randomUUID().slice(0, 8),
+      tick: 0,
+      lastTickAt: Date.now(),
+      createdAt: Date.now(),
+      galaxyCount: INITIAL_GALAXIES,
+    };
+    db.insert(schema.games).values(row).run();
+    const universe = withParentIndexes(generateUniverse(row.seed, INITIAL_GALAXIES));
+    appendGalaxies(row.id, universe.galaxies, INITIAL_GALAXIES);
+    const clock: Clock = {
+      id: row.id,
+      seed: row.seed,
+      tick: row.tick,
+      lastTickAt: row.lastTickAt,
+      galaxyCount: row.galaxyCount,
+    };
+    return GameEngine.boot(clock, universe, true);
+  }
+
+  /** Charge l'univers s'il existe, sinon le crée — comportement dev/tests. */
+  static loadOrBootstrap(): GameEngine {
+    return db.select().from(schema.games).limit(1).get()
+      ? GameEngine.load()
+      : GameEngine.bootstrapNewUniverse();
+  }
+
+  /** Séquence de chargement commune (l'ordre des étapes est un contrat implicite). */
+  private static boot(clock: Clock, universe: Universe, isNew: boolean): GameEngine {
+    const engine = new GameEngine(clock, universe);
     engine.ensureDefaultPlayer();
     engine.loadPlayers();
     engine.loadRelations();
@@ -329,7 +403,7 @@ export class GameEngine {
     engine.loadBlueprints();
     engine.seedStarterBlueprintsForAll();
     // Équipement des galaxies (idempotent) : couvre aussi bien la partie neuve que les
-    // galaxies apparues par extension, dont le compteur seul a survécu au redémarrage.
+    // galaxies apparues par extension.
     engine.initMarkets();
     engine.initGateways();
     engine.initFactionStates();

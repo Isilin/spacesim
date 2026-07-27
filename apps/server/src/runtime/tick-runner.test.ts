@@ -1,4 +1,9 @@
-import { ECONOMY_TICK_TICKS, emptyOrbital, emptyResources } from "@spacesim/shared";
+import {
+  ECONOMY_TICK_TICKS,
+  emptyOrbital,
+  emptyResources,
+  generateUniverse,
+} from "@spacesim/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db, schema } from "../db/index.js";
 import { Empire } from "../empire.js";
@@ -65,13 +70,16 @@ function recordingHost(): { host: TickHost; calls: string[] } {
 
 describe("TickRunner — ordre des phases", () => {
   it("un tick non-économique saute les phases réservées au tick éco", () => {
-    const runtime = new GameRuntime({
-      id: "g",
-      seed: "tick-runner-test",
-      tick: 0, // tick 1 après avance : 1 % ECONOMY_TICK_TICKS !== 0 tant que ce n'est pas un multiple
-      lastTickAt: Date.now(),
-      galaxyCount: 1,
-    });
+    const runtime = new GameRuntime(
+      {
+        id: "g",
+        seed: "tick-runner-test",
+        tick: 0, // tick 1 après avance : 1 % ECONOMY_TICK_TICKS !== 0 tant que ce n'est pas un multiple
+        lastTickAt: Date.now(),
+        galaxyCount: 1,
+      },
+      generateUniverse("tick-runner-test", 1),
+    );
     db.insert(schema.games)
       .values({ ...runtime.clock, createdAt: Date.now() })
       .run();
@@ -100,13 +108,16 @@ describe("TickRunner — ordre des phases", () => {
   });
 
   it("un tick économique déroule aussi les phases éco, dans l'ordre documenté", () => {
-    const runtime = new GameRuntime({
-      id: "g",
-      seed: "tick-runner-test",
-      tick: ECONOMY_TICK_TICKS - 1, // + 1 tick = multiple de ECONOMY_TICK_TICKS
-      lastTickAt: Date.now(),
-      galaxyCount: 1,
-    });
+    const runtime = new GameRuntime(
+      {
+        id: "g",
+        seed: "tick-runner-test",
+        tick: ECONOMY_TICK_TICKS - 1, // + 1 tick = multiple de ECONOMY_TICK_TICKS
+        lastTickAt: Date.now(),
+        galaxyCount: 1,
+      },
+      generateUniverse("tick-runner-test", 1),
+    );
     db.insert(schema.games)
       .values({ ...runtime.clock, createdAt: Date.now() })
       .run();
@@ -142,13 +153,16 @@ describe("TickRunner — ordre des phases", () => {
   });
 
   it("avance l'horloge et persiste tick/lastTickAt", () => {
-    const runtime = new GameRuntime({
-      id: "g",
-      seed: "tick-runner-test",
-      tick: 5,
-      lastTickAt: 1000,
-      galaxyCount: 1,
-    });
+    const runtime = new GameRuntime(
+      {
+        id: "g",
+        seed: "tick-runner-test",
+        tick: 5,
+        lastTickAt: 1000,
+        galaxyCount: 1,
+      },
+      generateUniverse("tick-runner-test", 1),
+    );
     db.insert(schema.games)
       .values({ ...runtime.clock, createdAt: Date.now() })
       .run();

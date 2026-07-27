@@ -1,4 +1,4 @@
-import { allBelts, allPlanets, allStations, generateUniverse } from "@spacesim/shared";
+import { allBelts, allPlanets, allStations, galaxyIndexOfId } from "@spacesim/shared";
 import type {
   AsteroidBelt,
   Contract,
@@ -59,9 +59,13 @@ export class GameRuntime {
   /** Empire propriétaire par défaut (solo). Posé par `ensureDefaultPlayer`. */
   defaultEmpire!: Empire;
 
-  constructor(clock: Clock) {
+  /**
+   * L'univers est fourni par l'appelant (chantier 18) : chargé depuis les tables
+   * `universe_*` au boot, jamais régénéré ici — la DB fait autorité.
+   */
+  constructor(clock: Clock, universe: Universe) {
     this.clock = { ...clock };
-    this.universe = generateUniverse(clock.seed, clock.galaxyCount);
+    this.universe = universe;
     this.planetsById = new Map();
     this.stationsById = new Map();
     this.beltsById = new Map();
@@ -73,8 +77,13 @@ export class GameRuntime {
     this.planetsById = new Map(allPlanets(this.universe).map((p) => [p.id, p]));
     this.stationsById = new Map(allStations(this.universe).map((s) => [s.id, s]));
     this.beltsById = new Map(allBelts(this.universe).map((b) => [b.id, b]));
+    // Index dérivé de l'ID de galaxie (« gal-7 » → 7), pas de la position du tableau :
+    // l'ordre de chargement ne peut plus décaler les règles régionales (prix, péages).
     this.galaxyIndexOfSystem = new Map(
-      this.universe.galaxies.flatMap((g, index) => g.systems.map((s) => [s.id, index] as const)),
+      this.universe.galaxies.flatMap((g) => {
+        const index = galaxyIndexOfId(g.id);
+        return g.systems.map((s) => [s.id, index] as const);
+      }),
     );
   }
 }

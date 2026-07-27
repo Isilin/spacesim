@@ -11,6 +11,7 @@ import {
   TECHS,
   WARSHIPS,
 } from "@spacesim/shared";
+import { eq } from "drizzle-orm";
 import { db, schema } from "./db/index.js";
 import { GameEngine } from "./game.js";
 
@@ -22,12 +23,18 @@ const WARSHIP = Object.keys(WARSHIPS)[0]!;
  *
  * La DB est en mémoire (`vitest.config.ts` → `SPACESIM_DB=:memory:`). Le module
  * `db` est un singleton par fichier de test : on repart d'une base vierge à chaque
- * test via `resetDb()`. `GameEngine.load()` crée alors une partie neuve (colonie
+ * test via `resetDb()`. `GameEngine.loadOrBootstrap()` crée alors une partie neuve (colonie
  * mère + marchés + portails) puisque la table `games` est vide.
  */
 
-/** Toutes les tables, vidées avant chaque test (aucune contrainte FK dans le schéma). */
+/** Toutes les tables, vidées avant chaque test (FK déclaratives non appliquées en SQLite). */
 const ALL_TABLES = [
+  schema.universeLinks,
+  schema.universeStations,
+  schema.universeBelts,
+  schema.universeBodies,
+  schema.universeSystems,
+  schema.universeGalaxies,
   schema.transfers,
   schema.missions,
   schema.outposts,
@@ -81,7 +88,7 @@ beforeEach(() => resetDb());
 
 describe("GameEngine — harnais & socle (Sprint 0)", () => {
   it("crée une partie neuve : une colonie mère, un empire, tick 0", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     expect(engine.game.tick).toBe(0);
     expect(engine.colonies).toHaveLength(1);
     const empires = summaries(engine);
@@ -93,14 +100,14 @@ describe("GameEngine — harnais & socle (Sprint 0)", () => {
   });
 
   it("le tick est déterministe : N ticks avancent l'horloge d'exactement N", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const t0 = engine.game.tick;
     advanceTicks(engine, 10);
     expect(engine.game.tick).toBe(t0 + 10);
   });
 
   it("le tick produit : les ressources de la colonie évoluent", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const before = engine.colonies[0]!.resources;
     advanceTicks(engine, 20);
     const after = engine.colonies[0]!.resources;
@@ -111,7 +118,7 @@ describe("GameEngine — harnais & socle (Sprint 0)", () => {
 
 describe("GameEngine — isolation multi-empire (Sprint 0)", () => {
   it("devSpawnEmpire crée un second empire à l'état et au brouillard disjoints", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const id = engine.devSpawnEmpire("Colonia");
     expect(id).not.toBeNull();
 
@@ -127,7 +134,7 @@ describe("GameEngine — isolation multi-empire (Sprint 0)", () => {
   });
 
   it("les empires ticent indépendamment (influence par empire)", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     engine.devSpawnEmpire("Colonia");
     const before = summaries(engine);
     advanceTicks(engine, 10);
@@ -141,7 +148,7 @@ describe("GameEngine — isolation multi-empire (Sprint 0)", () => {
   });
 
   it("le snapshot de l'empire par défaut ne fuit pas les entités d'un autre empire", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const defaultSystem = engine.exploredSystemIds[0];
     engine.devSpawnEmpire("Colonia");
 
@@ -155,7 +162,7 @@ describe("GameEngine — isolation multi-empire (Sprint 0)", () => {
 describe("GameEngine — chargement multi-empire (Phase A)", () => {
   it("recharge tous les empires, entités routées par propriétaire", () => {
     const key = (c: { systemId: string; name: string }) => `${c.systemId}/${c.name}`;
-    const e1 = GameEngine.load();
+    const e1 = GameEngine.loadOrBootstrap();
     const defBefore = summaries(e1)[0]!;
     const defaultId = defBefore.id;
     const spawnedId = e1.devSpawnEmpire("Colonia")!;
@@ -165,7 +172,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(defBefore.colonies.map(key)).not.toEqual(colBefore.colonies.map(key));
 
     // Rechargement depuis la même DB en mémoire (simule un reboot serveur).
-    const e2 = GameEngine.load();
+    const e2 = GameEngine.loadOrBootstrap();
     const reloaded = summaries(e2);
     expect(reloaded).toHaveLength(2);
 
@@ -183,7 +190,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
   });
 
   it("createEmpireForAccount : le 1er compte adopte l'empire amorcé, le 2e en obtient un neuf", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const seeded = summaries(engine)[0]!.id;
 
     // Premier compte : adoption — pas de second empire fantôme sur la meilleure planète.
@@ -208,7 +215,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
   });
 
   it("le snapshot d'une connexion ne montre que les entités de son empire", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const alice = empireFor(engine, "alice");
     const snapDefault = engine.snapshotForEmpire(empireFor(engine, "defaut"));
     const snapAlice = engine.snapshotForEmpire(alice);
@@ -224,7 +231,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
   });
 
   it("une action ne s'applique qu'aux entités de l'empire agissant (Phase C)", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const def = empireFor(engine, "alpha");
     const alice = empireFor(engine, "alice");
     const defColonyId = engine.snapshotForEmpire(def).colonies[0]!.id;
@@ -244,7 +251,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
   });
 
   it("attackFleet : la flotte ennemie écrasée est détruite, la bataille est archivée", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     a.influence = 1000; // déclarer la guerre coûte de l'influence (chantier 16)
@@ -264,7 +271,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
   });
 
   it("attackFleet : cible hors système ou amie rejetée", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     a.influence = 1000; // déclarer la guerre coûte de l'influence (chantier 16)
@@ -277,7 +284,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
   });
 
   it("attackColony : raid pille des ressources et rompt le claim ennemi", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "charlie");
     a.influence = 1000; // déclarer la guerre coûte de l'influence (chantier 16)
@@ -296,7 +303,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
   });
 
   it("attackColony : cible amie ou hors portée rejetée", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const own = engine.snapshotForEmpire(a).colonies[0]!;
     const fa = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
@@ -304,7 +311,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
   });
 
   it("diplomatie : declareWar/makePeace basculent l'état, reflété dans le classement", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     a.influence = 1000; // déclarer la guerre coûte de l'influence (chantier 16)
@@ -322,7 +329,7 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
   });
 
   it("makePeace impose un cooldown avant de pouvoir redéclarer la guerre au même empire", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     a.influence = 1000; // déclarer la guerre coûte de l'influence (chantier 16)
@@ -338,12 +345,12 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
   });
 
   it("préserve l'état d'empire (influence, brouillard) au rechargement", () => {
-    const e1 = GameEngine.load();
+    const e1 = GameEngine.loadOrBootstrap();
     e1.devSpawnEmpire("Colonia");
     e1.devFastForward(50); // 10 ticks : l'influence de chaque empire progresse
     const before = summaries(e1);
 
-    const e2 = GameEngine.load();
+    const e2 = GameEngine.loadOrBootstrap();
     const after = summaries(e2);
     for (const b of before) {
       const a = after.find((e) => e.id === b.id)!;
@@ -359,14 +366,14 @@ describe("GameEngine — logistique orbitale (chantier 12)", () => {
     engine.snapshotForEmpire(empire).colonies[0]!;
 
   it("la colonie mère naît avec un dock et une soute orbitale", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const colony = engine.colonies[0]!;
     expect(colony.buildings.orbital_dock).toBe(1);
     expect(colony.orbitalResources.ore).toBeGreaterThan(0);
   });
 
   it("l'ascenseur hisse le surplus au fil des ticks, en consommant de l'énergie", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const before = engine.colonies[0]!;
     const orbitBefore = before.orbitalResources.ore;
     advanceTicks(engine, 20);
@@ -389,7 +396,7 @@ describe("GameEngine — logistique orbitale (chantier 12)", () => {
   };
 
   it("une expédition prélève l'orbite, jamais le sol", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = empireFor(engine, "alice");
     const colony = homeColony(engine, empire);
     // La colonie mère n'a pas toujours une station chez elle : on en pose une à portée
@@ -407,7 +414,7 @@ describe("GameEngine — logistique orbitale (chantier 12)", () => {
   });
 
   it("le stock au sol ne se substitue pas à l'orbite quand elle est vide", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = empireFor(engine, "alice");
     const colony = homeColony(engine, empire);
     const station = reachableStation(engine, empire);
@@ -425,7 +432,7 @@ describe("GameEngine — file de recherche (chantier 11)", () => {
   const grantScience = (engine: GameEngine, amount: number) => engine.devGrant({ science: amount });
 
   it("planifie une chaîne et l'enchaîne recherche après recherche", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = empireFor(engine, "alice");
     grantScience(engine, 5000);
 
@@ -448,7 +455,7 @@ describe("GameEngine — file de recherche (chantier 11)", () => {
   });
 
   it("refuse une chaîne déjà acquise et sait se vider", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = empireFor(engine, "alice");
     grantScience(engine, 5000);
 
@@ -464,7 +471,7 @@ describe("GameEngine — file de recherche (chantier 11)", () => {
   });
 
   it("la file patiente au lieu de se vider quand la science manque", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = empireFor(engine, "alice");
     // Juste de quoi payer la première tech de la chaîne.
     grantScience(engine, TECHS.metallurgy.cost);
@@ -488,7 +495,7 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
   };
 
   it("partie neuve : INITIAL_GALAXIES galaxies, frontière vierge intacte", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     expect(engine.universe.galaxies).toHaveLength(INITIAL_GALAXIES);
     expect(emptyGalaxies(engine)).toBeGreaterThanOrEqual(FRONTIER_GALAXIES);
     // Chaque galaxie lointaine a son chantier de portail.
@@ -496,12 +503,12 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
   });
 
   it("recharge l'univers à la taille persistée, galaxies connues inchangées", () => {
-    const e1 = GameEngine.load();
+    const e1 = GameEngine.loadOrBootstrap();
     const known = e1.universe.galaxies;
     // Simule une extension déjà survenue en partie (le compteur fait foi au boot).
     db.update(schema.games).set({ galaxyCount: 7 }).run();
 
-    const e2 = GameEngine.load();
+    const e2 = GameEngine.loadOrBootstrap();
     expect(e2.universe.galaxies).toHaveLength(7);
     expect(e2.universe.galaxies.slice(0, known.length)).toEqual(known);
     // Les galaxies apparues sont équipées : portail et comptoirs approvisionnés.
@@ -520,7 +527,7 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
   });
 
   it("les nouveaux empires naissent voisins, puis débordent en poussant la frontière", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const galaxyOf = (systemId: string) => systemId.split("-sys-")[0];
 
     // MAX_EMPIRES_PER_GALAXY = 4 : les premiers arrivants partagent la galaxie d'origine.
@@ -543,7 +550,7 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
   });
 
   it("une extension pousse la nouvelle carte à tous les clients", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const alice = empireFor(engine, "alice");
     // Abonnement d'une connexion, comme le fait le WebSocket : chaque notification
     // recompose le snapshot de l'empire.
@@ -571,11 +578,11 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
   });
 
   it("étendre l'univers ne coûte rien aux empires en place", () => {
-    const e1 = GameEngine.load();
+    const e1 = GameEngine.loadOrBootstrap();
     const before = summaries(e1);
     db.update(schema.games).set({ galaxyCount: 9 }).run();
 
-    const e2 = GameEngine.load();
+    const e2 = GameEngine.loadOrBootstrap();
     expect(e2.universe.galaxies).toHaveLength(9);
     const after = summaries(e2);
     expect(after.map((e) => e.id)).toEqual(before.map((e) => e.id));
@@ -588,14 +595,14 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
 });
 
 describe("GameEngine — empires PNJ (chantier 14)", () => {
-  it("un GameEngine.load() nu ne seme aucun PNJ : ensureNpcPopulation reste opt-in", () => {
-    const engine = GameEngine.load();
+  it("un GameEngine.loadOrBootstrap() nu ne seme aucun PNJ : ensureNpcPopulation reste opt-in", () => {
+    const engine = GameEngine.loadOrBootstrap();
     expect(summaries(engine)).toHaveLength(1);
     expect(summaries(engine)[0]!.kind).toBe("human");
   });
 
   it("ensureNpcPopulation amorce des PNJ avec leur propre colonie mère", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     engine.ensureNpcPopulation(3);
     const all = summaries(engine);
     expect(all).toHaveLength(4);
@@ -608,7 +615,7 @@ describe("GameEngine — empires PNJ (chantier 14)", () => {
   });
 
   it("ensureNpcPopulation est idempotent : ne double jamais la population", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     engine.ensureNpcPopulation(3);
     engine.ensureNpcPopulation(3);
     expect(summaries(engine).filter((e) => e.kind === "npc")).toHaveLength(3);
@@ -626,7 +633,7 @@ describe("GameEngine — empires PNJ (chantier 14)", () => {
   });
 
   it("un compte humain n'adopte jamais un empire PNJ (bug corrigé au chantier 14)", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const bootId = summaries(engine)[0]!.id;
     engine.ensureNpcPopulation(3);
 
@@ -648,7 +655,7 @@ describe("GameEngine — empires PNJ (chantier 14)", () => {
   });
 
   it("devSpawnNpcEmpire instancie un PNJ isolé, hors du quota d'ensureNpcPopulation", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const id = engine.devSpawnNpcEmpire("Voisin");
     expect(id).not.toBeNull();
     expect(summaries(engine).find((e) => e.id === id)?.kind).toBe("npc");
@@ -661,7 +668,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     engine.snapshotForEmpire(empire).colonies[0]!;
 
   it("postContract : publie un contrat et met le séquestre sous garde", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
     const creditsBefore = colony.resources.credits;
@@ -679,7 +686,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   });
 
   it("un contrat est diffusé à tous les empires, pas seulement à son émetteur (pas de brouillard)", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
     // Un tiers totalement étranger à la transaction — jamais exploré le système de
@@ -700,7 +707,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   });
 
   it("postContract : refuse une ressource non contractualisable (crédits, science)", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
     expect(engine.postContract(empire, colony.id, "credits", 10, 1, 3_600_000)).toMatch(
@@ -709,7 +716,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   });
 
   it("postContract : refuse si le séquestre dépasse les crédits disponibles", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
     expect(engine.postContract(empire, colony.id, "ore", 10_000, 1, 3_600_000)).toMatch(
@@ -718,7 +725,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   });
 
   it("cancelContract : rembourse le séquestre et clôt le contrat", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
     const creditsBefore = colony.resources.credits;
@@ -731,7 +738,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   });
 
   it("cancelContract : refuse si l'appelant n'est pas l'émetteur", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const issuer = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
     engine.postContract(issuer, colony.id, "ore", 10, 1, 3_600_000);
@@ -744,7 +751,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   });
 
   it("un contrat non honoré expire et rembourse le séquestre restant", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
     // Séquestre volontairement massif : la production organique de la colonie sur la
@@ -762,7 +769,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   });
 
   it("acceptContract : livre la cargaison à l'émetteur (autre empire) et paie l'accepteur", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     // L'accepteur est l'empire par défaut : seuls ses timers sont avancés par
     // devFastForward (outil de dev mono-empire — Sprint 0), indispensable pour faire
     // arriver le convoi dans ce test.
@@ -828,7 +835,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   });
 
   it("acceptContract : refuse d'accepter son propre contrat", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
     engine.postContract(empire, colony.id, "ore", 10, 1, 3_600_000);
@@ -837,7 +844,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   });
 
   it("acceptContract : refuse une quantité au-delà du reliquat", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const issuer = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
     engine.postContract(issuer, colony.id, "ore", 10, 1, 3_600_000);
@@ -850,7 +857,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
 
 describe("GameEngine — pilote économique PNJ (chantier 14)", () => {
   it("un PNJ vend son surplus orbital et finit par contractualiser un besoin", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     engine.ensureNpcPopulation(1);
     const npcId = summaries(engine).find((e) => e.kind === "npc")!.id;
     const npc = engine.empireById(npcId)!;
@@ -875,7 +882,7 @@ describe("GameEngine — pilote économique PNJ (chantier 14)", () => {
   });
 
   it("un empire humain n'a aucun pilotage automatique (npcTick n'agit que sur les PNJ)", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     advanceTicks(engine, 350);
     // L'empire par défaut est humain : aucun contrat n'a dû être publié en son nom.
     expect(
@@ -886,7 +893,7 @@ describe("GameEngine — pilote économique PNJ (chantier 14)", () => {
 
 describe("GameEngine — état de faction (chantier 15)", () => {
   it("une partie neuve amorce les trois factions, neutres", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const states = engine.factionStates;
     expect(states).toHaveLength(3);
     for (const state of states) {
@@ -899,13 +906,13 @@ describe("GameEngine — état de faction (chantier 15)", () => {
   });
 
   it("initFactionStates est idempotent : un rechargement ne dédouble jamais les factions", () => {
-    GameEngine.load();
-    const reloaded = GameEngine.load();
+    GameEngine.loadOrBootstrap();
+    const reloaded = GameEngine.loadOrBootstrap();
     expect(reloaded.factionStates).toHaveLength(3);
   });
 
   it("l'état de faction est diffusé à tous les empires (pas de brouillard)", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const other = engine.empireById(engine.devSpawnEmpire("Spectateur")!)!;
     expect(engine.snapshotForEmpire(other).factionStates).toHaveLength(3);
   });
@@ -922,7 +929,7 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
   };
 
   it("devSetFactionMood force l'humeur ; elle revient à neutre à l'échéance", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const factionId = engine.factionStates[0]!.factionId;
     expect(engine.devSetFactionMood(factionId, "boom", 10_000)).toBe(true);
     expect(engine.factionStates.find((s) => s.factionId === factionId)!.mood).toBe("boom");
@@ -933,12 +940,12 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
   });
 
   it("devSetFactionMood refuse une faction inconnue", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     expect(engine.devSetFactionMood("inconnue", "boom")).toBe(false);
   });
 
   it("un embargo bloque sellToStation et buyFromStation sous le seuil de standing", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
     const station = reachableStation(engine, empire);
@@ -950,7 +957,7 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
   });
 
   it("un partenaire établi (standing suffisant) échappe à l'embargo", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
     const station = reachableStation(engine, empire);
@@ -962,7 +969,7 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
   });
 
   it("les humeurs finissent par bouger au fil des ticks économiques", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     // Échantillonne à chaque tick éco plutôt qu'un seul gros bond : une humeur peut se
     // déclencher PUIS expirer dans la fenêtre, et l'état final seul ne le verrait pas.
     let sawNonNeutral = false;
@@ -982,7 +989,7 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
     engine.universe.galaxies[0]!.systems.find((s) => s.station)!.station!.factionId;
 
   it("une pénurie publie un contrat pour un besoin réel, sans séquestre prélevé", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const factionId = homeGalaxyFactionId(engine);
     expect(engine.devSetFactionMood(factionId, "shortage")).toBe(true);
 
@@ -996,7 +1003,7 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
   });
 
   it("ne double jamais un contrat de pénurie tant qu'un autre est ouvert", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const factionId = homeGalaxyFactionId(engine);
     engine.devSetFactionMood(factionId, "shortage");
     engine.devSetFactionMood(factionId, "neutral");
@@ -1008,7 +1015,7 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
   });
 
   it("honoré, un contrat de faction livre au comptoir, paie au prix fixé et crédite le standing", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = engine.colonies[0]!;
     const factionId = homeGalaxyFactionId(engine);
@@ -1057,7 +1064,7 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
   });
 
   it("un contrat de faction expiré sans être honoré n'entraîne aucun remboursement", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const factionId = homeGalaxyFactionId(engine);
     expect(engine.devSetFactionMood(factionId, "shortage")).toBe(true);
     const contractId = engine.contracts.find((c) => c.issuerId === factionId)!.id;
@@ -1072,7 +1079,7 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
 
 describe("GameEngine — propositions de pacte (chantier 16)", () => {
   it("propose un NAP : visible des deux côtés, invisible d'un tiers", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     const c = empireFor(engine, "curieux");
@@ -1090,7 +1097,7 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
   });
 
   it("respondRelation : accepter établit le pacte, refuser n'y change rien", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     engine.proposeRelation(a, b.id, "nap");
@@ -1105,7 +1112,7 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
   });
 
   it("respondRelation : un refus retire la proposition sans créer de relation", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     engine.proposeRelation(a, b.id, "nap");
@@ -1117,7 +1124,7 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
   });
 
   it("respondRelation : seul le destinataire peut répondre", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     engine.proposeRelation(a, b.id, "nap");
@@ -1127,7 +1134,7 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
   });
 
   it("proposeRelation : refuse un doublon tant qu'une proposition est en attente", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     expect(engine.proposeRelation(a, b.id, "nap")).toBeNull();
@@ -1137,7 +1144,7 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
   });
 
   it("cancelProposal : seul l'émetteur peut retirer sa propre proposition", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     engine.proposeRelation(a, b.id, "nap");
@@ -1149,7 +1156,7 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
   });
 
   it("breakRelation : rompt un pacte en vigueur, refuse s'il n'y en a pas", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     expect(engine.breakRelation(a, b.id)).toMatch(/Aucun pacte/);
@@ -1164,7 +1171,7 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
   });
 
   it("un PNJ répond immédiatement à un NAP : jamais de proposition qui reste en attente", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const npc = engine.empireById(engine.devSpawnNpcEmpire("Voisin")!)!;
 
@@ -1177,7 +1184,7 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
   });
 
   it("un PNJ refuse une alliance avec un partenaire de force très disproportionnée", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alpha");
     const npc = engine.empireById(engine.devSpawnNpcEmpire("Voisin")!)!;
     // Écrase le ratio de puissance : le PNJ n'a aucune flotte, le proposeur en a une énorme.
@@ -1196,7 +1203,7 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
 
 describe("GameEngine — objectifs éphémères (chantier 17)", () => {
   it("un empire humain se voit tirer un objectif éphémère au premier tick économique", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     advanceTicks(engine, 12);
     const objectives = engine.snapshotForEmpire(empire).objectives;
@@ -1205,7 +1212,7 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
   });
 
   it("un empire PNJ ne reçoit jamais d'objectif éphémère", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     engine.ensureNpcPopulation(1);
     const npc = engine.empireById(summaries(engine).find((e) => e.kind === "npc")!.id)!;
     advanceTicks(engine, 100);
@@ -1213,7 +1220,7 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
   });
 
   it("les objectifs sont redactés : jamais visibles d'un tiers", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     // Aussi humain : reçoit son PROPRE objectif — la redaction se prouve en vérifiant
     // qu'il ne voit pas celui de l'autre, pas qu'il n'en a aucun.
@@ -1227,7 +1234,7 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
   });
 
   it("un objectif se résout toujours (rempli ou expiré), jamais bloqué indéfiniment", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     advanceTicks(engine, 12);
     const objective = engine.snapshotForEmpire(empire).objectives[0]!;
@@ -1241,7 +1248,7 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
   });
 
   it("rempli, un objectif verse sa récompense en crédits", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     advanceTicks(engine, 12);
     const objective = engine.snapshotForEmpire(empire).objectives[0]!;
@@ -1262,7 +1269,7 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
   });
 
   it("respecte un cooldown : pas de nouveau tirage juste après la résolution du précédent", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     advanceTicks(engine, 12);
     const first = engine.snapshotForEmpire(empire).objectives[0]!;
@@ -1282,7 +1289,7 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
 
 describe("GameEngine — événements de monde (chantier 17)", () => {
   it("devTriggerWorldEvent (galaxie) crée un événement visible, non brouillardé", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const galaxyId = engine.universe.galaxies[0]!.id;
     const other = engine.empireById(engine.devSpawnEmpire("Spectateur")!)!;
 
@@ -1296,7 +1303,7 @@ describe("GameEngine — événements de monde (chantier 17)", () => {
   });
 
   it("devTriggerWorldEvent (faction_boom) force aussitôt l'humeur de la faction visée", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const factionId = engine.factionStates[0]!.factionId;
 
     const eventId = engine.devTriggerWorldEvent("faction_boom", factionId);
@@ -1305,13 +1312,13 @@ describe("GameEngine — événements de monde (chantier 17)", () => {
   });
 
   it("devTriggerWorldEvent refuse une cible inconnue", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     expect(engine.devTriggerWorldEvent("faction_boom", "inconnue")).toBeNull();
     expect(engine.devTriggerWorldEvent("economic_crisis", "gal-inconnue")).toBeNull();
   });
 
   it("un événement de monde expire et disparaît du flux", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const galaxyId = engine.universe.galaxies[0]!.id;
     const eventId = engine.devTriggerWorldEvent("gold_rush", galaxyId, 10_000);
 
@@ -1325,7 +1332,7 @@ describe("GameEngine — événements de monde (chantier 17)", () => {
   });
 
   it("un événement finit par se déclencher naturellement au fil des ticks économiques", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     let sawEvent = false;
     for (let i = 0; i < 300 && !sawEvent; i++) {
       advanceTicks(engine, 12); // un tick économique par itération
@@ -1358,7 +1365,7 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
   };
 
   it("un empire neuf est amorcé avec les plans de départ", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alice");
     const plans = snap(engine, a).blueprints;
     expect(plans.length).toBeGreaterThanOrEqual(2);
@@ -1366,7 +1373,7 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
   });
 
   it("crée un plan valide, rejette un plan qui dépasse les emplacements", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alice");
     const before = snap(engine, a).blueprints.length;
     expect(
@@ -1380,7 +1387,7 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
   });
 
   it("les plans sont isolés par empire", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alice");
     const b = empireFor(engine, "bob");
     engine.createBlueprint(a, "Secret d'Alice", COLONY_BP.chassisId, COLONY_BP.modules);
@@ -1389,7 +1396,7 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
   });
 
   it("construit un plan de domaine colonie : file navale puis livraison", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alice");
     engine.devGrant({ metals: 1000, components: 500 });
     const colony = snap(engine, a).colonies[0]!;
@@ -1401,7 +1408,7 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
   });
 
   it("construit un plan de domaine flotte : file de la flotte", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alice");
     const colony = snap(engine, a).colonies[0]!;
     // Grant pour couvrir le coût du châssis + modules.
@@ -1415,7 +1422,7 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
   });
 
   it("refuse de bâtir un plan de flotte au chantier civil (mauvais domaine)", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const a = empireFor(engine, "alice");
     const colony = snap(engine, a).colonies[0]!;
     const fleetPlan = snap(engine, a).blueprints.find((p) => p.chassisId === "scout_frame")!;
@@ -1423,17 +1430,17 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
   });
 
   it("les plans survivent au rechargement", () => {
-    const e1 = GameEngine.load();
+    const e1 = GameEngine.loadOrBootstrap();
     const a = empireFor(e1, "alice");
     engine_createNamed(e1, a);
-    const e2 = GameEngine.load();
+    const e2 = GameEngine.loadOrBootstrap();
     const a2 = e2.empireForAccount("alice")!;
     expect(e2.snapshotForEmpire(a2).blueprints.map((p) => p.name)).toContain("Persistant");
   });
 
   describe("marché de plans en station", () => {
     it("achète un plan de départ : crédits débités, plan ajouté", () => {
-      const engine = GameEngine.load();
+      const engine = GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
       const station = reachableStation(engine, a);
       engine.devGrant({ credits: 5000 });
@@ -1448,7 +1455,7 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     });
 
     it("refuse l'achat sans crédits suffisants", () => {
-      const engine = GameEngine.load();
+      const engine = GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
       const station = reachableStation(engine, a);
       const colony = snap(engine, a).colonies[0]!;
@@ -1458,7 +1465,7 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     });
 
     it("refuse l'achat d'un preset inconnu", () => {
-      const engine = GameEngine.load();
+      const engine = GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
       const station = reachableStation(engine, a);
       const colony = snap(engine, a).colonies[0]!;
@@ -1469,7 +1476,7 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     });
 
     it("revend un plan : crédité, plan retiré", () => {
-      const engine = GameEngine.load();
+      const engine = GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
       const station = reachableStation(engine, a);
       const colony = snap(engine, a).colonies[0]!;
@@ -1484,7 +1491,7 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     });
 
     it("revend un vaisseau assemblé (classe historique) : décompte le pool, crédite", () => {
-      const engine = GameEngine.load();
+      const engine = GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
       const station = reachableStation(engine, a);
       const colony = snap(engine, a).colonies[0]!;
@@ -1499,7 +1506,7 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     });
 
     it("refuse de vendre plus de vaisseaux que disponibles", () => {
-      const engine = GameEngine.load();
+      const engine = GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
       const station = reachableStation(engine, a);
       const colony = snap(engine, a).colonies[0]!;
@@ -1512,3 +1519,94 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
 function engine_createNamed(engine: GameEngine, empire: ReturnType<typeof empireFor>): void {
   engine.createBlueprint(empire, "Persistant", "light_freighter", ["cargo_pod", "ion_thruster"]);
 }
+
+describe("GameEngine — univers persistant (chantier 18)", () => {
+  it("le boot matérialise l'univers : tables peuplées, compteur aligné", () => {
+    const engine = GameEngine.loadOrBootstrap();
+    const galaxies = db.select().from(schema.universeGalaxies).all();
+    expect(galaxies).toHaveLength(engine.universe.galaxies.length);
+    expect(db.select().from(schema.universeSystems).all().length).toBeGreaterThan(0);
+    expect(db.select().from(schema.universeBodies).all().length).toBeGreaterThan(0);
+    // La mère n'a pas de parent ; toutes les autres pointent une voisine d'index inférieur.
+    for (const g of galaxies) {
+      if (g.index === 0) expect(g.parentGalaxyIndex).toBeNull();
+      else expect(g.parentGalaxyIndex).toBeLessThan(g.index);
+    }
+  });
+
+  it("reboot : l'univers rechargé est strictement identique", () => {
+    const e1 = GameEngine.loadOrBootstrap();
+    const before = e1.universe;
+    const e2 = GameEngine.loadOrBootstrap();
+    expect(e2.universe).toEqual(before);
+  });
+
+  it("la DB est la vérité : une correction manuelle survit au reboot", () => {
+    const e1 = GameEngine.loadOrBootstrap();
+    const planet = e1.universe.galaxies[0]!.systems[0]!.planets[0]!;
+    db.update(schema.universeBodies)
+      .set({ name: "Monde corrigé" })
+      .where(eq(schema.universeBodies.id, planet.id))
+      .run();
+    const e2 = GameEngine.loadOrBootstrap();
+    const reloaded = e2.universe.galaxies[0]!.systems[0]!.planets[0]!;
+    expect(reloaded.id).toBe(planet.id);
+    expect(reloaded.name).toBe("Monde corrigé");
+  });
+
+  it("rattrapage one-shot : une base d'avant le chantier 18 est matérialisée au boot", () => {
+    // Simule une base legacy : ligne games seule, aucune table universe_* peuplée.
+    db.insert(schema.games)
+      .values({
+        id: "legacy",
+        seed: "legacy-seed",
+        tick: 0,
+        lastTickAt: Date.now(),
+        createdAt: Date.now(),
+        galaxyCount: INITIAL_GALAXIES,
+      })
+      .run();
+    const engine = GameEngine.load();
+    expect(db.select().from(schema.universeGalaxies).all()).toHaveLength(INITIAL_GALAXIES);
+    expect(engine.universe.galaxies).toHaveLength(engine.universe.galaxies.length);
+    // Rejouer load() est un no-op : rien de plus n'est matérialisé.
+    const before = db.select().from(schema.universeBodies).all().length;
+    GameEngine.load();
+    expect(db.select().from(schema.universeBodies).all()).toHaveLength(before);
+  });
+
+  it("étendre l'univers matérialise les galaxies neuves sans toucher aux anciennes", () => {
+    const engine = GameEngine.loadOrBootstrap();
+    const before = engine.universe.galaxies.length;
+    const namesBefore = db
+      .select()
+      .from(schema.universeGalaxies)
+      .all()
+      .map((g) => [g.id, g.name] as const);
+    // Remplit la galaxie de départ (MAX_EMPIRES_PER_GALAXY) : le suivant colonise
+    // ailleurs et la frontière glissante doit s'ouvrir — donc se matérialiser.
+    for (let i = 0; i < MAX_EMPIRES_PER_GALAXY; i++) engine.devSpawnEmpire(`ext-${i}`);
+    engine.ensureFrontier();
+    expect(engine.universe.galaxies.length).toBeGreaterThan(before);
+    expect(db.select().from(schema.universeGalaxies).all()).toHaveLength(
+      engine.universe.galaxies.length,
+    );
+    // Les galaxies déjà matérialisées sont intactes, et tout survit au reboot.
+    const after = new Map(
+      db
+        .select()
+        .from(schema.universeGalaxies)
+        .all()
+        .map((g) => [g.id, g.name] as const),
+    );
+    for (const [id, name] of namesBefore) expect(after.get(id)).toBe(name);
+    const reloaded = GameEngine.loadOrBootstrap();
+    expect(reloaded.universe).toEqual(engine.universe);
+  });
+
+  it("load() lève sur une base vierge ; bootstrap lève sur une base peuplée", () => {
+    expect(() => GameEngine.load()).toThrow(/bootstrapNewUniverse/);
+    GameEngine.bootstrapNewUniverse();
+    expect(() => GameEngine.bootstrapNewUniverse()).toThrow(/existe déjà/);
+  });
+});

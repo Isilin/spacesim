@@ -36,7 +36,7 @@ beforeEach(() => resetDb());
 
 describe("dispatchClientMessage — exhaustivité", () => {
   it("chaque commande du schéma protocol a une branche dans le dispatcher", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     // Parcourt le schéma runtime (pas seulement le typage) : un `type` ajouté au
     // protocole sans branche correspondante tombe dans `assertNever` et ce test échoue.
@@ -62,7 +62,7 @@ describe("dispatchClientMessage — passage d'arguments", () => {
     // `createEmpireForAccount` adopte l'empire amorcé au premier appel (game.test.ts:185) :
     // les deux empires doivent donc naître d'un compte chacun, jamais l'un via
     // `defaultEmpireForDev` et l'autre via un premier appel — ce serait le même empire.
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const owner = engine.createEmpireForAccount("compte-owner", "Owner")!;
     const stranger = engine.createEmpireForAccount("compte-bob", "Bob")!;
     const colonyId = engine.snapshotForEmpire(owner).colonies[0]!.id;
@@ -73,7 +73,7 @@ describe("dispatchClientMessage — passage d'arguments", () => {
   });
 
   it("claimSystem : revendique le système de la colonie mère", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.createEmpireForAccount("compte-owner", "Owner")!;
     empire.influence = 1000; // le claim coûte de l'influence (chantier 7e)
     const colony = engine.snapshotForEmpire(empire).colonies[0]!;
@@ -87,7 +87,7 @@ describe("dispatchClientMessage — passage d'arguments", () => {
   });
 
   it("proposeRelation : cible bien l'empire passé en argument, pas l'appelant", () => {
-    const engine = GameEngine.load();
+    const engine = GameEngine.loadOrBootstrap();
     const empire = engine.createEmpireForAccount("compte-owner", "Owner")!;
     const other = engine.createEmpireForAccount("compte-bob", "Bob")!;
 

@@ -4,7 +4,7 @@ import { buildApp } from "./http/app.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 
-const engine = GameEngine.load();
+const engine = GameEngine.loadOrBootstrap();
 // Population PNJ (chantier 14) : distinct de `load()`, idempotent — jamais doublé
 // au redémarrage, backfillé si absent sur une partie créée avant ce chantier.
 engine.ensureNpcPopulation();

@@ -23,6 +23,7 @@ import { db, schema } from "../../db/index.js";
 import type { Empire } from "../../empire.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
+import { appendGalaxies, withParentIndexes } from "../universe-store.js";
 
 /**
  * Exploration et territoire : sondes, colonisation, revendications de systèmes et
@@ -205,19 +206,23 @@ export class ExplorationService {
     const added = Array.from({ length: count }, (_, i) =>
       generateGalaxyAt(this.runtime.clock.seed, from + i),
     );
-    this.runtime.universe = {
+    // Parents figés sur les positions RÉELLES de l'univers courant (issu de la DB),
+    // puis matérialisation transactionnelle : une galaxie n'existe qu'une fois écrite,
+    // et le générateur n'a plus jamais autorité sur elle (chantier 18).
+    this.runtime.universe = withParentIndexes({
       ...this.runtime.universe,
       galaxies: [...this.runtime.universe.galaxies, ...added],
-    };
+    });
     this.runtime.clock.galaxyCount = this.runtime.universe.galaxies.length;
     this.runtime.reindexUniverse();
     // Les galaxies neuves arrivent avec leurs comptoirs et leur chantier de portail.
     this.initMarkets();
     this.initGateways();
-    db.update(schema.games)
-      .set({ galaxyCount: this.runtime.clock.galaxyCount })
-      .where(eq(schema.games.id, this.runtime.clock.id))
-      .run();
+    appendGalaxies(
+      this.runtime.clock.id,
+      this.runtime.universe.galaxies.slice(from),
+      this.runtime.clock.galaxyCount,
+    );
     // Tous les clients doivent recevoir la nouvelle carte, y compris ceux qui n'ont
     // rien exploré depuis leur dernier message.
     for (const empire of this.runtime.empires.values()) empire.universeDirty = true;
