@@ -22,7 +22,8 @@ import { LogisticsView } from "./LogisticsView.js";
 import { SystemPanel } from "./SystemPanel.js";
 import { SystemView } from "./SystemView.js";
 import { UniverseMap } from "./UniverseMap.js";
-import { useGameSocket } from "./useGameSocket.js";
+import { useGameConnection } from "./hooks/useGameConnection.js";
+import { useGameStore } from "./state/game-store.js";
 import { useNotifications } from "./useNotifications.js";
 import type { Auth } from "./useAuth.js";
 
@@ -67,6 +68,7 @@ function useNow(): number {
 }
 
 export function App({ auth }: Props) {
+  useGameConnection(auth.token!, auth.sessionExpired);
   const {
     playerId,
     universe,
@@ -95,7 +97,7 @@ export function App({ auth }: Props) {
     connected,
     actionError,
     send,
-  } = useGameSocket(auth.token!, auth.sessionExpired);
+  } = useGameStore();
   const [tab, setTab] = useState<Tab>("colony");
   const [colonyId, setColonyId] = useState<string | null>(null);
   const [history, setHistory] = useState<MapHistory>(EMPTY_HISTORY);
