@@ -1,5 +1,10 @@
 # SpaceSim — Plan MVP
 
+> **Chantiers 14 → 17 (25/07/2026)** : économie PNJ (empires PNJ autonomes, contrats de
+> fourniture) · factions (humeurs essor/pénurie/embargo, contrats de pénurie) · diplomatie
+> (relations pacte/alliance/guerre, propositions) · objectifs éphémères et événements de monde
+> (crise économique, ruée vers l'or, vague pirate, essor de faction). Voir « Chantiers 14 → 17 »
+> en fin de document. **Livrés.**
 > **Chantiers 8 → 12 planifiés (23/07/2026)** : comptes joueurs · univers extensible à l'infini
 > + carte navigable · vue planète/lune · vrai arbre de recherche · logistique (stock orbital,
 > transport, prix régionaux). Voir « Chantiers 8 → 12 » en fin de document.
@@ -526,3 +531,79 @@ preset au catalogue (marge +40 %), revente d'un plan possédé ou d'un vaisseau 
 convoyer contrairement aux ressources.
 
 **Chantier 13 (conception de vaisseaux) : terminé.**
+
+### Chantier 14 — Économie PNJ ✅ (25/07/2026)
+
+Les empires PNJ (`players.kind = "npc"`) gèrent leurs colonies sans joueur derrière.
+`decideColonyEconomy(colony)` (`sim/economy/npc.ts`, pur et déterministe) inspecte chaque
+ressource de marché et décide, par seuils fixes (`NPC_SURPLUS_THRESHOLD` en orbite,
+`NPC_DEFICIT_THRESHOLD` au sol), de vendre l'excédent ou de publier un besoin. Côté serveur
+(`logistics-service.ts`, section « Économie PNJ »), `npcTick(empire)` rejoue cette décision à
+chaque cycle économique : `npcSellSurplus` vend directement au comptoir le plus proche de la
+même galaxie (`nearestStation`), `npcPostContract` publie un contrat au prix spot majoré
+(`NPC_CONTRACT_PRICE_MULT`), sans jamais empiler deux contrats pour la même ressource/colonie.
+
+Un **contrat de fourniture** (`Contract`, `model/social.ts`) est une offre d'achat à prix et
+quantité fixes, avec échéance (`CONTRACT_MIN/MAX_DURATION_MS`, plafond
+`MAX_OPEN_CONTRACTS_PER_EMPIRE`) : `remaining` se décrémente à l'**acceptation**, pas à la
+livraison — sans quoi un même contrat pourrait être survendu pendant qu'un convoi est en route.
+`postContract`/`acceptContract`/`cancelContract` (WS) fonctionnent aussi bien entre joueurs
+qu'avec un PNJ ou une faction (chantier 15). `bootstrapNpcEmpires` amorce quelques empires PNJ
+au démarrage d'une base neuve. UI : `ContractsView`, un des cinq sous-onglets de Logistique.
+
+### Chantier 15 — Factions ✅ (25/07/2026)
+
+Chaque faction PNJ a une humeur (`FactionMood` : neutre / essor / pénurie / embargo) qui bascule
+au hasard mais de façon déterministe (`factionTick`, `sim/economy/factions.ts` —
+`FACTION_MOOD_SHIFT_CHANCE` 8 % par cycle éco, `FACTION_MOOD_DURATION_MS` 30 min) puis revient à
+neutre à l'échéance. Un essor accorde une remise aux achats du joueur (`moodRebateBonus`), une
+pénurie fait publier à la faction un contrat de pénurie **sans séquestre** (une faction n'a pas
+de solde propre — `factionPostShortageContract`, prix spot × `FACTION_CONTRACT_PRICE_MULT`), un
+embargo ferme le commerce aux empires dont la réputation est sous
+`FACTION_EMBARGO_STANDING_THRESHOLD` (`embargoBlocks`, `stationEmbargoed`). Les prix en station
+cumulent désormais réputation, marge des chartes commerciales (chantier 12), humeur de faction
+et événements de monde (chantier 17) dans un seul `priceContextOf`. UI : section « Factions » de
+`EmpireView` — barre de réputation par palier, badge d'humeur, contrat ouvert affiché en ligne.
+
+### Chantier 16 — Diplomatie ✅ (25/07/2026)
+
+Les relations inter-empires (`Relation`, paire canonique `empireA < empireB`) passent par quatre
+états : neutre, pacte de non-agression, alliance, guerre. `sim/empire/diplomacy.ts` porte les
+règles pures : `declareWarReason`/`makePeaceReason`/`proposeRelationReason`/
+`breakRelationReason` refusent les transitions invalides (déclarer la guerre à un allié sans
+rompre l'alliance d'abord, republier une proposition déjà en attente…). Déclarer la guerre coûte
+`DECLARE_WAR_INFLUENCE_COST` (50 influence) et pose un cooldown de 10 min (`WAR_COOLDOWN_MS`)
+avant de pouvoir la redéclarer après une paix. Un PNJ accepte toujours un pacte de
+non-agression, mais une alliance seulement si le ratio de puissance de flotte du proposant reste
+dans une fourchette raisonnable (`npcAcceptsProposal`, `NPC_ALLIANCE_MIN/MAX_POWER_RATIO`).
+Remplace l'ancienne table `wars` (migration `0014_secret_mongoose.sql`). UI : pas de vue dédiée
+— badges de relation et actions contextuelles (proposer/accepter/refuser/rompre/déclarer la
+guerre) dans le classement des empires d'`EmpireView`.
+
+### Chantier 17 — Objectifs éphémères et événements de monde ✅ (25/07/2026)
+
+**Objectifs (17.1, 17.4).** Chaque empire humain se voit tirer un objectif temporaire
+(`generateObjectiveSpec`, `sim/empire/objectives.ts`) parmi quatre genres — coloniser N
+systèmes, tenir un système revendiqué, mener en population, mener en influence — avec une
+échéance d'une heure (`OBJECTIVE_DURATION_MS`) et une récompense de 200 crédits. Un seul
+objectif ouvert à la fois par empire ; un cooldown après complétion/expiration évite de retirer
+aussitôt un objectif trivialement déjà vrai (ex. « mener en influence » resservi en boucle).
+`resolveObjectives` verse la récompense ou expire l'objectif à chaque tick.
+
+**Événements de monde (17.2).** Un tirage à 5 % par cycle éco (`rollWorldEvent`,
+`sim/empire/worldEvents.ts`) peut déclencher, sur une galaxie ou une faction prise au hasard :
+crise économique (malus de prix en station), ruée vers l'or (bonus de prix), vague de piraterie
+(multiplie ×3 la chance de spawn d'un repaire pirate le temps de l'événement) ou essor de
+faction (force l'humeur d'une faction à « boom », chantier 15). Durée fixe de 30 min
+(`WORLD_EVENT_DURATION_MS`), pas de statut : l'événement disparaît simplement à expiration.
+
+**Zones d'activité économique (17.3, dérivé UI).** `galaxyActivity`/`normalizedActivity`
+(`sim/economy/economicZones.ts`) additionnent la valeur des contrats ouverts (PNJ et faction
+compris) par galaxie et normalisent le résultat entre 0 et 1 : la carte univers (`UniverseMap`)
+affiche un halo de chaleur économique dont le rayon suit l'intensité.
+
+UI (objectifs et événements) : bloc « Fil du monde » d'`EmpireView`, avec compte à rebours et
+libellés dédiés par genre.
+
+**Chantiers 14 à 17 (économie PNJ, factions, diplomatie, objectifs/événements de monde) :
+terminés.**
