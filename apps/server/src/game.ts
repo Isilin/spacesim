@@ -60,6 +60,7 @@ import { GatewayService } from "./runtime/services/gateway-service.js";
 import { IndustryService } from "./runtime/services/industry-service.js";
 import { LogisticsService } from "./runtime/services/logistics-service.js";
 import { MarketService } from "./runtime/services/market-service.js";
+import { ObjectiveService } from "./runtime/services/objective-service.js";
 import { GameRepository } from "./runtime/repositories/game-repository.js";
 import { TickRunner } from "./runtime/tick-runner.js";
 import {
@@ -109,8 +110,10 @@ export class GameEngine {
   private exploration: ExplorationService;
   /** Flottes, combat (repaire/PvP), production/déplacement et repaires pirates PNJ. */
   private fleetService: FleetService;
-  /** Diplomatie, objectifs éphémères, événements de monde et humeur de faction. */
+  /** Diplomatie, événements de monde et humeur de faction. */
   private diplomacy: DiplomacyService;
+  /** Objectifs éphémères personnels (chantier 17), domaine isolé. */
+  private objective: ObjectiveService;
   /** Bootstrap des empires (compte joueur, PNJ, colonie mère) et outils de dev associés. */
   private bootstrap: BootstrapService;
   /** Injecté depuis le boot (`setLogger`) ; console brute par défaut (tests, scripts). */
@@ -328,7 +331,8 @@ export class GameEngine {
       (a, b) => this.atWar(a, b),
       (galaxyId) => this.worldEventKindsOnGalaxy(galaxyId),
     );
-    this.diplomacy = new DiplomacyService(
+    this.diplomacy = new DiplomacyService(this.runtime, () => this.notify(), logger);
+    this.objective = new ObjectiveService(
       this.runtime,
       () => this.notify(),
       logger,
@@ -954,17 +958,17 @@ export class GameEngine {
   // ─────────────────────────── Objectifs éphémères (chantier 17) ───────────────────────────
 
   private async loadObjectives(): Promise<void> {
-    await this.diplomacy.loadObjectives();
+    await this.objective.loadObjectives();
   }
 
   /** Tire un nouvel objectif éphémère pour chaque empire humain qui n'en a pas déjà un ouvert. */
   generateObjectives(tickNumber: number, now: number): void {
-    this.diplomacy.generateObjectives(tickNumber, now);
+    this.objective.generateObjectives(tickNumber, now);
   }
 
   /** Valide ou expire les objectifs ouverts, contre l'état courant du jeu. */
   resolveObjectives(t: number): void {
-    this.diplomacy.resolveObjectives(t);
+    this.objective.resolveObjectives(t);
   }
 
   // ─────────────────────────── Événements de monde (chantier 17) ───────────────────────────
@@ -1068,7 +1072,7 @@ export class GameEngine {
   }
 
   private persistObjective(objective: Objective): void {
-    this.diplomacy.persistObjective(objective);
+    this.objective.persistObjective(objective);
   }
 
   // ── Extension de l'univers (chantier 9) ────────────────────────────────
