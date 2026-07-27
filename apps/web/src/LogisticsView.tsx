@@ -1,37 +1,18 @@
-import type { ClientMessage } from "@spacesim/protocol";
-import type {
-  Colony,
-  Contract,
-  EmpireEffects,
-  MiningOutpost,
-  Route,
-  StationMarket,
-  Transfer,
-  Universe,
-} from "@spacesim/shared";
+import type { EmpireEffects } from "@spacesim/shared";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ContractsView } from "./ContractsView.js";
 import { MarketsView } from "./MarketsView.js";
 import { OrbitPanel } from "./OrbitPanel.js";
 import { RoutesView } from "./RoutesView.js";
 import { TransferPanel } from "./TransferPanel.js";
+import { useGameStore } from "./state/game-store.js";
+import { selectActiveColony } from "./state/selectors.js";
 
 interface Props {
-  routes: Route[];
-  colonies: Colony[];
-  /** Colonie active : origine des convois, cible du panneau orbite. */
-  colony: Colony | null;
-  transfers: Transfer[];
-  universe: Universe;
-  exploredSystemIds: string[];
-  outposts: MiningOutpost[];
-  markets: StationMarket[];
-  contracts: Contract[];
-  playerId: string | null;
   effects: EmpireEffects;
   portalLinks: [string, string][];
   now: number;
-  send: (msg: ClientMessage) => void;
 }
 
 type Tab = "routes" | "convoys" | "orbit" | "markets" | "contracts";
@@ -48,23 +29,24 @@ const TAB_LABELS: Record<Tab, string> = {
  * Tout ce qui touche à l'acheminement au même endroit (chantier 12) : routes
  * automatiques, convois ponctuels, ascenseur orbital et comparateur de marchés.
  */
-export function LogisticsView({
-  routes,
-  colonies,
-  colony,
-  transfers,
-  universe,
-  exploredSystemIds,
-  outposts,
-  markets,
-  contracts,
-  playerId,
-  effects,
-  portalLinks,
-  now,
-  send,
-}: Props) {
+export function LogisticsView({ effects, portalLinks, now }: Props) {
+  const [searchParams] = useSearchParams();
+  const colony = useGameStore(selectActiveColony(searchParams.get("colony")));
+  const {
+    routes,
+    colonies,
+    transfers,
+    universe,
+    exploredSystemIds,
+    outposts,
+    markets,
+    contracts,
+    playerId,
+    send,
+  } = useGameStore();
   const [tab, setTab] = useState<Tab>("routes");
+
+  if (!universe) return null;
 
   return (
     <div className="logistics-view">

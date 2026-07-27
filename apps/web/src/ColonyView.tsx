@@ -1,5 +1,5 @@
-import type { ClientMessage } from "@spacesim/protocol";
 import {
+  allPlanets,
   BUILDING_IDS,
   BUILDINGS,
   buildingBuildMs,
@@ -17,32 +17,21 @@ import {
   usedSlots,
   workforceEfficiency,
   TECHS,
-  type Colony,
   type EmpireEffects,
-  type Planet,
   type ResourceId,
-  type Route,
   type TechId,
-  type Transfer,
-  type Universe,
 } from "@spacesim/shared";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { formatDuration } from "./format.js";
 import { BUILDING_LABELS, PLANET_TYPE_LABELS, RESOURCE_LABELS, TECH_LABELS } from "./labels.js";
 
 import { ShipyardPanel } from "./ShipyardPanel.js";
+import { useGameStore } from "./state/game-store.js";
+import { selectActiveColony } from "./state/selectors.js";
 
 interface Props {
-  colony: Colony;
-  planet: Planet;
-  colonies: Colony[];
-  transfers: Transfer[];
-  universe: Universe;
   effects: EmpireEffects;
-  routes: Route[];
-  researched: readonly string[];
-  portalLinks: [string, string][];
-  send: (msg: ClientMessage) => void;
 }
 
 /** Tech qui débloque un bâtiment (pour l'affichage des verrous). */
@@ -80,19 +69,21 @@ function useNow(): number {
   return now;
 }
 
-export function ColonyView({
-  colony,
-  planet,
-  colonies,
-  transfers,
-  universe,
-  effects,
-  routes,
-  researched,
-  portalLinks,
-  send,
-}: Props) {
+export function ColonyView({ effects }: Props) {
+  const [searchParams] = useSearchParams();
+  const activeColony = useGameStore(selectActiveColony(searchParams.get("colony")));
+  const { universe, game, routes, send } = useGameStore();
   const now = useNow();
+  const planet =
+    activeColony && universe
+      ? allPlanets(universe).find((p) => p.id === activeColony.planetId)
+      : undefined;
+
+  if (!activeColony || !planet || !game) {
+    return <p className="muted">Aucune colonie.</p>;
+  }
+  const colony = activeColony;
+  const researched = game.researched;
   const rates = colonyRates(colony, planet, effects);
   const slots = usedSlots(colony);
   const shortages = colonyShortages(colony);

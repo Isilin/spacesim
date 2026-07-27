@@ -9,17 +9,13 @@ import {
   type Fleet,
   type GameState,
   type Gateway,
-  type MiningOutpost,
   type Mission,
   type Planet,
-  type Route as GameRoute,
   type StarSystem,
-  type StationMarket,
   type TechId,
   type Territory,
   type Universe,
 } from "@spacesim/shared";
-import type { ClientMessage } from "@spacesim/protocol";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Navigate,
@@ -302,9 +298,6 @@ export function App({ auth }: Props) {
     transfers,
     missions,
     exploredSystemIds,
-    markets,
-    routes,
-    outposts,
     gateways,
     contracts,
     factionStates,
@@ -355,9 +348,6 @@ export function App({ auth }: Props) {
   }
 
   const colony = colonies.find((c) => c.id === colonyId) ?? colonies[0] ?? null;
-  const colonyPlanet = colony
-    ? allPlanets(universe).find((p) => p.id === colony.planetId)
-    : undefined;
 
   return (
     <div className="layout">
@@ -427,22 +417,7 @@ export function App({ auth }: Props) {
           path="/colony"
           element={
             <main className="content-single">
-              {colony && colonyPlanet ? (
-                <ColonyView
-                  colony={colony}
-                  planet={colonyPlanet}
-                  colonies={colonies}
-                  transfers={transfers}
-                  universe={universe}
-                  effects={effects}
-                  routes={routes}
-                  researched={game.researched}
-                  portalLinks={portalLinks}
-                  send={send}
-                />
-              ) : (
-                <p className="muted">Aucune colonie.</p>
-              )}
+              <ColonyView effects={effects} />
             </main>
           }
         />
@@ -450,22 +425,7 @@ export function App({ auth }: Props) {
           path="/logistics"
           element={
             <main className="content-single">
-              <LogisticsView
-                routes={routes}
-                colonies={colonies}
-                colony={colony}
-                transfers={transfers}
-                universe={universe}
-                exploredSystemIds={exploredSystemIds}
-                outposts={outposts}
-                markets={markets}
-                contracts={contracts}
-                playerId={playerId}
-                effects={effects}
-                portalLinks={portalLinks}
-                now={now}
-                send={send}
-              />
+              <LogisticsView effects={effects} portalLinks={portalLinks} now={now} />
             </main>
           }
         />
@@ -493,13 +453,7 @@ export function App({ auth }: Props) {
           path="/shipyard"
           element={
             <main className="content-single">
-              <ShipDesigner
-                blueprints={blueprints}
-                effects={effects}
-                activeColony={colony}
-                fleets={fleets}
-                send={send}
-              />
+              <ShipDesigner effects={effects} />
             </main>
           }
         />

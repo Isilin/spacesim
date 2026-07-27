@@ -1,4 +1,3 @@
-import type { ClientMessage } from "@spacesim/protocol";
 import {
   blueprintLoad,
   CHASSIS,
@@ -8,20 +7,20 @@ import {
   resolveBlueprint,
   SLOT_TYPES,
   validateBlueprint,
-  type Blueprint,
   type ChassisId,
-  type Colony,
   type EmpireEffects,
-  type Fleet,
   type ModuleId,
   type ResourceId,
   type SlotType,
 } from "@spacesim/shared";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { BlueprintList } from "./BlueprintList.js";
 import { formatDuration } from "./format.js";
 import { CHASSIS_LABELS, MODULE_LABELS, RESOURCE_LABELS, SLOT_LABELS } from "./labels.js";
 import { ShipHullDiagram } from "./ShipHullDiagram.js";
+import { useGameStore } from "./state/game-store.js";
+import { selectActiveColony } from "./state/selectors.js";
 
 const SLOT_LEGEND: { slot: SlotType; varName: string }[] = [
   { slot: "weapon", varName: "--slot-weapon" },
@@ -31,11 +30,7 @@ const SLOT_LEGEND: { slot: SlotType; varName: string }[] = [
 ];
 
 interface Props {
-  blueprints: Blueprint[];
   effects: EmpireEffects;
-  activeColony: Colony | null;
-  fleets: Fleet[];
-  send: (msg: ClientMessage) => void;
 }
 
 const EMPTY = { name: "", chassisId: "" as ChassisId | "", modules: [] as ModuleId[] };
@@ -59,7 +54,10 @@ function Gauge({ label, used, max }: { label: string; used: number; max: number 
 }
 
 /** Concepteur de vaisseaux (chantier 13) : liste des plans + éditeur châssis/modules. */
-export function ShipDesigner({ blueprints, effects, activeColony, fleets, send }: Props) {
+export function ShipDesigner({ effects }: Props) {
+  const [searchParams] = useSearchParams();
+  const activeColony = useGameStore(selectActiveColony(searchParams.get("colony")));
+  const { blueprints, fleets, send } = useGameStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<typeof EMPTY>(EMPTY);
 
