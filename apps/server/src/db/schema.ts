@@ -1,8 +1,9 @@
 import { integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
- * L'univers n'est pas stocké : il est régénéré depuis la seed (déterministe).
- * La DB ne contient que l'état dynamique de la partie.
+ * L'univers est STOCKÉ en DB (tables `universe_*`, chantier 18) et la base fait
+ * autorité. La seed n'est conservée qu'en traçabilité et pour matérialiser les
+ * galaxies futures — jamais pour reconstruire l'existant.
  */
 export const games = sqliteTable("games", {
   id: text("id").primaryKey(),
@@ -11,8 +12,8 @@ export const games = sqliteTable("games", {
   lastTickAt: integer("last_tick_at").notNull(),
   createdAt: integer("created_at").notNull(),
   /**
-   * Nombre de galaxies générées (chantier 9). L'univers est la suite infinie de la
-   * seed tronquée ici ; ce compteur croît quand le front de peuplement avance.
+   * ≡ nombre de galaxies matérialisées dans `universe_galaxies` — aligné
+   * transactionnellement par `appendGalaxies`. Croît quand la frontière s'ouvre.
    */
   galaxyCount: integer("galaxy_count").notNull().default(3),
 });

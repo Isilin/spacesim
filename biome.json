@@ -8,6 +8,8 @@
       ".pnpm-store/**",
       "apps/server/drizzle/meta/**",
       "apps/server/drizzle/*.sql",
+      "apps/web/test-results/**",
+      "apps/web/playwright-report/**",
       "pnpm-lock.yaml",
       "packages/shared/src/universe.fixture.json"
     ]

@@ -1,5 +1,9 @@
 # SpaceSim — Plan MVP
 
+> **Chantier 18 — univers persistant en DB (27/07/2026)** : l'univers est **matérialisé
+> en tables `universe_*`** et la base fait autorité — le générateur ne sert plus qu'à
+> ouvrir la frontière. **Le serveur officiel ne sera jamais réinitialisé** : seulement
+> étendu, corrigé, amélioré. Voir « Chantier 18 » en fin de document. **Livré.**
 > **Chantiers 14 → 17 (25/07/2026)** : économie PNJ (empires PNJ autonomes, contrats de
 > fourniture) · factions (humeurs essor/pénurie/embargo, contrats de pénurie) · diplomatie
 > (relations pacte/alliance/guerre, propositions) · objectifs éphémères et événements de monde
@@ -38,8 +42,8 @@
 > (méga-projet financé en ressources, liens de saut vers les galaxies lointaines) ·
 > **6 flottes militaires + combat PvE** (vaisseaux de guerre, directives par phase, batailles
 > Endless Space-like en 3 portées, repaires pirates PNJ, rapports de bataille archivés).
-> **Prochain chantier : 7 — multi territorial** (voir « Chantier 7 » en fin de document),
-> puis pass d'équilibrage/polish continu.
+> *(Historique : le « prochain chantier 7 » annoncé ici a été livré depuis, comme les
+> chantiers 8 à 18.)*
 >
 > **Build sans Node natif (21/07/2026)** : cette machine n'a pas Node/pnpm installés ;
 > le projet se build, se teste et se lance via Docker (`Dockerfile` + `docker-compose.yml`).
@@ -62,7 +66,7 @@ Décisions actées avec l'utilisateur :
 | Vaisseaux | Abstraits : coût + timer de trajet, pas de flotte à l'unité |
 | Progression | Mix expansion + mini-arbre tech (15–25 techs) |
 | Rythme | Sessions longues : timers courts (minutes), beaucoup d'actions |
-| Univers | 10–30 systèmes générés (seed), région unique |
+| Univers | 10–30 systèmes générés (seed), région unique *(historique MVP — univers infini depuis le chantier 9, persistant en DB depuis le 18)* |
 | Objectif | Sandbox + jalons mesurables |
 | Ambiance | Esthétique hard sci-fi, richesse de lore space opera (habillage léger au MVP, extensible) |
 | UI | Dashboards + carte 2D (3D éventuelle bien plus tard) |
@@ -76,7 +80,7 @@ Décisions actées avec l'utilisateur :
 - `apps/server` — Node + **Fastify**, moteur de ticks, WebSocket (push d'état vers le client — cohérent avec les sessions longues), persistance via **Drizzle ORM**.
 - `apps/web` — **React + Vite**, TanStack Query/Router (ou Zustand pour l'état temps réel), carte 2D en SVG/Canvas.
 
-**Base de données : SQLite (better-sqlite3) au MVP**, zéro infra sur Windows ; Drizzle rend la migration PostgreSQL triviale au moment du multi. Pas de comptes au MVP : un profil/partie local, mais toute la simulation côté serveur (le client n'est qu'un dashboard) — c'est ce qui préserve le chemin vers l'univers unique.
+**Base de données : SQLite (better-sqlite3) au MVP**, zéro infra sur Windows ; Drizzle rend la migration PostgreSQL triviale au moment du multi. Pas de comptes au MVP : un profil/partie local, mais toute la simulation côté serveur (le client n'est qu'un dashboard) — c'est ce qui préserve le chemin vers l'univers unique. *(Historique MVP : comptes livrés au chantier 8, univers persistant en DB au chantier 18 ; la migration Postgres est le chantier 20.)*
 
 **Moteur temps hybride** :
 - Tick serveur (~5 s) : production des ressources, croissance/besoins de population, consommation.
@@ -85,7 +89,7 @@ Décisions actées avec l'utilisateur :
 ## Design du jeu (MVP)
 
 ### Univers
-- Génération procédurale à seed : ~20 systèmes reliés par des liaisons (graphe), 2–5 planètes/système.
+- Génération procédurale à seed : ~20 systèmes reliés par des liaisons (graphe), 2–5 planètes/système. *(Historique MVP — univers extensible à l'infini depuis le chantier 9, matérialisé en DB depuis le 18.)*
 - Types de planètes (tellurique, océanique, volcanique, glacée, aride, gazeuse) → **habitabilité** (0–100) + gisements (modificateurs de rendement par ressource).
 - Brouillard léger : les systèmes non visités montrent peu d'infos ; une sonde (abstraite, coût + timer) révèle les détails. Donne un geste d'« exploration » à bas coût de dev.
 
@@ -419,6 +423,8 @@ distinct de `explorationDirty`, avec test de non-régression sur le chemin de no
 
 > ⚠️ La génération ayant changé pour une seed donnée, les parties antérieures ne sont pas
 > migrables : `apps/server/spacesim.db` a été supprimé au passage.
+> *(Pratique close par le chantier 18 : l'univers vit désormais en DB et un changement du
+> générateur n'invalide plus rien.)*
 
 ### Chantier 10 — Vue planète / lune ✅ (23/07/2026)
 
@@ -514,7 +520,7 @@ dédiées à la conception, croisées entre branches : armement plasma, blindage
 et minage).
 
 **Serveur autoritaire** (`apps/server`). Table `blueprints` (migration 0012, changement cassant —
-`spacesim.db` supprimée). `Empire.blueprintMap` chargée/persistée, amorcée aux presets de départ
+`spacesim.db` supprimée ; *pratique close par le chantier 18*). `Empire.blueprintMap` chargée/persistée, amorcée aux presets de départ
 à la création d'un empire. Actions `createBlueprint`/`updateBlueprint`/`deleteBlueprint`
 (revalidées côté serveur) et `buildBlueprint` (routé par `domain` vers le chantier civil ou la
 file de la flotte). Le combat (`attackLair`/`attackFleet`/`attackColony`) construit une carte de
@@ -607,3 +613,40 @@ libellés dédiés par genre.
 
 **Chantiers 14 à 17 (économie PNJ, factions, diplomatie, objectifs/événements de monde) :
 terminés.**
+
+### Chantier 18 — Univers persistant en DB ✅ (27/07/2026)
+
+**La vision devient un invariant.** Comme EVE Online : une fois le serveur officiel lancé,
+son univers ne sera **jamais réinitialisé** — seulement étendu (frontière), corrigé
+(UPDATE ciblé) et amélioré (nouvelles galaxies produites par un générateur qui évolue).
+Jusqu'ici l'univers était régénéré depuis la seed à chaque boot, et toute modification du
+générateur invalidait la base (deux resets actés aux chantiers 9 et 13 — les derniers de
+l'histoire du projet).
+
+**Matérialisation.** Six tables `universe_*` (galaxies, systèmes, liens, corps, ceintures,
+stations) deviennent la **source de vérité**. Colonnes `*_index` pour reconstruire les
+tableaux à l'identique ; `parent_galaxy_index` **figé à la matérialisation** (l'arbre des
+trous de ver ne dépend plus des constantes de spirale) ; `generator_version` pour la
+traçabilité. `universe-store.ts` : `appendGalaxies` (une transaction, idempotent, aligne
+`games.galaxyCount`), `loadUniverse` (l'UPDATE manuel d'un corps survit au reboot — testé),
+`withParentIndexes`.
+
+**Le générateur ne sert plus qu'à la frontière.** `growUniverse` matérialise les galaxies
+neuves ; le boot charge depuis la DB (`GameRuntime` reçoit l'univers, ne le génère plus).
+`galaxyIndexOfSystem` dérive de l'id (`gal-N`), plus de la position du tableau.
+
+**Verrou anti-corruption.** `GENERATOR_VERSION` (shared) + fixture gelée
+`universe.fixture.json` vérifiée par snapshot : modifier le flux de sortie du générateur
+casse le test ; l'assumer = régénérer la fixture **et** bumper la version dans le même
+commit. Règle sœur : tout habillage dérivé se calcule depuis l'**id** du corps (patron
+`bodyPhysicals`, chantier 10), jamais depuis le flux RNG.
+
+**Boot explicite.** `GameEngine.load()` lève sur base vierge (un serveur officiel ne peut
+pas recréer un univers par accident) ; `bootstrapNewUniverse()` est le geste de création,
+une fois dans la vie du serveur ; `loadOrBootstrap()` reste le confort dev/tests. Une base
+d'avant ce chantier est migrée par un **rattrapage one-shot** au boot (matérialisation
+depuis la seed, parents figés sur les positions réelles), idempotent et rejouable.
+
+**Hors périmètre, noté pour la suite** : lever la résidence RAM de l'univers
+(`MAX_GALAXIES = 200` conservé), paginer le payload `hello` (univers complet à chaque
+connexion), FK réellement appliquées au schéma Postgres (chantier 20).

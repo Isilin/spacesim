@@ -1,6 +1,8 @@
 # SpaceSim
 
-Jeu de gestion spatiale par navigateur (solo pour le MVP, multi univers-unique visé à terme).
+Jeu de gestion spatiale par navigateur, façon EVE Online : un **univers unique, persistant
+et multijoueur**. Une fois le serveur officiel lancé, il ne sera **jamais réinitialisé** —
+seulement étendu, corrigé, amélioré.
 Design complet et roadmap : [docs/design.md](docs/design.md).
 
 ## Architecture
@@ -14,11 +16,25 @@ Monorepo pnpm workspaces, TypeScript partout :
 - `apps/web` — React + Vite + React Router. Proxy Vite `/ws` → serveur :3001.
 
 Principes :
-- L'univers n'est **pas stocké en DB** : régénéré depuis la seed (générateur déterministe, `packages/shared/src/universe.ts`). La DB ne contient que l'état dynamique.
-- L'univers est **extensible à l'infini** (chantier 9) : chaque galaxie se génère seule depuis
-  `seed:galaxy:<index>` et se place sur une spirale d'angle d'or. Seul `games.galaxyCount` est
-  persisté ; `ensureFrontier()` l'incrémente pour garder des galaxies vierges devant les joueurs.
-  Toute modification du générateur invalide les parties existantes (supprimer `spacesim.db`).
+- **L'univers est stocké en DB** (chantier 18, tables `universe_*`) et la DB fait
+  **autorité** : le générateur (`packages/shared/src/universe.ts`) ne sert qu'à
+  **matérialiser** les galaxies neuves à l'ouverture de la frontière
+  (`growUniverse` → `appendGalaxies`, transactionnel). Une galaxie matérialisée ne change
+  plus jamais ; corriger l'univers officiel = UPDATE ciblé, jamais régénération.
+- **Modifier le générateur n'invalide plus rien** : cela n'affecte que les galaxies
+  futures. Tout changement de son flux de sortie doit bumper `GENERATOR_VERSION` et
+  régénérer `universe.fixture.json` (`vitest -u`) dans le **même commit** — la fixture
+  gelée casse sinon. Les habillages dérivés se calculent depuis l'**id** du corps
+  (patron `bodyPhysicals`), jamais depuis le flux du générateur.
+- L'univers reste **extensible à l'infini** (chantier 9) : chaque galaxie se génère seule
+  depuis `seed:galaxy:<index>` sur une spirale d'angle d'or ; `ensureFrontier()` garde des
+  galaxies vierges devant les joueurs. L'arbre inter-galactique est figé à la
+  matérialisation (`parent_galaxy_index`) — les constantes de spirale ne recâblent plus le
+  réseau existant.
+- Création d'univers = geste explicite : `GameEngine.bootstrapNewUniverse()` (une fois dans
+  la vie du serveur). `load()` lève sur une base vierge ; `loadOrBootstrap()` est le
+  comportement dev/tests. Une base d'avant le chantier 18 est matérialisée par un
+  rattrapage one-shot idempotent au boot.
 - Temps hybride : tick serveur (5 s, `TICK_MS`) pour la production ; timers réels absolus (timestamps en DB) pour constructions/trajets/recherche, résolus par le tick qui les dépasse. Catch-up hors-ligne borné (`MAX_CATCHUP_TICKS`).
 - Toute règle de simulation = fonction pure dans `shared`, appelée par le serveur. Les constantes d'équilibrage vivent dans `shared` (fichiers `constants.ts` / `content/`).
 - **Logistique en deux stocks** (chantier 12) : chaque colonie a un stock **au sol**
@@ -105,7 +121,9 @@ chaque zone de code assainie, afin de ne pas masquer un chantier de refactorisat
 centaines de corrections non liées.
 
 Les deux serveurs de dev sont aussi déclarés dans `.claude/launch.json` (noms `server` et `web`).
-La DB SQLite (`apps/server/spacesim.db`) se supprime sans risque pour repartir d'une partie neuve.
+Supprimer la DB de dev (`apps/server/spacesim.db`) jette **l'univers de dev** — acceptable en
+local uniquement (`loadOrBootstrap` en recrée un au boot). Le futur serveur officiel, lui, ne
+repart jamais de zéro : c'est l'invariant du chantier 18.
 
 ## Environnement Docker (build sans Node natif)
 
