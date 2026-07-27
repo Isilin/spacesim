@@ -24,18 +24,12 @@ import {
   type Gateway,
   type PirateLair,
   type MiningOutpost,
-  type Mission,
-  type Objective,
   type Planet,
   type ResourceId,
-  type Relation,
   type RelationProposal,
-  type Route,
   type Stocks,
   type TradeStation,
-  type Transfer,
   type Universe,
-  type WorldEvent,
   type WorldEventKind,
 } from "@spacesim/shared";
 import type { EmpireSnapshot } from "@spacesim/protocol";
@@ -156,17 +150,8 @@ export class GameEngine {
   private get lairMap(): Map<string, PirateLair> {
     return this.runtime.lairMap;
   }
-  private get relationMap(): Map<string, Relation> {
-    return this.runtime.relationMap;
-  }
   private get proposalMap(): Map<string, RelationProposal> {
     return this.runtime.proposalMap;
-  }
-  private get objectiveMap(): Map<string, Objective> {
-    return this.runtime.objectiveMap;
-  }
-  private get worldEventMap(): Map<string, WorldEvent> {
-    return this.runtime.worldEventMap;
   }
   /** Empires partageant cet univers (chantier 7b). Un seul instancié à ce stade. */
   private get empires(): Map<string, Empire> {
@@ -184,20 +169,8 @@ export class GameEngine {
   private get colonyMap(): Map<string, Colony> {
     return this.defaultEmpire.colonyMap;
   }
-  private get transferMap(): Map<string, Transfer> {
-    return this.defaultEmpire.transferMap;
-  }
-  private get missionMap(): Map<string, Mission> {
-    return this.defaultEmpire.missionMap;
-  }
-  private get routeMap(): Map<string, Route> {
-    return this.defaultEmpire.routeMap;
-  }
   private get outpostMap(): Map<string, MiningOutpost> {
     return this.defaultEmpire.outpostMap;
-  }
-  private get fleetMap(): Map<string, Fleet> {
-    return this.defaultEmpire.fleetMap;
   }
   private get effects(): EmpireEffects {
     return this.defaultEmpire.effects;
@@ -647,14 +620,6 @@ export class GameEngine {
     this.diplomacy.persistFactionState(state);
   }
 
-  private persistRelation(relation: Relation): void {
-    this.diplomacy.persistRelation(relation);
-  }
-
-  private persistObjective(objective: Objective): void {
-    this.objective.persistObjective(objective);
-  }
-
   // ── Extension de l'univers (chantier 9) ────────────────────────────────
 
   /** Maintient la frontière glissante : toujours des galaxies vierges devant les joueurs. */
@@ -689,89 +654,14 @@ export class GameEngine {
     if (delta <= 0) return;
 
     this.clock.lastTickAt -= delta;
-    if (this.defaultEmpire.research) {
-      this.defaultEmpire.research = {
-        ...this.defaultEmpire.research,
-        startedAt: this.defaultEmpire.research.startedAt - delta,
-        finishesAt: this.defaultEmpire.research.finishesAt - delta,
-      };
-    }
-    for (const [id, colony] of this.colonyMap) {
-      if (colony.queue.length === 0 && colony.shipQueue.length === 0) continue;
-      this.colonyMap.set(id, {
-        ...colony,
-        queue: colony.queue.map((q) => ({
-          ...q,
-          startedAt: q.startedAt - delta,
-          finishesAt: q.finishesAt - delta,
-        })),
-        shipQueue: colony.shipQueue.map((q) => ({
-          ...q,
-          startedAt: q.startedAt - delta,
-          finishesAt: q.finishesAt - delta,
-        })),
-      });
-    }
-    // Convois, missions, routes automatiques, réservations de vaisseaux : domaine de
-    // LogisticsService (chantier 19.8).
+    // Chaque service décale les timers de son propre domaine (chantier 19.8).
+    this.industry.shiftTime(this.defaultEmpire, delta);
     this.logistics.shiftTime(this.defaultEmpire, delta);
-    // Chantiers de portail : domaine de GatewayService (chantier 19.8).
     this.gateway.shiftTime(delta);
-    // Contrats : partagés comme les portails — l'échéance suit le même décalage.
-    for (const [id, contract] of this.contractMap) {
-      if (contract.status !== "open") continue;
-      const next: Contract = { ...contract, deadline: contract.deadline - delta };
-      this.contractMap.set(id, next);
-      this.contract.persistContract(next);
-    }
-    // Humeurs de faction : même décalage, pour qu'un fast-forward de dev/test les résolve.
-    for (const [id, state] of this.factionStateMap) {
-      if (state.moodUntil === null) continue;
-      const next: FactionState = { ...state, moodUntil: state.moodUntil - delta };
-      this.factionStateMap.set(id, next);
-      this.persistFactionState(next);
-    }
-    // Cooldown de guerre : même décalage, pour qu'un fast-forward de dev/test le résolve.
-    for (const [id, relation] of this.relationMap) {
-      if (relation.until === null) continue;
-      const next: Relation = { ...relation, until: relation.until - delta };
-      this.relationMap.set(id, next);
-      this.persistRelation(next);
-    }
-    // Échéance des objectifs éphémères : même décalage.
-    for (const [id, objective] of this.objectiveMap) {
-      if (objective.status !== "open") continue;
-      const next: Objective = { ...objective, deadline: objective.deadline - delta };
-      this.objectiveMap.set(id, next);
-      this.persistObjective(next);
-    }
-    // Échéance des événements de monde déclenchés via l'outil de dev (Date.now() réel,
-    // contrairement au tirage naturel qui utilise déjà l'horloge simulée).
-    for (const [id, event] of this.worldEventMap) {
-      const next: WorldEvent = { ...event, expiresAt: event.expiresAt - delta };
-      this.worldEventMap.set(id, next);
-      this.diplomacy.persistWorldEvent(next);
-    }
-    for (const [id, fleet] of this.fleetMap) {
-      if (fleet.queue.length === 0 && !fleet.movement) continue;
-      const next: Fleet = {
-        ...fleet,
-        queue: fleet.queue.map((q) => ({
-          ...q,
-          startedAt: q.startedAt - delta,
-          finishesAt: q.finishesAt - delta,
-        })),
-        movement: fleet.movement
-          ? {
-              ...fleet.movement,
-              departedAt: fleet.movement.departedAt - delta,
-              arrivesAt: fleet.movement.arrivesAt - delta,
-            }
-          : null,
-      };
-      this.fleetMap.set(id, next);
-      this.persistFleet(next);
-    }
+    this.contract.shiftTime(delta);
+    this.diplomacy.shiftTime(delta);
+    this.objective.shiftTime(delta);
+    this.fleetService.shiftTime(this.defaultEmpire, delta);
     this.persistResearch(this.defaultEmpire);
 
     const missed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);

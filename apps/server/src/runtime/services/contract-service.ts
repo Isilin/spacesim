@@ -262,4 +262,14 @@ export class ContractService {
       this.persistContract(next);
     }
   }
+
+  /** Outil de dev uniquement : décale l'échéance des contrats ouverts (dev-fastforward). */
+  shiftTime(deltaMs: number): void {
+    for (const [id, contract] of this.runtime.contractMap) {
+      if (contract.status !== "open") continue;
+      const next: Contract = { ...contract, deadline: contract.deadline - deltaMs };
+      this.runtime.contractMap.set(id, next);
+      this.persistContract(next);
+    }
+  }
 }

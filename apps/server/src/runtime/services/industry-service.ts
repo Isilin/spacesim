@@ -484,4 +484,35 @@ export class IndustryService {
   persistColony(colony: Colony): void {
     this.colonyRepo.save(colony);
   }
+
+  /**
+   * Outil de dev uniquement : décale les timers de recherche et de production/
+   * construction (dev-fastforward). Ne persiste pas les colonies, à l'identique du
+   * comportement historique de `devFastForward` (seule la recherche l'était).
+   */
+  shiftTime(empire: Empire, deltaMs: number): void {
+    if (empire.research) {
+      empire.research = {
+        ...empire.research,
+        startedAt: empire.research.startedAt - deltaMs,
+        finishesAt: empire.research.finishesAt - deltaMs,
+      };
+    }
+    for (const [id, colony] of empire.colonyMap) {
+      if (colony.queue.length === 0 && colony.shipQueue.length === 0) continue;
+      empire.colonyMap.set(id, {
+        ...colony,
+        queue: colony.queue.map((q) => ({
+          ...q,
+          startedAt: q.startedAt - deltaMs,
+          finishesAt: q.finishesAt - deltaMs,
+        })),
+        shipQueue: colony.shipQueue.map((q) => ({
+          ...q,
+          startedAt: q.startedAt - deltaMs,
+          finishesAt: q.finishesAt - deltaMs,
+        })),
+      });
+    }
+  }
 }

@@ -116,4 +116,14 @@ export class ObjectiveService {
       }
     }
   }
+
+  /** Outil de dev uniquement : décale l'échéance des objectifs ouverts (dev-fastforward). */
+  shiftTime(deltaMs: number): void {
+    for (const [id, objective] of this.runtime.objectiveMap) {
+      if (objective.status !== "open") continue;
+      const next: Objective = { ...objective, deadline: objective.deadline - deltaMs };
+      this.runtime.objectiveMap.set(id, next);
+      this.persistObjective(next);
+    }
+  }
 }

@@ -378,4 +378,29 @@ export class DiplomacyService {
     this.notify();
     return event.id;
   }
+
+  /**
+   * Outil de dev uniquement : décale les échéances de son domaine (dev-fastforward) —
+   * humeur de faction, cooldown de guerre, événements de monde. Toutes ces collections
+   * sont partagées (`GameRuntime`), pas de paramètre empire.
+   */
+  shiftTime(deltaMs: number): void {
+    for (const [id, state] of this.runtime.factionStateMap) {
+      if (state.moodUntil === null) continue;
+      const next: FactionState = { ...state, moodUntil: state.moodUntil - deltaMs };
+      this.runtime.factionStateMap.set(id, next);
+      this.persistFactionState(next);
+    }
+    for (const [id, relation] of this.runtime.relationMap) {
+      if (relation.until === null) continue;
+      const next: Relation = { ...relation, until: relation.until - deltaMs };
+      this.runtime.relationMap.set(id, next);
+      this.persistRelation(next);
+    }
+    for (const [id, event] of this.runtime.worldEventMap) {
+      const next: WorldEvent = { ...event, expiresAt: event.expiresAt - deltaMs };
+      this.runtime.worldEventMap.set(id, next);
+      this.persistWorldEvent(next);
+    }
+  }
 }

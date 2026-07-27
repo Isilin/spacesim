@@ -513,6 +513,30 @@ export class FleetService {
     );
   }
 
+  /** Outil de dev uniquement : décale les timers de file/déplacement (dev-fastforward). */
+  shiftTime(empire: Empire, deltaMs: number): void {
+    for (const [id, fleet] of empire.fleetMap) {
+      if (fleet.queue.length === 0 && !fleet.movement) continue;
+      const next: Fleet = {
+        ...fleet,
+        queue: fleet.queue.map((q) => ({
+          ...q,
+          startedAt: q.startedAt - deltaMs,
+          finishesAt: q.finishesAt - deltaMs,
+        })),
+        movement: fleet.movement
+          ? {
+              ...fleet.movement,
+              departedAt: fleet.movement.departedAt - deltaMs,
+              arrivesAt: fleet.movement.arrivesAt - deltaMs,
+            }
+          : null,
+      };
+      empire.fleetMap.set(id, next);
+      this.persistFleet(next);
+    }
+  }
+
   persistLair(lair: PirateLair, insert = false): void {
     this.repo.saveLair(lair, insert);
   }
