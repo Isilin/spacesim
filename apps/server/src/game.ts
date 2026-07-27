@@ -1,15 +1,11 @@
 import {
-  computeEffects,
   createRng,
-  emptyOrbital,
-  emptyResources,
   FACTION_MOOD_DURATION_MS,
   GATEWAY_BUILD_MS,
   gatewayCost,
   gatewayCovered,
   gatewayLinks,
   INITIAL_GALAXIES,
-  pickStarterGalaxy,
   MAX_CATCHUP_TICKS,
   WORLD_EVENT_DURATION_MS,
   pirateBounty,
@@ -43,7 +39,6 @@ import {
   type ShipId,
   type StationMarket,
   type Stocks,
-  type TechId,
   type TradeStation,
   type Transfer,
   type Universe,
@@ -57,6 +52,7 @@ import { db, schema } from "./db/index.js";
 import { Empire, type Clock } from "./empire.js";
 import { GameRuntime } from "./runtime/game-runtime.js";
 import { consoleLogger, type Logger } from "./runtime/logger.js";
+import { BootstrapService } from "./runtime/services/bootstrap-service.js";
 import { DiplomacyService } from "./runtime/services/diplomacy-service.js";
 import { ExplorationService } from "./runtime/services/exploration-service.js";
 import { FleetService } from "./runtime/services/fleet-service.js";
@@ -81,27 +77,6 @@ const DEFAULT_DIRECTIVES: Record<CombatPhase, string> = {
 /** Batailles archivées conservées. */
 const MAX_BATTLES = 20;
 
-/** Empire par défaut d'une partie solo (chantier 7 — socle multi-locataire). */
-const DEFAULT_PLAYER_NAME = "Empire";
-const DEFAULT_PLAYER_COLOR = "#4fd1ff";
-
-/** Couleurs de territoire attribuées aux empires supplémentaires (outil de dev). */
-const DEV_EMPIRE_COLORS = ["#4fd1ff", "#ff6b6b", "#ffd93d", "#6bcB77", "#c77dff", "#ff922b"];
-
-/**
- * Empires PNJ amorcés sur une partie neuve (chantier 14) : peu nombreux, pilotés par
- * l'IA économique — un monde vivant dès le premier tick, pas encore une population.
- */
-const NPC_EMPIRE_COUNT = 3;
-const NPC_EMPIRE_NAMES = [
-  "Confédération de Kess",
-  "Dominion Vashtar",
-  "République Solenne",
-  "Directoire Zhorn",
-  "Ligue Cindra",
-  "Hégémonie Aurel",
-];
-
 /** Signal « l'état a changé » : chaque connexion recompose alors le snapshot de son empire. */
 export type StateListener = () => void;
 
@@ -124,6 +99,8 @@ export class GameEngine {
   private fleetService: FleetService;
   /** Diplomatie, objectifs éphémères, événements de monde et humeur de faction. */
   private diplomacy: DiplomacyService;
+  /** Bootstrap des empires (compte joueur, PNJ, colonie mère) et outils de dev associés. */
+  private bootstrap: BootstrapService;
   /** Injecté depuis le boot (`setLogger`) ; console brute par défaut (tests, scripts). */
   private logger: Logger = consoleLogger;
   private listeners = new Set<StateListener>();
@@ -284,6 +261,17 @@ export class GameEngine {
       () => this.notify(),
       logger,
       (colony) => this.persistColony(colony),
+    );
+    this.bootstrap = new BootstrapService(
+      this.runtime,
+      () => this.notify(),
+      logger,
+      (colony) => this.persistColony(colony),
+      (empire) => this.seedStarterBlueprints(empire),
+      () => this.ensureFrontier(),
+      () => this.exploration.galaxyOccupancy(),
+      (count) => this.exploration.growUniverse(count),
+      (empire, systemId) => this.markExplored(empire, systemId),
     );
   }
 
@@ -1216,86 +1204,6 @@ export class GameEngine {
   }
 
   /**
-   * Choisit la planète mère d'un empire à naître (chantier 9.4).
-   *
-   * Le nouvel arrivant est posé dans une **galaxie de départ** — la plus proche du
-   * centre ayant encore de la place, en préférant celles déjà peuplées : les joueurs
-   * se retrouvent voisins, avec commerce, frontières et PvP dès les premières heures.
-   * Dans cette galaxie, on prend la planète la plus habitable d'un système vierge
-   * (brouillards disjoints). L'univers s'étend si plus aucune galaxie n'a de place.
-   */
-  private pickHomePlanet(): Planet | null {
-    const starter = pickStarterGalaxy(this.exploration.galaxyOccupancy());
-    if (starter === null) {
-      // Plus une seule place : ouvrir la frontière, puis viser la première galaxie neuve.
-      const before = this.universe.galaxies.length;
-      this.exploration.growUniverse(1);
-      if (this.universe.galaxies.length === before) return null; // plafond atteint
-      return this.pickHomePlanet();
-    }
-
-    const occupiedPlanets = new Set<string>();
-    const occupiedSystems = new Set<string>();
-    for (const e of this.empires.values()) {
-      for (const c of e.colonyMap.values()) {
-        occupiedPlanets.add(c.planetId);
-        const sys = this.planetsById.get(c.planetId)?.systemId;
-        if (sys) occupiedSystems.add(sys);
-      }
-    }
-    const candidates = this.universe.galaxies[starter]!.systems.flatMap((s) => s.planets)
-      .filter((p) => p.type !== "gas" && !occupiedPlanets.has(p.id))
-      .sort((a, b) => b.habitability - a.habitability);
-    const freeSystem = candidates.filter((p) => !occupiedSystems.has(p.systemId));
-    return freeSystem[0] ?? candidates[0] ?? null;
-  }
-
-  /**
-   * Instancie un nouvel empire : ligne `players` + colonie mère dans sa galaxie de
-   * départ (brouillard isolé). Retourne l'`Empire`, ou `null` si l'univers ne peut
-   * plus accueillir personne (plafond de galaxies atteint).
-   */
-  private createEmpire(
-    id: string,
-    name?: string,
-    accountId: string | null = null,
-    kind: "human" | "npc" = "human",
-  ): Empire | null {
-    const home = this.pickHomePlanet();
-    if (!home) return null;
-
-    const index = this.empires.size;
-    const empireName = (name?.trim() || `Empire ${index + 1}`).slice(0, 40);
-    const color = DEV_EMPIRE_COLORS[index % DEV_EMPIRE_COLORS.length]!;
-    db.insert(schema.players)
-      .values({
-        id,
-        gameId: this.clock.id,
-        accountId,
-        kind,
-        name: empireName,
-        color,
-        joinedAt: Date.now(),
-        researched: "[]",
-        research: null,
-        researchQueue: "[]",
-        influence: 0,
-        factionRep: "{}",
-        explored: "[]",
-      })
-      .run();
-    const empire = new Empire(id, empireName, color, accountId, kind);
-    this.empires.set(id, empire);
-    this.foundHomeColony(empire, home);
-    this.seedStarterBlueprints(empire);
-    // L'arrivant peut avoir entamé la dernière galaxie vierge : on repousse le bord.
-    this.ensureFrontier();
-    this.notify();
-    this.logger.info(`[game] empire « ${empireName} » instancié (${this.empires.size} au total)`);
-    return empire;
-  }
-
-  /**
    * Amorce quelques empires PNJ si le monde n'en a encore aucun (chantier 14) : le
    * monde n'est plus vide au premier tick, l'IA économique (`npcTick`) les fait vivre
    * ensuite. Public et idempotent (compte les PNJ déjà présents plutôt que de dépendre
@@ -1303,12 +1211,8 @@ export class GameEngine {
    * doubler la population, y compris pour une partie créée avant ce chantier. Distinct
    * de `load()` à dessein — les tests qui n'en ont pas besoin restent à un seul empire.
    */
-  ensureNpcPopulation(count = NPC_EMPIRE_COUNT): void {
-    const existing = [...this.empires.values()].filter((e) => e.kind === "npc").length;
-    for (let i = existing; i < count; i++) {
-      const name = NPC_EMPIRE_NAMES[i % NPC_EMPIRE_NAMES.length]!;
-      this.createEmpire(randomUUID(), name, null, "npc");
-    }
+  ensureNpcPopulation(count?: number): void {
+    this.bootstrap.ensureNpcPopulation(count);
   }
 
   /**
@@ -1316,10 +1220,7 @@ export class GameEngine {
    * dans cette partie — l'inscription en crée un via `createEmpireForAccount`.
    */
   empireForAccount(accountId: string): Empire | null {
-    for (const empire of this.empires.values()) {
-      if (empire.accountId === accountId) return empire;
-    }
-    return null;
+    return this.bootstrap.empireForAccount(accountId);
   }
 
   /**
@@ -1329,32 +1230,12 @@ export class GameEngine {
    * obtiennent un empire neuf. null si l'univers n'a plus de planète d'accueil.
    */
   createEmpireForAccount(accountId: string, name?: string): Empire | null {
-    const existing = this.empireForAccount(accountId);
-    if (existing) return existing;
-
-    // "human" exclut les PNJ (chantier 14) : sans ce filtre, la deuxième inscription
-    // pourrait adopter un empire piloté par l'IA au lieu de l'empire amorcé au boot.
-    const orphan = [...this.empires.values()].find(
-      (e) => e.accountId === null && e.kind === "human",
-    );
-    if (orphan) {
-      orphan.accountId = accountId;
-      const empireName = name?.trim().slice(0, 40);
-      if (empireName) orphan.name = empireName;
-      db.update(schema.players)
-        .set({ accountId, name: orphan.name })
-        .where(eq(schema.players.id, orphan.id))
-        .run();
-      this.logger.info(`[game] empire « ${orphan.name} » adopté par un compte`);
-      this.notify();
-      return orphan;
-    }
-    return this.createEmpire(randomUUID(), name, accountId);
+    return this.bootstrap.createEmpireForAccount(accountId, name);
   }
 
   /** Empire par son id (outils de dev). */
   empireById(id: string): Empire | null {
-    return this.empires.get(id) ?? null;
+    return this.bootstrap.empireById(id);
   }
 
   /** Empire par défaut (outils de dev uniquement : `/dev/armfleet` sans `empireId`). */
@@ -1364,12 +1245,12 @@ export class GameEngine {
 
   /** Outil de dev uniquement : instancie un empire supplémentaire. Retourne son id. */
   devSpawnEmpire(name?: string): string | null {
-    return this.createEmpire(randomUUID(), name)?.id ?? null;
+    return this.bootstrap.devSpawnEmpire(name);
   }
 
   /** Outil de dev uniquement : instancie un empire PNJ (chantier 14). Retourne son id. */
   devSpawnNpcEmpire(name?: string): string | null {
-    return this.createEmpire(randomUUID(), name, null, "npc")?.id ?? null;
+    return this.bootstrap.devSpawnNpcEmpire(name);
   }
 
   /** Outil de dev uniquement : arme une flotte d'un empire dans un système (tests PvP). */
@@ -1405,41 +1286,12 @@ export class GameEngine {
 
   /** Outil de dev uniquement : résumé par empire (état en mémoire) pour l'observation. */
   devEmpireSummaries(): unknown {
-    return [...this.empires.values()].map((e) => ({
-      id: e.id,
-      name: e.name,
-      color: e.color,
-      kind: e.kind,
-      isDefault: e.id === this.defaultEmpire.id,
-      influence: Math.round(e.influence * 100) / 100,
-      researched: e.researched.length,
-      claimed: e.claimedSystemIds.length,
-      exploredCount: e.explored.size,
-      exploredSystemIds: [...e.explored],
-      colonies: [...e.colonyMap.values()].map((c) => ({
-        name: c.name,
-        systemId: this.planetsById.get(c.planetId)?.systemId ?? "?",
-        population: Math.round(c.population * 100) / 100,
-        credits: Math.round(c.resources.credits),
-        ore: Math.round(c.resources.ore),
-        energy: Math.round(c.resources.energy),
-        food: Math.round(c.resources.food),
-      })),
-      fleets: e.fleetMap.size,
-    }));
+    return this.bootstrap.devEmpireSummaries();
   }
 
   /** Outil de dev uniquement : injecte des ressources pour tester sans attendre. */
   devGrant(resources: Partial<Record<ResourceId, number>>): void {
-    const colony = this.colonies[0];
-    if (!colony) return;
-    const updated = { ...colony.resources };
-    for (const [res, amount] of Object.entries(resources) as [ResourceId, number][]) {
-      updated[res] = (updated[res] ?? 0) + amount;
-    }
-    this.colonyMap.set(colony.id, { ...colony, resources: updated });
-    this.persistColony(this.colonyMap.get(colony.id)!);
-    this.notify();
+    this.bootstrap.devGrant(resources);
   }
 
   private insertMission(
@@ -1520,36 +1372,7 @@ export class GameEngine {
    * migration 0005 ; les colonnes legacy de `games` sont supprimées en 0006 (Phase D).
    */
   private ensureDefaultPlayer(): void {
-    const player = db
-      .select()
-      .from(schema.players)
-      .where(eq(schema.players.gameId, this.clock.id))
-      .limit(1)
-      .get();
-    const defaultId = player?.id ?? randomUUID();
-    if (!player) {
-      db.insert(schema.players)
-        .values({
-          id: defaultId,
-          gameId: this.clock.id,
-          name: DEFAULT_PLAYER_NAME,
-          color: DEFAULT_PLAYER_COLOR,
-          joinedAt: Date.now(),
-          researched: "[]",
-          research: null,
-          researchQueue: "[]",
-          influence: 0,
-          factionRep: "{}",
-          explored: "[]",
-        })
-        .run();
-    }
-    for (const table of [schema.colonies, schema.fleets, schema.claims]) {
-      db.update(table)
-        .set({ ownerId: defaultId })
-        .where(and(eq(table.gameId, this.clock.id), isNull(table.ownerId)))
-        .run();
-    }
+    this.bootstrap.ensureDefaultPlayer();
   }
 
   /**
@@ -1559,118 +1382,24 @@ export class GameEngine {
    * fallback de compatibilité tant que l'identité de connexion (7c-B) n'existe pas.
    */
   private loadPlayers(): void {
-    const rows = db
-      .select()
-      .from(schema.players)
-      .where(eq(schema.players.gameId, this.clock.id))
-      .all();
-    for (const p of rows) {
-      const empire = new Empire(p.id, p.name, p.color, p.accountId, p.kind as "human" | "npc");
-      empire.researched = JSON.parse(p.researched);
-      empire.research = p.research ? JSON.parse(p.research) : null;
-      empire.researchQueue = JSON.parse(p.researchQueue);
-      empire.influence = p.influence;
-      empire.factionRep = JSON.parse(p.factionRep);
-      empire.explored = new Set(JSON.parse(p.explored));
-      empire.claimedSystemIds = db
-        .select()
-        .from(schema.claims)
-        .where(eq(schema.claims.ownerId, p.id))
-        .all()
-        .map((c) => c.systemId);
-      empire.effects = computeEffects(empire.researched as TechId[]);
-      this.empires.set(empire.id, empire);
-    }
-    this.defaultEmpire = this.empires.values().next().value!;
+    this.bootstrap.loadPlayers();
   }
 
   /** Empire propriétaire d'une colonie (pour router les entités dérivées au chargement). */
   private empireOfColony(colonyId: string): Empire {
-    for (const empire of this.empires.values()) {
-      if (empire.colonyMap.has(colonyId)) return empire;
-    }
-    return this.defaultEmpire;
+    return this.bootstrap.empireOfColony(colonyId);
   }
 
   private createHomeColony(): void {
-    const homeGalaxy = this.universe.galaxies[0]!;
-    const planets = homeGalaxy.systems.flatMap((s) => s.planets);
-    const home = planets.reduce((best, p) => (p.habitability > best.habitability ? p : best));
-    this.foundHomeColony(this.defaultEmpire, home);
-  }
-
-  /** Fonde une colonie mère pour un empire sur `planet` et révèle son système. */
-  private foundHomeColony(empire: Empire, planet: Planet): void {
-    this.insertColony(empire, {
-      id: randomUUID(),
-      planetId: planet.id,
-      name: `${planet.name} — Colonie mère`,
-      resources: { ...emptyResources(), ore: 400, energy: 200, food: 200, credits: 50 },
-      // La colonie mère naît avec son dock et une soute orbitale amorcée : le premier
-      // convoi doit rester possible sans attendre l'ascenseur (chantier 12).
-      orbitalResources: { ...emptyOrbital(), ore: 150, food: 50 },
-      liftRules: { ore: { keepGround: 250, direction: "up" } },
-      buildings: { mine: 1, power_plant: 1, farm: 1, habitat: 1, shipyard: 1, orbital_dock: 1 },
-      queue: [],
-      population: 12,
-      satisfaction: 80,
-      ships: { cargo_small: 2 },
-      shipsBusy: [],
-      shipQueue: [],
-    });
-    this.markExplored(empire, planet.systemId);
-    this.logger.info(
-      `[game] colonie mère fondée sur ${planet.name} (habitabilité ${planet.habitability}) pour « ${empire.name} »`,
-    );
+    this.bootstrap.createHomeColony();
   }
 
   private insertColony(empire: Empire, colony: Colony): void {
-    colony.ownerId = empire.id;
-    empire.colonyMap.set(colony.id, colony);
-    db.insert(schema.colonies)
-      .values({
-        id: colony.id,
-        gameId: this.clock.id,
-        ownerId: colony.ownerId,
-        planetId: colony.planetId,
-        name: colony.name,
-        resources: JSON.stringify(colony.resources),
-        orbitalResources: JSON.stringify(colony.orbitalResources),
-        liftRules: JSON.stringify(colony.liftRules),
-        buildings: JSON.stringify(colony.buildings),
-        queue: JSON.stringify(colony.queue),
-        population: colony.population,
-        satisfaction: colony.satisfaction,
-        ships: JSON.stringify(colony.ships),
-        shipsBusy: JSON.stringify(colony.shipsBusy),
-        shipQueue: JSON.stringify(colony.shipQueue),
-        createdAt: Date.now(),
-      })
-      .run();
+    this.bootstrap.insertColony(empire, colony);
   }
 
   private loadColonies(): void {
-    const rows = db.select().from(schema.colonies).all();
-    for (const row of rows) {
-      const ownerId = row.ownerId ?? this.defaultEmpire.id;
-      const empire = this.empires.get(ownerId) ?? this.defaultEmpire;
-      empire.colonyMap.set(row.id, {
-        id: row.id,
-        ownerId,
-        planetId: row.planetId,
-        name: row.name,
-        resources: JSON.parse(row.resources),
-        orbitalResources: { ...emptyOrbital(), ...JSON.parse(row.orbitalResources) },
-        liftRules: JSON.parse(row.liftRules),
-        buildings: JSON.parse(row.buildings),
-        queue: JSON.parse(row.queue),
-        population: row.population,
-        satisfaction: row.satisfaction,
-        ships: JSON.parse(row.ships),
-        shipsBusy: JSON.parse(row.shipsBusy),
-        shipQueue: JSON.parse(row.shipQueue),
-      });
-    }
+    this.bootstrap.loadColonies();
   }
 
   persistColony(colony: Colony): void {
