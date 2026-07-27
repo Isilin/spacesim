@@ -35,22 +35,23 @@ import {
 import type { EmpireSnapshot } from "@spacesim/protocol";
 import { randomUUID } from "node:crypto";
 import { Empire, type Clock } from "./empire.js";
+import { composeEngine } from "./runtime/composition.js";
 import { GameRuntime } from "./runtime/game-runtime.js";
 import { consoleLogger, type Logger } from "./runtime/logger.js";
-import { BootstrapService } from "./runtime/services/bootstrap-service.js";
-import { ContractService } from "./runtime/services/contract-service.js";
-import { DiplomacyService } from "./runtime/services/diplomacy-service.js";
-import { ExplorationService } from "./runtime/services/exploration-service.js";
-import { FleetService } from "./runtime/services/fleet-service.js";
-import { GatewayService } from "./runtime/services/gateway-service.js";
-import { IndustryService } from "./runtime/services/industry-service.js";
-import { LogisticsService } from "./runtime/services/logistics-service.js";
-import { MarketService } from "./runtime/services/market-service.js";
-import { ObjectiveService } from "./runtime/services/objective-service.js";
+import type { BootstrapService } from "./runtime/services/bootstrap-service.js";
+import type { ContractService } from "./runtime/services/contract-service.js";
+import type { DiplomacyService } from "./runtime/services/diplomacy-service.js";
+import type { ExplorationService } from "./runtime/services/exploration-service.js";
+import type { FleetService } from "./runtime/services/fleet-service.js";
+import type { GatewayService } from "./runtime/services/gateway-service.js";
+import type { IndustryService } from "./runtime/services/industry-service.js";
+import type { LogisticsService } from "./runtime/services/logistics-service.js";
+import type { MarketService } from "./runtime/services/market-service.js";
+import type { ObjectiveService } from "./runtime/services/objective-service.js";
 import { GameRepository } from "./runtime/repositories/game-repository.js";
 import { Notifier, type StateListener } from "./runtime/notifier.js";
 import { Scheduler } from "./runtime/scheduler.js";
-import { TickRunner } from "./runtime/tick-runner.js";
+import type { TickRunner } from "./runtime/tick-runner.js";
 import {
   appendGalaxies,
   loadUniverse,
@@ -201,135 +202,18 @@ export class GameEngine {
       info: (message) => this.logger.info(message),
       warn: (message) => this.logger.warn(message),
     };
-    this.industry = new IndustryService(
-      this.runtime,
-      () => this.notify(),
-      logger,
-      (fleet) => this.persistFleet(fleet),
-    );
-    // Gateway/Contract/Market ont besoin de `reserveShip`/`insertMission` (Logistics) ;
-    // Logistics a besoin de `resolveSaleAt`/`persistGateway` (Market/Gateway) pour
-    // résoudre les missions qui traversent leur domaine. Cycle cassé par des callbacks
-    // paresseux (fermetures) : l'ordre de construction n'importe pas, seul l'ordre
-    // d'AFFECTATION des champs compte, et il est complet à la fin du constructeur.
-    this.gateway = new GatewayService(
-      this.runtime,
-      () => this.notify(),
-      logger,
-      (colony) => this.persistColony(colony),
-      (empire, colony, busyUntil) => this.logistics.reserveShip(empire, colony, busyUntil),
-      (empire, kind, fromColonyId, targetId, durationMs, extras) =>
-        this.logistics.insertMission(empire, kind, fromColonyId, targetId, durationMs, extras),
-    );
-    this.contract = new ContractService(
-      this.runtime,
-      () => this.notify(),
-      logger,
-      (colony) => this.persistColony(colony),
-      (empire, colony, busyUntil) => this.logistics.reserveShip(empire, colony, busyUntil),
-      (empire, kind, fromColonyId, targetId, durationMs, extras, departedAt) =>
-        this.logistics.insertMission(
-          empire,
-          kind,
-          fromColonyId,
-          targetId,
-          durationMs,
-          extras,
-          departedAt,
-        ),
-    );
-    this.market = new MarketService(
-      this.runtime,
-      () => this.notify(),
-      logger,
-      (colony) => this.persistColony(colony),
-      (state) => this.persistFactionState(state),
-      (galaxyId) => this.worldEventKindsOnGalaxy(galaxyId),
-      (empire, colony, busyUntil) => this.logistics.reserveShip(empire, colony, busyUntil),
-      (empire, kind, fromColonyId, targetId, durationMs, extras, departedAt) =>
-        this.logistics.insertMission(
-          empire,
-          kind,
-          fromColonyId,
-          targetId,
-          durationMs,
-          extras,
-          departedAt,
-        ),
-      (empire, colonyId, resource, quantity, pricePerUnit, durationMs) =>
-        this.contract.postContract(empire, colonyId, resource, quantity, pricePerUnit, durationMs),
-      (contract) => this.contract.insertContract(contract),
-    );
-    this.logistics = new LogisticsService(
-      this.runtime,
-      () => this.notify(),
-      logger,
-      (colony) => this.persistColony(colony),
-      (empire, colony) => this.insertColony(empire, colony),
-      (empire, systemId) => this.markExplored(empire, systemId),
-      (colonyId) => this.empireOfColony(colonyId),
-      {
-        resolveSaleAt: (stationId, cargo) => this.market.resolveSaleAt(stationId, cargo),
-        resolvePurchaseAt: (stationId, resource, budget, capacity) =>
-          this.market.resolvePurchaseAt(stationId, resource, budget, capacity),
-        stationRepBonus: (empire, stationId) => this.market.stationRepBonus(empire, stationId),
-        addFactionRep: (empire, stationId, creditsExchanged) =>
-          this.market.addFactionRep(empire, stationId, creditsExchanged),
-      },
-      (gateway) => this.gateway.persistGateway(gateway),
-    );
-    this.exploration = new ExplorationService(
-      this.runtime,
-      () => this.notify(),
-      logger,
-      (colony) => this.persistColony(colony),
-      (empire, kind, fromColonyId, targetId, durationMs) =>
-        this.logistics.insertMission(empire, kind, fromColonyId, targetId, durationMs),
-      () => this.initMarkets(),
-      () => this.initGateways(),
-    );
-    this.fleetService = new FleetService(
-      this.runtime,
-      () => this.notify(),
-      logger,
-      (colony) => this.persistColony(colony),
-      (empire, systemId) => this.exploration.dropClaim(empire, systemId),
-      (empire, systemId) => this.markExplored(empire, systemId),
-      (a, b) => this.atWar(a, b),
-      (galaxyId) => this.worldEventKindsOnGalaxy(galaxyId),
-    );
-    this.diplomacy = new DiplomacyService(this.runtime, () => this.notify(), logger);
-    this.objective = new ObjectiveService(
-      this.runtime,
-      () => this.notify(),
-      logger,
-      (colony) => this.persistColony(colony),
-    );
-    this.bootstrap = new BootstrapService(
-      this.runtime,
-      () => this.notify(),
-      logger,
-      (empire) => this.seedStarterBlueprints(empire),
-      () => this.ensureFrontier(),
-      () => this.exploration.galaxyOccupancy(),
-      (count) => this.exploration.growUniverse(count),
-      (empire, systemId) => this.markExplored(empire, systemId),
-    );
-    this.tickRunner = new TickRunner(
-      this.runtime,
-      {
-        industry: this.industry,
-        logistics: this.logistics,
-        gateway: this.gateway,
-        contract: this.contract,
-        market: this.market,
-        exploration: this.exploration,
-        fleetService: this.fleetService,
-        diplomacy: this.diplomacy,
-        objective: this.objective,
-      },
-      () => this.notify(),
-    );
+    const composed = composeEngine(this.runtime, logger, () => this.notify());
+    this.industry = composed.industry;
+    this.logistics = composed.logistics;
+    this.gateway = composed.gateway;
+    this.contract = composed.contract;
+    this.market = composed.market;
+    this.exploration = composed.exploration;
+    this.fleetService = composed.fleetService;
+    this.diplomacy = composed.diplomacy;
+    this.objective = composed.objective;
+    this.bootstrap = composed.bootstrap;
+    this.tickRunner = composed.tickRunner;
   }
 
   /** (Ré)indexe les entités d'univers — appelé à la construction et après chaque extension. */
@@ -513,11 +397,6 @@ export class GameEngine {
     await this.industry.loadBlueprints();
   }
 
-  /** Amorce un empire sans plan avec les designs de départ (presets constructibles). */
-  private seedStarterBlueprints(empire: Empire): void {
-    this.industry.seedStarterBlueprints(empire);
-  }
-
   private seedStarterBlueprintsForAll(): void {
     this.industry.seedStarterBlueprintsForAll();
   }
@@ -533,11 +412,6 @@ export class GameEngine {
   // ─────────────────────────── Flottes & combat ───────────────────────────
 
   // ─────────────────────────── Diplomatie (chantier 16) ───────────────────────────
-
-  /** Deux empires sont-ils en guerre ? */
-  private atWar(a: string, b: string): boolean {
-    return this.diplomacy.atWar(a, b);
-  }
 
   private async loadRelations(): Promise<void> {
     await this.diplomacy.loadRelations();
@@ -557,11 +431,6 @@ export class GameEngine {
 
   private async loadWorldEvents(): Promise<void> {
     await this.diplomacy.loadWorldEvents();
-  }
-
-  /** Kinds d'événements de monde actifs sur une galaxie (bonus/malus de prix, spawn pirate). */
-  private worldEventKindsOnGalaxy(galaxyId: string): WorldEventKind[] {
-    return this.diplomacy.worldEventKindsOnGalaxy(galaxyId);
   }
 
   /** Action joueur : attaquer une flotte ennemie stationnée dans le même système (PvP). */
@@ -614,10 +483,6 @@ export class GameEngine {
 
   private async loadFactionStates(): Promise<void> {
     await this.diplomacy.loadFactionStates();
-  }
-
-  private persistFactionState(state: FactionState): void {
-    this.diplomacy.persistFactionState(state);
   }
 
   // ── Extension de l'univers (chantier 9) ────────────────────────────────
@@ -874,17 +739,8 @@ export class GameEngine {
     await this.bootstrap.loadPlayers();
   }
 
-  /** Empire propriétaire d'une colonie (pour router les entités dérivées au chargement). */
-  private empireOfColony(colonyId: string): Empire {
-    return this.bootstrap.empireOfColony(colonyId);
-  }
-
   private createHomeColony(): void {
     this.bootstrap.createHomeColony();
-  }
-
-  private insertColony(empire: Empire, colony: Colony): void {
-    this.bootstrap.insertColony(empire, colony);
   }
 
   private async loadColonies(): Promise<void> {
