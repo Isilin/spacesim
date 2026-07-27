@@ -382,17 +382,17 @@ export class GameEngine {
       engine.createHomeColony();
     } else {
       engine.loadColonies();
-      engine.loadTransfers();
-      engine.loadMissions();
-      engine.loadMarkets();
-      engine.loadRoutes();
-      engine.loadOutposts();
-      engine.loadGateways();
-      engine.loadContracts();
-      engine.loadFactionStates();
-      engine.loadFleets();
-      engine.loadPirates();
-      engine.loadBattles();
+      await engine.loadTransfers();
+      await engine.loadMissions();
+      await engine.loadMarkets();
+      await engine.loadRoutes();
+      await engine.loadOutposts();
+      await engine.loadGateways();
+      await engine.loadContracts();
+      await engine.loadFactionStates();
+      await engine.loadFleets();
+      await engine.loadPirates();
+      await engine.loadBattles();
     }
     // Plans de vaisseaux (chantier 13) : chargés puis amorcés pour tout empire qui n'en a
     // aucun (partie neuve, ou empire d'avant le chantier 13).
@@ -714,12 +714,12 @@ export class GameEngine {
     this.logistics.npcTick(empire);
   }
 
-  private loadRoutes(): void {
-    this.logistics.loadRoutes();
+  private async loadRoutes(): Promise<void> {
+    await this.logistics.loadRoutes();
   }
 
-  private loadOutposts(): void {
-    this.logistics.loadOutposts();
+  private async loadOutposts(): Promise<void> {
+    await this.logistics.loadOutposts();
   }
 
   persistOutposts(empire: Empire): void {
@@ -1010,8 +1010,8 @@ export class GameEngine {
     this.exploration.ensureFrontier();
   }
 
-  private loadGateways(): void {
-    this.logistics.loadGateways();
+  private async loadGateways(): Promise<void> {
+    await this.logistics.loadGateways();
   }
 
   /** Active les portails dont le chantier final est terminé. */
@@ -1019,8 +1019,8 @@ export class GameEngine {
     this.logistics.resolveGateways(t);
   }
 
-  private loadContracts(): void {
-    this.logistics.loadContracts();
+  private async loadContracts(): Promise<void> {
+    await this.logistics.loadContracts();
   }
 
   /** Expire les contrats dépassés et rembourse le séquestre du reliquat non honoré. */
@@ -1166,16 +1166,10 @@ export class GameEngine {
     }
     this.persistResearch(this.defaultEmpire);
     for (const transfer of this.transferMap.values()) {
-      db.update(schema.transfers)
-        .set({ departedAt: transfer.departedAt, arrivesAt: transfer.arrivesAt })
-        .where(eq(schema.transfers.id, transfer.id))
-        .run();
+      this.logistics.persistTransferTimes(transfer);
     }
     for (const mission of this.missionMap.values()) {
-      db.update(schema.missions)
-        .set({ departedAt: mission.departedAt, arrivesAt: mission.arrivesAt })
-        .where(eq(schema.missions.id, mission.id))
-        .run();
+      this.logistics.persistMissionTimes(mission);
     }
 
     const missed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);
@@ -1362,8 +1356,8 @@ export class GameEngine {
     this.logistics.initMarkets();
   }
 
-  private loadMarkets(): void {
-    this.logistics.loadMarkets();
+  private async loadMarkets(): Promise<void> {
+    await this.logistics.loadMarkets();
   }
 
   /** Génération d'influence ; entretien impayé = la revendication la plus récente tombe. */
@@ -1463,12 +1457,12 @@ export class GameEngine {
     this.industry.persistResearch(empire);
   }
 
-  private loadTransfers(): void {
-    this.logistics.loadTransfers();
+  private async loadTransfers(): Promise<void> {
+    await this.logistics.loadTransfers();
   }
 
-  private loadMissions(): void {
-    this.logistics.loadMissions();
+  private async loadMissions(): Promise<void> {
+    await this.logistics.loadMissions();
   }
 
   notify(): void {

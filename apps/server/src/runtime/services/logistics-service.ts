@@ -80,12 +80,14 @@ import {
   type Transfer,
   type WorldEventKind,
 } from "@spacesim/shared";
-import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { db, schema } from "../../db/index.js";
 import type { Empire } from "../../empire.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
+import { ContractRepository } from "../repositories/contract-repository.js";
+import { GatewayRepository } from "../repositories/gateway-repository.js";
+import { LogisticsRepository } from "../repositories/logistics-repository.js";
+import { MarketRepository } from "../repositories/market-repository.js";
 
 /**
  * Logistique, marché, contrats et portails : convois manuels, routes automatiques,
@@ -95,6 +97,11 @@ import type { Logger } from "../logger.js";
  * directe à un autre service, pour ne pas figer l'ordre d'extraction.
  */
 export class LogisticsService {
+  private readonly repo: LogisticsRepository;
+  private readonly marketRepo: MarketRepository;
+  private readonly gatewayRepo: GatewayRepository;
+  private readonly contractRepo: ContractRepository;
+
   constructor(
     private readonly runtime: GameRuntime,
     private readonly notify: () => void,
@@ -105,7 +112,12 @@ export class LogisticsService {
     private readonly insertColony: (empire: Empire, colony: Colony) => void,
     private readonly markExplored: (empire: Empire, systemId: string) => void,
     private readonly empireOfColony: (colonyId: string) => Empire,
-  ) {}
+  ) {
+    this.repo = new LogisticsRepository(runtime.clock.id);
+    this.marketRepo = new MarketRepository(runtime.clock.id);
+    this.gatewayRepo = new GatewayRepository(runtime.clock.id);
+    this.contractRepo = new ContractRepository(runtime.clock.id);
+  }
 
   private get portalLinks(): [string, string][] {
     return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
@@ -289,17 +301,7 @@ export class LogisticsService {
     empire.colonyMap.set(from.id, { ...fueled, resources });
     empire.transferMap.set(transfer.id, transfer);
     this.persistColony(empire.colonyMap.get(from.id)!);
-    db.insert(schema.transfers)
-      .values({
-        id: transfer.id,
-        gameId: this.runtime.clock.id,
-        fromColonyId,
-        toColonyId,
-        resources: JSON.stringify(cargo),
-        departedAt: transfer.departedAt,
-        arrivesAt: transfer.arrivesAt,
-      })
-      .run();
+    this.repo.insertTransfer(transfer);
     this.notify();
     return null;
   }
@@ -584,22 +586,7 @@ export class LogisticsService {
       paused: false,
     };
     empire.routeMap.set(route.id, route);
-    db.insert(schema.routes)
-      .values({
-        id: route.id,
-        gameId: this.runtime.clock.id,
-        ownerColonyId,
-        fromId,
-        fromKind,
-        toId,
-        toKind,
-        resource,
-        rule: JSON.stringify(rule),
-        ships: JSON.stringify(requested),
-        activeCycle: null,
-        paused: 0,
-      })
-      .run();
+    this.repo.insertRoute(route);
     this.notify();
     return null;
   }
@@ -620,7 +607,7 @@ export class LogisticsService {
     if (!route) return "Route inconnue";
     if (route.activeCycle) return "Cycle en cours : suspendez la route et attendez le retour";
     empire.routeMap.delete(routeId);
-    db.delete(schema.routes).where(eq(schema.routes.id, routeId)).run();
+    this.repo.removeRoute(routeId);
     this.notify();
     return null;
   }
@@ -981,54 +968,26 @@ export class LogisticsService {
     return embargoBlocks(mood, empire.factionRep[station.factionId] ?? 0);
   }
 
-  loadRoutes(): void {
-    for (const row of db.select().from(schema.routes).all()) {
-      this.empireOfColony(row.ownerColonyId).routeMap.set(row.id, {
-        id: row.id,
-        ownerColonyId: row.ownerColonyId,
-        fromId: row.fromId,
-        fromKind: row.fromKind as Route["fromKind"],
-        toId: row.toId,
-        toKind: row.toKind as Route["toKind"],
-        resource: row.resource as ResourceId,
-        rule: JSON.parse(row.rule),
-        ships: JSON.parse(row.ships),
-        activeCycle: row.activeCycle ? JSON.parse(row.activeCycle) : null,
-        paused: row.paused === 1,
-      });
+  async loadRoutes(): Promise<void> {
+    for (const route of await this.repo.loadRoutes()) {
+      this.empireOfColony(route.ownerColonyId).routeMap.set(route.id, route);
     }
   }
 
-  loadOutposts(): void {
-    for (const row of db.select().from(schema.outposts).all()) {
-      this.empireOfColony(row.ownerColonyId).outpostMap.set(row.id, {
-        id: row.id,
-        beltId: row.beltId,
-        ownerColonyId: row.ownerColonyId,
-        oreStock: row.oreStock,
-      });
+  async loadOutposts(): Promise<void> {
+    for (const outpost of await this.repo.loadOutposts()) {
+      this.empireOfColony(outpost.ownerColonyId).outpostMap.set(outpost.id, outpost);
     }
   }
 
   persistOutposts(empire: Empire): void {
     for (const outpost of empire.outpostMap.values()) {
-      db.update(schema.outposts)
-        .set({ oreStock: outpost.oreStock })
-        .where(eq(schema.outposts.id, outpost.id))
-        .run();
+      this.repo.saveOutpostStock(outpost);
     }
   }
 
   persistRoute(route: Route): void {
-    db.update(schema.routes)
-      .set({
-        rule: JSON.stringify(route.rule),
-        ships: JSON.stringify(route.ships),
-        activeCycle: route.activeCycle ? JSON.stringify(route.activeCycle) : null,
-        paused: route.paused ? 1 : 0,
-      })
-      .where(eq(schema.routes.id, route.id))
-      .run();
+    this.repo.saveRoute(route);
   }
 
   contributeGateway(
@@ -1273,38 +1232,18 @@ export class LogisticsService {
         active: false,
       };
       this.runtime.gatewayMap.set(galaxy.id, gateway);
-      db.insert(schema.gateways)
-        .values({
-          galaxyId: galaxy.id,
-          gameId: this.runtime.clock.id,
-          progress: "{}",
-          activatesAt: null,
-          active: 0,
-        })
-        .run();
+      this.gatewayRepo.insert(gateway);
     }
   }
 
-  loadGateways(): void {
-    for (const row of db.select().from(schema.gateways).all()) {
-      this.runtime.gatewayMap.set(row.galaxyId, {
-        galaxyId: row.galaxyId,
-        progress: JSON.parse(row.progress),
-        activatesAt: row.activatesAt,
-        active: row.active === 1,
-      });
+  async loadGateways(): Promise<void> {
+    for (const gateway of await this.gatewayRepo.loadAll()) {
+      this.runtime.gatewayMap.set(gateway.galaxyId, gateway);
     }
   }
 
   persistGateway(gateway: Gateway): void {
-    db.update(schema.gateways)
-      .set({
-        progress: JSON.stringify(gateway.progress),
-        activatesAt: gateway.activatesAt,
-        active: gateway.active ? 1 : 0,
-      })
-      .where(eq(schema.gateways.galaxyId, gateway.galaxyId))
-      .run();
+    this.gatewayRepo.save(gateway);
   }
 
   /** Active les portails dont le chantier final est terminé. */
@@ -1317,55 +1256,19 @@ export class LogisticsService {
     }
   }
 
-  loadContracts(): void {
-    for (const row of db.select().from(schema.contracts).all()) {
-      this.runtime.contractMap.set(row.id, {
-        id: row.id,
-        issuerId: row.issuerId,
-        issuerName: row.issuerName,
-        issuerColor: row.issuerColor,
-        colonyId: row.colonyId,
-        colonyName: row.colonyName,
-        systemId: row.systemId,
-        resource: row.resource as ResourceId,
-        quantity: row.quantity,
-        remaining: row.remaining,
-        pricePerUnit: row.pricePerUnit,
-        createdAt: row.createdAt,
-        deadline: row.deadline,
-        status: row.status as Contract["status"],
-      });
+  async loadContracts(): Promise<void> {
+    for (const contract of await this.contractRepo.loadAll()) {
+      this.runtime.contractMap.set(contract.id, contract);
     }
   }
 
   private insertContract(contract: Contract): void {
-    db.insert(schema.contracts)
-      .values({
-        id: contract.id,
-        gameId: this.runtime.clock.id,
-        issuerId: contract.issuerId,
-        issuerName: contract.issuerName,
-        issuerColor: contract.issuerColor,
-        colonyId: contract.colonyId,
-        colonyName: contract.colonyName,
-        systemId: contract.systemId,
-        resource: contract.resource,
-        quantity: contract.quantity,
-        remaining: contract.remaining,
-        pricePerUnit: contract.pricePerUnit,
-        createdAt: contract.createdAt,
-        deadline: contract.deadline,
-        status: contract.status,
-      })
-      .run();
+    this.contractRepo.insert(contract);
   }
 
   /** Ne met à jour que ce qui bouge après publication : reliquat, statut, échéance. */
   persistContract(contract: Contract): void {
-    db.update(schema.contracts)
-      .set({ remaining: contract.remaining, status: contract.status, deadline: contract.deadline })
-      .where(eq(schema.contracts.id, contract.id))
-      .run();
+    this.contractRepo.save(contract);
   }
 
   /** Expire les contrats dépassés et rembourse le séquestre du reliquat non honoré. */
@@ -1405,22 +1308,7 @@ export class LogisticsService {
       ...extras,
     };
     empire.missionMap.set(mission.id, mission);
-    db.insert(schema.missions)
-      .values({
-        id: mission.id,
-        gameId: this.runtime.clock.id,
-        kind: mission.kind,
-        fromColonyId: mission.fromColonyId,
-        targetId: mission.targetId,
-        departedAt: mission.departedAt,
-        arrivesAt: mission.arrivesAt,
-        cargo: mission.cargo ? JSON.stringify(mission.cargo) : null,
-        budget: mission.budget ?? null,
-        buyResource: mission.buyResource ?? null,
-        capacity: mission.capacity ?? null,
-        contractId: mission.contractId ?? null,
-      })
-      .run();
+    this.repo.insertMission(mission);
   }
 
   /**
@@ -1595,9 +1483,7 @@ export class LogisticsService {
               oreStock: 0,
             };
             empire.outpostMap.set(outpost.id, outpost);
-            db.insert(schema.outposts)
-              .values({ ...outpost, gameId: this.runtime.clock.id, createdAt: Date.now() })
-              .run();
+            this.repo.insertOutpost(outpost);
             this.logger.info(`[game] avant-poste minier fondé sur ${belt.name}`);
           }
           break;
@@ -1620,7 +1506,7 @@ export class LogisticsService {
         }
       }
       empire.missionMap.delete(id);
-      db.delete(schema.missions).where(eq(schema.missions.id, id)).run();
+      this.repo.removeMission(id);
     }
   }
 
@@ -1634,29 +1520,20 @@ export class LogisticsService {
       if (this.runtime.marketMap.has(station.id)) continue;
       const stocks = initialStocks(createRng(`${this.runtime.clock.seed}-station-${station.id}`));
       this.runtime.marketMap.set(station.id, stocks);
-      db.insert(schema.stationStates)
-        .values({
-          stationId: station.id,
-          gameId: this.runtime.clock.id,
-          stocks: JSON.stringify(stocks),
-        })
-        .run();
+      this.marketRepo.insert(station.id, stocks);
     }
   }
 
-  loadMarkets(): void {
-    for (const row of db.select().from(schema.stationStates).all()) {
-      this.runtime.marketMap.set(row.stationId, JSON.parse(row.stocks));
+  async loadMarkets(): Promise<void> {
+    for (const { stationId, stocks } of await this.marketRepo.loadAll()) {
+      this.runtime.marketMap.set(stationId, stocks);
     }
   }
 
   private persistMarket(stationId: string): void {
     const stocks = this.runtime.marketMap.get(stationId);
     if (!stocks) return;
-    db.update(schema.stationStates)
-      .set({ stocks: JSON.stringify(stocks) })
-      .where(eq(schema.stationStates.stationId, stationId))
-      .run();
+    this.marketRepo.save(stationId, stocks);
   }
 
   /** Tick économique : les stocks PNJ de chaque station évoluent selon leur faction. */
@@ -1682,38 +1559,28 @@ export class LogisticsService {
         empire.colonyMap.set(to.id, deliverToOrbit(to, transfer.resources, empire.effects));
       }
       empire.transferMap.delete(id);
-      db.delete(schema.transfers).where(eq(schema.transfers.id, id)).run();
+      this.repo.removeTransfer(id);
     }
   }
 
-  loadTransfers(): void {
-    for (const row of db.select().from(schema.transfers).all()) {
-      this.empireOfColony(row.fromColonyId).transferMap.set(row.id, {
-        id: row.id,
-        fromColonyId: row.fromColonyId,
-        toColonyId: row.toColonyId,
-        resources: JSON.parse(row.resources),
-        departedAt: row.departedAt,
-        arrivesAt: row.arrivesAt,
-      });
+  async loadTransfers(): Promise<void> {
+    for (const transfer of await this.repo.loadTransfers()) {
+      this.empireOfColony(transfer.fromColonyId).transferMap.set(transfer.id, transfer);
     }
   }
 
-  loadMissions(): void {
-    for (const row of db.select().from(schema.missions).all()) {
-      this.empireOfColony(row.fromColonyId).missionMap.set(row.id, {
-        id: row.id,
-        kind: row.kind as Mission["kind"],
-        fromColonyId: row.fromColonyId,
-        targetId: row.targetId,
-        departedAt: row.departedAt,
-        arrivesAt: row.arrivesAt,
-        ...(row.cargo ? { cargo: JSON.parse(row.cargo) } : {}),
-        ...(row.budget !== null ? { budget: row.budget } : {}),
-        ...(row.buyResource ? { buyResource: row.buyResource as ResourceId } : {}),
-        ...(row.capacity !== null ? { capacity: row.capacity } : {}),
-        ...(row.contractId ? { contractId: row.contractId } : {}),
-      });
+  async loadMissions(): Promise<void> {
+    for (const mission of await this.repo.loadMissions()) {
+      this.empireOfColony(mission.fromColonyId).missionMap.set(mission.id, mission);
     }
+  }
+
+  /** Décalages d'horodatage (dev-fastforward) — les tables restent possédées ici. */
+  persistTransferTimes(transfer: Transfer): void {
+    this.repo.saveTransferTimes(transfer);
+  }
+
+  persistMissionTimes(mission: Mission): void {
+    this.repo.saveMissionTimes(mission);
   }
 }
