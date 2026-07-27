@@ -59,7 +59,7 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
   it("un embargo bloque sellToStation et buyFromStation sous le seuil de standing", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
-    const colony = engine.colonies[0]!;
+    const colony = [...empire.colonyMap.values()][0]!;
     const station = reachableStation(engine, empire);
 
     expect(engine.devSetFactionMood(station.factionId, "embargo")).toBe(true);
@@ -75,7 +75,7 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
   it("un partenaire établi (standing suffisant) échappe à l'embargo", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
-    const colony = engine.colonies[0]!;
+    const colony = [...empire.colonyMap.values()][0]!;
     const station = reachableStation(engine, empire);
     empire.factionRep[station.factionId] = 500; // largement au-dessus du seuil
 

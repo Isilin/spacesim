@@ -11,17 +11,17 @@ describe("GameEngine — logistique orbitale (chantier 12)", () => {
 
   it("la colonie mère naît avec un dock et une soute orbitale", async () => {
     const engine = await GameEngine.loadOrBootstrap();
-    const colony = engine.colonies[0]!;
+    const colony = homeColony(engine, engine.defaultEmpireForDev);
     expect(colony.buildings.orbital_dock).toBe(1);
     expect(colony.orbitalResources.ore).toBeGreaterThan(0);
   });
 
   it("l'ascenseur hisse le surplus au fil des ticks, en consommant de l'énergie", async () => {
     const engine = await GameEngine.loadOrBootstrap();
-    const before = engine.colonies[0]!;
+    const before = homeColony(engine, engine.defaultEmpireForDev);
     const orbitBefore = before.orbitalResources.ore;
     advanceTicks(engine, 20);
-    const after = engine.colonies[0]!;
+    const after = homeColony(engine, engine.defaultEmpireForDev);
     // La règle par défaut monte le minerai au-delà du seuil gardé au sol.
     expect(after.orbitalResources.ore).toBeGreaterThan(orbitBefore);
     expect(after.resources.ore).toBeGreaterThanOrEqual(0);

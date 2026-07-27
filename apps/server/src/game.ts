@@ -23,7 +23,6 @@ import {
   type GameState,
   type Gateway,
   type PirateLair,
-  type StoredBattle,
   type MiningOutpost,
   type Mission,
   type Objective,
@@ -32,7 +31,6 @@ import {
   type Relation,
   type RelationProposal,
   type Route,
-  type StationMarket,
   type Stocks,
   type TradeStation,
   type Transfer,
@@ -67,9 +65,7 @@ import {
 } from "./runtime/universe-store.js";
 import {
   clientUniverseForEmpire,
-  marketsForEmpire,
   objectivesForEmpire,
-  pirateLairsForEmpire,
   snapshotForEmpire as projectSnapshotForEmpire,
 } from "./runtime/projections.js";
 
@@ -159,12 +155,6 @@ export class GameEngine {
   }
   private get lairMap(): Map<string, PirateLair> {
     return this.runtime.lairMap;
-  }
-  private get battleLog(): StoredBattle[] {
-    return this.runtime.battleLog;
-  }
-  private set battleLog(value: StoredBattle[]) {
-    this.runtime.battleLog = value;
   }
   private get relationMap(): Map<string, Relation> {
     return this.runtime.relationMap;
@@ -500,42 +490,21 @@ export class GameEngine {
     return engine;
   }
 
-  // Accesseurs publics (message `hello` d'index.ts) : vue de l'empire par défaut.
-  // Chaque collection est celle du defaultEmpire ; les PNJ/l'univers sont redactés
-  // à son brouillard. En 7c, ce sera la vue de l'empire de la connexion.
+  // Accesseur public (message `hello` d'index.ts) : vue de l'empire par défaut.
   get game(): GameState {
     return this.defaultEmpire.toGameState(this.clock);
   }
 
-  get colonies(): Colony[] {
-    return [...this.defaultEmpire.colonyMap.values()];
-  }
-
-  get transfers(): Transfer[] {
-    return [...this.defaultEmpire.transferMap.values()];
-  }
-
-  get missions(): Mission[] {
-    return [...this.defaultEmpire.missionMap.values()];
-  }
-
-  get exploredSystemIds(): string[] {
-    return [...this.defaultEmpire.explored];
-  }
-
-  /** Univers vu par le client : planètes masquées hors systèmes explorés. */
-  get clientUniverse(): Universe {
-    return clientUniverseForEmpire(this.runtime, this.defaultEmpire);
-  }
-
-  get routes(): Route[] {
-    return [...this.defaultEmpire.routeMap.values()];
-  }
-
-  get outposts(): MiningOutpost[] {
-    return [...this.defaultEmpire.outpostMap.values()];
-  }
-
+  // Les collections par-empire (colonies, transferts, missions, brouillard, routes,
+  // avant-postes, flottes) n'ont plus d'accesseur ici : elles dupliquaient ce que
+  // l'`Empire` retourné par `empireForAccount`/`createEmpireForAccount` expose déjà
+  // (`colonyMap`, `explored`, etc. — voir empire.ts). `pirateLairs`, `battles`,
+  // `markets`, `clientUniverse` et `planet()` ont été retirés sans remplacement : plus
+  // aucun appelant (dev tools, routes, tests) ne les utilisait.
+  //
+  // `gateways`, `contracts` et `factionStates` restent : ce sont des collections
+  // PARTAGÉES (`GameRuntime`, pas de fog par empire), donc elles ne dupliquent rien
+  // côté `Empire` — chantier 19.7.
   get gateways(): Gateway[] {
     return [...this.gatewayMap.values()];
   }
@@ -546,28 +515,6 @@ export class GameEngine {
 
   get factionStates(): FactionState[] {
     return [...this.factionStateMap.values()];
-  }
-
-  get fleets(): Fleet[] {
-    return [...this.defaultEmpire.fleetMap.values()];
-  }
-
-  /** Repaires dans les systèmes explorés uniquement (fog). */
-  get pirateLairs(): PirateLair[] {
-    return pirateLairsForEmpire(this.runtime, this.defaultEmpire);
-  }
-
-  get battles(): StoredBattle[] {
-    return this.battleLog;
-  }
-
-  /** Marchés des seules stations situées dans des systèmes explorés. */
-  get markets(): StationMarket[] {
-    return marketsForEmpire(this.runtime, this.defaultEmpire);
-  }
-
-  planet(planetId: string): Planet | undefined {
-    return this.planetsById.get(planetId);
   }
 
   onChange(listener: StateListener): () => void {
@@ -920,7 +867,7 @@ export class GameEngine {
   devSpawnPirate(systemId: string, threat = 2): void {
     // Sans système précisé : celui de la première colonie (pratique pour tester).
     if (!systemId) {
-      const home = this.colonies[0];
+      const home = [...this.colonyMap.values()][0];
       const sys = home ? this.planetsById.get(home.planetId)?.systemId : undefined;
       if (!sys) return;
       systemId = sys;

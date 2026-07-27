@@ -60,14 +60,14 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
     // ces deux tirages se valident tout de suite (colonize_n_systems/hold_system, non).
     if (objective.kind !== "lead_population" && objective.kind !== "lead_influence") return;
 
-    const creditsBefore = engine.colonies[0]!.resources.credits;
+    const creditsBefore = [...empire.colonyMap.values()][0]!.resources.credits;
     advanceTicks(engine, 2);
 
     const resolved = engine
       .snapshotForEmpire(empire)
       .objectives.find((o) => o.id === objective.id)!;
     expect(resolved.status).toBe("completed");
-    expect(engine.colonies[0]!.resources.credits).toBeGreaterThanOrEqual(
+    expect([...empire.colonyMap.values()][0]!.resources.credits).toBeGreaterThanOrEqual(
       creditsBefore + OBJECTIVE_REWARD_CREDITS,
     );
   });

@@ -5,21 +5,21 @@ import { resetDb, advanceTicks, empireFor } from "../../test-harness.js";
 
 beforeEach(() => resetDb());
 
-describe("GameEngine — contrats de fourniture (chantier 14)", () => {
-  /** Colonie mère de l'empire, relue depuis le snapshot. */
-  const homeColony = (engine: GameEngine, empire: ReturnType<typeof empireFor>) =>
-    engine.snapshotForEmpire(empire).colonies[0]!;
+/** Colonie mère de l'empire, relue depuis le snapshot. */
+const homeColony = (engine: GameEngine, empire: ReturnType<typeof empireFor>) =>
+  engine.snapshotForEmpire(empire).colonies[0]!;
 
+describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   it("postContract : publie un contrat et met le séquestre sous garde", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
-    const colony = engine.colonies[0]!;
+    const colony = homeColony(engine, empire);
     const creditsBefore = colony.resources.credits;
 
     expect(engine.contract.postContract(empire, colony.id, "ore", 10, 1, 3_600_000)).toBeNull();
 
     // Séquestre = quantité × prix, prélevé au sol (les crédits ne sont pas orbitaux).
-    expect(engine.colonies[0]!.resources.credits).toBe(creditsBefore - 10);
+    expect(homeColony(engine, empire).resources.credits).toBe(creditsBefore - 10);
 
     const contract = engine.contracts[0]!;
     expect(contract.resource).toBe("ore");
@@ -31,7 +31,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   it("un contrat est diffusé à tous les empires, pas seulement à son émetteur (pas de brouillard)", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
-    const colony = engine.colonies[0]!;
+    const colony = homeColony(engine, empire);
     // Un tiers totalement étranger à la transaction — jamais exploré le système de
     // l'émetteur, jamais interagi avec lui.
     const bystander = engine.empireById(engine.devSpawnEmpire("Spectateur")!)!;
@@ -52,7 +52,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   it("postContract : refuse une ressource non contractualisable (crédits, science)", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
-    const colony = engine.colonies[0]!;
+    const colony = homeColony(engine, empire);
     expect(engine.contract.postContract(empire, colony.id, "credits", 10, 1, 3_600_000)).toMatch(
       /non contractualisable/,
     );
@@ -61,7 +61,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   it("postContract : refuse si le séquestre dépasse les crédits disponibles", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
-    const colony = engine.colonies[0]!;
+    const colony = homeColony(engine, empire);
     expect(engine.contract.postContract(empire, colony.id, "ore", 10_000, 1, 3_600_000)).toMatch(
       /Crédits insuffisants/,
     );
@@ -70,20 +70,20 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   it("cancelContract : rembourse le séquestre et clôt le contrat", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
-    const colony = engine.colonies[0]!;
+    const colony = homeColony(engine, empire);
     const creditsBefore = colony.resources.credits;
     engine.contract.postContract(empire, colony.id, "ore", 10, 1, 3_600_000);
     const contractId = engine.contracts[0]!.id;
 
     expect(engine.contract.cancelContract(empire, contractId)).toBeNull();
-    expect(engine.colonies[0]!.resources.credits).toBe(creditsBefore);
+    expect(homeColony(engine, empire).resources.credits).toBe(creditsBefore);
     expect(engine.contracts[0]!.status).toBe("cancelled");
   });
 
   it("cancelContract : refuse si l'appelant n'est pas l'émetteur", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const issuer = engine.defaultEmpireForDev;
-    const colony = engine.colonies[0]!;
+    const colony = homeColony(engine, issuer);
     engine.contract.postContract(issuer, colony.id, "ore", 10, 1, 3_600_000);
     const contractId = engine.contracts[0]!.id;
     // devSpawnEmpire (pas empireFor) : un compte adopterait l'empire par défaut encore
@@ -96,11 +96,11 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   it("un contrat non honoré expire et rembourse le séquestre restant", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
-    const colony = engine.colonies[0]!;
+    const colony = homeColony(engine, empire);
     // Séquestre volontairement massif : la production organique de la colonie sur la
     // fenêtre du test (taxe par colon, quelques crédits) ne doit pas pouvoir la noyer.
     engine.devGrant({ credits: 2000 });
-    const creditsAfterGrant = engine.colonies[0]!.resources.credits;
+    const creditsAfterGrant = homeColony(engine, empire).resources.credits;
     engine.contract.postContract(empire, colony.id, "ore", 1000, 1, 300_000); // durée mini clampée
 
     advanceTicks(engine, 400 / 5); // dépasse largement l'échéance
@@ -108,7 +108,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     expect(engine.contracts[0]!.status).toBe("expired");
     expect(engine.contracts[0]!.remaining).toBe(1000); // rien n'a été livré
     // Le séquestre (1000) revient, à la production organique de la fenêtre près.
-    expect(engine.colonies[0]!.resources.credits).toBeGreaterThan(creditsAfterGrant - 50);
+    expect(homeColony(engine, empire).resources.credits).toBeGreaterThan(creditsAfterGrant - 50);
   });
 
   it("acceptContract : livre la cargaison à l'émetteur (autre empire) et paie l'accepteur", async () => {
@@ -117,7 +117,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     // devFastForward (outil de dev mono-empire — Sprint 0), indispensable pour faire
     // arriver le convoi dans ce test.
     const accepter = engine.defaultEmpireForDev;
-    const accepterColony = engine.colonies[0]!;
+    const accepterColony = homeColony(engine, accepter);
     // devSpawnEmpire (pas empireFor) : un compte adopterait l'empire par défaut encore
     // libre, ce qui en ferait le même empire que l'accepteur au lieu d'un tiers.
     const issuer = engine.empireById(engine.devSpawnEmpire("Émetteur")!)!;
@@ -140,12 +140,12 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     });
     advanceTicks(engine, 60);
 
-    const beforeAccept = engine.colonies[0]!;
+    const beforeAccept = homeColony(engine, accepter);
     const orbitalFoodBefore = beforeAccept.orbitalResources.food;
 
     expect(engine.contract.acceptContract(accepter, accepterColony.id, contractId, 10)).toBeNull();
 
-    const afterAccept = engine.colonies[0]!;
+    const afterAccept = homeColony(engine, accepter);
     expect(afterAccept.orbitalResources.food).toBe(orbitalFoodBefore - 10);
 
     // Décompté à l'acceptation, pas à la livraison — anti-survente.
@@ -158,7 +158,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     expect(mission).toBeDefined();
 
     const issuerFoodBefore = homeColony(engine, issuer).orbitalResources.food;
-    const accepterCreditsBeforeDelivery = engine.colonies[0]!.resources.credits;
+    const accepterCreditsBeforeDelivery = homeColony(engine, accepter).resources.credits;
 
     // Juste assez pour faire arriver CE convoi précis (le nombre de sauts, donc la durée,
     // dépend de la seed — pas une avance à l'aveugle).
@@ -173,7 +173,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     // réellement produire, pour ne détecter qu'un paiement manquant, pas la dérive normale.
     // Marge large aussi pour un objectif éphémère (chantier 17) qui se déclencherait et
     // verserait sa récompense dans la même fenêtre — un aléa hors de portée du test.
-    const creditsAfterDelivery = engine.colonies[0]!.resources.credits;
+    const creditsAfterDelivery = homeColony(engine, accepter).resources.credits;
     const organicTolerance = ticksElapsed * 2 + 5 + OBJECTIVE_REWARD_CREDITS;
     expect(creditsAfterDelivery).toBeGreaterThanOrEqual(accepterCreditsBeforeDelivery + 20);
     expect(creditsAfterDelivery).toBeLessThan(
@@ -185,7 +185,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   it("acceptContract : refuse d'accepter son propre contrat", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
-    const colony = engine.colonies[0]!;
+    const colony = homeColony(engine, empire);
     engine.contract.postContract(empire, colony.id, "ore", 10, 1, 3_600_000);
     const contractId = engine.contracts[0]!.id;
     expect(engine.contract.acceptContract(empire, colony.id, contractId, 10)).toMatch(
@@ -196,7 +196,7 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   it("acceptContract : refuse une quantité au-delà du reliquat", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const issuer = engine.defaultEmpireForDev;
-    const colony = engine.colonies[0]!;
+    const colony = homeColony(engine, issuer);
     engine.contract.postContract(issuer, colony.id, "ore", 10, 1, 3_600_000);
     const contractId = engine.contracts[0]!.id;
     const other = engine.empireById(engine.devSpawnEmpire("Voisin")!)!;
@@ -241,7 +241,7 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
   it("honoré, un contrat de faction livre au comptoir, paie au prix fixé et crédite le standing", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
-    const colony = engine.colonies[0]!;
+    const colony = homeColony(engine, empire);
     const factionId = homeGalaxyFactionId(engine);
 
     expect(engine.devSetFactionMood(factionId, "shortage")).toBe(true);
@@ -278,13 +278,13 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
       .snapshotForEmpire(empire)
       .missions.find((m) => m.kind === "deliver_contract")!;
     expect(mission).toBeDefined();
-    const creditsBeforeDelivery = engine.colonies[0]!.resources.credits;
+    const creditsBeforeDelivery = homeColony(engine, empire).resources.credits;
 
     const durationS = Math.ceil((mission.arrivesAt - mission.departedAt) / 1000);
     advanceTicks(engine, Math.ceil((durationS + 5) / 5));
 
     // Payé au prix fixé du contrat, standing crédité — même mécanique qu'un empire émetteur.
-    expect(engine.colonies[0]!.resources.credits).toBeGreaterThanOrEqual(
+    expect(homeColony(engine, empire).resources.credits).toBeGreaterThanOrEqual(
       creditsBeforeDelivery + Math.floor(contract.quantity * contract.pricePerUnit),
     );
     expect(empire.factionRep[factionId] ?? 0).toBeGreaterThan(repBefore);

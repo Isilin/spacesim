@@ -8,13 +8,13 @@ describe("GameEngine — harnais & socle (Sprint 0)", () => {
   it("crée une partie neuve : une colonie mère, un empire, tick 0", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     expect(engine.game.tick).toBe(0);
-    expect(engine.colonies).toHaveLength(1);
+    expect([...engine.defaultEmpireForDev.colonyMap.values()]).toHaveLength(1);
     const empires = summaries(engine);
     expect(empires).toHaveLength(1);
     expect(empires[0]!.isDefault).toBe(true);
     expect(empires[0]!.colonies).toHaveLength(1);
     // La colonie mère révèle son système (brouillard initial).
-    expect(engine.exploredSystemIds).toEqual([empires[0]!.exploredSystemIds[0]]);
+    expect([...engine.defaultEmpireForDev.explored]).toEqual([empires[0]!.exploredSystemIds[0]]);
   });
 
   it("le tick est déterministe : N ticks avancent l'horloge d'exactement N", async () => {
@@ -26,9 +26,9 @@ describe("GameEngine — harnais & socle (Sprint 0)", () => {
 
   it("le tick produit : les ressources de la colonie évoluent", async () => {
     const engine = await GameEngine.loadOrBootstrap();
-    const before = engine.colonies[0]!.resources;
+    const before = [...engine.defaultEmpireForDev.colonyMap.values()][0]!.resources;
     advanceTicks(engine, 20);
-    const after = engine.colonies[0]!.resources;
+    const after = [...engine.defaultEmpireForDev.colonyMap.values()][0]!.resources;
     // Mine + centrale + ferme produisent : au moins une ressource a bougé.
     expect(after).not.toEqual(before);
   });
@@ -66,13 +66,13 @@ describe("GameEngine — isolation multi-empire (Sprint 0)", () => {
 
   it("le snapshot de l'empire par défaut ne fuit pas les entités d'un autre empire", async () => {
     const engine = await GameEngine.loadOrBootstrap();
-    const defaultSystem = engine.exploredSystemIds[0];
+    const defaultSystem = [...engine.defaultEmpireForDev.explored][0];
     engine.devSpawnEmpire("Colonia");
 
     // Les accesseurs publics (message `hello`) restent la vue du defaultEmpire :
     // une seule colonie, un seul système exploré — rien de l'empire spawné.
-    expect(engine.colonies).toHaveLength(1);
-    expect(engine.exploredSystemIds).toEqual([defaultSystem]);
+    expect([...engine.defaultEmpireForDev.colonyMap.values()]).toHaveLength(1);
+    expect([...engine.defaultEmpireForDev.explored]).toEqual([defaultSystem]);
   });
 });
 describe("GameEngine — chargement multi-empire (Phase A)", () => {
