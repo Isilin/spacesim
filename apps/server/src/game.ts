@@ -52,11 +52,14 @@ import { Empire, type Clock } from "./empire.js";
 import { GameRuntime } from "./runtime/game-runtime.js";
 import { consoleLogger, type Logger } from "./runtime/logger.js";
 import { BootstrapService } from "./runtime/services/bootstrap-service.js";
+import { ContractService } from "./runtime/services/contract-service.js";
 import { DiplomacyService } from "./runtime/services/diplomacy-service.js";
 import { ExplorationService } from "./runtime/services/exploration-service.js";
 import { FleetService } from "./runtime/services/fleet-service.js";
+import { GatewayService } from "./runtime/services/gateway-service.js";
 import { IndustryService } from "./runtime/services/industry-service.js";
 import { LogisticsService } from "./runtime/services/logistics-service.js";
+import { MarketService } from "./runtime/services/market-service.js";
 import { GameRepository } from "./runtime/repositories/game-repository.js";
 import { TickRunner } from "./runtime/tick-runner.js";
 import {
@@ -94,8 +97,14 @@ export class GameEngine {
   private tickRunner: TickRunner;
   /** Bâtiments, chantier civil, plans de vaisseaux (chantier 13) et recherche. */
   private industry: IndustryService;
-  /** Convois, routes, marché (joueur + PNJ), contrats et portails. */
+  /** Convois manuels, ascenseur orbital, routes automatiques, avant-postes, missions. */
   private logistics: LogisticsService;
+  /** Portails inter-galactiques : chantiers, contribution, activation. */
+  private gateway: GatewayService;
+  /** Contrats de fourniture : publication, acceptation, annulation, expiration. */
+  private contract: ContractService;
+  /** Marché de station (joueur + PNJ), prix régionaux, réputation/embargo, humeur de faction. */
+  private market: MarketService;
   /** Sondes, colonisation, revendications de systèmes, croissance de l'univers (chantier 9). */
   private exploration: ExplorationService;
   /** Flottes, combat (repaire/PvP), production/déplacement et repaires pirates PNJ. */
@@ -228,16 +237,76 @@ export class GameEngine {
       logger,
       (fleet) => this.persistFleet(fleet),
     );
-    this.logistics = new LogisticsService(
+    // Gateway/Contract/Market ont besoin de `reserveShip`/`insertMission` (Logistics) ;
+    // Logistics a besoin de `resolveSaleAt`/`persistGateway` (Market/Gateway) pour
+    // résoudre les missions qui traversent leur domaine. Cycle cassé par des callbacks
+    // paresseux (fermetures) : l'ordre de construction n'importe pas, seul l'ordre
+    // d'AFFECTATION des champs compte, et il est complet à la fin du constructeur.
+    this.gateway = new GatewayService(
+      this.runtime,
+      () => this.notify(),
+      logger,
+      (colony) => this.persistColony(colony),
+      (empire, colony, busyUntil) => this.logistics.reserveShip(empire, colony, busyUntil),
+      (empire, kind, fromColonyId, targetId, durationMs, extras) =>
+        this.logistics.insertMission(empire, kind, fromColonyId, targetId, durationMs, extras),
+    );
+    this.contract = new ContractService(
+      this.runtime,
+      () => this.notify(),
+      logger,
+      (colony) => this.persistColony(colony),
+      (empire, colony, busyUntil) => this.logistics.reserveShip(empire, colony, busyUntil),
+      (empire, kind, fromColonyId, targetId, durationMs, extras, departedAt) =>
+        this.logistics.insertMission(
+          empire,
+          kind,
+          fromColonyId,
+          targetId,
+          durationMs,
+          extras,
+          departedAt,
+        ),
+    );
+    this.market = new MarketService(
       this.runtime,
       () => this.notify(),
       logger,
       (colony) => this.persistColony(colony),
       (state) => this.persistFactionState(state),
       (galaxyId) => this.worldEventKindsOnGalaxy(galaxyId),
+      (empire, colony, busyUntil) => this.logistics.reserveShip(empire, colony, busyUntil),
+      (empire, kind, fromColonyId, targetId, durationMs, extras, departedAt) =>
+        this.logistics.insertMission(
+          empire,
+          kind,
+          fromColonyId,
+          targetId,
+          durationMs,
+          extras,
+          departedAt,
+        ),
+      (empire, colonyId, resource, quantity, pricePerUnit, durationMs) =>
+        this.contract.postContract(empire, colonyId, resource, quantity, pricePerUnit, durationMs),
+      (contract) => this.contract.insertContract(contract),
+    );
+    this.logistics = new LogisticsService(
+      this.runtime,
+      () => this.notify(),
+      logger,
+      (colony) => this.persistColony(colony),
       (empire, colony) => this.insertColony(empire, colony),
       (empire, systemId) => this.markExplored(empire, systemId),
       (colonyId) => this.empireOfColony(colonyId),
+      {
+        resolveSaleAt: (stationId, cargo) => this.market.resolveSaleAt(stationId, cargo),
+        resolvePurchaseAt: (stationId, resource, budget, capacity) =>
+          this.market.resolvePurchaseAt(stationId, resource, budget, capacity),
+        stationRepBonus: (empire, stationId) => this.market.stationRepBonus(empire, stationId),
+        addFactionRep: (empire, stationId, creditsExchanged) =>
+          this.market.addFactionRep(empire, stationId, creditsExchanged),
+      },
+      (gateway) => this.gateway.persistGateway(gateway),
     );
     this.exploration = new ExplorationService(
       this.runtime,
@@ -534,7 +603,7 @@ export class GameEngine {
     stationId: string,
     wanted: Partial<Record<ResourceId, number>>,
   ): string | null {
-    return this.logistics.sellToStation(empire, colonyId, stationId, wanted);
+    return this.market.sellToStation(empire, colonyId, stationId, wanted);
   }
 
   /** Action joueur : acheter au spot (le convoi part avec un budget, revient chargé). */
@@ -545,7 +614,7 @@ export class GameEngine {
     resource: ResourceId,
     budgetRaw: number,
   ): string | null {
-    return this.logistics.buyFromStation(empire, colonyId, stationId, resource, budgetRaw);
+    return this.market.buyFromStation(empire, colonyId, stationId, resource, budgetRaw);
   }
 
   /** Action joueur : produire un vaisseau au chantier naval (classe historique). */
@@ -700,17 +769,17 @@ export class GameEngine {
    * sa galaxie. C'est ce qui fait diverger les prix d'un comptoir à l'autre.
    */
   priceContextOf(stationId: string): PriceContext | undefined {
-    return this.logistics.priceContextOf(stationId);
+    return this.market.priceContextOf(stationId);
   }
 
   /** Fait évoluer l'humeur de chaque faction à un tick économique (chantier 15). */
   factionMoodTick(now: number, tickNumber: number): void {
-    this.logistics.factionMoodTick(now, tickNumber);
+    this.market.factionMoodTick(now, tickNumber);
   }
 
   /** Fait tourner l'économie d'un empire PNJ : vend le surplus, contractualise les besoins. */
   npcTick(empire: Empire): void {
-    this.logistics.npcTick(empire);
+    this.market.npcTick(empire);
   }
 
   private async loadRoutes(): Promise<void> {
@@ -764,7 +833,7 @@ export class GameEngine {
     galaxyId: string,
     wanted: Partial<Record<ResourceId, number>>,
   ): string | null {
-    return this.logistics.contributeGateway(empire, colonyId, galaxyId, wanted);
+    return this.gateway.contributeGateway(empire, colonyId, galaxyId, wanted);
   }
 
   // ─────────────────────────── Contrats de fourniture (chantier 14) ───────────────────────────
@@ -778,7 +847,7 @@ export class GameEngine {
     pricePerUnit: number,
     durationMs: number,
   ): string | null {
-    return this.logistics.postContract(
+    return this.contract.postContract(
       empire,
       colonyId,
       resource,
@@ -795,12 +864,12 @@ export class GameEngine {
     contractId: string,
     quantity: number,
   ): string | null {
-    return this.logistics.acceptContract(empire, colonyId, contractId, quantity);
+    return this.contract.acceptContract(empire, colonyId, contractId, quantity);
   }
 
   /** Action joueur : annuler son propre contrat — rembourse le séquestre du reliquat non honoré. */
   cancelContract(empire: Empire, contractId: string): string | null {
-    return this.logistics.cancelContract(empire, contractId);
+    return this.contract.cancelContract(empire, contractId);
   }
 
   // ─────────────────────────── Flottes & combat ───────────────────────────
@@ -978,7 +1047,7 @@ export class GameEngine {
    * Idempotent : rejoué après chaque extension de l'univers (chantier 9).
    */
   private initGateways(): void {
-    this.logistics.initGateways();
+    this.gateway.initGateways();
   }
 
   /** Dote chaque faction d'un état (chantier 15). Idempotent : rejoué sans jamais dédoubler. */
@@ -1010,21 +1079,21 @@ export class GameEngine {
   }
 
   private async loadGateways(): Promise<void> {
-    await this.logistics.loadGateways();
+    await this.gateway.loadGateways();
   }
 
   /** Active les portails dont le chantier final est terminé. */
   resolveGateways(t: number): void {
-    this.logistics.resolveGateways(t);
+    this.gateway.resolveGateways(t);
   }
 
   private async loadContracts(): Promise<void> {
-    await this.logistics.loadContracts();
+    await this.contract.loadContracts();
   }
 
   /** Expire les contrats dépassés et rembourse le séquestre du reliquat non honoré. */
   resolveContracts(t: number): void {
-    this.logistics.resolveContracts(t);
+    this.contract.resolveContracts(t);
   }
 
   /** Action joueur : revendiquer un système (colonie sur place requise). */
@@ -1106,14 +1175,14 @@ export class GameEngine {
     for (const [id, gateway] of this.gatewayMap) {
       if (gateway.activatesAt === null) continue;
       this.gatewayMap.set(id, { ...gateway, activatesAt: gateway.activatesAt - delta });
-      this.logistics.persistGateway(this.gatewayMap.get(id)!);
+      this.gateway.persistGateway(this.gatewayMap.get(id)!);
     }
     // Contrats : partagés comme les portails — l'échéance suit le même décalage.
     for (const [id, contract] of this.contractMap) {
       if (contract.status !== "open") continue;
       const next: Contract = { ...contract, deadline: contract.deadline - delta };
       this.contractMap.set(id, next);
-      this.logistics.persistContract(next);
+      this.contract.persistContract(next);
     }
     // Humeurs de faction : même décalage, pour qu'un fast-forward de dev/test les résolve.
     for (const [id, state] of this.factionStateMap) {
@@ -1192,7 +1261,7 @@ export class GameEngine {
       next = { ...next, activatesAt: Date.now() + GATEWAY_BUILD_MS };
     }
     this.gatewayMap.set(galaxyId, next);
-    this.logistics.persistGateway(next);
+    this.gateway.persistGateway(next);
     this.notify();
   }
 
@@ -1203,10 +1272,7 @@ export class GameEngine {
     durationMs = FACTION_MOOD_DURATION_MS,
   ): boolean {
     return this.diplomacy.devSetFactionMood(factionId, mood, durationMs, (fid) =>
-      this.logistics.factionPostShortageContract(
-        fid,
-        createRng(`dev-shortage-${fid}-${Date.now()}`),
-      ),
+      this.market.factionPostShortageContract(fid, createRng(`dev-shortage-${fid}-${Date.now()}`)),
     );
   }
 
@@ -1352,11 +1418,11 @@ export class GameEngine {
    * leurs comptoirs) — d'où l'idempotence.
    */
   private initMarkets(): void {
-    this.logistics.initMarkets();
+    this.market.initMarkets();
   }
 
   private async loadMarkets(): Promise<void> {
-    await this.logistics.loadMarkets();
+    await this.market.loadMarkets();
   }
 
   /** Génération d'influence ; entretien impayé = la revendication la plus récente tombe. */
@@ -1366,7 +1432,7 @@ export class GameEngine {
 
   /** Tick économique : les stocks PNJ de chaque station évoluent selon leur faction. */
   economyTick(tickNumber: number): void {
-    this.logistics.economyTick(tickNumber);
+    this.market.economyTick(tickNumber);
   }
 
   private markExplored(empire: Empire, systemId: string): void {
