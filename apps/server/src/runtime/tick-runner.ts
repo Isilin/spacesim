@@ -1,48 +1,43 @@
-import { ECONOMY_TICK_TICKS, TICK_MS, type Colony } from "@spacesim/shared";
-import type { Empire } from "../empire.js";
+import { ECONOMY_TICK_TICKS, TICK_MS } from "@spacesim/shared";
 import type { GameRuntime } from "./game-runtime.js";
 import { GameRepository } from "./repositories/game-repository.js";
 import { PlayerRepository } from "./repositories/player-repository.js";
+import type { ContractService } from "./services/contract-service.js";
+import type { DiplomacyService } from "./services/diplomacy-service.js";
+import type { ExplorationService } from "./services/exploration-service.js";
+import type { FleetService } from "./services/fleet-service.js";
+import type { GatewayService } from "./services/gateway-service.js";
+import type { IndustryService } from "./services/industry-service.js";
+import type { LogisticsService } from "./services/logistics-service.js";
+import type { MarketService } from "./services/market-service.js";
+import type { ObjectiveService } from "./services/objective-service.js";
 
-/**
- * Les phases d'un tick, dans l'ordre exact observé en production. Chaque méthode reste
- * l'implémentation existante de `GameEngine` — `TickRunner` n'en encode que la séquence
- * et les moments de persistance/notification ; la migration des corps de méthode vers des
- * services par domaine est un chantier séparé.
- */
-export interface TickHost {
-  deliverTransfers(empire: Empire, t: number): void;
-  resolveMissions(empire: Empire, t: number): void;
-  resolveResearch(empire: Empire, t: number): void;
-  resolveGateways(t: number): void;
-  resolveContracts(t: number): void;
-  resolveObjectives(t: number): void;
-  resolveWorldEvents(t: number): void;
-  worldEventTick(tickNumber: number, now: number): void;
-  processRoutes(empire: Empire, t: number): void;
-  outpostsTick(empire: Empire): void;
-  fleetsTick(empire: Empire, t: number): void;
-  spawnPirates(tickNumber: number): void;
-  influenceTick(empire: Empire): void;
-  economyTick(tickNumber: number): void;
-  factionMoodTick(now: number, tickNumber: number): void;
-  npcTick(empire: Empire): void;
-  generateObjectives(tickNumber: number, now: number): void;
-  ensureFrontier(): void;
-  colonyProductionTick(empire: Empire, t: number): void;
-  persistColony(colony: Colony): void;
-  persistOutposts(empire: Empire): void;
-  notify(): void;
+/** Les neuf services que `TickRunner` orchestre, dans l'ordre exact de production. */
+export interface TickServices {
+  industry: IndustryService;
+  logistics: LogisticsService;
+  gateway: GatewayService;
+  contract: ContractService;
+  market: MarketService;
+  exploration: ExplorationService;
+  fleetService: FleetService;
+  diplomacy: DiplomacyService;
+  objective: ObjectiveService;
 }
 
-/** Fait avancer la simulation d'un nombre de ticks donné — boucle, persistance, notification. */
+/**
+ * Fait avancer la simulation d'un nombre de ticks donné — boucle, persistance,
+ * notification. Prend les services directement (chantier 19.6) : l'interface
+ * `TickHost` d'origine (21 méthodes passe-plat sur `GameEngine`) a disparu.
+ */
 export class TickRunner {
   private readonly gameRepo = new GameRepository();
   private readonly playerRepo: PlayerRepository;
 
   constructor(
     private readonly runtime: GameRuntime,
-    private readonly host: TickHost,
+    private readonly services: TickServices,
+    private readonly notify: () => void,
   ) {
     this.playerRepo = new PlayerRepository(runtime.clock.id);
   }
@@ -56,57 +51,65 @@ export class TickRunner {
     this.gameRepo.saveTick(this.runtime.clock);
     for (const empire of this.runtime.empires.values()) {
       this.playerRepo.saveInfluence(empire);
-      for (const colony of empire.colonyMap.values()) this.host.persistColony(colony);
-      this.host.persistOutposts(empire);
+      for (const colony of empire.colonyMap.values()) this.services.industry.persistColony(colony);
+      this.services.logistics.persistOutposts(empire);
     }
-    this.host.notify();
+    this.notify();
   }
 
   /** Une passe de tick : arrivées/recherche, monde partagé, routes/flottes/influence,
    *  économie/PNJ/objectifs/frontière (tick éco seulement), puis production des colonies. */
   private runOne(t: number, tickNumber: number): void {
-    const { host, runtime } = this;
+    const { runtime, services } = this;
     const isEconomyTick = tickNumber % ECONOMY_TICK_TICKS === 0;
 
     // Étapes par empire (un seul instancié à ce stade — la boucle tourne une fois).
     for (const empire of runtime.empires.values()) {
-      host.deliverTransfers(empire, t);
-      host.resolveMissions(empire, t);
-      host.resolveResearch(empire, t);
+      services.logistics.deliverTransfers(empire, t);
+      services.logistics.resolveMissions(empire, t);
+      services.industry.resolveResearch(empire, t);
     }
     // Portails et contrats : univers partagé, résolus une fois par tick.
-    host.resolveGateways(t);
-    host.resolveContracts(t);
+    services.gateway.resolveGateways(t);
+    services.contract.resolveContracts(t);
     // Objectifs éphémères : réactifs à tout changement (colonisation, claim…), pas
     // seulement au tick éco.
-    host.resolveObjectives(t);
+    services.objective.resolveObjectives(t);
     // Événements de monde : expiration à chaque tick, nouveau tirage au tick éco (avant
     // spawnPirates, pour qu'une vague pirate fraîchement déclenchée s'applique tout de suite).
-    host.resolveWorldEvents(t);
-    if (isEconomyTick) host.worldEventTick(tickNumber, t);
+    services.diplomacy.resolveWorldEvents(t);
+    if (isEconomyTick) services.diplomacy.worldEventTick(tickNumber, t);
     for (const empire of runtime.empires.values()) {
-      host.processRoutes(empire, t);
-      host.outpostsTick(empire);
-      host.fleetsTick(empire, t);
+      services.logistics.processRoutes(empire, t);
+      services.logistics.outpostsTick(empire);
+      services.fleetService.fleetsTick(empire, t);
     }
     // Apparition de repaires (PNJ partagés) : après les mouvements de flotte, avant
     // l'entretien d'influence — position historique (fin de `fleetsTick`), tick éco.
-    if (isEconomyTick) host.spawnPirates(tickNumber);
-    for (const empire of runtime.empires.values()) host.influenceTick(empire);
+    if (isEconomyTick) {
+      services.fleetService.spawnPirates(
+        tickNumber,
+        services.exploration.universeExplored(),
+        (systemId) => services.exploration.claimOwner(systemId),
+      );
+    }
+    for (const empire of runtime.empires.values()) services.exploration.influenceTick(empire);
     // Marchés PNJ : univers partagé, une fois par tick éco.
     if (isEconomyTick) {
-      host.economyTick(tickNumber);
+      services.market.economyTick(tickNumber);
       // Humeurs de faction (chantier 15) : après les marchés, avant les PNJ qui
       // tarifent leurs contrats sur les cours (et bientôt les humeurs) à jour.
-      host.factionMoodTick(t, tickNumber);
+      services.market.factionMoodTick(t, tickNumber);
       // Économie des empires PNJ (chantier 14) : après les marchés, pour tarifer
       // leurs contrats sur des cours à jour.
-      for (const empire of runtime.empires.values()) host.npcTick(empire);
+      for (const empire of runtime.empires.values()) services.market.npcTick(empire);
       // Objectifs éphémères (chantier 17) : un nouveau tirage par cycle éco, pas par tick.
-      host.generateObjectives(tickNumber, t);
+      services.objective.generateObjectives(tickNumber, t);
     }
     // Front de peuplement : une colonisation a pu entamer la frontière (chantier 9).
-    if (isEconomyTick) host.ensureFrontier();
-    for (const empire of runtime.empires.values()) host.colonyProductionTick(empire, t);
+    if (isEconomyTick) services.exploration.ensureFrontier();
+    for (const empire of runtime.empires.values()) {
+      services.industry.colonyProductionTick(empire, t);
+    }
   }
 }

@@ -25,7 +25,6 @@ import {
   type GameState,
   type Gateway,
   type PirateLair,
-  type PriceContext,
   type StoredBattle,
   type MiningOutpost,
   type Mission,
@@ -228,7 +227,6 @@ export class GameEngine {
 
   private constructor(clock: Clock, universe: Universe) {
     this.runtime = new GameRuntime(clock, universe);
-    this.tickRunner = new TickRunner(this.runtime, this);
     this.notifier = new Notifier(() => this.runtime.empires.values());
     this.scheduler = new Scheduler({
       lastTickAt: () => this.clock.lastTickAt,
@@ -353,6 +351,21 @@ export class GameEngine {
       () => this.exploration.galaxyOccupancy(),
       (count) => this.exploration.growUniverse(count),
       (empire, systemId) => this.markExplored(empire, systemId),
+    );
+    this.tickRunner = new TickRunner(
+      this.runtime,
+      {
+        industry: this.industry,
+        logistics: this.logistics,
+        gateway: this.gateway,
+        contract: this.contract,
+        market: this.market,
+        exploration: this.exploration,
+        fleetService: this.fleetService,
+        diplomacy: this.diplomacy,
+        objective: this.objective,
+      },
+      () => this.notify(),
     );
   }
 
@@ -723,11 +736,6 @@ export class GameEngine {
     return this.logistics.buildOutpost(empire, colonyId, beltId);
   }
 
-  /** Production des avant-postes + entretien payé par la colonie propriétaire. */
-  outpostsTick(empire: Empire): void {
-    this.logistics.outpostsTick(empire);
-  }
-
   /** Action joueur : créer une route logistique automatique. */
   createRoute(
     empire: Empire,
@@ -763,39 +771,12 @@ export class GameEngine {
     return this.logistics.deleteRoute(empire, routeId);
   }
 
-  /** Ordonnanceur : départs et résolutions de cycles à l'instant `t`. */
-  processRoutes(empire: Empire, t: number): void {
-    this.logistics.processRoutes(empire, t);
-  }
-
-  /**
-   * Contexte de prix d'une station (chantier 12) : son biais propre et l'éloignement de
-   * sa galaxie. C'est ce qui fait diverger les prix d'un comptoir à l'autre.
-   */
-  priceContextOf(stationId: string): PriceContext | undefined {
-    return this.market.priceContextOf(stationId);
-  }
-
-  /** Fait évoluer l'humeur de chaque faction à un tick économique (chantier 15). */
-  factionMoodTick(now: number, tickNumber: number): void {
-    this.market.factionMoodTick(now, tickNumber);
-  }
-
-  /** Fait tourner l'économie d'un empire PNJ : vend le surplus, contractualise les besoins. */
-  npcTick(empire: Empire): void {
-    this.market.npcTick(empire);
-  }
-
   private async loadRoutes(): Promise<void> {
     await this.logistics.loadRoutes();
   }
 
   private async loadOutposts(): Promise<void> {
     await this.logistics.loadOutposts();
-  }
-
-  persistOutposts(empire: Empire): void {
-    this.logistics.persistOutposts(empire);
   }
 
   /** Action joueur : lancer une recherche (une seule à la fois, payée en science). */
@@ -814,10 +795,6 @@ export class GameEngine {
   /** Action joueur : vider la file planifiée (la recherche en cours continue). */
   clearResearchQueue(empire: Empire): string | null {
     return this.industry.clearResearchQueue(empire);
-  }
-
-  resolveResearch(empire: Empire, t: number): void {
-    this.industry.resolveResearch(empire, t);
   }
 
   /** Action joueur : envoyer une sonde révéler un système. */
@@ -961,35 +938,15 @@ export class GameEngine {
     await this.objective.loadObjectives();
   }
 
-  /** Tire un nouvel objectif éphémère pour chaque empire humain qui n'en a pas déjà un ouvert. */
-  generateObjectives(tickNumber: number, now: number): void {
-    this.objective.generateObjectives(tickNumber, now);
-  }
-
-  /** Valide ou expire les objectifs ouverts, contre l'état courant du jeu. */
-  resolveObjectives(t: number): void {
-    this.objective.resolveObjectives(t);
-  }
-
   // ─────────────────────────── Événements de monde (chantier 17) ───────────────────────────
 
   private async loadWorldEvents(): Promise<void> {
     await this.diplomacy.loadWorldEvents();
   }
 
-  /** Retire les événements de monde expirés (pas de statut : ils disparaissent, point). */
-  resolveWorldEvents(t: number): void {
-    this.diplomacy.resolveWorldEvents(t);
-  }
-
   /** Kinds d'événements de monde actifs sur une galaxie (bonus/malus de prix, spawn pirate). */
   private worldEventKindsOnGalaxy(galaxyId: string): WorldEventKind[] {
     return this.diplomacy.worldEventKindsOnGalaxy(galaxyId);
-  }
-
-  /** Tire un nouvel événement de monde et l'applique — cadence lente, un à la fois par cible. */
-  worldEventTick(tickNumber: number, now: number): void {
-    this.diplomacy.worldEventTick(tickNumber, now);
   }
 
   /** Action joueur : attaquer une flotte ennemie stationnée dans le même système (PvP). */
@@ -1005,25 +962,6 @@ export class GameEngine {
    */
   attackColony(empire: Empire, fleetId: string, targetColonyId: string): string | null {
     return this.fleetService.attackColony(empire, fleetId, targetColonyId);
-  }
-
-  /**
-   * Résout production et déplacements des flottes de l'empire, puis la ponction
-   * pirate sur ses colonies. Repaires pirates = PNJ partagés (l'apparition est
-   * résolue une fois par tick au niveau univers, cf. `advance`).
-   */
-  fleetsTick(empire: Empire, t: number): void {
-    this.fleetService.fleetsTick(empire, t);
-  }
-
-  /**
-   * Apparition de repaires pirates PNJ (univers partagé, une fois par tick éco).
-   * Brouillard univers (union des empires) ; jamais dans un système revendiqué.
-   */
-  spawnPirates(tickNumber: number): void {
-    this.fleetService.spawnPirates(tickNumber, this.exploration.universeExplored(), (systemId) =>
-      this.exploration.claimOwner(systemId),
-    );
   }
 
   private persistFleet(fleet: Fleet, insert = false): void {
@@ -1086,18 +1024,8 @@ export class GameEngine {
     await this.gateway.loadGateways();
   }
 
-  /** Active les portails dont le chantier final est terminé. */
-  resolveGateways(t: number): void {
-    this.gateway.resolveGateways(t);
-  }
-
   private async loadContracts(): Promise<void> {
     await this.contract.loadContracts();
-  }
-
-  /** Expire les contrats dépassés et rembourse le séquestre du reliquat non honoré. */
-  resolveContracts(t: number): void {
-    this.contract.resolveContracts(t);
   }
 
   /** Action joueur : revendiquer un système (colonie sur place requise). */
@@ -1408,15 +1336,6 @@ export class GameEngine {
   }
 
   /**
-   * Résout les missions de l'empire arrivées à l'instant `t` : révélation, fondation,
-   * commerce. Marchés et portails restent partagés (univers) ; `insertMission` (trajet
-   * retour d'achat) reste sur le defaultEmpire — threadé en 7c.
-   */
-  resolveMissions(empire: Empire, t: number): void {
-    this.logistics.resolveMissions(empire, t);
-  }
-
-  /**
    * Dote de stocks les stations qui n'en ont pas encore. Appelé à la création d'une
    * partie et après chaque extension de l'univers (les galaxies neuves arrivent avec
    * leurs comptoirs) — d'où l'idempotence.
@@ -1429,23 +1348,8 @@ export class GameEngine {
     await this.market.loadMarkets();
   }
 
-  /** Génération d'influence ; entretien impayé = la revendication la plus récente tombe. */
-  influenceTick(empire: Empire): void {
-    this.exploration.influenceTick(empire);
-  }
-
-  /** Tick économique : les stocks PNJ de chaque station évoluent selon leur faction. */
-  economyTick(tickNumber: number): void {
-    this.market.economyTick(tickNumber);
-  }
-
   private markExplored(empire: Empire, systemId: string): void {
     this.exploration.markExplored(empire, systemId);
-  }
-
-  /** Livre les convois arrivés à l'instant `t` (surplus au-delà du stockage perdu). */
-  deliverTransfers(empire: Empire, t: number): void {
-    this.logistics.deliverTransfers(empire, t);
   }
 
   /** Colonie de départ : la planète la plus habitable de la galaxie d'origine. */
@@ -1515,11 +1419,6 @@ export class GameEngine {
   /** Encodé nommément, dans l'ordre exact, par `TickRunner` (voir runtime/tick-runner.ts). */
   private advance(ticks: number): void {
     this.tickRunner.run(ticks);
-  }
-
-  /** Production/économie d'une colonie à chaque tick, avec bonus territorial des claims. */
-  colonyProductionTick(empire: Empire, t: number): void {
-    this.industry.colonyProductionTick(empire, t);
   }
 
   private persistResearch(empire: Empire): void {

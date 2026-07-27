@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { db, schema } from "../db/index.js";
 import { Empire } from "../empire.js";
 import { GameRuntime } from "./game-runtime.js";
-import { TickRunner, type TickHost } from "./tick-runner.js";
+import { TickRunner, type TickServices } from "./tick-runner.js";
 
 /** Vide la seule table que TickRunner.run touche directement (games/players — pas de DB
  *  mémoire dédiée ici, ce module réutilise le singleton `db` comme le reste des tests serveur). */
@@ -38,34 +38,57 @@ function makeEmpire(id: string): Empire {
   return empire;
 }
 
-/** Enregistre l'ordre d'appel de chaque phase — un host factice, pas le vrai GameEngine. */
-function recordingHost(): { host: TickHost; calls: string[] } {
+/**
+ * Enregistre l'ordre d'appel de chaque phase — neuf services factices (structurellement
+ * compatibles avec `TickServices`), pas les vrais. `TickRunner` ne connaît plus qu'une
+ * interface par service depuis le chantier 19.6 ; ce harnais reflète cette frontière.
+ */
+function recordingServices(): { services: TickServices; notify: () => void; calls: string[] } {
   const calls: string[] = [];
-  const host: TickHost = {
-    deliverTransfers: () => calls.push("deliverTransfers"),
-    resolveMissions: () => calls.push("resolveMissions"),
-    resolveResearch: () => calls.push("resolveResearch"),
-    resolveGateways: () => calls.push("resolveGateways"),
-    resolveContracts: () => calls.push("resolveContracts"),
-    resolveObjectives: () => calls.push("resolveObjectives"),
-    resolveWorldEvents: () => calls.push("resolveWorldEvents"),
-    worldEventTick: () => calls.push("worldEventTick"),
-    processRoutes: () => calls.push("processRoutes"),
-    outpostsTick: () => calls.push("outpostsTick"),
-    fleetsTick: () => calls.push("fleetsTick"),
-    spawnPirates: () => calls.push("spawnPirates"),
-    influenceTick: () => calls.push("influenceTick"),
-    economyTick: () => calls.push("economyTick"),
-    factionMoodTick: () => calls.push("factionMoodTick"),
-    npcTick: () => calls.push("npcTick"),
-    generateObjectives: () => calls.push("generateObjectives"),
-    ensureFrontier: () => calls.push("ensureFrontier"),
-    colonyProductionTick: () => calls.push("colonyProductionTick"),
-    persistColony: () => calls.push("persistColony"),
-    persistOutposts: () => calls.push("persistOutposts"),
-    notify: () => calls.push("notify"),
+  const services: TickServices = {
+    industry: {
+      resolveResearch: () => calls.push("resolveResearch"),
+      colonyProductionTick: () => calls.push("colonyProductionTick"),
+      persistColony: () => calls.push("persistColony"),
+    } as unknown as TickServices["industry"],
+    logistics: {
+      deliverTransfers: () => calls.push("deliverTransfers"),
+      resolveMissions: () => calls.push("resolveMissions"),
+      processRoutes: () => calls.push("processRoutes"),
+      outpostsTick: () => calls.push("outpostsTick"),
+      persistOutposts: () => calls.push("persistOutposts"),
+    } as unknown as TickServices["logistics"],
+    gateway: {
+      resolveGateways: () => calls.push("resolveGateways"),
+    } as unknown as TickServices["gateway"],
+    contract: {
+      resolveContracts: () => calls.push("resolveContracts"),
+    } as unknown as TickServices["contract"],
+    market: {
+      economyTick: () => calls.push("economyTick"),
+      factionMoodTick: () => calls.push("factionMoodTick"),
+      npcTick: () => calls.push("npcTick"),
+    } as unknown as TickServices["market"],
+    exploration: {
+      influenceTick: () => calls.push("influenceTick"),
+      ensureFrontier: () => calls.push("ensureFrontier"),
+      universeExplored: () => new Set<string>(),
+      claimOwner: () => null,
+    } as unknown as TickServices["exploration"],
+    fleetService: {
+      fleetsTick: () => calls.push("fleetsTick"),
+      spawnPirates: () => calls.push("spawnPirates"),
+    } as unknown as TickServices["fleetService"],
+    diplomacy: {
+      resolveWorldEvents: () => calls.push("resolveWorldEvents"),
+      worldEventTick: () => calls.push("worldEventTick"),
+    } as unknown as TickServices["diplomacy"],
+    objective: {
+      resolveObjectives: () => calls.push("resolveObjectives"),
+      generateObjectives: () => calls.push("generateObjectives"),
+    } as unknown as TickServices["objective"],
   };
-  return { host, calls };
+  return { services, notify: () => calls.push("notify"), calls };
 }
 
 describe("TickRunner — ordre des phases", () => {
@@ -85,8 +108,8 @@ describe("TickRunner — ordre des phases", () => {
       .run();
     runtime.empires.set("a", makeEmpire("a"));
 
-    const { host, calls } = recordingHost();
-    new TickRunner(runtime, host).run(1);
+    const { services, notify, calls } = recordingServices();
+    new TickRunner(runtime, services, notify).run(1);
 
     expect(calls).toEqual([
       "deliverTransfers",
@@ -123,8 +146,8 @@ describe("TickRunner — ordre des phases", () => {
       .run();
     runtime.empires.set("a", makeEmpire("a"));
 
-    const { host, calls } = recordingHost();
-    new TickRunner(runtime, host).run(1);
+    const { services, notify, calls } = recordingServices();
+    new TickRunner(runtime, services, notify).run(1);
 
     expect(calls).toEqual([
       "deliverTransfers",
@@ -167,8 +190,8 @@ describe("TickRunner — ordre des phases", () => {
       .values({ ...runtime.clock, createdAt: Date.now() })
       .run();
 
-    const { host } = recordingHost();
-    new TickRunner(runtime, host).run(3);
+    const { services, notify } = recordingServices();
+    new TickRunner(runtime, services, notify).run(3);
 
     expect(runtime.clock.tick).toBe(8);
     const row = db.select().from(schema.games).get()!;
