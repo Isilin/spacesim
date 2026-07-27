@@ -35,6 +35,7 @@ import {
 import type { EmpireSnapshot } from "@spacesim/protocol";
 import { randomUUID } from "node:crypto";
 import { Empire, type Clock } from "./empire.js";
+import { bootEngine } from "./runtime/boot.js";
 import { composeEngine } from "./runtime/composition.js";
 import { GameRuntime } from "./runtime/game-runtime.js";
 import { consoleLogger, type Logger } from "./runtime/logger.js";
@@ -307,43 +308,15 @@ export class GameEngine {
       : GameEngine.bootstrapNewUniverse();
   }
 
-  /** Séquence de chargement commune (l'ordre des étapes est un contrat implicite). */
+  /**
+   * Séquence de chargement commune (l'ordre des étapes est un contrat implicite,
+   * voir `runtime/boot.ts`). Le constructeur restant privé (geste explicite via
+   * `load`/`bootstrapNewUniverse`), cette méthode reste le seul point qui construit
+   * l'instance avant de lui déléguer la séquence.
+   */
   private static async boot(clock: Clock, universe: Universe, isNew: boolean): Promise<GameEngine> {
     const engine = new GameEngine(clock, universe);
-    await engine.ensureDefaultPlayer();
-    await engine.loadPlayers();
-    await engine.loadRelations();
-    await engine.loadProposals();
-    await engine.loadObjectives();
-    await engine.loadWorldEvents();
-    if (isNew) {
-      engine.createHomeColony();
-    } else {
-      await engine.loadColonies();
-      await engine.loadTransfers();
-      await engine.loadMissions();
-      await engine.loadMarkets();
-      await engine.loadRoutes();
-      await engine.loadOutposts();
-      await engine.loadGateways();
-      await engine.loadContracts();
-      await engine.loadFactionStates();
-      await engine.loadFleets();
-      await engine.loadPirates();
-      await engine.loadBattles();
-    }
-    // Plans de vaisseaux (chantier 13) : chargés puis amorcés pour tout empire qui n'en a
-    // aucun (partie neuve, ou empire d'avant le chantier 13).
-    await engine.loadBlueprints();
-    engine.seedStarterBlueprintsForAll();
-    // Équipement des galaxies (idempotent) : couvre aussi bien la partie neuve que les
-    // galaxies apparues par extension.
-    engine.initMarkets();
-    engine.initGateways();
-    engine.initFactionStates();
-    // L'univers doit toujours offrir de la place devant les joueurs (chantier 9).
-    engine.ensureFrontier();
-    engine.catchUp();
+    await bootEngine(engine, isNew);
     return engine;
   }
 
@@ -393,45 +366,13 @@ export class GameEngine {
 
   // ── Conception de vaisseaux (chantier 13) ────────────────────────────────
 
-  private async loadBlueprints(): Promise<void> {
-    await this.industry.loadBlueprints();
-  }
-
-  private seedStarterBlueprintsForAll(): void {
-    this.industry.seedStarterBlueprintsForAll();
-  }
-
-  private async loadRoutes(): Promise<void> {
-    await this.logistics.loadRoutes();
-  }
-
-  private async loadOutposts(): Promise<void> {
-    await this.logistics.loadOutposts();
-  }
-
   // ─────────────────────────── Flottes & combat ───────────────────────────
 
   // ─────────────────────────── Diplomatie (chantier 16) ───────────────────────────
 
-  private async loadRelations(): Promise<void> {
-    await this.diplomacy.loadRelations();
-  }
-
-  private async loadProposals(): Promise<void> {
-    await this.diplomacy.loadProposals();
-  }
-
   // ─────────────────────────── Objectifs éphémères (chantier 17) ───────────────────────────
 
-  private async loadObjectives(): Promise<void> {
-    await this.objective.loadObjectives();
-  }
-
   // ─────────────────────────── Événements de monde (chantier 17) ───────────────────────────
-
-  private async loadWorldEvents(): Promise<void> {
-    await this.diplomacy.loadWorldEvents();
-  }
 
   /** Action joueur : attaquer une flotte ennemie stationnée dans le même système (PvP). */
   attackFleet(empire: Empire, fleetId: string, targetFleetId: string): string | null {
@@ -456,48 +397,11 @@ export class GameEngine {
     this.fleetService.persistLair(lair, insert);
   }
 
-  private async loadFleets(): Promise<void> {
-    await this.fleetService.loadFleets();
-  }
-
-  private async loadPirates(): Promise<void> {
-    await this.fleetService.loadPirates();
-  }
-
-  private async loadBattles(): Promise<void> {
-    await this.fleetService.loadBattles();
-  }
-
-  /**
-   * Ouvre un chantier de portail pour chaque galaxie lointaine qui n'en a pas encore.
-   * Idempotent : rejoué après chaque extension de l'univers (chantier 9).
-   */
-  private initGateways(): void {
-    this.gateway.initGateways();
-  }
-
-  /** Dote chaque faction d'un état (chantier 15). Idempotent : rejoué sans jamais dédoubler. */
-  private initFactionStates(): void {
-    this.diplomacy.initFactionStates();
-  }
-
-  private async loadFactionStates(): Promise<void> {
-    await this.diplomacy.loadFactionStates();
-  }
-
   // ── Extension de l'univers (chantier 9) ────────────────────────────────
 
   /** Maintient la frontière glissante : toujours des galaxies vierges devant les joueurs. */
   ensureFrontier(): void {
     this.exploration.ensureFrontier();
-  }
-
-  private async loadGateways(): Promise<void> {
-    await this.gateway.loadGateways();
-  }
-
-  private async loadContracts(): Promise<void> {
-    await this.contract.loadContracts();
   }
 
   /** Action joueur : revendiquer un système (colonie sur place requise). */
@@ -692,66 +596,16 @@ export class GameEngine {
     this.bootstrap.devGrant(resources);
   }
 
-  /**
-   * Dote de stocks les stations qui n'en ont pas encore. Appelé à la création d'une
-   * partie et après chaque extension de l'univers (les galaxies neuves arrivent avec
-   * leurs comptoirs) — d'où l'idempotence.
-   */
-  private initMarkets(): void {
-    this.market.initMarkets();
-  }
-
-  private async loadMarkets(): Promise<void> {
-    await this.market.loadMarkets();
-  }
-
   private markExplored(empire: Empire, systemId: string): void {
     this.exploration.markExplored(empire, systemId);
-  }
-
-  /** Colonie de départ : la planète la plus habitable de la galaxie d'origine. */
-  /**
-   * Garantit qu'un empire par défaut existe et adopte les entités orphelines.
-   * Socle du multi (chantier 7) : en solo, un unique player possède tout.
-   * Pour une sauvegarde mono-locataire pré-existante, backfill des `ownerId` NULL.
-   */
-  /**
-   * Garantit qu'au moins un player (empire par défaut) existe et adopte les entités
-   * orphelines. Un player neuf démarre à l'état vide (la colonie mère peuple ensuite son
-   * brouillard). Le backfill des `ownerId` NULL les rattache au player par défaut (le
-   * premier). N'instancie PAS les `Empire` : `loadPlayers()` le fait pour toutes les
-   * lignes `players` (chantier 7c — Phase A).
-   *
-   * NB : l'état d'empire des sauvegardes pré-7b a été copié `games`→`players` par la
-   * migration 0005 ; les colonnes legacy de `games` sont supprimées en 0006 (Phase D).
-   */
-  private async ensureDefaultPlayer(): Promise<void> {
-    await this.bootstrap.ensureDefaultPlayer();
-  }
-
-  /**
-   * Instancie un `Empire` par ligne `players` (Phase A du chantier 7c). Chaque empire
-   * charge son état autoritaire (recherche, influence, réputation, brouillard, effets)
-   * et ses claims (par `ownerId`). `defaultEmpire` = premier player (ordre d'insertion),
-   * fallback de compatibilité tant que l'identité de connexion (7c-B) n'existe pas.
-   */
-  private async loadPlayers(): Promise<void> {
-    await this.bootstrap.loadPlayers();
-  }
-
-  private createHomeColony(): void {
-    this.bootstrap.createHomeColony();
-  }
-
-  private async loadColonies(): Promise<void> {
-    await this.bootstrap.loadColonies();
   }
 
   persistColony(colony: Colony): void {
     this.industry.persistColony(colony);
   }
 
-  private catchUp(): void {
+  /** Rejoue le temps hors-ligne (borné) — dernière étape de `runtime/boot.ts`. */
+  catchUp(): void {
     const elapsed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);
     if (elapsed <= 0) return;
     const ticks = Math.min(elapsed, MAX_CATCHUP_TICKS);
@@ -771,14 +625,6 @@ export class GameEngine {
 
   private persistResearch(empire: Empire): void {
     this.industry.persistResearch(empire);
-  }
-
-  private async loadTransfers(): Promise<void> {
-    await this.logistics.loadTransfers();
-  }
-
-  private async loadMissions(): Promise<void> {
-    await this.logistics.loadMissions();
   }
 
   notify(): void {
