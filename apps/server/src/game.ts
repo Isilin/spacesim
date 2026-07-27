@@ -1,14 +1,7 @@
 import {
-  allSystems,
   breakRelationReason,
-  CLAIM_COST,
   combatDefFromStats,
-  COLONY_SHIP_COST,
-  colonizeInfluenceCost,
-  colonyShipDurationMs,
   computeEffects,
-  contiguousClaims,
-  CONTIGUOUS_CLAIM_BONUS,
   createRng,
   DECLARE_WAR_INFLUENCE_COST,
   declareWarReason,
@@ -23,11 +16,8 @@ import {
   gatewayCost,
   gatewayCovered,
   gatewayLinks,
-  galaxiesToAdd,
-  generateGalaxyAt,
   INITIAL_GALAXIES,
   pickStarterGalaxy,
-  influencePerTick,
   jumpDistanceInUniverse,
   makePeaceReason,
   MAX_CATCHUP_TICKS,
@@ -48,8 +38,6 @@ import {
   resolveBlueprint,
   WARSHIP_COMBAT_DEFS,
   randInt,
-  PROBE_COST_CREDITS,
-  probeDurationMs,
   proposeRelationReason,
   relationKey,
   resolveBattle,
@@ -70,7 +58,6 @@ import {
   type FactionState,
   type Fleet,
   type FleetComposition,
-  type GalaxyOccupancy,
   type LiftRule,
   type GameState,
   type Gateway,
@@ -107,6 +94,7 @@ import { db, schema } from "./db/index.js";
 import { Empire, type Clock } from "./empire.js";
 import { GameRuntime } from "./runtime/game-runtime.js";
 import { consoleLogger, type Logger } from "./runtime/logger.js";
+import { ExplorationService } from "./runtime/services/exploration-service.js";
 import { IndustryService } from "./runtime/services/industry-service.js";
 import { LogisticsService } from "./runtime/services/logistics-service.js";
 import { TickRunner } from "./runtime/tick-runner.js";
@@ -165,6 +153,8 @@ export class GameEngine {
   private industry: IndustryService;
   /** Convois, routes, marché (joueur + PNJ), contrats et portails. */
   private logistics: LogisticsService;
+  /** Sondes, colonisation, revendications de systèmes, croissance de l'univers (chantier 9). */
+  private exploration: ExplorationService;
   /** Injecté depuis le boot (`setLogger`) ; console brute par défaut (tests, scripts). */
   private logger: Logger = consoleLogger;
   private listeners = new Set<StateListener>();
@@ -299,6 +289,16 @@ export class GameEngine {
       (empire, colony) => this.insertColony(empire, colony),
       (empire, systemId) => this.markExplored(empire, systemId),
       (colonyId) => this.empireOfColony(colonyId),
+    );
+    this.exploration = new ExplorationService(
+      this.runtime,
+      () => this.notify(),
+      logger,
+      (colony) => this.persistColony(colony),
+      (empire, kind, fromColonyId, targetId, durationMs) =>
+        this.logistics.insertMission(empire, kind, fromColonyId, targetId, durationMs),
+      () => this.initMarkets(),
+      () => this.initGateways(),
     );
   }
 
@@ -756,99 +756,12 @@ export class GameEngine {
 
   /** Action joueur : envoyer une sonde révéler un système. */
   probe(empire: Empire, colonyId: string, systemId: string): string | null {
-    const colony = empire.colonyMap.get(colonyId);
-    if (!colony) return "Colonie inconnue";
-    if (empire.explored.has(systemId)) return "Système déjà exploré";
-    const system = allSystems(this.universe).find((s) => s.id === systemId);
-    if (!system) return "Système inconnu";
-    if (
-      [...empire.missionMap.values()].some((m) => m.kind === "probe" && m.targetId === systemId)
-    ) {
-      return "Une sonde est déjà en route";
-    }
-    const fromPlanet = this.planetsById.get(colony.planetId);
-    if (!fromPlanet) return "Planète inconnue";
-    const cost = Math.round(PROBE_COST_CREDITS * empire.effects.probeCostMult);
-    if (colony.resources.credits < cost) {
-      return `Crédits insuffisants (coût : ${cost})`;
-    }
-    const jumps = jumpDistanceInUniverse(
-      this.universe,
-      fromPlanet.systemId,
-      systemId,
-      this.portalLinks,
-    );
-    if (jumps < 0) return "Système inaccessible";
-
-    const resources = { ...colony.resources, credits: colony.resources.credits - cost };
-    empire.colonyMap.set(colony.id, { ...colony, resources });
-    this.persistColony(empire.colonyMap.get(colony.id)!);
-    this.logistics.insertMission(
-      empire,
-      "probe",
-      colonyId,
-      systemId,
-      probeDurationMs(jumps) * empire.effects.probeSpeedMult,
-    );
-    this.notify();
-    return null;
+    return this.exploration.probe(empire, colonyId, systemId);
   }
 
   /** Action joueur : envoyer un vaisseau colonial fonder une colonie. */
   colonize(empire: Empire, colonyId: string, planetId: string): string | null {
-    const colony = empire.colonyMap.get(colonyId);
-    if (!colony) return "Colonie inconnue";
-    const target = this.planetsById.get(planetId);
-    if (!target) return "Planète inconnue";
-    if (!empire.explored.has(target.systemId)) return "Système non exploré";
-    if (target.type === "gas") return "Impossible de coloniser une géante gazeuse";
-    if ([...empire.colonyMap.values()].some((c) => c.planetId === planetId)) {
-      return "Planète déjà colonisée";
-    }
-    if (
-      [...empire.missionMap.values()].some((m) => m.kind === "colonize" && m.targetId === planetId)
-    ) {
-      return "Un vaisseau colonial est déjà en route";
-    }
-    const fromPlanet = this.planetsById.get(colony.planetId);
-    if (!fromPlanet) return "Planète inconnue";
-    const jumps = jumpDistanceInUniverse(
-      this.universe,
-      fromPlanet.systemId,
-      target.systemId,
-      this.portalLinks,
-    );
-    if (jumps < 0) return "Système inaccessible";
-
-    const resources = { ...colony.resources };
-    for (const [res, amount] of Object.entries(COLONY_SHIP_COST) as [ResourceId, number][]) {
-      if (resources[res] < amount) {
-        return `Ressources insuffisantes pour le vaisseau colonial (${amount} ${res})`;
-      }
-    }
-    // Frein politique : chaque colonie supplémentaire coûte de l'influence.
-    const pendingColonies = [...empire.missionMap.values()].filter(
-      (m) => m.kind === "colonize",
-    ).length;
-    const influenceCost = colonizeInfluenceCost(empire.colonyMap.size + pendingColonies);
-    if (empire.influence < influenceCost) {
-      return `Influence insuffisante (${Math.floor(empire.influence)}/${influenceCost})`;
-    }
-    for (const [res, amount] of Object.entries(COLONY_SHIP_COST) as [ResourceId, number][]) {
-      resources[res] -= amount;
-    }
-    empire.influence -= influenceCost;
-    empire.colonyMap.set(colony.id, { ...colony, resources });
-    this.persistColony(empire.colonyMap.get(colony.id)!);
-    this.logistics.insertMission(
-      empire,
-      "colonize",
-      colonyId,
-      planetId,
-      colonyShipDurationMs(jumps) * empire.effects.colonyShipSpeedMult,
-    );
-    this.notify();
-    return null;
+    return this.exploration.colonize(empire, colonyId, planetId);
   }
 
   /** Action joueur : livrer des ressources au chantier de portail (tech requise). */
@@ -1600,7 +1513,9 @@ export class GameEngine {
       this.persistColony(empire.colonyMap.get(home.id)!);
     }
     // Rupture du claim ennemi sur le système pillé.
-    if (target.empire.claimedSystemIds.includes(systemId)) this.dropClaim(target.empire, systemId);
+    if (target.empire.claimedSystemIds.includes(systemId)) {
+      this.exploration.dropClaim(target.empire, systemId);
+    }
     this.archiveBattle(systemId, fleet.name, `${target.empire.name} — ${victim.name} (raid)`, {
       raid: true,
       stolen,
@@ -1683,30 +1598,13 @@ export class GameEngine {
     }
   }
 
-  /** Empire propriétaire du claim d'un système, ou null (claims exclusifs — Phase E). */
-  private claimOwner(systemId: string): Empire | null {
-    for (const empire of this.empires.values()) {
-      if (empire.claimedSystemIds.includes(systemId)) return empire;
-    }
-    return null;
-  }
-
-  /** Union des systèmes explorés par tous les empires (brouillard univers — Phase E). */
-  private universeExplored(): Set<string> {
-    const explored = new Set<string>();
-    for (const empire of this.empires.values()) {
-      for (const systemId of empire.explored) explored.add(systemId);
-    }
-    return explored;
-  }
-
   /**
    * Apparition de repaires pirates PNJ (univers partagé, une fois par tick éco).
    * Brouillard univers (union des empires) ; jamais dans un système revendiqué.
    */
   spawnPirates(tickNumber: number): void {
-    for (const systemId of this.universeExplored()) {
-      if (this.claimOwner(systemId)) continue;
+    for (const systemId of this.exploration.universeExplored()) {
+      if (this.exploration.claimOwner(systemId)) continue;
       if ([...this.lairMap.values()].some((l) => l.systemId === systemId)) continue;
       const galaxy = this.universe.galaxies.find((g) => g.systems.some((s) => s.id === systemId));
       // Vague pirate majeure (chantier 17) : la galaxie touchée voit sa chance de spawn multipliée.
@@ -1868,67 +1766,9 @@ export class GameEngine {
 
   // ── Extension de l'univers (chantier 9) ────────────────────────────────
 
-  /** Occupation par galaxie, matière première des règles d'expansion (`sim/expansion`). */
-  private galaxyOccupancy(): GalaxyOccupancy[] {
-    const occupiedPlanets = new Set<string>();
-    /** Empires ayant au moins une colonie, par index de galaxie. */
-    const empiresByGalaxy = new Map<number, Set<string>>();
-    for (const empire of this.empires.values()) {
-      for (const colony of empire.colonyMap.values()) {
-        occupiedPlanets.add(colony.planetId);
-        const systemId = this.planetsById.get(colony.planetId)?.systemId;
-        const index = systemId === undefined ? undefined : this.galaxyIndexOfSystem.get(systemId);
-        if (index === undefined) continue;
-        const set = empiresByGalaxy.get(index) ?? new Set<string>();
-        set.add(empire.id);
-        empiresByGalaxy.set(index, set);
-      }
-    }
-    return this.universe.galaxies.map((galaxy, index) => {
-      let colonies = 0;
-      let freeHabitable = 0;
-      for (const system of galaxy.systems) {
-        for (const planet of system.planets) {
-          if (occupiedPlanets.has(planet.id)) colonies++;
-          else if (planet.type !== "gas") freeHabitable++;
-        }
-      }
-      return { index, colonies, empires: empiresByGalaxy.get(index)?.size ?? 0, freeHabitable };
-    });
-  }
-
-  /**
-   * Déroule `count` galaxies de plus depuis la seed. Les galaxies déjà générées sont
-   * intactes (RNG dérivé par index — chantier 9.1) : on ajoute, on ne régénère pas.
-   */
-  private growUniverse(count: number): void {
-    if (count <= 0) return;
-    const from = this.universe.galaxies.length;
-    const added = Array.from({ length: count }, (_, i) =>
-      generateGalaxyAt(this.clock.seed, from + i),
-    );
-    this.universe = { ...this.universe, galaxies: [...this.universe.galaxies, ...added] };
-    this.clock.galaxyCount = this.universe.galaxies.length;
-    this.reindexUniverse();
-    // Les galaxies neuves arrivent avec leurs comptoirs et leur chantier de portail.
-    this.initMarkets();
-    this.initGateways();
-    db.update(schema.games)
-      .set({ galaxyCount: this.clock.galaxyCount })
-      .where(eq(schema.games.id, this.clock.id))
-      .run();
-    // Tous les clients doivent recevoir la nouvelle carte, y compris ceux qui n'ont
-    // rien exploré depuis leur dernier message.
-    for (const empire of this.empires.values()) empire.universeDirty = true;
-    this.logger.info(
-      `[game] univers étendu : +${count} galaxie(s) (${added.map((g) => g.name).join(", ")}) — ${this.clock.galaxyCount} au total`,
-    );
-    this.notify();
-  }
-
   /** Maintient la frontière glissante : toujours des galaxies vierges devant les joueurs. */
   ensureFrontier(): void {
-    this.growUniverse(galaxiesToAdd(this.galaxyOccupancy()));
+    this.exploration.ensureFrontier();
   }
 
   private loadGateways(): void {
@@ -1951,39 +1791,12 @@ export class GameEngine {
 
   /** Action joueur : revendiquer un système (colonie sur place requise). */
   claimSystem(empire: Empire, systemId: string): string | null {
-    const system = allSystems(this.universe).find((s) => s.id === systemId);
-    if (!system) return "Système inconnu";
-    if (!empire.explored.has(systemId)) return "Système non exploré";
-    if (empire.claimedSystemIds.includes(systemId)) return "Système déjà revendiqué";
-    // Claims exclusifs (Phase E) : un système n'appartient qu'à un empire à la fois.
-    if (this.claimOwner(systemId)) return "Système revendiqué par un autre empire";
-    const hasColony = [...empire.colonyMap.values()].some(
-      (c) => this.planetsById.get(c.planetId)?.systemId === systemId,
-    );
-    if (!hasColony) return "Une colonie sur place est requise pour revendiquer";
-    if (empire.influence < CLAIM_COST) {
-      return `Influence insuffisante (${Math.floor(empire.influence)}/${CLAIM_COST})`;
-    }
-    empire.influence -= CLAIM_COST;
-    empire.claimedSystemIds = [...empire.claimedSystemIds, systemId];
-    db.insert(schema.claims)
-      .values({ systemId, gameId: this.clock.id, ownerId: empire.id, claimedAt: Date.now() })
-      .run();
-    this.notify();
-    return null;
+    return this.exploration.claimSystem(empire, systemId);
   }
 
   /** Action joueur : abandonner une revendication (sans remboursement). */
   unclaimSystem(empire: Empire, systemId: string): string | null {
-    if (!empire.claimedSystemIds.includes(systemId)) return "Système non revendiqué";
-    this.dropClaim(empire, systemId);
-    this.notify();
-    return null;
-  }
-
-  private dropClaim(empire: Empire, systemId: string): void {
-    empire.claimedSystemIds = empire.claimedSystemIds.filter((id) => id !== systemId);
-    db.delete(schema.claims).where(eq(schema.claims.systemId, systemId)).run();
+    return this.exploration.unclaimSystem(empire, systemId);
   }
 
   /**
@@ -2250,11 +2063,11 @@ export class GameEngine {
    * (brouillards disjoints). L'univers s'étend si plus aucune galaxie n'a de place.
    */
   private pickHomePlanet(): Planet | null {
-    const starter = pickStarterGalaxy(this.galaxyOccupancy());
+    const starter = pickStarterGalaxy(this.exploration.galaxyOccupancy());
     if (starter === null) {
       // Plus une seule place : ouvrir la frontière, puis viser la première galaxie neuve.
       const before = this.universe.galaxies.length;
-      this.growUniverse(1);
+      this.exploration.growUniverse(1);
       if (this.universe.galaxies.length === before) return null; // plafond atteint
       return this.pickHomePlanet();
     }
@@ -2511,23 +2324,7 @@ export class GameEngine {
 
   /** Génération d'influence ; entretien impayé = la revendication la plus récente tombe. */
   influenceTick(empire: Empire): void {
-    // Bonus de territoire soudé : les claims contigus rapportent un supplément d'influence.
-    const contiguous = contiguousClaims(this.universe, empire.claimedSystemIds).size;
-    const net =
-      influencePerTick(
-        [...empire.colonyMap.values()],
-        empire.claimedSystemIds.length,
-        empire.effects.influenceMult,
-      ) +
-      contiguous * CONTIGUOUS_CLAIM_BONUS;
-    let influence = empire.influence + net;
-    if (influence < 0 && empire.claimedSystemIds.length > 0) {
-      const dropped = empire.claimedSystemIds.at(-1)!;
-      this.dropClaim(empire, dropped);
-      influence = 0;
-      this.logger.info(`[game] revendication perdue faute d'influence : ${dropped}`);
-    }
-    empire.influence = Math.max(0, influence);
+    this.exploration.influenceTick(empire);
   }
 
   /** Tick économique : les stocks PNJ de chaque station évoluent selon leur faction. */
@@ -2536,13 +2333,7 @@ export class GameEngine {
   }
 
   private markExplored(empire: Empire, systemId: string): void {
-    if (empire.explored.has(systemId)) return;
-    empire.explored.add(systemId);
-    empire.explorationDirty = true;
-    db.update(schema.players)
-      .set({ explored: JSON.stringify([...empire.explored]) })
-      .where(eq(schema.players.id, empire.id))
-      .run();
+    this.exploration.markExplored(empire, systemId);
   }
 
   /** Livre les convois arrivés à l'instant `t` (surplus au-delà du stockage perdu). */
