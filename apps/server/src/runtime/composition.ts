@@ -2,6 +2,7 @@ import type { GameRuntime } from "./game-runtime.js";
 import type { Logger } from "./logger.js";
 import { BootstrapService } from "./services/bootstrap-service.js";
 import { ContractService } from "./services/contract-service.js";
+import { DevService } from "./services/dev-service.js";
 import { DiplomacyService } from "./services/diplomacy-service.js";
 import { ExplorationService } from "./services/exploration-service.js";
 import { FleetService } from "./services/fleet-service.js";
@@ -12,7 +13,7 @@ import { MarketService } from "./services/market-service.js";
 import { ObjectiveService } from "./services/objective-service.js";
 import { TickRunner } from "./tick-runner.js";
 
-/** Les neuf services par domaine + le bootstrap + l'orchestrateur de tick, composés. */
+/** Les neuf services par domaine + bootstrap + outils de dev + l'orchestrateur de tick, composés. */
 export interface ComposedEngine {
   industry: IndustryService;
   logistics: LogisticsService;
@@ -24,6 +25,7 @@ export interface ComposedEngine {
   diplomacy: DiplomacyService;
   objective: ObjectiveService;
   bootstrap: BootstrapService;
+  devService: DevService;
   tickRunner: TickRunner;
 }
 
@@ -156,6 +158,14 @@ export function composeEngine(
     },
     notify,
   );
+  const devService = new DevService(runtime, notify, logger, {
+    gateway,
+    diplomacy,
+    market,
+    bootstrap,
+    exploration,
+    fleetService,
+  });
 
   return {
     industry,
@@ -168,6 +178,7 @@ export function composeEngine(
     diplomacy,
     objective,
     bootstrap,
+    devService,
     tickRunner,
   };
 }

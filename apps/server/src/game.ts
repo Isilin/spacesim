@@ -1,30 +1,19 @@
 import {
-  createRng,
   FACTION_MOOD_DURATION_MS,
-  GATEWAY_BUILD_MS,
-  gatewayCost,
-  gatewayCovered,
   generateGalaxyAt,
   generateUniverse,
   INITIAL_GALAXIES,
   MAX_CATCHUP_TICKS,
   WORLD_EVENT_DURATION_MS,
-  pirateBounty,
-  pirateComposition,
-  pirateDirectives,
   TICK_MS,
   type AsteroidBelt,
   type Colony,
   type Contract,
   type EmpireEffects,
-  type CombatPhase,
   type FactionState,
-  type Fleet,
   type GameState,
   type Gateway,
-  type PirateLair,
   type MiningOutpost,
-  type Planet,
   type ResourceId,
   type RelationProposal,
   type Stocks,
@@ -41,6 +30,7 @@ import { GameRuntime } from "./runtime/game-runtime.js";
 import { consoleLogger, type Logger } from "./runtime/logger.js";
 import type { BootstrapService } from "./runtime/services/bootstrap-service.js";
 import type { ContractService } from "./runtime/services/contract-service.js";
+import type { DevService } from "./runtime/services/dev-service.js";
 import type { DiplomacyService } from "./runtime/services/diplomacy-service.js";
 import type { ExplorationService } from "./runtime/services/exploration-service.js";
 import type { FleetService } from "./runtime/services/fleet-service.js";
@@ -64,13 +54,6 @@ import {
   objectivesForEmpire,
   snapshotForEmpire as projectSnapshotForEmpire,
 } from "./runtime/projections.js";
-
-/** Directives par défaut d'une flotte neuve. */
-const DEFAULT_DIRECTIVES: Record<CombatPhase, string> = {
-  long: "focus_fire",
-  medium: "focus_fire",
-  short: "focus_fire",
-};
 
 export type { StateListener };
 
@@ -108,6 +91,8 @@ export class GameEngine {
   readonly objective: ObjectiveService;
   /** Bootstrap des empires (compte joueur, PNJ, colonie mère) et outils de dev associés. */
   readonly bootstrap: BootstrapService;
+  /** Outils de dev (chantier 19.11) : jamais en production, voir `http/routes/dev.ts`. */
+  readonly devService: DevService;
   /** Injecté depuis le boot (`setLogger`) ; console brute par défaut (tests, scripts). */
   private logger: Logger = consoleLogger;
   private readonly notifier: Notifier;
@@ -124,9 +109,6 @@ export class GameEngine {
   }
   private get clock(): Clock {
     return this.runtime.clock;
-  }
-  private get planetsById(): Map<string, Planet> {
-    return this.runtime.planetsById;
   }
   private get stationsById(): Map<string, TradeStation> {
     return this.runtime.stationsById;
@@ -149,9 +131,6 @@ export class GameEngine {
   private get factionStateMap(): Map<string, FactionState> {
     return this.runtime.factionStateMap;
   }
-  private get lairMap(): Map<string, PirateLair> {
-    return this.runtime.lairMap;
-  }
   private get proposalMap(): Map<string, RelationProposal> {
     return this.runtime.proposalMap;
   }
@@ -168,9 +147,6 @@ export class GameEngine {
   }
 
   // Données par-empire portées par l'empire par défaut (délégation le temps du mono-empire).
-  private get colonyMap(): Map<string, Colony> {
-    return this.defaultEmpire.colonyMap;
-  }
   private get outpostMap(): Map<string, MiningOutpost> {
     return this.defaultEmpire.outpostMap;
   }
@@ -214,6 +190,7 @@ export class GameEngine {
     this.diplomacy = composed.diplomacy;
     this.objective = composed.objective;
     this.bootstrap = composed.bootstrap;
+    this.devService = composed.devService;
     this.tickRunner = composed.tickRunner;
   }
 
@@ -389,14 +366,6 @@ export class GameEngine {
     return this.fleetService.attackColony(empire, fleetId, targetColonyId);
   }
 
-  private persistFleet(fleet: Fleet, insert = false): void {
-    this.fleetService.persistFleet(fleet, insert);
-  }
-
-  private persistLair(lair: PirateLair, insert = false): void {
-    this.fleetService.persistLair(lair, insert);
-  }
-
   // ── Extension de l'univers (chantier 9) ────────────────────────────────
 
   /** Maintient la frontière glissante : toujours des galaxies vierges devant les joueurs. */
@@ -443,19 +412,7 @@ export class GameEngine {
    * métaux à livrer) pour tester la dernière contribution et l'activation.
    */
   devFundGateway(galaxyId: string, leave = 50): void {
-    const gateway = this.gatewayMap.get(galaxyId);
-    if (!gateway || gateway.active) return;
-    const progress: Partial<Record<ResourceId, number>> = { ...gatewayCost(galaxyId) };
-    progress.metals = Math.max(0, (progress.metals ?? 0) - leave);
-    let next: Gateway = { ...gateway, progress };
-    // Coût entièrement couvert (`leave` = 0) : on lance le chantier final tout de suite,
-    // pour qu'un `/dev/fastforward` suffise à ouvrir le portail bout en bout.
-    if (gatewayCovered(next) && !next.activatesAt) {
-      next = { ...next, activatesAt: Date.now() + GATEWAY_BUILD_MS };
-    }
-    this.gatewayMap.set(galaxyId, next);
-    this.gateway.persistGateway(next);
-    this.notify();
+    this.devService.devFundGateway(galaxyId, leave);
   }
 
   /** Outil de dev uniquement : force l'humeur d'une faction (chantier 15). */
@@ -464,9 +421,7 @@ export class GameEngine {
     mood: FactionState["mood"],
     durationMs = FACTION_MOOD_DURATION_MS,
   ): boolean {
-    return this.diplomacy.devSetFactionMood(factionId, mood, durationMs, (fid) =>
-      this.market.factionPostShortageContract(fid, createRng(`dev-shortage-${fid}-${Date.now()}`)),
-    );
+    return this.devService.devSetFactionMood(factionId, mood, durationMs);
   }
 
   /**
@@ -479,30 +434,12 @@ export class GameEngine {
     target = "",
     durationMs = WORLD_EVENT_DURATION_MS,
   ): string | null {
-    return this.diplomacy.devTriggerWorldEvent(kind, target, durationMs);
+    return this.devService.devTriggerWorldEvent(kind, target, durationMs);
   }
 
   /** Outil de dev uniquement : fait apparaître un repaire pirate dans un système. */
   devSpawnPirate(systemId: string, threat = 2): void {
-    // Sans système précisé : celui de la première colonie (pratique pour tester).
-    if (!systemId) {
-      const home = [...this.colonyMap.values()][0];
-      const sys = home ? this.planetsById.get(home.planetId)?.systemId : undefined;
-      if (!sys) return;
-      systemId = sys;
-    }
-    const rng = createRng(`dev-pirate-${systemId}-${Date.now()}`);
-    const ships = pirateComposition(rng, threat);
-    const lair: PirateLair = {
-      id: randomUUID(),
-      systemId,
-      ships,
-      directives: pirateDirectives(rng),
-      bounty: pirateBounty(ships),
-    };
-    this.lairMap.set(lair.id, lair);
-    this.persistLair(lair, true);
-    this.notify();
+    this.devService.devSpawnPirate(systemId, threat);
   }
 
   /**
@@ -537,43 +474,27 @@ export class GameEngine {
 
   /** Empire par son id (outils de dev). */
   empireById(id: string): Empire | null {
-    return this.bootstrap.empireById(id);
+    return this.devService.empireById(id);
   }
 
   /** Empire par défaut (outils de dev uniquement : `/dev/armfleet` sans `empireId`). */
   get defaultEmpireForDev(): Empire {
-    return this.defaultEmpire;
+    return this.devService.defaultEmpireForDev;
   }
 
   /** Outil de dev uniquement : instancie un empire supplémentaire. Retourne son id. */
   devSpawnEmpire(name?: string): string | null {
-    return this.bootstrap.devSpawnEmpire(name);
+    return this.devService.devSpawnEmpire(name);
   }
 
   /** Outil de dev uniquement : instancie un empire PNJ (chantier 14). Retourne son id. */
   devSpawnNpcEmpire(name?: string): string | null {
-    return this.bootstrap.devSpawnNpcEmpire(name);
+    return this.devService.devSpawnNpcEmpire(name);
   }
 
   /** Outil de dev uniquement : arme une flotte d'un empire dans un système (tests PvP). */
   devArmFleet(empire: Empire, systemId: string, ships: Partial<Record<string, number>>): string {
-    const home = [...empire.colonyMap.values()][0];
-    const fleet: Fleet = {
-      id: randomUUID(),
-      ownerId: empire.id,
-      name: "Escadre",
-      systemId,
-      homeColonyId: home?.id ?? "",
-      ships,
-      directives: { ...DEFAULT_DIRECTIVES },
-      queue: [],
-      movement: null,
-    };
-    empire.fleetMap.set(fleet.id, fleet);
-    this.markExplored(empire, systemId);
-    this.persistFleet(fleet, true);
-    this.notify();
-    return fleet.id;
+    return this.devService.devArmFleet(empire, systemId, ships);
   }
 
   /** Snapshot (forme externe WS) redacté au brouillard d'un empire (chantier 7c-B). */
@@ -588,16 +509,12 @@ export class GameEngine {
 
   /** Outil de dev uniquement : résumé par empire (état en mémoire) pour l'observation. */
   devEmpireSummaries(): unknown {
-    return this.bootstrap.devEmpireSummaries();
+    return this.devService.devEmpireSummaries();
   }
 
   /** Outil de dev uniquement : injecte des ressources pour tester sans attendre. */
   devGrant(resources: Partial<Record<ResourceId, number>>): void {
-    this.bootstrap.devGrant(resources);
-  }
-
-  private markExplored(empire: Empire, systemId: string): void {
-    this.exploration.markExplored(empire, systemId);
+    this.devService.devGrant(resources);
   }
 
   persistColony(colony: Colony): void {
