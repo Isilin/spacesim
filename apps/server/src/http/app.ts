@@ -1,5 +1,6 @@
 import websocket from "@fastify/websocket";
 import Fastify, { type FastifyInstance } from "fastify";
+import { config } from "../config.js";
 import type { GameEngine } from "../game.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerDevRoutes } from "./routes/dev.js";
@@ -16,7 +17,7 @@ export async function buildApp(
   opts: BuildAppOptions = {},
 ): Promise<FastifyInstance> {
   // Niveau par défaut inchangé (warn) ; LOG_LEVEL permet de le baisser en dev sans redéploiement.
-  const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "warn" } });
+  const app = Fastify({ logger: { level: config.logLevel } });
   await app.register(websocket);
   // Le moteur journalise désormais via ce même logger (mêmes messages, même niveau).
   engine.setLogger(app.log);
@@ -25,7 +26,7 @@ export async function buildApp(
 
   registerAuthRoutes(app, engine);
   // Triches de dev : jamais en production.
-  if (opts.devRoutes ?? process.env.NODE_ENV !== "production") {
+  if (opts.devRoutes ?? config.nodeEnv !== "production") {
     registerDevRoutes(app, engine);
   }
   registerWsRoutes(app, engine);
