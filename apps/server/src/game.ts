@@ -1,36 +1,20 @@
 import {
-  breakRelationReason,
   computeEffects,
   createRng,
-  DECLARE_WAR_INFLUENCE_COST,
-  declareWarReason,
   emptyOrbital,
   emptyResources,
-  FACTION_IDS,
   FACTION_MOOD_DURATION_MS,
-  FACTIONS,
-  fleetPower,
   GATEWAY_BUILD_MS,
   gatewayCost,
   gatewayCovered,
   gatewayLinks,
   INITIAL_GALAXIES,
   pickStarterGalaxy,
-  makePeaceReason,
   MAX_CATCHUP_TICKS,
-  npcAcceptsProposal,
-  generateObjectiveSpec,
-  MAX_OPEN_OBJECTIVES_PER_EMPIRE,
-  objectiveMet,
-  OBJECTIVE_DURATION_MS,
-  rollWorldEvent,
   WORLD_EVENT_DURATION_MS,
   pirateBounty,
   pirateComposition,
   pirateDirectives,
-  proposeRelationReason,
-  relationKey,
-  WAR_COOLDOWN_MS,
   TICK_MS,
   type AsteroidBelt,
   type BuildingId,
@@ -38,10 +22,8 @@ import {
   type Contract,
   type EmpireEffects,
   type CombatPhase,
-  type FactionId,
   type FactionState,
   type Fleet,
-  type FleetComposition,
   type LiftRule,
   type GameState,
   type Gateway,
@@ -51,13 +33,11 @@ import {
   type MiningOutpost,
   type Mission,
   type Objective,
-  type ObjectiveKind,
   type Planet,
   type ProposalKind,
   type ResourceId,
   type Relation,
   type RelationProposal,
-  type RelationState,
   type Route,
   type RouteRule,
   type ShipId,
@@ -77,6 +57,7 @@ import { db, schema } from "./db/index.js";
 import { Empire, type Clock } from "./empire.js";
 import { GameRuntime } from "./runtime/game-runtime.js";
 import { consoleLogger, type Logger } from "./runtime/logger.js";
+import { DiplomacyService } from "./runtime/services/diplomacy-service.js";
 import { ExplorationService } from "./runtime/services/exploration-service.js";
 import { FleetService } from "./runtime/services/fleet-service.js";
 import { IndustryService } from "./runtime/services/industry-service.js";
@@ -141,6 +122,8 @@ export class GameEngine {
   private exploration: ExplorationService;
   /** Flottes, combat (repaire/PvP), production/déplacement et repaires pirates PNJ. */
   private fleetService: FleetService;
+  /** Diplomatie, objectifs éphémères, événements de monde et humeur de faction. */
+  private diplomacy: DiplomacyService;
   /** Injecté depuis le boot (`setLogger`) ; console brute par défaut (tests, scripts). */
   private logger: Logger = consoleLogger;
   private listeners = new Set<StateListener>();
@@ -295,6 +278,12 @@ export class GameEngine {
       (empire, systemId) => this.markExplored(empire, systemId),
       (a, b) => this.atWar(a, b),
       (galaxyId) => this.worldEventKindsOnGalaxy(galaxyId),
+    );
+    this.diplomacy = new DiplomacyService(
+      this.runtime,
+      () => this.notify(),
+      logger,
+      (colony) => this.persistColony(colony),
     );
   }
 
@@ -810,409 +799,84 @@ export class GameEngine {
 
   // ─────────────────────────── Diplomatie (chantier 16) ───────────────────────────
 
-  /** Relation entre deux empires, "neutre" par défaut en l'absence de ligne. */
-  private relationEntry(a: string, b: string): Relation {
-    return (
-      this.relationMap.get(relationKey(a, b)) ?? {
-        empireA: a < b ? a : b,
-        empireB: a < b ? b : a,
-        state: "neutral",
-        since: 0,
-        until: null,
-      }
-    );
-  }
-
   /** Deux empires sont-ils en guerre ? */
   private atWar(a: string, b: string): boolean {
-    return this.relationEntry(a, b).state === "war";
-  }
-
-  /** Écrit une relation (créée ou mise à jour), symétrique et persistée. */
-  private setRelation(a: string, b: string, state: RelationState, until: number | null): void {
-    const key = relationKey(a, b);
-    const existed = this.relationMap.has(key);
-    const [empireA, empireB] = a < b ? [a, b] : [b, a];
-    const relation: Relation = { empireA, empireB, state, since: Date.now(), until };
-    this.relationMap.set(key, relation);
-    if (existed) this.persistRelation(relation);
-    else this.insertRelation(relation);
+    return this.diplomacy.atWar(a, b);
   }
 
   private loadRelations(): void {
-    for (const row of db.select().from(schema.relations).all()) {
-      this.relationMap.set(relationKey(row.empireA, row.empireB), {
-        empireA: row.empireA,
-        empireB: row.empireB,
-        state: row.state as RelationState,
-        since: row.since,
-        until: row.until,
-      });
-    }
-  }
-
-  private insertRelation(relation: Relation): void {
-    db.insert(schema.relations)
-      .values({
-        gameId: this.clock.id,
-        empireA: relation.empireA,
-        empireB: relation.empireB,
-        state: relation.state,
-        since: relation.since,
-        until: relation.until,
-      })
-      .run();
-  }
-
-  private persistRelation(relation: Relation): void {
-    db.update(schema.relations)
-      .set({ state: relation.state, since: relation.since, until: relation.until })
-      .where(
-        and(
-          eq(schema.relations.empireA, relation.empireA),
-          eq(schema.relations.empireB, relation.empireB),
-        ),
-      )
-      .run();
+    this.diplomacy.loadRelations();
   }
 
   /** Action joueur : déclarer la guerre à un empire — unilatérale, mais coûteuse en influence. */
   declareWar(empire: Empire, targetEmpireId: string): string | null {
-    if (targetEmpireId === empire.id) return "Cible invalide";
-    const target = this.empires.get(targetEmpireId);
-    if (!target) return "Empire inconnu";
-    const current = this.relationEntry(empire.id, targetEmpireId);
-    const reason = declareWarReason(current.state, Date.now(), current.until);
-    if (reason) return reason;
-    if (empire.influence < DECLARE_WAR_INFLUENCE_COST) {
-      return `Influence insuffisante (${Math.floor(empire.influence)}/${DECLARE_WAR_INFLUENCE_COST})`;
-    }
-    empire.influence -= DECLARE_WAR_INFLUENCE_COST;
-    this.setRelation(empire.id, targetEmpireId, "war", null);
-    this.logger.info(`[game] « ${empire.name} » déclare la guerre à « ${target.name} »`);
-    this.notify();
-    return null;
+    return this.diplomacy.declareWar(empire, targetEmpireId);
   }
 
   /** Action joueur : faire la paix avec un empire — rouvre un cooldown avant re-déclaration. */
   makePeace(empire: Empire, targetEmpireId: string): string | null {
-    if (targetEmpireId === empire.id) return "Cible invalide";
-    const current = this.relationEntry(empire.id, targetEmpireId);
-    const reason = makePeaceReason(current.state);
-    if (reason) return reason;
-    this.setRelation(empire.id, targetEmpireId, "neutral", Date.now() + WAR_COOLDOWN_MS);
-    this.notify();
-    return null;
-  }
-
-  /** Puissance de flotte totale d'un empire (somme de toutes ses flottes). */
-  private empireFleetPower(empire: Empire): number {
-    let power = 0;
-    for (const fleet of empire.fleetMap.values())
-      power += fleetPower(fleet.ships as FleetComposition);
-    return power;
+    return this.diplomacy.makePeace(empire, targetEmpireId);
   }
 
   /** Action joueur : proposer un pacte (NAP ou alliance) — exige le consentement de la cible. */
   proposeRelation(empire: Empire, targetEmpireId: string, kind: ProposalKind): string | null {
-    if (targetEmpireId === empire.id) return "Cible invalide";
-    const target = this.empires.get(targetEmpireId);
-    if (!target) return "Empire inconnu";
-    const current = this.relationEntry(empire.id, targetEmpireId).state;
-    const reason = proposeRelationReason(current, kind);
-    if (reason) return reason;
-    const key = relationKey(empire.id, targetEmpireId);
-    const alreadyPending = [...this.proposalMap.values()].some(
-      (p) => relationKey(p.fromEmpireId, p.toEmpireId) === key,
-    );
-    if (alreadyPending) return "Une proposition est déjà en attente entre ces deux empires";
-
-    const proposal: RelationProposal = {
-      id: randomUUID(),
-      fromEmpireId: empire.id,
-      toEmpireId: targetEmpireId,
-      kind,
-      createdAt: Date.now(),
-    };
-    this.proposalMap.set(proposal.id, proposal);
-    this.insertProposal(proposal);
-    // Un PNJ ne « joue » jamais : il répond tout de suite, pas d'attente indéfinie.
-    if (target.kind === "npc") {
-      this.resolveProposal(
-        proposal,
-        npcAcceptsProposal(kind, this.empireFleetPower(target), this.empireFleetPower(empire)),
-      );
-    }
-    this.notify();
-    return null;
+    return this.diplomacy.proposeRelation(empire, targetEmpireId, kind);
   }
 
   /** Action joueur : répondre (accepter/refuser) une proposition qui lui est adressée. */
   respondRelation(empire: Empire, proposalId: string, accept: boolean): string | null {
-    const proposal = this.proposalMap.get(proposalId);
-    if (!proposal || proposal.toEmpireId !== empire.id) return "Proposition inconnue";
-    this.resolveProposal(proposal, accept);
-    this.notify();
-    return null;
+    return this.diplomacy.respondRelation(empire, proposalId, accept);
   }
 
   /** Action joueur : retirer sa propre proposition avant qu'elle ne reçoive de réponse. */
   cancelProposal(empire: Empire, proposalId: string): string | null {
-    const proposal = this.proposalMap.get(proposalId);
-    if (!proposal || proposal.fromEmpireId !== empire.id) return "Proposition inconnue";
-    this.proposalMap.delete(proposalId);
-    this.deleteProposal(proposalId);
-    this.notify();
-    return null;
+    return this.diplomacy.cancelProposal(empire, proposalId);
   }
 
   /** Action joueur : rompre un pacte (NAP ou alliance) en vigueur — retour à neutre. */
   breakRelation(empire: Empire, targetEmpireId: string): string | null {
-    if (targetEmpireId === empire.id) return "Cible invalide";
-    const current = this.relationEntry(empire.id, targetEmpireId).state;
-    const reason = breakRelationReason(current);
-    if (reason) return reason;
-    this.setRelation(empire.id, targetEmpireId, "neutral", null);
-    this.notify();
-    return null;
-  }
-
-  /** Accepte ou refuse une proposition en attente, et la retire dans tous les cas. */
-  private resolveProposal(proposal: RelationProposal, accept: boolean): void {
-    this.proposalMap.delete(proposal.id);
-    this.deleteProposal(proposal.id);
-    if (accept) this.setRelation(proposal.fromEmpireId, proposal.toEmpireId, proposal.kind, null);
+    return this.diplomacy.breakRelation(empire, targetEmpireId);
   }
 
   private loadProposals(): void {
-    for (const row of db.select().from(schema.relationProposals).all()) {
-      this.proposalMap.set(row.id, {
-        id: row.id,
-        fromEmpireId: row.fromEmpireId,
-        toEmpireId: row.toEmpireId,
-        kind: row.kind as ProposalKind,
-        createdAt: row.createdAt,
-      });
-    }
-  }
-
-  private insertProposal(proposal: RelationProposal): void {
-    db.insert(schema.relationProposals)
-      .values({
-        id: proposal.id,
-        gameId: this.clock.id,
-        fromEmpireId: proposal.fromEmpireId,
-        toEmpireId: proposal.toEmpireId,
-        kind: proposal.kind,
-        createdAt: proposal.createdAt,
-      })
-      .run();
-  }
-
-  private deleteProposal(id: string): void {
-    db.delete(schema.relationProposals).where(eq(schema.relationProposals.id, id)).run();
+    this.diplomacy.loadProposals();
   }
 
   // ─────────────────────────── Objectifs éphémères (chantier 17) ───────────────────────────
 
   private loadObjectives(): void {
-    for (const row of db.select().from(schema.objectives).all()) {
-      this.objectiveMap.set(row.id, {
-        id: row.id,
-        empireId: row.empireId,
-        kind: row.kind as ObjectiveKind,
-        ...(row.targetCount !== null ? { targetCount: row.targetCount } : {}),
-        ...(row.targetSystemId !== null ? { targetSystemId: row.targetSystemId } : {}),
-        reward: row.reward,
-        createdAt: row.createdAt,
-        deadline: row.deadline,
-        status: row.status as Objective["status"],
-      });
-    }
-  }
-
-  private insertObjective(objective: Objective): void {
-    db.insert(schema.objectives)
-      .values({
-        id: objective.id,
-        gameId: this.clock.id,
-        empireId: objective.empireId,
-        kind: objective.kind,
-        targetCount: objective.targetCount ?? null,
-        targetSystemId: objective.targetSystemId ?? null,
-        reward: objective.reward,
-        createdAt: objective.createdAt,
-        deadline: objective.deadline,
-        status: objective.status,
-      })
-      .run();
-  }
-
-  private persistObjective(objective: Objective): void {
-    db.update(schema.objectives)
-      .set({ status: objective.status, deadline: objective.deadline })
-      .where(eq(schema.objectives.id, objective.id))
-      .run();
-  }
-
-  /** Empires en tête de population/influence — sert à évaluer lead_population/lead_influence. */
-  private empireLeaders(): { populationLeaderId: string | null; influenceLeaderId: string | null } {
-    let popLeader: { id: string; value: number } | null = null;
-    let infLeader: { id: string; value: number } | null = null;
-    for (const empire of this.empires.values()) {
-      const population = [...empire.colonyMap.values()].reduce((s, c) => s + c.population, 0);
-      if (!popLeader || population > popLeader.value)
-        popLeader = { id: empire.id, value: population };
-      if (!infLeader || empire.influence > infLeader.value)
-        infLeader = { id: empire.id, value: empire.influence };
-    }
-    return { populationLeaderId: popLeader?.id ?? null, influenceLeaderId: infLeader?.id ?? null };
+    this.diplomacy.loadObjectives();
   }
 
   /** Tire un nouvel objectif éphémère pour chaque empire humain qui n'en a pas déjà un ouvert. */
   generateObjectives(tickNumber: number, now: number): void {
-    for (const empire of this.empires.values()) {
-      if (empire.kind !== "human") continue;
-      const mine = objectivesForEmpire(this.runtime, empire);
-      const open = mine.filter((o) => o.status === "open");
-      if (open.length >= MAX_OPEN_OBJECTIVES_PER_EMPIRE) continue;
-      // Cooldown : pas de nouveau tirage juste après complétion/expiration, sinon un but
-      // trivialement déjà vrai (ex. lead_influence en tête depuis longtemps) se rejouerait
-      // en boucle à chaque tick éco et verserait sa récompense sans fin.
-      const lastCreatedAt = mine.reduce((max, o) => Math.max(max, o.createdAt), 0);
-      if (lastCreatedAt > 0 && now - lastCreatedAt < OBJECTIVE_DURATION_MS) continue;
-      const rng = createRng(`objective-${this.clock.seed}-${empire.id}-${tickNumber}`);
-      const spec = generateObjectiveSpec(rng, now, empire.colonyMap.size, empire.claimedSystemIds);
-      const objective: Objective = {
-        id: randomUUID(),
-        empireId: empire.id,
-        status: "open",
-        ...spec,
-      };
-      this.objectiveMap.set(objective.id, objective);
-      this.insertObjective(objective);
-    }
+    this.diplomacy.generateObjectives(tickNumber, now);
   }
 
   /** Valide ou expire les objectifs ouverts, contre l'état courant du jeu. */
   resolveObjectives(t: number): void {
-    const { populationLeaderId, influenceLeaderId } = this.empireLeaders();
-    for (const [id, objective] of this.objectiveMap) {
-      if (objective.status !== "open") continue;
-      const empire = this.empires.get(objective.empireId);
-      if (!empire) continue;
-      const met = objectiveMet(objective, {
-        colonyCount: empire.colonyMap.size,
-        claimedSystemIds: empire.claimedSystemIds,
-        leadsPopulation: populationLeaderId === empire.id,
-        leadsInfluence: influenceLeaderId === empire.id,
-      });
-      if (met) {
-        const home = [...empire.colonyMap.values()][0];
-        if (home) {
-          const resources = {
-            ...home.resources,
-            credits: home.resources.credits + objective.reward,
-          };
-          empire.colonyMap.set(home.id, { ...home, resources });
-          this.persistColony(empire.colonyMap.get(home.id)!);
-        }
-        const next: Objective = { ...objective, status: "completed" };
-        this.objectiveMap.set(id, next);
-        this.persistObjective(next);
-        this.logger.info(`[game] « ${empire.name} » a rempli son objectif : ${objective.kind}`);
-      } else if (t >= objective.deadline) {
-        const next: Objective = { ...objective, status: "expired" };
-        this.objectiveMap.set(id, next);
-        this.persistObjective(next);
-      }
-    }
+    this.diplomacy.resolveObjectives(t);
   }
 
   // ─────────────────────────── Événements de monde (chantier 17) ───────────────────────────
 
   private loadWorldEvents(): void {
-    for (const row of db.select().from(schema.worldEvents).all()) {
-      this.worldEventMap.set(row.id, {
-        id: row.id,
-        kind: row.kind as WorldEventKind,
-        ...(row.galaxyId !== null ? { galaxyId: row.galaxyId } : {}),
-        ...(row.factionId !== null ? { factionId: row.factionId } : {}),
-        createdAt: row.createdAt,
-        expiresAt: row.expiresAt,
-      });
-    }
-  }
-
-  private insertWorldEvent(event: WorldEvent): void {
-    db.insert(schema.worldEvents)
-      .values({
-        id: event.id,
-        gameId: this.clock.id,
-        kind: event.kind,
-        galaxyId: event.galaxyId ?? null,
-        factionId: event.factionId ?? null,
-        createdAt: event.createdAt,
-        expiresAt: event.expiresAt,
-      })
-      .run();
+    this.diplomacy.loadWorldEvents();
   }
 
   /** Retire les événements de monde expirés (pas de statut : ils disparaissent, point). */
   resolveWorldEvents(t: number): void {
-    for (const [id, event] of this.worldEventMap) {
-      if (t < event.expiresAt) continue;
-      this.worldEventMap.delete(id);
-      db.delete(schema.worldEvents).where(eq(schema.worldEvents.id, id)).run();
-    }
+    this.diplomacy.resolveWorldEvents(t);
   }
 
   /** Kinds d'événements de monde actifs sur une galaxie (bonus/malus de prix, spawn pirate). */
   private worldEventKindsOnGalaxy(galaxyId: string): WorldEventKind[] {
-    return [...this.worldEventMap.values()]
-      .filter((e) => e.galaxyId === galaxyId)
-      .map((e) => e.kind);
+    return this.diplomacy.worldEventKindsOnGalaxy(galaxyId);
   }
 
   /** Tire un nouvel événement de monde et l'applique — cadence lente, un à la fois par cible. */
   worldEventTick(tickNumber: number, now: number): void {
-    const rng = createRng(`worldevent-${this.clock.seed}-${tickNumber}`);
-    const kind = rollWorldEvent(rng);
-    if (!kind) return;
-
-    if (kind === "faction_boom") {
-      const factionId = FACTION_IDS[Math.floor(rng() * FACTION_IDS.length)]!;
-      const alreadyActive = [...this.worldEventMap.values()].some(
-        (e) => e.kind === "faction_boom" && e.factionId === factionId,
-      );
-      if (alreadyActive) return;
-      const expiresAt = now + WORLD_EVENT_DURATION_MS;
-      const event: WorldEvent = { id: randomUUID(), kind, factionId, createdAt: now, expiresAt };
-      this.worldEventMap.set(event.id, event);
-      this.insertWorldEvent(event);
-      // Effet immédiat : force le boom, comme une pénurie de faction poste aussitôt un contrat.
-      this.setFactionMood(factionId, "boom", expiresAt);
-      this.logger.info(`[game] essor de faction : ${FACTIONS[factionId as FactionId].name}`);
-      this.notify();
-      return;
-    }
-
-    // Les trois autres kinds ciblent une galaxie de l'univers déjà généré.
-    if (this.universe.galaxies.length === 0) return;
-    const galaxy = this.universe.galaxies[Math.floor(rng() * this.universe.galaxies.length)]!;
-    const alreadyActive = this.worldEventKindsOnGalaxy(galaxy.id).includes(kind);
-    if (alreadyActive) return;
-    const event: WorldEvent = {
-      id: randomUUID(),
-      kind,
-      galaxyId: galaxy.id,
-      createdAt: now,
-      expiresAt: now + WORLD_EVENT_DURATION_MS,
-    };
-    this.worldEventMap.set(event.id, event);
-    this.insertWorldEvent(event);
-    this.logger.info(`[game] événement de monde : ${kind} sur ${galaxy.name}`);
-    this.notify();
+    this.diplomacy.worldEventTick(tickNumber, now);
   }
 
   /** Action joueur : attaquer une flotte ennemie stationnée dans le même système (PvP). */
@@ -1279,40 +943,23 @@ export class GameEngine {
 
   /** Dote chaque faction d'un état (chantier 15). Idempotent : rejoué sans jamais dédoubler. */
   private initFactionStates(): void {
-    for (const factionId of FACTION_IDS) {
-      if (this.factionStateMap.has(factionId)) continue;
-      const state: FactionState = { factionId, mood: "neutral", moodUntil: null };
-      this.factionStateMap.set(factionId, state);
-      this.insertFactionState(state);
-    }
+    this.diplomacy.initFactionStates();
   }
 
   private loadFactionStates(): void {
-    for (const row of db.select().from(schema.factionStates).all()) {
-      this.factionStateMap.set(row.factionId, {
-        factionId: row.factionId,
-        mood: row.mood as FactionState["mood"],
-        moodUntil: row.moodUntil,
-      });
-    }
-  }
-
-  private insertFactionState(state: FactionState): void {
-    db.insert(schema.factionStates)
-      .values({
-        factionId: state.factionId,
-        gameId: this.clock.id,
-        mood: state.mood,
-        moodUntil: state.moodUntil,
-      })
-      .run();
+    this.diplomacy.loadFactionStates();
   }
 
   private persistFactionState(state: FactionState): void {
-    db.update(schema.factionStates)
-      .set({ mood: state.mood, moodUntil: state.moodUntil })
-      .where(eq(schema.factionStates.factionId, state.factionId))
-      .run();
+    this.diplomacy.persistFactionState(state);
+  }
+
+  private persistRelation(relation: Relation): void {
+    this.diplomacy.persistRelation(relation);
+  }
+
+  private persistObjective(objective: Objective): void {
+    this.diplomacy.persistObjective(objective);
   }
 
   // ── Extension de l'univers (chantier 9) ────────────────────────────────
@@ -1518,36 +1165,18 @@ export class GameEngine {
     this.notify();
   }
 
-  /** Force l'humeur d'une faction — partagé entre l'outil de dev et les événements de monde. */
-  private setFactionMood(
-    factionId: string,
-    mood: FactionState["mood"],
-    until: number | null,
-  ): boolean {
-    if (!this.factionStateMap.has(factionId)) return false;
-    const state: FactionState = { factionId, mood, moodUntil: mood === "neutral" ? null : until };
-    this.factionStateMap.set(factionId, state);
-    this.persistFactionState(state);
-    return true;
-  }
-
   /** Outil de dev uniquement : force l'humeur d'une faction (chantier 15). */
   devSetFactionMood(
     factionId: string,
     mood: FactionState["mood"],
     durationMs = FACTION_MOOD_DURATION_MS,
   ): boolean {
-    if (!this.setFactionMood(factionId, mood, Date.now() + durationMs)) return false;
-    // Même effet de bord qu'une bascule naturelle : sinon l'outil de dev mentirait sur
-    // ce qu'une pénurie déclenche réellement.
-    if (mood === "shortage") {
+    return this.diplomacy.devSetFactionMood(factionId, mood, durationMs, (fid) =>
       this.logistics.factionPostShortageContract(
-        factionId,
-        createRng(`dev-shortage-${factionId}-${Date.now()}`),
-      );
-    }
-    this.notify();
-    return true;
+        fid,
+        createRng(`dev-shortage-${fid}-${Date.now()}`),
+      ),
+    );
   }
 
   /**
@@ -1560,25 +1189,7 @@ export class GameEngine {
     target = "",
     durationMs = WORLD_EVENT_DURATION_MS,
   ): string | null {
-    const now = Date.now();
-    const expiresAt = now + durationMs;
-    if (kind === "faction_boom") {
-      const factionId = target || FACTION_IDS[0]!;
-      if (!this.factionStateMap.has(factionId)) return null;
-      const event: WorldEvent = { id: randomUUID(), kind, factionId, createdAt: now, expiresAt };
-      this.worldEventMap.set(event.id, event);
-      this.insertWorldEvent(event);
-      this.setFactionMood(factionId, "boom", expiresAt);
-      this.notify();
-      return event.id;
-    }
-    const galaxyId = target || this.universe.galaxies[0]?.id;
-    if (!galaxyId || !this.universe.galaxies.some((g) => g.id === galaxyId)) return null;
-    const event: WorldEvent = { id: randomUUID(), kind, galaxyId, createdAt: now, expiresAt };
-    this.worldEventMap.set(event.id, event);
-    this.insertWorldEvent(event);
-    this.notify();
-    return event.id;
+    return this.diplomacy.devTriggerWorldEvent(kind, target, durationMs);
   }
 
   /** Outil de dev uniquement : fait apparaître un repaire pirate dans un système. */
