@@ -24,3 +24,8 @@ export function selectActiveColony(colonyId: string | null) {
   return (state: GameStoreState): Colony | null =>
     state.colonies.find((c) => c.id === colonyId) ?? state.colonies[0] ?? null;
 }
+
+/** Un système est exploré s'il figure dans `exploredSystemIds`. */
+export function selectExplored(systemId: string) {
+  return (state: GameStoreState): boolean => state.exploredSystemIds.includes(systemId);
+}

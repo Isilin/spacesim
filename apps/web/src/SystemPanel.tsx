@@ -1,45 +1,26 @@
-import type { ClientMessage } from "@spacesim/protocol";
 import {
   CLAIM_COST,
   OUTPOST_COST,
   OUTPOST_STOCK_CAP,
   PROBE_COST_CREDITS,
-  type Blueprint,
-  type Colony,
   type EmpireEffects,
-  type GameState,
-  type MiningOutpost,
-  type Mission,
   type Planet,
   type ResourceId,
-  type Route,
   type StarSystem,
-  type StationMarket,
-  type Universe,
 } from "@spacesim/shared";
+import { useSearchParams } from "react-router-dom";
 import { BodyActions, COLONY_SHIP_COST_TEXT } from "./BodyActions.js";
 import { formatDuration } from "./format.js";
 import { PLANET_TYPE_LABELS, RESOURCE_LABELS } from "./labels.js";
 import { StationPanel } from "./StationPanel.js";
+import { useGameStore } from "./state/game-store.js";
+import { selectActiveColony, selectExplored } from "./state/selectors.js";
 
 interface Props {
   system: StarSystem;
-  colonies: Colony[];
-  missions: Mission[];
-  explored: boolean;
-  /** Colonie d'origine des sondes et vaisseaux coloniaux. */
-  activeColony: Colony | null;
   effects: EmpireEffects;
-  markets: StationMarket[];
-  universe: Universe;
-  outposts: MiningOutpost[];
-  game: GameState;
-  routes: Route[];
-  /** Plans de vaisseaux de l'empire (chantier 13) : marché de plans en station. */
-  blueprints: Blueprint[];
   portalLinks: [string, string][];
   now: number;
-  send: (msg: ClientMessage) => void;
   /** Ouvre la fiche détaillée d'un corps (chantier 10). */
   onOpenBody?: (body: Planet) => void;
 }
@@ -48,26 +29,16 @@ const OUTPOST_COST_TEXT = Object.entries(OUTPOST_COST)
   .map(([res, n]) => `${n} ${RESOURCE_LABELS[res as ResourceId]}`)
   .join(" · ");
 
-export function SystemPanel({
-  system,
-  colonies,
-  missions,
-  explored,
-  activeColony,
-  effects,
-  markets,
-  universe,
-  outposts,
-  game,
-  routes,
-  blueprints,
-  portalLinks,
-  now,
-  send,
-  onOpenBody,
-}: Props) {
+export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: Props) {
+  const [searchParams] = useSearchParams();
+  const activeColony = useGameStore(selectActiveColony(searchParams.get("colony")));
+  const explored = useGameStore(selectExplored(system.id));
+  const { colonies, missions, markets, universe, outposts, game, routes, blueprints, send } =
+    useGameStore();
   const probeMission = missions.find((m) => m.kind === "probe" && m.targetId === system.id);
   const probeCost = Math.round(PROBE_COST_CREDITS * effects.probeCostMult);
+
+  if (!universe || !game) return null;
 
   if (!explored) {
     return (

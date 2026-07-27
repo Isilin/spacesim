@@ -1,11 +1,11 @@
-import { SYSTEM_VIEW_SIZE, type Colony, type Planet, type StarSystem } from "@spacesim/shared";
+import { SYSTEM_VIEW_SIZE, type Planet, type StarSystem } from "@spacesim/shared";
 import { useMemo } from "react";
 import { ZoomableSvg, type ViewBox } from "./ZoomableSvg.js";
+import { useGameStore } from "./state/game-store.js";
+import { selectExplored } from "./state/selectors.js";
 
 interface Props {
   system: StarSystem;
-  colonies: Colony[];
-  explored: boolean;
   selectedBodyId: string | null;
   onSelectBody: (planet: Planet) => void;
   onOpenBody: (planet: Planet) => void;
@@ -30,14 +30,9 @@ const PLANET_RADIUS: Record<string, number> = {
 };
 
 /** Niveau système : étoile au centre, orbites, planètes, lunes, ceintures. */
-export function SystemView({
-  system,
-  colonies,
-  explored,
-  selectedBodyId,
-  onSelectBody,
-  onOpenBody,
-}: Props) {
+export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }: Props) {
+  const explored = useGameStore(selectExplored(system.id));
+  const { colonies } = useGameStore();
   const c = SYSTEM_VIEW_SIZE / 2;
   const home = useMemo<ViewBox>(
     () => ({ x: 0, y: 0, width: SYSTEM_VIEW_SIZE, height: SYSTEM_VIEW_SIZE }),

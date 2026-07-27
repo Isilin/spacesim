@@ -85,18 +85,13 @@ interface MapPageProps {
   colonies: Colony[];
   missions: Mission[];
   exploredSystemIds: string[];
-  markets: StationMarket[];
-  routes: GameRoute[];
-  outposts: MiningOutpost[];
   gateways: Gateway[];
   contracts: Contract[];
   territories: Territory[];
   fleets: Fleet[];
-  blueprints: import("@spacesim/shared").Blueprint[];
   effects: EmpireEffects;
   portalLinks: [string, string][];
   now: number;
-  send: (msg: ClientMessage) => void;
 }
 
 /**
@@ -111,18 +106,13 @@ function MapPage({
   colonies,
   missions,
   exploredSystemIds,
-  markets,
-  routes,
-  outposts,
   gateways,
   contracts,
   territories,
   fleets,
-  blueprints,
   effects,
   portalLinks,
   now,
-  send,
 }: MapPageProps) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -255,14 +245,8 @@ function MapPage({
           <BodyView
             system={viewSystem}
             body={viewBody}
-            colonies={colonies}
-            missions={missions}
-            activeColony={colony}
             effects={effects}
-            game={game}
-            explored={exploredSystemIds.includes(viewSystem.id)}
             now={now}
-            send={send}
             selectedBodyId={focus}
             onSelectBody={(body) => setFocus(body.id)}
             onOpenBody={openBody}
@@ -270,8 +254,6 @@ function MapPage({
         ) : viewSystem ? (
           <SystemView
             system={viewSystem}
-            colonies={colonies}
-            explored={exploredSystemIds.includes(viewSystem.id)}
             selectedBodyId={focus}
             onSelectBody={(body) => setFocus(body.id)}
             onOpenBody={openBody}
@@ -282,40 +264,18 @@ function MapPage({
         {(level === "system" || level === "body") && viewSystem ? (
           <SystemPanel
             system={viewSystem}
-            colonies={colonies}
-            missions={missions}
-            explored={exploredSystemIds.includes(viewSystem.id)}
-            activeColony={colony}
             effects={effects}
-            markets={markets}
-            universe={universe}
-            outposts={outposts}
-            game={game}
-            routes={routes}
-            blueprints={blueprints}
             portalLinks={portalLinks}
             now={now}
-            send={send}
             onOpenBody={openBody}
           />
         ) : focusedSystem ? (
           <>
             <SystemPanel
               system={focusedSystem}
-              colonies={colonies}
-              missions={missions}
-              explored={exploredSystemIds.includes(focusedSystem.id)}
-              activeColony={colony}
               effects={effects}
-              markets={markets}
-              universe={universe}
-              outposts={outposts}
-              game={game}
-              routes={routes}
-              blueprints={blueprints}
               portalLinks={portalLinks}
               now={now}
-              send={send}
               onOpenBody={openBody}
             />
             <button className="action-button" onClick={() => openSystem(focusedSystem)}>
@@ -592,18 +552,13 @@ export function App({ auth }: Props) {
                 colonies={colonies}
                 missions={missions}
                 exploredSystemIds={exploredSystemIds}
-                markets={markets}
-                routes={routes}
-                outposts={outposts}
                 gateways={gateways}
                 contracts={contracts}
                 territories={territories}
                 fleets={fleets}
-                blueprints={blueprints}
                 effects={effects}
                 portalLinks={portalLinks}
                 now={now}
-                send={send}
               />
             }
           />

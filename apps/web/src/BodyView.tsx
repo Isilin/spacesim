@@ -1,4 +1,3 @@
-import type { ClientMessage } from "@spacesim/protocol";
 import {
   bodyPhysicals,
   isBreathable,
@@ -10,26 +9,21 @@ import {
   type BuildingId,
   type Colony,
   type EmpireEffects,
-  type GameState,
-  type Mission,
   type Planet,
   type ResourceId,
   type StarSystem,
 } from "@spacesim/shared";
+import { useSearchParams } from "react-router-dom";
 import { BodyActions } from "./BodyActions.js";
 import { BUILDING_LABELS, PLANET_TYPE_LABELS, RESOURCE_LABELS } from "./labels.js";
+import { useGameStore } from "./state/game-store.js";
+import { selectActiveColony, selectExplored } from "./state/selectors.js";
 
 interface Props {
   system: StarSystem;
   body: Planet;
-  colonies: Colony[];
-  missions: Mission[];
-  activeColony: Colony | null;
   effects: EmpireEffects;
-  game: GameState;
-  explored: boolean;
   now: number;
-  send: (msg: ClientMessage) => void;
   selectedBodyId: string | null;
   onSelectBody: (body: Planet) => void;
   /** Ouvre un autre corps du même système (lune, planète parente). */
@@ -60,18 +54,16 @@ const SCHEMA = 320;
 export function BodyView({
   system,
   body,
-  colonies,
-  missions,
-  activeColony,
   effects,
-  game,
-  explored,
   now,
-  send,
   selectedBodyId,
   onSelectBody,
   onOpenBody,
 }: Props) {
+  const [searchParams] = useSearchParams();
+  const activeColony = useGameStore(selectActiveColony(searchParams.get("colony")));
+  const explored = useGameStore(selectExplored(system.id));
+  const { colonies, missions, game, send } = useGameStore();
   const parent = body.parentPlanetId
     ? system.planets.find((p) => p.id === body.parentPlanetId)
     : undefined;
@@ -84,6 +76,8 @@ export function BodyView({
   // Rayon du corps à l'écran : borné, le schéma n'est pas à l'échelle réelle.
   const bodyRadius = body.kind === "moon" ? 26 : body.type === "gas" ? 46 : 34;
   const moonOrbit = (i: number) => bodyRadius + 26 + i * 24;
+
+  if (!game) return null;
 
   return (
     <div className="body-view">
