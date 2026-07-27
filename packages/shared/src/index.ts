@@ -106,6 +106,7 @@ export {
 } from "./constants.js";
 export { hashSeed, mulberry32, createRng, randInt, pick, pickWeighted, type Rng } from "./rng.js";
 export {
+  GENERATOR_VERSION,
   galaxyDefAt,
   generateGalaxyAt,
   generateUniverse,
@@ -307,6 +308,7 @@ export {
   gatewayCovered,
   gatewayProgressRatio,
   galaxyParentIndex,
+  computeGalaxyParentIndex,
   galaxyLinks,
   gatewayLinks,
   type GalaxyLink,

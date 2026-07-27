@@ -79,6 +79,16 @@ export function gatewayProgressRatio(gateway: Gateway): number {
  */
 export function galaxyParentIndex(universe: Universe, index: number): number | null {
   if (index <= 0 || index >= universe.galaxies.length) return null;
+  return universe.galaxies[index]!.parentIndex ?? computeGalaxyParentIndex(universe, index);
+}
+
+/**
+ * Calcul positionnel du parent (plus proche voisine d'index inférieur). Ne sert qu'à
+ * figer `Galaxy.parentIndex` à la matérialisation, et de repli pour un univers sorti
+ * du générateur pur — ne pas l'appeler sur un univers chargé depuis la DB.
+ */
+export function computeGalaxyParentIndex(universe: Universe, index: number): number | null {
+  if (index <= 0 || index >= universe.galaxies.length) return null;
   const g = universe.galaxies[index]!;
   let best = 0;
   let bestDist = Infinity;

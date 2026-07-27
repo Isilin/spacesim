@@ -19,6 +19,15 @@ import type {
   Universe,
 } from "./model/universe.js";
 
+/**
+ * Version du flux de sortie du générateur. À incrémenter à CHAQUE changement qui
+ * modifie ce que produit `generateGalaxyAt` (tirages RNG, ids, champs, géométrie) —
+ * la fixture `universe.fixture.json` le verrouille : la régénérer (`vitest -u`) et
+ * bumper cette version vont ensemble, dans le même commit. Les galaxies déjà
+ * matérialisées en DB gardent la version qui les a produites et ne changent jamais.
+ */
+export const GENERATOR_VERSION = 1;
+
 /** Part des systèmes accueillant une station de commerce PNJ. */
 const STATION_PROBABILITY = 0.35;
 

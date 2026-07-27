@@ -1,0 +1,4512 @@
+{
+  "generatorVersion": 1,
+  "universe": {
+    "seed": "fixture-seed",
+    "galaxies": [
+      {
+        "id": "gal-0",
+        "name": "Ghemon",
+        "x": 500,
+        "y": 350,
+        "systems": [
+          {
+            "id": "gal-0-sys-0",
+            "name": "Erelae",
+            "x": 730,
+            "y": 493,
+            "planets": [
+              {
+                "id": "gal-0-sys-0-p1",
+                "systemId": "gal-0-sys-0",
+                "name": "Erelae I",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 67,
+                "slots": 13,
+                "deposits": {},
+                "orbitRadius": 67,
+                "orbitAngle": 3.34206403488464
+              },
+              {
+                "id": "gal-0-sys-0-p2",
+                "systemId": "gal-0-sys-0",
+                "name": "Erelae II",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 39,
+                "slots": 10,
+                "deposits": {
+                  "ore": 0.9
+                },
+                "orbitRadius": 128,
+                "orbitAngle": 1.816732249824683
+              }
+            ],
+            "belts": []
+          },
+          {
+            "id": "gal-0-sys-1",
+            "name": "Vesis",
+            "x": 889,
+            "y": 209,
+            "planets": [
+              {
+                "id": "gal-0-sys-1-p1",
+                "systemId": "gal-0-sys-1",
+                "name": "Vesis I",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 3,
+                "deposits": {
+                  "energy": 1.72
+                },
+                "orbitRadius": 73,
+                "orbitAngle": 0.8752185641605278
+              },
+              {
+                "id": "gal-0-sys-1-p1-m1",
+                "systemId": "gal-0-sys-1",
+                "name": "Vesis I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-1-p1",
+                "type": "frozen",
+                "habitability": 38,
+                "slots": 3,
+                "deposits": {
+                  "ore": 1.41,
+                  "energy": 0.86
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 3.3939198404185134
+              },
+              {
+                "id": "gal-0-sys-1-p1-m2",
+                "systemId": "gal-0-sys-1",
+                "name": "Vesis I b",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-1-p1",
+                "type": "frozen",
+                "habitability": 25,
+                "slots": 5,
+                "deposits": {
+                  "ore": 1.44,
+                  "energy": 0.63
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 1.235699167556023
+              },
+              {
+                "id": "gal-0-sys-1-p1-m3",
+                "systemId": "gal-0-sys-1",
+                "name": "Vesis I c",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-1-p1",
+                "type": "frozen",
+                "habitability": 27,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.14
+                },
+                "orbitRadius": 36,
+                "orbitAngle": 0.777244722608198
+              },
+              {
+                "id": "gal-0-sys-1-p2",
+                "systemId": "gal-0-sys-1",
+                "name": "Vesis II",
+                "kind": "planet",
+                "type": "volcanic",
+                "habitability": 7,
+                "slots": 8,
+                "deposits": {
+                  "ore": 1.35,
+                  "energy": 1.59
+                },
+                "orbitRadius": 128,
+                "orbitAngle": 4.8442700153362965
+              },
+              {
+                "id": "gal-0-sys-1-p2-m1",
+                "systemId": "gal-0-sys-1",
+                "name": "Vesis II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-1-p2",
+                "type": "volcanic",
+                "habitability": 17,
+                "slots": 3,
+                "deposits": {
+                  "ore": 1.64,
+                  "energy": 1.22,
+                  "food": 0.31
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 4.1175788831966305
+              },
+              {
+                "id": "gal-0-sys-1-p2-m2",
+                "systemId": "gal-0-sys-1",
+                "name": "Vesis II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-1-p2",
+                "type": "volcanic",
+                "habitability": 16,
+                "slots": 2,
+                "deposits": {
+                  "ore": 1.78,
+                  "energy": 1.52
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 5.556287774853953
+              },
+              {
+                "id": "gal-0-sys-1-p3",
+                "systemId": "gal-0-sys-1",
+                "name": "Vesis III",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 71,
+                "slots": 6,
+                "deposits": {
+                  "energy": 0.95
+                },
+                "orbitRadius": 172,
+                "orbitAngle": 3.2341482137689552
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-0-sys-1-b1",
+                "systemId": "gal-0-sys-1",
+                "name": "Ceinture Vesis I",
+                "orbitRadius": 265,
+                "deposits": {
+                  "ore": 1.88
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-0-sys-2",
+            "name": "Ostrnar",
+            "x": 861,
+            "y": 419,
+            "planets": [
+              {
+                "id": "gal-0-sys-2-p1",
+                "systemId": "gal-0-sys-2",
+                "name": "Ostrnar I",
+                "kind": "planet",
+                "type": "volcanic",
+                "habitability": 22,
+                "slots": 14,
+                "deposits": {
+                  "ore": 1.63,
+                  "energy": 1.38
+                },
+                "orbitRadius": 63,
+                "orbitAngle": 4.653096571234998
+              },
+              {
+                "id": "gal-0-sys-2-p2",
+                "systemId": "gal-0-sys-2",
+                "name": "Ostrnar II",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 56,
+                "slots": 13,
+                "deposits": {
+                  "food": 1.35,
+                  "ore": 0.52,
+                  "energy": 0.9
+                },
+                "orbitRadius": 132,
+                "orbitAngle": 4.600258910677207
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-0-sys-2-b1",
+                "systemId": "gal-0-sys-2",
+                "name": "Ceinture Ostrnar I",
+                "orbitRadius": 222,
+                "deposits": {
+                  "ore": 1.26
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-0-sys-3",
+            "name": "Fommyn",
+            "x": 454,
+            "y": 76,
+            "planets": [
+              {
+                "id": "gal-0-sys-3-p1",
+                "systemId": "gal-0-sys-3",
+                "name": "Fommyn I",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 56,
+                "slots": 14,
+                "deposits": {
+                  "food": 1.43,
+                  "ore": 0.79,
+                  "energy": 1.17
+                },
+                "orbitRadius": 77,
+                "orbitAngle": 4.029016656350116
+              },
+              {
+                "id": "gal-0-sys-3-p1-m1",
+                "systemId": "gal-0-sys-3",
+                "name": "Fommyn I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-3-p1",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 2,
+                "deposits": {
+                  "ore": 1.23,
+                  "energy": 1.05,
+                  "food": 0.72
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 2.2401032815903847
+              },
+              {
+                "id": "gal-0-sys-3-p2",
+                "systemId": "gal-0-sys-3",
+                "name": "Fommyn II",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 70,
+                "slots": 12,
+                "deposits": {
+                  "energy": 0.94
+                },
+                "orbitRadius": 132,
+                "orbitAngle": 3.238202370846585
+              },
+              {
+                "id": "gal-0-sys-3-p3",
+                "systemId": "gal-0-sys-3",
+                "name": "Fommyn III",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 73,
+                "slots": 14,
+                "deposits": {
+                  "ore": 0.84,
+                  "food": 1.32,
+                  "energy": 0.96
+                },
+                "orbitRadius": 182,
+                "orbitAngle": 0.24232839630467515
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-0-sys-3-b1",
+                "systemId": "gal-0-sys-3",
+                "name": "Ceinture Fommyn I",
+                "orbitRadius": 275,
+                "deposits": {
+                  "ore": 1.74
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-0-sys-4",
+            "name": "Khathos",
+            "x": 99,
+            "y": 467,
+            "planets": [
+              {
+                "id": "gal-0-sys-4-p1",
+                "systemId": "gal-0-sys-4",
+                "name": "Khathos I",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 39,
+                "slots": 10,
+                "deposits": {
+                  "food": 0.5
+                },
+                "orbitRadius": 75,
+                "orbitAngle": 4.8473458079125455
+              },
+              {
+                "id": "gal-0-sys-4-p1-m1",
+                "systemId": "gal-0-sys-4",
+                "name": "Khathos I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-4-p1",
+                "type": "frozen",
+                "habitability": 25,
+                "slots": 5,
+                "deposits": {
+                  "ore": 1.42
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 6.11098103758626
+              },
+              {
+                "id": "gal-0-sys-4-p2",
+                "systemId": "gal-0-sys-4",
+                "name": "Khathos II",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 47,
+                "slots": 12,
+                "deposits": {
+                  "ore": 0.98,
+                  "energy": 1.29,
+                  "food": 0.43
+                },
+                "orbitRadius": 119,
+                "orbitAngle": 5.573500407532051
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-0-sys-4-b1",
+                "systemId": "gal-0-sys-4",
+                "name": "Ceinture Khathos I",
+                "orbitRadius": 211,
+                "deposits": {
+                  "ore": 1.48
+                }
+              },
+              {
+                "id": "gal-0-sys-4-b2",
+                "systemId": "gal-0-sys-4",
+                "name": "Ceinture Khathos II",
+                "orbitRadius": 255,
+                "deposits": {
+                  "ore": 1.89
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-0-sys-5",
+            "name": "Pelsus",
+            "x": 582,
+            "y": 447,
+            "planets": [
+              {
+                "id": "gal-0-sys-5-p1",
+                "systemId": "gal-0-sys-5",
+                "name": "Pelsus I",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 4,
+                "deposits": {
+                  "energy": 1.3
+                },
+                "orbitRadius": 67,
+                "orbitAngle": 1.0293038706605988
+              },
+              {
+                "id": "gal-0-sys-5-p1-m1",
+                "systemId": "gal-0-sys-5",
+                "name": "Pelsus I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-5-p1",
+                "type": "telluric",
+                "habitability": 40,
+                "slots": 5,
+                "deposits": {
+                  "ore": 0.71,
+                  "food": 1
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 1.3269343008026748
+              },
+              {
+                "id": "gal-0-sys-5-p1-m2",
+                "systemId": "gal-0-sys-5",
+                "name": "Pelsus I b",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-5-p1",
+                "type": "frozen",
+                "habitability": 19,
+                "slots": 2,
+                "deposits": {
+                  "energy": 0.89
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 0.9396159225004161
+              },
+              {
+                "id": "gal-0-sys-5-p2",
+                "systemId": "gal-0-sys-5",
+                "name": "Pelsus II",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 62,
+                "slots": 9,
+                "deposits": {
+                  "ore": 0.8,
+                  "food": 0.91
+                },
+                "orbitRadius": 126,
+                "orbitAngle": 3.762608940062254
+              },
+              {
+                "id": "gal-0-sys-5-p3",
+                "systemId": "gal-0-sys-5",
+                "name": "Pelsus III",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 23,
+                "slots": 12,
+                "deposits": {
+                  "ore": 1.4,
+                  "food": 0.37
+                },
+                "orbitRadius": 183,
+                "orbitAngle": 5.8717983759712045
+              },
+              {
+                "id": "gal-0-sys-5-p3-m1",
+                "systemId": "gal-0-sys-5",
+                "name": "Pelsus III a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-5-p3",
+                "type": "arid",
+                "habitability": 28,
+                "slots": 4,
+                "deposits": {
+                  "ore": 0.93
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 1.1998590146469381
+              },
+              {
+                "id": "gal-0-sys-5-p4",
+                "systemId": "gal-0-sys-5",
+                "name": "Pelsus IV",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 31,
+                "slots": 12,
+                "deposits": {
+                  "ore": 0.92,
+                  "energy": 1.49,
+                  "food": 0.44
+                },
+                "orbitRadius": 240,
+                "orbitAngle": 4.450669015383342
+              },
+              {
+                "id": "gal-0-sys-5-p4-m1",
+                "systemId": "gal-0-sys-5",
+                "name": "Pelsus IV a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-5-p4",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 2,
+                "deposits": {
+                  "ore": 1.01,
+                  "energy": 1.47
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 5.812930758732943
+              },
+              {
+                "id": "gal-0-sys-5-p4-m2",
+                "systemId": "gal-0-sys-5",
+                "name": "Pelsus IV b",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-5-p4",
+                "type": "frozen",
+                "habitability": 30,
+                "slots": 3,
+                "deposits": {
+                  "energy": 0.75
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 0.7919670137478607
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-0-sys-5-b1",
+                "systemId": "gal-0-sys-5",
+                "name": "Ceinture Pelsus I",
+                "orbitRadius": 326,
+                "deposits": {
+                  "ore": 1.55
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-0-sys-6",
+            "name": "Galnor",
+            "x": 678,
+            "y": 265,
+            "planets": [
+              {
+                "id": "gal-0-sys-6-p1",
+                "systemId": "gal-0-sys-6",
+                "name": "Galnor I",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 33,
+                "slots": 8,
+                "deposits": {
+                  "ore": 1.37
+                },
+                "orbitRadius": 63,
+                "orbitAngle": 1.0729257310233198
+              },
+              {
+                "id": "gal-0-sys-6-p1-m1",
+                "systemId": "gal-0-sys-6",
+                "name": "Galnor I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-6-p1",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 5,
+                "deposits": {
+                  "ore": 1.31,
+                  "energy": 1.06,
+                  "food": 0.74
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 1.7626434417458618
+              },
+              {
+                "id": "gal-0-sys-6-p1-m2",
+                "systemId": "gal-0-sys-6",
+                "name": "Galnor I b",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-6-p1",
+                "type": "arid",
+                "habitability": 26,
+                "slots": 4,
+                "deposits": {
+                  "ore": 0.95,
+                  "energy": 1.32
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 3.1479161711153942
+              },
+              {
+                "id": "gal-0-sys-6-p2",
+                "systemId": "gal-0-sys-6",
+                "name": "Galnor II",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 21,
+                "slots": 12,
+                "deposits": {
+                  "ore": 1.24
+                },
+                "orbitRadius": 126,
+                "orbitAngle": 5.333463668009793
+              },
+              {
+                "id": "gal-0-sys-6-p3",
+                "systemId": "gal-0-sys-6",
+                "name": "Galnor III",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 2,
+                "deposits": {
+                  "energy": 1.52
+                },
+                "orbitRadius": 181,
+                "orbitAngle": 3.7608355190835807
+              },
+              {
+                "id": "gal-0-sys-6-p3-m1",
+                "systemId": "gal-0-sys-6",
+                "name": "Galnor III a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-6-p3",
+                "type": "telluric",
+                "habitability": 40,
+                "slots": 5,
+                "deposits": {
+                  "ore": 0.9,
+                  "food": 0.96
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 6.2550038654237055
+              },
+              {
+                "id": "gal-0-sys-6-p3-m2",
+                "systemId": "gal-0-sys-6",
+                "name": "Galnor III b",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-6-p3",
+                "type": "telluric",
+                "habitability": 40,
+                "slots": 5,
+                "deposits": {
+                  "ore": 0.83,
+                  "food": 0.9
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 2.0281381918221593
+              },
+              {
+                "id": "gal-0-sys-6-p3-m3",
+                "systemId": "gal-0-sys-6",
+                "name": "Galnor III c",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-6-p3",
+                "type": "volcanic",
+                "habitability": 22,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.66,
+                  "energy": 1.24
+                },
+                "orbitRadius": 36,
+                "orbitAngle": 5.151397010374133
+              },
+              {
+                "id": "gal-0-sys-6-p4",
+                "systemId": "gal-0-sys-6",
+                "name": "Galnor IV",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 3,
+                "deposits": {
+                  "energy": 1.73
+                },
+                "orbitRadius": 230,
+                "orbitAngle": 2.6841957140856003
+              },
+              {
+                "id": "gal-0-sys-6-p4-m1",
+                "systemId": "gal-0-sys-6",
+                "name": "Galnor IV a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-6-p4",
+                "type": "arid",
+                "habitability": 31,
+                "slots": 2,
+                "deposits": {
+                  "ore": 0.99,
+                  "energy": 1.08
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 1.5267043108940246
+              },
+              {
+                "id": "gal-0-sys-6-p4-m2",
+                "systemId": "gal-0-sys-6",
+                "name": "Galnor IV b",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-6-p4",
+                "type": "frozen",
+                "habitability": 35,
+                "slots": 2,
+                "deposits": {
+                  "ore": 1.18,
+                  "energy": 0.88
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 3.761304978272726
+              },
+              {
+                "id": "gal-0-sys-6-p4-m3",
+                "systemId": "gal-0-sys-6",
+                "name": "Galnor IV c",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-6-p4",
+                "type": "arid",
+                "habitability": 38,
+                "slots": 5,
+                "deposits": {
+                  "energy": 1.39
+                },
+                "orbitRadius": 36,
+                "orbitAngle": 5.502939807508407
+              }
+            ],
+            "belts": []
+          },
+          {
+            "id": "gal-0-sys-7",
+            "name": "Elydum",
+            "x": 633,
+            "y": 353,
+            "planets": [
+              {
+                "id": "gal-0-sys-7-p1",
+                "systemId": "gal-0-sys-7",
+                "name": "Elydum I",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 4,
+                "deposits": {
+                  "energy": 1.32
+                },
+                "orbitRadius": 67,
+                "orbitAngle": 6.151181192541217
+              },
+              {
+                "id": "gal-0-sys-7-p1-m1",
+                "systemId": "gal-0-sys-7",
+                "name": "Elydum I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-7-p1",
+                "type": "telluric",
+                "habitability": 40,
+                "slots": 2,
+                "deposits": {
+                  "ore": 0.9,
+                  "food": 0.95,
+                  "energy": 1.04
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 0.036437956827160375
+              },
+              {
+                "id": "gal-0-sys-7-p1-m2",
+                "systemId": "gal-0-sys-7",
+                "name": "Elydum I b",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-7-p1",
+                "type": "arid",
+                "habitability": 31,
+                "slots": 2,
+                "deposits": {
+                  "ore": 0.97
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 4.613682055953658
+              },
+              {
+                "id": "gal-0-sys-7-p1-m3",
+                "systemId": "gal-0-sys-7",
+                "name": "Elydum I c",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-7-p1",
+                "type": "telluric",
+                "habitability": 40,
+                "slots": 5,
+                "deposits": {
+                  "ore": 0.77,
+                  "food": 1.18,
+                  "energy": 1.02
+                },
+                "orbitRadius": 36,
+                "orbitAngle": 1.839285934967626
+              },
+              {
+                "id": "gal-0-sys-7-p2",
+                "systemId": "gal-0-sys-7",
+                "name": "Elydum II",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 78,
+                "slots": 11,
+                "deposits": {
+                  "food": 1.34
+                },
+                "orbitRadius": 129,
+                "orbitAngle": 4.962707277866534
+              },
+              {
+                "id": "gal-0-sys-7-p2-m1",
+                "systemId": "gal-0-sys-7",
+                "name": "Elydum II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-7-p2",
+                "type": "volcanic",
+                "habitability": 7,
+                "slots": 3,
+                "deposits": {
+                  "ore": 1.68,
+                  "energy": 1.34
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 5.342002444346958
+              },
+              {
+                "id": "gal-0-sys-7-p3",
+                "systemId": "gal-0-sys-7",
+                "name": "Elydum III",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 53,
+                "slots": 6,
+                "deposits": {
+                  "ore": 1.12,
+                  "energy": 1.1
+                },
+                "orbitRadius": 182,
+                "orbitAngle": 1.974610702484517
+              },
+              {
+                "id": "gal-0-sys-7-p3-m1",
+                "systemId": "gal-0-sys-7",
+                "name": "Elydum III a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-7-p3",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 2,
+                "deposits": {
+                  "ore": 1.3,
+                  "energy": 1.07
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 0.35663647746650595
+              },
+              {
+                "id": "gal-0-sys-7-p3-m2",
+                "systemId": "gal-0-sys-7",
+                "name": "Elydum III b",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-7-p3",
+                "type": "volcanic",
+                "habitability": 24,
+                "slots": 5,
+                "deposits": {
+                  "energy": 1.34
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 5.557187735723792
+              }
+            ],
+            "belts": []
+          },
+          {
+            "id": "gal-0-sys-8",
+            "name": "Quora",
+            "x": 908,
+            "y": 635,
+            "planets": [
+              {
+                "id": "gal-0-sys-8-p1",
+                "systemId": "gal-0-sys-8",
+                "name": "Quora I",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 53,
+                "slots": 11,
+                "deposits": {
+                  "ore": 0.91,
+                  "energy": 1.23
+                },
+                "orbitRadius": 70,
+                "orbitAngle": 4.9877228654204515
+              },
+              {
+                "id": "gal-0-sys-8-p1-m1",
+                "systemId": "gal-0-sys-8",
+                "name": "Quora I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-8-p1",
+                "type": "volcanic",
+                "habitability": 11,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.79,
+                  "energy": 1.36
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 3.569111760310895
+              },
+              {
+                "id": "gal-0-sys-8-p2",
+                "systemId": "gal-0-sys-8",
+                "name": "Quora II",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 45,
+                "slots": 11,
+                "deposits": {
+                  "ore": 1.38,
+                  "energy": 1.44
+                },
+                "orbitRadius": 122,
+                "orbitAngle": 2.1100442555156183
+              },
+              {
+                "id": "gal-0-sys-8-p2-m1",
+                "systemId": "gal-0-sys-8",
+                "name": "Quora II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-8-p2",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 5,
+                "deposits": {
+                  "ore": 0.99,
+                  "energy": 1.25
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 3.2869079446806633
+              },
+              {
+                "id": "gal-0-sys-8-p2-m2",
+                "systemId": "gal-0-sys-8",
+                "name": "Quora II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-8-p2",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 2,
+                "deposits": {
+                  "ore": 1.2,
+                  "energy": 1.27,
+                  "food": 0.4
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 0.14377358316968977
+              },
+              {
+                "id": "gal-0-sys-8-p3",
+                "systemId": "gal-0-sys-8",
+                "name": "Quora III",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 60,
+                "slots": 10,
+                "deposits": {
+                  "energy": 0.82
+                },
+                "orbitRadius": 177,
+                "orbitAngle": 1.0449142057394276
+              },
+              {
+                "id": "gal-0-sys-8-p3-m1",
+                "systemId": "gal-0-sys-8",
+                "name": "Quora III a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-8-p3",
+                "type": "volcanic",
+                "habitability": 17,
+                "slots": 3,
+                "deposits": {
+                  "energy": 1.2
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 0.3047394088652888
+              },
+              {
+                "id": "gal-0-sys-8-p4",
+                "systemId": "gal-0-sys-8",
+                "name": "Quora IV",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 4,
+                "deposits": {
+                  "energy": 1.77
+                },
+                "orbitRadius": 242,
+                "orbitAngle": 3.7841731908027114
+              },
+              {
+                "id": "gal-0-sys-8-p4-m1",
+                "systemId": "gal-0-sys-8",
+                "name": "Quora IV a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-8-p4",
+                "type": "frozen",
+                "habitability": 21,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.22
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 4.542014562372027
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-0-sys-8-b1",
+                "systemId": "gal-0-sys-8",
+                "name": "Ceinture Quora I",
+                "orbitRadius": 331,
+                "deposits": {
+                  "ore": 1.46
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-0-sys-9",
+            "name": "Hesston",
+            "x": 526,
+            "y": 605,
+            "planets": [
+              {
+                "id": "gal-0-sys-9-p1",
+                "systemId": "gal-0-sys-9",
+                "name": "Hesston I",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 2,
+                "deposits": {
+                  "energy": 1.32
+                },
+                "orbitRadius": 74,
+                "orbitAngle": 1.7306924872717886
+              },
+              {
+                "id": "gal-0-sys-9-p1-m1",
+                "systemId": "gal-0-sys-9",
+                "name": "Hesston I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-9-p1",
+                "type": "frozen",
+                "habitability": 37,
+                "slots": 5,
+                "deposits": {
+                  "energy": 0.73
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 1.1110627135931508
+              },
+              {
+                "id": "gal-0-sys-9-p1-m2",
+                "systemId": "gal-0-sys-9",
+                "name": "Hesston I b",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-9-p1",
+                "type": "volcanic",
+                "habitability": 8,
+                "slots": 5,
+                "deposits": {
+                  "ore": 1.8,
+                  "energy": 1.54
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 0.10782101378372176
+              },
+              {
+                "id": "gal-0-sys-9-p2",
+                "systemId": "gal-0-sys-9",
+                "name": "Hesston II",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 4,
+                "deposits": {
+                  "energy": 1.56
+                },
+                "orbitRadius": 128,
+                "orbitAngle": 4.07490118869935
+              },
+              {
+                "id": "gal-0-sys-9-p2-m1",
+                "systemId": "gal-0-sys-9",
+                "name": "Hesston II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-9-p2",
+                "type": "frozen",
+                "habitability": 37,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.23,
+                  "energy": 0.86
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 4.1652750713514575
+              },
+              {
+                "id": "gal-0-sys-9-p2-m2",
+                "systemId": "gal-0-sys-9",
+                "name": "Hesston II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-9-p2",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.36,
+                  "energy": 1.05
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 3.9526926989109312
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-0-sys-9-b1",
+                "systemId": "gal-0-sys-9",
+                "name": "Ceinture Hesston I",
+                "orbitRadius": 222,
+                "deposits": {
+                  "ore": 1.41
+                }
+              }
+            ],
+            "station": {
+              "id": "gal-0-sys-9-st",
+              "systemId": "gal-0-sys-9",
+              "factionId": "ostara_league",
+              "name": "Comptoir Hesston"
+            }
+          },
+          {
+            "id": "gal-0-sys-10",
+            "name": "Almia",
+            "x": 94,
+            "y": 631,
+            "planets": [
+              {
+                "id": "gal-0-sys-10-p1",
+                "systemId": "gal-0-sys-10",
+                "name": "Almia I",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 3,
+                "deposits": {
+                  "energy": 1.43
+                },
+                "orbitRadius": 72,
+                "orbitAngle": 2.855153314150136
+              },
+              {
+                "id": "gal-0-sys-10-p1-m1",
+                "systemId": "gal-0-sys-10",
+                "name": "Almia I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-10-p1",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 3,
+                "deposits": {
+                  "ore": 1.4,
+                  "energy": 1.43
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 1.673974881235838
+              },
+              {
+                "id": "gal-0-sys-10-p2",
+                "systemId": "gal-0-sys-10",
+                "name": "Almia II",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 45,
+                "slots": 7,
+                "deposits": {
+                  "ore": 1.25
+                },
+                "orbitRadius": 123,
+                "orbitAngle": 3.406262268130169
+              },
+              {
+                "id": "gal-0-sys-10-p3",
+                "systemId": "gal-0-sys-10",
+                "name": "Almia III",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 37,
+                "slots": 10,
+                "deposits": {},
+                "orbitRadius": 177,
+                "orbitAngle": 0.12303923561517413
+              }
+            ],
+            "belts": []
+          },
+          {
+            "id": "gal-0-sys-11",
+            "name": "Rhathae",
+            "x": 96,
+            "y": 332,
+            "planets": [
+              {
+                "id": "gal-0-sys-11-p1",
+                "systemId": "gal-0-sys-11",
+                "name": "Rhathae I",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 59,
+                "slots": 13,
+                "deposits": {
+                  "ore": 0.91,
+                  "food": 1.05,
+                  "energy": 0.93
+                },
+                "orbitRadius": 76,
+                "orbitAngle": 4.369225782397212
+              },
+              {
+                "id": "gal-0-sys-11-p1-m1",
+                "systemId": "gal-0-sys-11",
+                "name": "Rhathae I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-11-p1",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 5,
+                "deposits": {
+                  "ore": 1.3,
+                  "energy": 1.21,
+                  "food": 0.77
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 4.360502877338917
+              },
+              {
+                "id": "gal-0-sys-11-p2",
+                "systemId": "gal-0-sys-11",
+                "name": "Rhathae II",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 87,
+                "slots": 12,
+                "deposits": {
+                  "ore": 1.18,
+                  "food": 1.14,
+                  "energy": 1.06
+                },
+                "orbitRadius": 130,
+                "orbitAngle": 4.232743617001482
+              },
+              {
+                "id": "gal-0-sys-11-p2-m1",
+                "systemId": "gal-0-sys-11",
+                "name": "Rhathae II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-11-p2",
+                "type": "volcanic",
+                "habitability": 7,
+                "slots": 5,
+                "deposits": {
+                  "ore": 1.21,
+                  "food": 0.37
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 0.409068956529718
+              },
+              {
+                "id": "gal-0-sys-11-p3",
+                "systemId": "gal-0-sys-11",
+                "name": "Rhathae III",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 32,
+                "slots": 6,
+                "deposits": {
+                  "ore": 1.11,
+                  "energy": 1.41
+                },
+                "orbitRadius": 174,
+                "orbitAngle": 3.708072786263974
+              },
+              {
+                "id": "gal-0-sys-11-p4",
+                "systemId": "gal-0-sys-11",
+                "name": "Rhathae IV",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 46,
+                "slots": 11,
+                "deposits": {
+                  "ore": 1.18,
+                  "energy": 1.29
+                },
+                "orbitRadius": 243,
+                "orbitAngle": 4.126622181943465
+              }
+            ],
+            "belts": [],
+            "station": {
+              "id": "gal-0-sys-11-st",
+              "systemId": "gal-0-sys-11",
+              "factionId": "ostara_league",
+              "name": "Comptoir Rhathae"
+            }
+          },
+          {
+            "id": "gal-0-sys-12",
+            "name": "Ithris",
+            "x": 482,
+            "y": 275,
+            "planets": [
+              {
+                "id": "gal-0-sys-12-p1",
+                "systemId": "gal-0-sys-12",
+                "name": "Ithris I",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 89,
+                "slots": 11,
+                "deposits": {
+                  "ore": 1.17,
+                  "food": 1.26
+                },
+                "orbitRadius": 71,
+                "orbitAngle": 1.3270286955917394
+              },
+              {
+                "id": "gal-0-sys-12-p2",
+                "systemId": "gal-0-sys-12",
+                "name": "Ithris II",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 45,
+                "slots": 8,
+                "deposits": {
+                  "food": 1.22,
+                  "energy": 1
+                },
+                "orbitRadius": 132,
+                "orbitAngle": 5.346730155240808
+              },
+              {
+                "id": "gal-0-sys-12-p2-m1",
+                "systemId": "gal-0-sys-12",
+                "name": "Ithris II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-12-p2",
+                "type": "frozen",
+                "habitability": 31,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.21,
+                  "energy": 0.69
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 3.764060059707212
+              },
+              {
+                "id": "gal-0-sys-12-p2-m2",
+                "systemId": "gal-0-sys-12",
+                "name": "Ithris II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-0-sys-12-p2",
+                "type": "arid",
+                "habitability": 35,
+                "slots": 5,
+                "deposits": {
+                  "ore": 1.04,
+                  "energy": 1.1
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 5.944368422713512
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-0-sys-12-b1",
+                "systemId": "gal-0-sys-12",
+                "name": "Ceinture Ithris I",
+                "orbitRadius": 222,
+                "deposits": {
+                  "ore": 1.43
+                }
+              },
+              {
+                "id": "gal-0-sys-12-b2",
+                "systemId": "gal-0-sys-12",
+                "name": "Ceinture Ithris II",
+                "orbitRadius": 262,
+                "deposits": {
+                  "ore": 1.84
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-0-sys-13",
+            "name": "Bacnen",
+            "x": 503,
+            "y": 505,
+            "planets": [
+              {
+                "id": "gal-0-sys-13-p1",
+                "systemId": "gal-0-sys-13",
+                "name": "Bacnen I",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 42,
+                "slots": 7,
+                "deposits": {
+                  "ore": 1.2,
+                  "energy": 1.2,
+                  "food": 0.71
+                },
+                "orbitRadius": 62,
+                "orbitAngle": 2.4898660227653644
+              },
+              {
+                "id": "gal-0-sys-13-p2",
+                "systemId": "gal-0-sys-13",
+                "name": "Bacnen II",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 24,
+                "slots": 12,
+                "deposits": {
+                  "ore": 1.04,
+                  "energy": 0.7
+                },
+                "orbitRadius": 132,
+                "orbitAngle": 2.116687375291079
+              },
+              {
+                "id": "gal-0-sys-13-p3",
+                "systemId": "gal-0-sys-13",
+                "name": "Bacnen III",
+                "kind": "planet",
+                "type": "volcanic",
+                "habitability": 14,
+                "slots": 11,
+                "deposits": {
+                  "ore": 1.46,
+                  "energy": 1.25
+                },
+                "orbitRadius": 188,
+                "orbitAngle": 1.3604656954169951
+              },
+              {
+                "id": "gal-0-sys-13-p4",
+                "systemId": "gal-0-sys-13",
+                "name": "Bacnen IV",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 39,
+                "slots": 13,
+                "deposits": {
+                  "energy": 1.29
+                },
+                "orbitRadius": 233,
+                "orbitAngle": 2.2073102992653286
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-0-sys-13-b1",
+                "systemId": "gal-0-sys-13",
+                "name": "Ceinture Bacnen I",
+                "orbitRadius": 340,
+                "deposits": {
+                  "ore": 1.43
+                }
+              },
+              {
+                "id": "gal-0-sys-13-b2",
+                "systemId": "gal-0-sys-13",
+                "name": "Ceinture Bacnen II",
+                "orbitRadius": 376,
+                "deposits": {
+                  "ore": 1.63
+                }
+              }
+            ]
+          }
+        ],
+        "links": [
+          [
+            "gal-0-sys-0",
+            "gal-0-sys-2"
+          ],
+          [
+            "gal-0-sys-0",
+            "gal-0-sys-5"
+          ],
+          [
+            "gal-0-sys-1",
+            "gal-0-sys-2"
+          ],
+          [
+            "gal-0-sys-1",
+            "gal-0-sys-6"
+          ],
+          [
+            "gal-0-sys-12",
+            "gal-0-sys-3"
+          ],
+          [
+            "gal-0-sys-3",
+            "gal-0-sys-6"
+          ],
+          [
+            "gal-0-sys-11",
+            "gal-0-sys-4"
+          ],
+          [
+            "gal-0-sys-10",
+            "gal-0-sys-4"
+          ],
+          [
+            "gal-0-sys-13",
+            "gal-0-sys-5"
+          ],
+          [
+            "gal-0-sys-5",
+            "gal-0-sys-7"
+          ],
+          [
+            "gal-0-sys-6",
+            "gal-0-sys-7"
+          ],
+          [
+            "gal-0-sys-12",
+            "gal-0-sys-6"
+          ],
+          [
+            "gal-0-sys-2",
+            "gal-0-sys-8"
+          ],
+          [
+            "gal-0-sys-0",
+            "gal-0-sys-8"
+          ],
+          [
+            "gal-0-sys-13",
+            "gal-0-sys-9"
+          ],
+          [
+            "gal-0-sys-5",
+            "gal-0-sys-9"
+          ],
+          [
+            "gal-0-sys-10",
+            "gal-0-sys-11"
+          ],
+          [
+            "gal-0-sys-12",
+            "gal-0-sys-7"
+          ],
+          [
+            "gal-0-sys-11",
+            "gal-0-sys-12"
+          ]
+        ],
+        "anchorSystemId": "gal-0-sys-10",
+        "depositBonus": 1
+      },
+      {
+        "id": "gal-1",
+        "name": "Xanthia",
+        "x": 308,
+        "y": 526,
+        "systems": [
+          {
+            "id": "gal-1-sys-0",
+            "name": "Jarsten",
+            "x": 658,
+            "y": 397,
+            "planets": [
+              {
+                "id": "gal-1-sys-0-p1",
+                "systemId": "gal-1-sys-0",
+                "name": "Jarsten I",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 55,
+                "slots": 10,
+                "deposits": {
+                  "food": 2.08,
+                  "energy": 1.52
+                },
+                "orbitRadius": 72,
+                "orbitAngle": 4.61174289659703
+              },
+              {
+                "id": "gal-1-sys-0-p1-m1",
+                "systemId": "gal-1-sys-0",
+                "name": "Jarsten I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-0-p1",
+                "type": "arid",
+                "habitability": 28,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.96,
+                  "energy": 1.66
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 1.2101382538813694
+              },
+              {
+                "id": "gal-1-sys-0-p1-m2",
+                "systemId": "gal-1-sys-0",
+                "name": "Jarsten I b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-0-p1",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 5,
+                "deposits": {
+                  "ore": 1.48,
+                  "energy": 1.54
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 3.20671407152967
+              },
+              {
+                "id": "gal-1-sys-0-p2",
+                "systemId": "gal-1-sys-0",
+                "name": "Jarsten II",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 72,
+                "slots": 8,
+                "deposits": {
+                  "ore": 1.12,
+                  "food": 1.64,
+                  "energy": 1.44
+                },
+                "orbitRadius": 117,
+                "orbitAngle": 1.6912530950685116
+              },
+              {
+                "id": "gal-1-sys-0-p2-m1",
+                "systemId": "gal-1-sys-0",
+                "name": "Jarsten II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-0-p2",
+                "type": "volcanic",
+                "habitability": 16,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.91,
+                  "energy": 2.27
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 1.896775578464893
+              },
+              {
+                "id": "gal-1-sys-0-p2-m2",
+                "systemId": "gal-1-sys-0",
+                "name": "Jarsten II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-0-p2",
+                "type": "arid",
+                "habitability": 29,
+                "slots": 3,
+                "deposits": {
+                  "ore": 1.78,
+                  "food": 0.9
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 0.2528077159189715
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-1-sys-0-b1",
+                "systemId": "gal-1-sys-0",
+                "name": "Ceinture Jarsten I",
+                "orbitRadius": 214,
+                "deposits": {
+                  "ore": 2.03
+                }
+              },
+              {
+                "id": "gal-1-sys-0-b2",
+                "systemId": "gal-1-sys-0",
+                "name": "Ceinture Jarsten II",
+                "orbitRadius": 251,
+                "deposits": {
+                  "ore": 2.93
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-1-sys-1",
+            "name": "Aphvess",
+            "x": 297,
+            "y": 77,
+            "planets": [
+              {
+                "id": "gal-1-sys-1-p1",
+                "systemId": "gal-1-sys-1",
+                "name": "Aphvess I",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 71,
+                "slots": 11,
+                "deposits": {
+                  "ore": 1.68,
+                  "food": 1.53,
+                  "energy": 1.58
+                },
+                "orbitRadius": 62,
+                "orbitAngle": 4.8499454601527825
+              },
+              {
+                "id": "gal-1-sys-1-p1-m1",
+                "systemId": "gal-1-sys-1",
+                "name": "Aphvess I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-1-p1",
+                "type": "arid",
+                "habitability": 38,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.52,
+                  "energy": 1.57,
+                  "food": 0.74
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 0.09087500231432437
+              },
+              {
+                "id": "gal-1-sys-1-p1-m2",
+                "systemId": "gal-1-sys-1",
+                "name": "Aphvess I b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-1-p1",
+                "type": "volcanic",
+                "habitability": 24,
+                "slots": 2,
+                "deposits": {
+                  "ore": 2.09,
+                  "energy": 1.87
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 4.706669484179001
+              },
+              {
+                "id": "gal-1-sys-1-p2",
+                "systemId": "gal-1-sys-1",
+                "name": "Aphvess II",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 2,
+                "deposits": {
+                  "energy": 2.36
+                },
+                "orbitRadius": 125,
+                "orbitAngle": 5.044073957812494
+              },
+              {
+                "id": "gal-1-sys-1-p2-m1",
+                "systemId": "gal-1-sys-1",
+                "name": "Aphvess II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-1-p2",
+                "type": "volcanic",
+                "habitability": 27,
+                "slots": 3,
+                "deposits": {
+                  "ore": 2.58,
+                  "energy": 2.07
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 5.108695252337367
+              },
+              {
+                "id": "gal-1-sys-1-p3",
+                "systemId": "gal-1-sys-1",
+                "name": "Aphvess III",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 42,
+                "slots": 7,
+                "deposits": {
+                  "ore": 1.38,
+                  "energy": 1.56,
+                  "food": 0.8
+                },
+                "orbitRadius": 177,
+                "orbitAngle": 0.7730594719785672
+              },
+              {
+                "id": "gal-1-sys-1-p3-m1",
+                "systemId": "gal-1-sys-1",
+                "name": "Aphvess III a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-1-p3",
+                "type": "telluric",
+                "habitability": 40,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.76,
+                  "food": 1.97
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 1.4930328872240748
+              },
+              {
+                "id": "gal-1-sys-1-p3-m2",
+                "systemId": "gal-1-sys-1",
+                "name": "Aphvess III b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-1-p3",
+                "type": "volcanic",
+                "habitability": 24,
+                "slots": 2,
+                "deposits": {
+                  "ore": 2.03,
+                  "energy": 2.36
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 1.7938511226538936
+              },
+              {
+                "id": "gal-1-sys-1-p4",
+                "systemId": "gal-1-sys-1",
+                "name": "Aphvess IV",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 4,
+                "deposits": {
+                  "energy": 2.44
+                },
+                "orbitRadius": 231,
+                "orbitAngle": 1.9241504739848858
+              },
+              {
+                "id": "gal-1-sys-1-p4-m1",
+                "systemId": "gal-1-sys-1",
+                "name": "Aphvess IV a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-1-p4",
+                "type": "frozen",
+                "habitability": 20,
+                "slots": 3,
+                "deposits": {
+                  "ore": 2.1
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 2.9325549638395287
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-1-sys-1-b1",
+                "systemId": "gal-1-sys-1",
+                "name": "Ceinture Aphvess I",
+                "orbitRadius": 338,
+                "deposits": {
+                  "ore": 2.85
+                }
+              }
+            ],
+            "station": {
+              "id": "gal-1-sys-1-st",
+              "systemId": "gal-1-sys-1",
+              "factionId": "ostara_league",
+              "name": "Comptoir Aphvess"
+            }
+          },
+          {
+            "id": "gal-1-sys-2",
+            "name": "Rhessix",
+            "x": 776,
+            "y": 553,
+            "planets": [
+              {
+                "id": "gal-1-sys-2-p1",
+                "systemId": "gal-1-sys-2",
+                "name": "Rhessix I",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 51,
+                "slots": 14,
+                "deposits": {
+                  "food": 1.87,
+                  "ore": 0.91
+                },
+                "orbitRadius": 67,
+                "orbitAngle": 2.531927517149722
+              },
+              {
+                "id": "gal-1-sys-2-p2",
+                "systemId": "gal-1-sys-2",
+                "name": "Rhessix II",
+                "kind": "planet",
+                "type": "volcanic",
+                "habitability": 11,
+                "slots": 7,
+                "deposits": {
+                  "ore": 1.86,
+                  "energy": 1.7
+                },
+                "orbitRadius": 133,
+                "orbitAngle": 3.5142084989239675
+              },
+              {
+                "id": "gal-1-sys-2-p2-m1",
+                "systemId": "gal-1-sys-2",
+                "name": "Rhessix II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-2-p2",
+                "type": "telluric",
+                "habitability": 40,
+                "slots": 3,
+                "deposits": {
+                  "ore": 1.77,
+                  "food": 1.6,
+                  "energy": 1.29
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 3.4697554363040504
+              },
+              {
+                "id": "gal-1-sys-2-p2-m2",
+                "systemId": "gal-1-sys-2",
+                "name": "Rhessix II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-2-p2",
+                "type": "frozen",
+                "habitability": 25,
+                "slots": 3,
+                "deposits": {
+                  "ore": 1.75
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 4.454206033845788
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-1-sys-2-b1",
+                "systemId": "gal-1-sys-2",
+                "name": "Ceinture Rhessix I",
+                "orbitRadius": 221,
+                "deposits": {
+                  "ore": 2.49
+                }
+              }
+            ],
+            "station": {
+              "id": "gal-1-sys-2-st",
+              "systemId": "gal-1-sys-2",
+              "factionId": "ostara_league",
+              "name": "Comptoir Rhessix"
+            }
+          },
+          {
+            "id": "gal-1-sys-3",
+            "name": "Kaeron",
+            "x": 537,
+            "y": 141,
+            "planets": [
+              {
+                "id": "gal-1-sys-3-p1",
+                "systemId": "gal-1-sys-3",
+                "name": "Kaeron I",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 25,
+                "slots": 8,
+                "deposits": {
+                  "ore": 1.82,
+                  "food": 1.01
+                },
+                "orbitRadius": 69,
+                "orbitAngle": 4.954399809358554
+              },
+              {
+                "id": "gal-1-sys-3-p1-m1",
+                "systemId": "gal-1-sys-3",
+                "name": "Kaeron I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-3-p1",
+                "type": "volcanic",
+                "habitability": 8,
+                "slots": 3,
+                "deposits": {
+                  "ore": 2,
+                  "energy": 1.73,
+                  "food": 0.31
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 5.138702044274981
+              },
+              {
+                "id": "gal-1-sys-3-p1-m2",
+                "systemId": "gal-1-sys-3",
+                "name": "Kaeron I b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-3-p1",
+                "type": "frozen",
+                "habitability": 21,
+                "slots": 2,
+                "deposits": {
+                  "ore": 1.57,
+                  "food": 0.68
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 1.549001044716771
+              },
+              {
+                "id": "gal-1-sys-3-p2",
+                "systemId": "gal-1-sys-3",
+                "name": "Kaeron II",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 55,
+                "slots": 14,
+                "deposits": {
+                  "ore": 1.63,
+                  "energy": 1.87
+                },
+                "orbitRadius": 127,
+                "orbitAngle": 3.613788460680508
+              },
+              {
+                "id": "gal-1-sys-3-p3",
+                "systemId": "gal-1-sys-3",
+                "name": "Kaeron III",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 82,
+                "slots": 12,
+                "deposits": {
+                  "ore": 1.62,
+                  "food": 2.09
+                },
+                "orbitRadius": 178,
+                "orbitAngle": 1.4137499175701542
+              },
+              {
+                "id": "gal-1-sys-3-p3-m1",
+                "systemId": "gal-1-sys-3",
+                "name": "Kaeron III a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-3-p3",
+                "type": "volcanic",
+                "habitability": 16,
+                "slots": 3,
+                "deposits": {
+                  "ore": 1.98
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 2.0321485315774788
+              },
+              {
+                "id": "gal-1-sys-3-p3-m2",
+                "systemId": "gal-1-sys-3",
+                "name": "Kaeron III b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-3-p3",
+                "type": "arid",
+                "habitability": 25,
+                "slots": 3,
+                "deposits": {
+                  "ore": 1.58,
+                  "energy": 2.24
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 3.545379859964845
+              },
+              {
+                "id": "gal-1-sys-3-p4",
+                "systemId": "gal-1-sys-3",
+                "name": "Kaeron IV",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 3,
+                "deposits": {
+                  "energy": 2.16
+                },
+                "orbitRadius": 234,
+                "orbitAngle": 2.603289715820309
+              },
+              {
+                "id": "gal-1-sys-3-p4-m1",
+                "systemId": "gal-1-sys-3",
+                "name": "Kaeron IV a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-3-p4",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 3,
+                "deposits": {
+                  "ore": 2.09,
+                  "energy": 2.06
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 2.9231693539654904
+              },
+              {
+                "id": "gal-1-sys-3-p4-m2",
+                "systemId": "gal-1-sys-3",
+                "name": "Kaeron IV b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-3-p4",
+                "type": "arid",
+                "habitability": 36,
+                "slots": 3,
+                "deposits": {
+                  "ore": 1.36,
+                  "energy": 1.89,
+                  "food": 0.62
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 0.09985932644462948
+              },
+              {
+                "id": "gal-1-sys-3-p5",
+                "systemId": "gal-1-sys-3",
+                "name": "Kaeron V",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 4,
+                "deposits": {
+                  "energy": 2.1
+                },
+                "orbitRadius": 285,
+                "orbitAngle": 1.8653416060737698
+              },
+              {
+                "id": "gal-1-sys-3-p5-m1",
+                "systemId": "gal-1-sys-3",
+                "name": "Kaeron V a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-3-p5",
+                "type": "volcanic",
+                "habitability": 17,
+                "slots": 2,
+                "deposits": {
+                  "ore": 2.26,
+                  "energy": 1.65,
+                  "food": 0.59
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 2.4287810386505866
+              }
+            ],
+            "belts": [],
+            "station": {
+              "id": "gal-1-sys-3-st",
+              "systemId": "gal-1-sys-3",
+              "factionId": "ostara_league",
+              "name": "Comptoir Kaeron"
+            }
+          },
+          {
+            "id": "gal-1-sys-4",
+            "name": "Borlia",
+            "x": 656,
+            "y": 543,
+            "planets": [
+              {
+                "id": "gal-1-sys-4-p1",
+                "systemId": "gal-1-sys-4",
+                "name": "Borlia I",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 80,
+                "slots": 11,
+                "deposits": {
+                  "ore": 1.29,
+                  "food": 1.78
+                },
+                "orbitRadius": 67,
+                "orbitAngle": 4.049444117338717
+              },
+              {
+                "id": "gal-1-sys-4-p2",
+                "systemId": "gal-1-sys-4",
+                "name": "Borlia II",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 16,
+                "slots": 10,
+                "deposits": {
+                  "ore": 1.38
+                },
+                "orbitRadius": 131,
+                "orbitAngle": 4.305864415827681
+              }
+            ],
+            "belts": [],
+            "station": {
+              "id": "gal-1-sys-4-st",
+              "systemId": "gal-1-sys-4",
+              "factionId": "aether_cartel",
+              "name": "Comptoir Borlia"
+            }
+          },
+          {
+            "id": "gal-1-sys-5",
+            "name": "Sarae",
+            "x": 621,
+            "y": 259,
+            "planets": [
+              {
+                "id": "gal-1-sys-5-p1",
+                "systemId": "gal-1-sys-5",
+                "name": "Sarae I",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 48,
+                "slots": 6,
+                "deposits": {
+                  "ore": 1.55,
+                  "energy": 1.77
+                },
+                "orbitRadius": 63,
+                "orbitAngle": 1.5746376658649448
+              },
+              {
+                "id": "gal-1-sys-5-p2",
+                "systemId": "gal-1-sys-5",
+                "name": "Sarae II",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 65,
+                "slots": 7,
+                "deposits": {
+                  "food": 2.15
+                },
+                "orbitRadius": 125,
+                "orbitAngle": 2.2722585077046205
+              },
+              {
+                "id": "gal-1-sys-5-p2-m1",
+                "systemId": "gal-1-sys-5",
+                "name": "Sarae II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-5-p2",
+                "type": "arid",
+                "habitability": 28,
+                "slots": 2,
+                "deposits": {
+                  "ore": 1.75,
+                  "energy": 1.6
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 4.454269588858823
+              },
+              {
+                "id": "gal-1-sys-5-p2-m2",
+                "systemId": "gal-1-sys-5",
+                "name": "Sarae II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-5-p2",
+                "type": "frozen",
+                "habitability": 19,
+                "slots": 3,
+                "deposits": {
+                  "ore": 1.9,
+                  "food": 0.49
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 5.731251126962711
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-1-sys-5-b1",
+                "systemId": "gal-1-sys-5",
+                "name": "Ceinture Sarae I",
+                "orbitRadius": 224,
+                "deposits": {
+                  "ore": 2.25
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-1-sys-6",
+            "name": "Lorrna",
+            "x": 204,
+            "y": 563,
+            "planets": [
+              {
+                "id": "gal-1-sys-6-p1",
+                "systemId": "gal-1-sys-6",
+                "name": "Lorrna I",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 32,
+                "slots": 9,
+                "deposits": {
+                  "ore": 1.69,
+                  "energy": 1.19,
+                  "food": 0.89
+                },
+                "orbitRadius": 76,
+                "orbitAngle": 5.772269407150153
+              },
+              {
+                "id": "gal-1-sys-6-p2",
+                "systemId": "gal-1-sys-6",
+                "name": "Lorrna II",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 42,
+                "slots": 12,
+                "deposits": {
+                  "energy": 1.76
+                },
+                "orbitRadius": 127,
+                "orbitAngle": 1.6774582442518895
+              },
+              {
+                "id": "gal-1-sys-6-p3",
+                "systemId": "gal-1-sys-6",
+                "name": "Lorrna III",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 58,
+                "slots": 7,
+                "deposits": {
+                  "food": 1.87
+                },
+                "orbitRadius": 183,
+                "orbitAngle": 5.726133015898556
+              },
+              {
+                "id": "gal-1-sys-6-p3-m1",
+                "systemId": "gal-1-sys-6",
+                "name": "Lorrna III a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-6-p3",
+                "type": "arid",
+                "habitability": 31,
+                "slots": 2,
+                "deposits": {
+                  "ore": 1.68,
+                  "energy": 1.8,
+                  "food": 1.01
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 5.676358416140971
+              },
+              {
+                "id": "gal-1-sys-6-p4",
+                "systemId": "gal-1-sys-6",
+                "name": "Lorrna IV",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 4,
+                "deposits": {
+                  "energy": 1.97
+                },
+                "orbitRadius": 228,
+                "orbitAngle": 4.053811412031214
+              },
+              {
+                "id": "gal-1-sys-6-p4-m1",
+                "systemId": "gal-1-sys-6",
+                "name": "Lorrna IV a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-6-p4",
+                "type": "frozen",
+                "habitability": 39,
+                "slots": 3,
+                "deposits": {
+                  "ore": 1.41,
+                  "energy": 1.18
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 1.6882485466027222
+              },
+              {
+                "id": "gal-1-sys-6-p4-m2",
+                "systemId": "gal-1-sys-6",
+                "name": "Lorrna IV b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-6-p4",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.45,
+                  "energy": 2.11
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 1.4838125914817477
+              },
+              {
+                "id": "gal-1-sys-6-p5",
+                "systemId": "gal-1-sys-6",
+                "name": "Lorrna V",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 42,
+                "slots": 11,
+                "deposits": {
+                  "ore": 1.49,
+                  "energy": 1.63
+                },
+                "orbitRadius": 294,
+                "orbitAngle": 5.937969907229659
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-1-sys-6-b1",
+                "systemId": "gal-1-sys-6",
+                "name": "Ceinture Lorrna I",
+                "orbitRadius": 379,
+                "deposits": {
+                  "ore": 1.88
+                }
+              },
+              {
+                "id": "gal-1-sys-6-b2",
+                "systemId": "gal-1-sys-6",
+                "name": "Ceinture Lorrna II",
+                "orbitRadius": 427,
+                "deposits": {
+                  "ore": 2.26
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-1-sys-7",
+            "name": "Cinmar",
+            "x": 475,
+            "y": 588,
+            "planets": [
+              {
+                "id": "gal-1-sys-7-p1",
+                "systemId": "gal-1-sys-7",
+                "name": "Cinmar I",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 4,
+                "deposits": {
+                  "energy": 2.14
+                },
+                "orbitRadius": 66,
+                "orbitAngle": 4.36455259884893
+              },
+              {
+                "id": "gal-1-sys-7-p1-m1",
+                "systemId": "gal-1-sys-7",
+                "name": "Cinmar I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-7-p1",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 5,
+                "deposits": {
+                  "energy": 1.66,
+                  "food": 0.79
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 0.8047282617393477
+              },
+              {
+                "id": "gal-1-sys-7-p1-m2",
+                "systemId": "gal-1-sys-7",
+                "name": "Cinmar I b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-7-p1",
+                "type": "frozen",
+                "habitability": 13,
+                "slots": 5,
+                "deposits": {
+                  "ore": 1.92,
+                  "energy": 0.93
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 3.0717240723343666
+              },
+              {
+                "id": "gal-1-sys-7-p2",
+                "systemId": "gal-1-sys-7",
+                "name": "Cinmar II",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 29,
+                "slots": 13,
+                "deposits": {
+                  "ore": 1.77
+                },
+                "orbitRadius": 119,
+                "orbitAngle": 4.543158205895084
+              },
+              {
+                "id": "gal-1-sys-7-p2-m1",
+                "systemId": "gal-1-sys-7",
+                "name": "Cinmar II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-7-p2",
+                "type": "volcanic",
+                "habitability": 8,
+                "slots": 4,
+                "deposits": {
+                  "ore": 2.2,
+                  "energy": 2.11
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 2.1320949572387113
+              },
+              {
+                "id": "gal-1-sys-7-p2-m2",
+                "systemId": "gal-1-sys-7",
+                "name": "Cinmar II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-7-p2",
+                "type": "frozen",
+                "habitability": 23,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.69,
+                  "food": 0.68
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 4.271213313955917
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-1-sys-7-b1",
+                "systemId": "gal-1-sys-7",
+                "name": "Ceinture Cinmar I",
+                "orbitRadius": 213,
+                "deposits": {
+                  "ore": 1.86
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-1-sys-8",
+            "name": "Tybthyn",
+            "x": 511,
+            "y": 340,
+            "planets": [
+              {
+                "id": "gal-1-sys-8-p1",
+                "systemId": "gal-1-sys-8",
+                "name": "Tybthyn I",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 78,
+                "slots": 13,
+                "deposits": {
+                  "ore": 1.65,
+                  "food": 1.42
+                },
+                "orbitRadius": 62,
+                "orbitAngle": 3.5660467640700704
+              },
+              {
+                "id": "gal-1-sys-8-p2",
+                "systemId": "gal-1-sys-8",
+                "name": "Tybthyn II",
+                "kind": "planet",
+                "type": "volcanic",
+                "habitability": 10,
+                "slots": 12,
+                "deposits": {
+                  "energy": 1.86
+                },
+                "orbitRadius": 127,
+                "orbitAngle": 5.98532653600619
+              },
+              {
+                "id": "gal-1-sys-8-p2-m1",
+                "systemId": "gal-1-sys-8",
+                "name": "Tybthyn II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-8-p2",
+                "type": "frozen",
+                "habitability": 37,
+                "slots": 3,
+                "deposits": {
+                  "ore": 1.99,
+                  "energy": 0.97
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 3.062303762043488
+              },
+              {
+                "id": "gal-1-sys-8-p2-m2",
+                "systemId": "gal-1-sys-8",
+                "name": "Tybthyn II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-8-p2",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.4,
+                  "energy": 2.22
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 2.4392949460370312
+              },
+              {
+                "id": "gal-1-sys-8-p3",
+                "systemId": "gal-1-sys-8",
+                "name": "Tybthyn III",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 53,
+                "slots": 10,
+                "deposits": {
+                  "food": 1.66,
+                  "energy": 1.41
+                },
+                "orbitRadius": 184,
+                "orbitAngle": 6.121122860536752
+              },
+              {
+                "id": "gal-1-sys-8-p3-m1",
+                "systemId": "gal-1-sys-8",
+                "name": "Tybthyn III a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-8-p3",
+                "type": "frozen",
+                "habitability": 36,
+                "slots": 5,
+                "deposits": {
+                  "ore": 1.36
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 3.0580650578501585
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-1-sys-8-b1",
+                "systemId": "gal-1-sys-8",
+                "name": "Ceinture Tybthyn I",
+                "orbitRadius": 282,
+                "deposits": {
+                  "ore": 2.52
+                }
+              },
+              {
+                "id": "gal-1-sys-8-b2",
+                "systemId": "gal-1-sys-8",
+                "name": "Ceinture Tybthyn II",
+                "orbitRadius": 321,
+                "deposits": {
+                  "ore": 1.81
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-1-sys-9",
+            "name": "Mersos",
+            "x": 807,
+            "y": 162,
+            "planets": [
+              {
+                "id": "gal-1-sys-9-p1",
+                "systemId": "gal-1-sys-9",
+                "name": "Mersos I",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 4,
+                "deposits": {
+                  "energy": 2.45
+                },
+                "orbitRadius": 76,
+                "orbitAngle": 1.2979672925190804
+              },
+              {
+                "id": "gal-1-sys-9-p1-m1",
+                "systemId": "gal-1-sys-9",
+                "name": "Mersos I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-9-p1",
+                "type": "frozen",
+                "habitability": 33,
+                "slots": 5,
+                "deposits": {
+                  "energy": 1.17,
+                  "food": 0.87
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 6.235369820981231
+              },
+              {
+                "id": "gal-1-sys-9-p1-m2",
+                "systemId": "gal-1-sys-9",
+                "name": "Mersos I b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-9-p1",
+                "type": "frozen",
+                "habitability": 37,
+                "slots": 4,
+                "deposits": {},
+                "orbitRadius": 26,
+                "orbitAngle": 2.0384547398563657
+              },
+              {
+                "id": "gal-1-sys-9-p2",
+                "systemId": "gal-1-sys-9",
+                "name": "Mersos II",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 76,
+                "slots": 6,
+                "deposits": {
+                  "ore": 1.19,
+                  "food": 1.57,
+                  "energy": 1.41
+                },
+                "orbitRadius": 117,
+                "orbitAngle": 4.13777090507539
+              },
+              {
+                "id": "gal-1-sys-9-p2-m1",
+                "systemId": "gal-1-sys-9",
+                "name": "Mersos II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-9-p2",
+                "type": "arid",
+                "habitability": 31,
+                "slots": 5,
+                "deposits": {
+                  "ore": 1.95,
+                  "energy": 1.72,
+                  "food": 0.64
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 0.29302239326170076
+              },
+              {
+                "id": "gal-1-sys-9-p2-m2",
+                "systemId": "gal-1-sys-9",
+                "name": "Mersos II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-9-p2",
+                "type": "volcanic",
+                "habitability": 19,
+                "slots": 3,
+                "deposits": {
+                  "ore": 2.23,
+                  "energy": 2.24
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 5.04551670078853
+              },
+              {
+                "id": "gal-1-sys-9-p3",
+                "systemId": "gal-1-sys-9",
+                "name": "Mersos III",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 28,
+                "slots": 7,
+                "deposits": {
+                  "ore": 1.53,
+                  "food": 1.11
+                },
+                "orbitRadius": 182,
+                "orbitAngle": 2.924862658235553
+              },
+              {
+                "id": "gal-1-sys-9-p4",
+                "systemId": "gal-1-sys-9",
+                "name": "Mersos IV",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 85,
+                "slots": 10,
+                "deposits": {
+                  "ore": 1.12,
+                  "food": 1.63,
+                  "energy": 1.41
+                },
+                "orbitRadius": 237,
+                "orbitAngle": 3.133403536617344
+              },
+              {
+                "id": "gal-1-sys-9-p4-m1",
+                "systemId": "gal-1-sys-9",
+                "name": "Mersos IV a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-9-p4",
+                "type": "frozen",
+                "habitability": 31,
+                "slots": 5,
+                "deposits": {
+                  "food": 0.47
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 5.4209331316240466
+              }
+            ],
+            "belts": []
+          },
+          {
+            "id": "gal-1-sys-10",
+            "name": "Dagnus",
+            "x": 97,
+            "y": 524,
+            "planets": [
+              {
+                "id": "gal-1-sys-10-p1",
+                "systemId": "gal-1-sys-10",
+                "name": "Dagnus I",
+                "kind": "planet",
+                "type": "volcanic",
+                "habitability": 19,
+                "slots": 11,
+                "deposits": {
+                  "ore": 2.57,
+                  "energy": 2.34
+                },
+                "orbitRadius": 75,
+                "orbitAngle": 1.2014491890440846
+              },
+              {
+                "id": "gal-1-sys-10-p1-m1",
+                "systemId": "gal-1-sys-10",
+                "name": "Dagnus I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-10-p1",
+                "type": "frozen",
+                "habitability": 25,
+                "slots": 2,
+                "deposits": {
+                  "ore": 1.45
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 3.9226258995366234
+              },
+              {
+                "id": "gal-1-sys-10-p2",
+                "systemId": "gal-1-sys-10",
+                "name": "Dagnus II",
+                "kind": "planet",
+                "type": "volcanic",
+                "habitability": 27,
+                "slots": 12,
+                "deposits": {
+                  "ore": 2.11,
+                  "energy": 2.39,
+                  "food": 0.38
+                },
+                "orbitRadius": 123,
+                "orbitAngle": 4.051315261245086
+              },
+              {
+                "id": "gal-1-sys-10-p2-m1",
+                "systemId": "gal-1-sys-10",
+                "name": "Dagnus II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-10-p2",
+                "type": "frozen",
+                "habitability": 25,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.69
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 5.28974543060401
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-1-sys-10-b1",
+                "systemId": "gal-1-sys-10",
+                "name": "Ceinture Dagnus I",
+                "orbitRadius": 211,
+                "deposits": {
+                  "ore": 2.28
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-1-sys-11",
+            "name": "Ulldor",
+            "x": 126,
+            "y": 343,
+            "planets": [
+              {
+                "id": "gal-1-sys-11-p1",
+                "systemId": "gal-1-sys-11",
+                "name": "Ulldor I",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 65,
+                "slots": 10,
+                "deposits": {
+                  "food": 2.35,
+                  "energy": 1.61
+                },
+                "orbitRadius": 74,
+                "orbitAngle": 6.0918674657492735
+              },
+              {
+                "id": "gal-1-sys-11-p2",
+                "systemId": "gal-1-sys-11",
+                "name": "Ulldor II",
+                "kind": "planet",
+                "type": "volcanic",
+                "habitability": 21,
+                "slots": 12,
+                "deposits": {
+                  "ore": 2.46,
+                  "energy": 2.12
+                },
+                "orbitRadius": 131,
+                "orbitAngle": 2.5601291383975884
+              },
+              {
+                "id": "gal-1-sys-11-p2-m1",
+                "systemId": "gal-1-sys-11",
+                "name": "Ulldor II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-11-p2",
+                "type": "frozen",
+                "habitability": 17,
+                "slots": 2,
+                "deposits": {
+                  "energy": 0.8,
+                  "food": 0.79
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 1.4015563286068016
+              },
+              {
+                "id": "gal-1-sys-11-p2-m2",
+                "systemId": "gal-1-sys-11",
+                "name": "Ulldor II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-11-p2",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 5,
+                "deposits": {
+                  "ore": 1.88,
+                  "energy": 1.78
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 0.08081043167884489
+              },
+              {
+                "id": "gal-1-sys-11-p3",
+                "systemId": "gal-1-sys-11",
+                "name": "Ulldor III",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 55,
+                "slots": 12,
+                "deposits": {
+                  "ore": 1.71,
+                  "food": 2.03
+                },
+                "orbitRadius": 183,
+                "orbitAngle": 3.73821931613652
+              },
+              {
+                "id": "gal-1-sys-11-p4",
+                "systemId": "gal-1-sys-11",
+                "name": "Ulldor IV",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 68,
+                "slots": 9,
+                "deposits": {
+                  "food": 1.96,
+                  "ore": 1.01
+                },
+                "orbitRadius": 240,
+                "orbitAngle": 5.778381847540687
+              },
+              {
+                "id": "gal-1-sys-11-p5",
+                "systemId": "gal-1-sys-11",
+                "name": "Ulldor V",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 39,
+                "slots": 11,
+                "deposits": {
+                  "ore": 2.02
+                },
+                "orbitRadius": 296,
+                "orbitAngle": 5.634686394436857
+              }
+            ],
+            "belts": []
+          },
+          {
+            "id": "gal-1-sys-12",
+            "name": "Nyxum",
+            "x": 303,
+            "y": 317,
+            "planets": [
+              {
+                "id": "gal-1-sys-12-p1",
+                "systemId": "gal-1-sys-12",
+                "name": "Nyxum I",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 11,
+                "deposits": {
+                  "ore": 1.86
+                },
+                "orbitRadius": 64,
+                "orbitAngle": 1.4169457513523163
+              },
+              {
+                "id": "gal-1-sys-12-p1-m1",
+                "systemId": "gal-1-sys-12",
+                "name": "Nyxum I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-12-p1",
+                "type": "arid",
+                "habitability": 39,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.96,
+                  "energy": 2.25
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 5.503858669279831
+              },
+              {
+                "id": "gal-1-sys-12-p2",
+                "systemId": "gal-1-sys-12",
+                "name": "Nyxum II",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 70,
+                "slots": 12,
+                "deposits": {
+                  "food": 1.89,
+                  "ore": 0.84,
+                  "energy": 1.41
+                },
+                "orbitRadius": 119,
+                "orbitAngle": 1.0202830730567414
+              },
+              {
+                "id": "gal-1-sys-12-p2-m1",
+                "systemId": "gal-1-sys-12",
+                "name": "Nyxum II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-12-p2",
+                "type": "frozen",
+                "habitability": 39,
+                "slots": 5,
+                "deposits": {
+                  "ore": 2.12,
+                  "food": 0.6
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 2.2561435229422493
+              },
+              {
+                "id": "gal-1-sys-12-p2-m2",
+                "systemId": "gal-1-sys-12",
+                "name": "Nyxum II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-1-sys-12-p2",
+                "type": "volcanic",
+                "habitability": 27,
+                "slots": 4,
+                "deposits": {
+                  "ore": 2.63
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 5.885123378462472
+              },
+              {
+                "id": "gal-1-sys-12-p3",
+                "systemId": "gal-1-sys-12",
+                "name": "Nyxum III",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 37,
+                "slots": 8,
+                "deposits": {
+                  "ore": 1.42
+                },
+                "orbitRadius": 184,
+                "orbitAngle": 0.5284986846287015
+              },
+              {
+                "id": "gal-1-sys-12-p4",
+                "systemId": "gal-1-sys-12",
+                "name": "Nyxum IV",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 32,
+                "slots": 14,
+                "deposits": {
+                  "ore": 1.39,
+                  "energy": 1.64
+                },
+                "orbitRadius": 241,
+                "orbitAngle": 4.747660159102287
+              },
+              {
+                "id": "gal-1-sys-12-p5",
+                "systemId": "gal-1-sys-12",
+                "name": "Nyxum V",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 28,
+                "slots": 13,
+                "deposits": {
+                  "ore": 1.7,
+                  "energy": 2.18
+                },
+                "orbitRadius": 283,
+                "orbitAngle": 5.94123307913101
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-1-sys-12-b1",
+                "systemId": "gal-1-sys-12",
+                "name": "Ceinture Nyxum I",
+                "orbitRadius": 375,
+                "deposits": {
+                  "ore": 2.81
+                }
+              }
+            ]
+          }
+        ],
+        "links": [
+          [
+            "gal-1-sys-0",
+            "gal-1-sys-5"
+          ],
+          [
+            "gal-1-sys-0",
+            "gal-1-sys-4"
+          ],
+          [
+            "gal-1-sys-1",
+            "gal-1-sys-12"
+          ],
+          [
+            "gal-1-sys-1",
+            "gal-1-sys-3"
+          ],
+          [
+            "gal-1-sys-2",
+            "gal-1-sys-4"
+          ],
+          [
+            "gal-1-sys-0",
+            "gal-1-sys-2"
+          ],
+          [
+            "gal-1-sys-3",
+            "gal-1-sys-5"
+          ],
+          [
+            "gal-1-sys-3",
+            "gal-1-sys-8"
+          ],
+          [
+            "gal-1-sys-5",
+            "gal-1-sys-8"
+          ],
+          [
+            "gal-1-sys-10",
+            "gal-1-sys-6"
+          ],
+          [
+            "gal-1-sys-11",
+            "gal-1-sys-6"
+          ],
+          [
+            "gal-1-sys-4",
+            "gal-1-sys-7"
+          ],
+          [
+            "gal-1-sys-7",
+            "gal-1-sys-8"
+          ],
+          [
+            "gal-1-sys-0",
+            "gal-1-sys-8"
+          ],
+          [
+            "gal-1-sys-5",
+            "gal-1-sys-9"
+          ],
+          [
+            "gal-1-sys-3",
+            "gal-1-sys-9"
+          ],
+          [
+            "gal-1-sys-10",
+            "gal-1-sys-11"
+          ],
+          [
+            "gal-1-sys-11",
+            "gal-1-sys-12"
+          ],
+          [
+            "gal-1-sys-12",
+            "gal-1-sys-8"
+          ]
+        ],
+        "anchorSystemId": "gal-1-sys-10",
+        "depositBonus": 1.5
+      },
+      {
+        "id": "gal-2",
+        "name": "Ophrae",
+        "x": 532,
+        "y": -16,
+        "systems": [
+          {
+            "id": "gal-2-sys-0",
+            "name": "Lumvos",
+            "x": 644,
+            "y": 271,
+            "planets": [
+              {
+                "id": "gal-2-sys-0-p1",
+                "systemId": "gal-2-sys-0",
+                "name": "Lumvos I",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 38,
+                "slots": 12,
+                "deposits": {
+                  "ore": 2.3,
+                  "energy": 1.9
+                },
+                "orbitRadius": 62,
+                "orbitAngle": 1.5374591257780903
+              },
+              {
+                "id": "gal-2-sys-0-p1-m1",
+                "systemId": "gal-2-sys-0",
+                "name": "Lumvos I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-0-p1",
+                "type": "arid",
+                "habitability": 25,
+                "slots": 5,
+                "deposits": {
+                  "ore": 2.24,
+                  "energy": 2.08,
+                  "food": 1.25
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 5.34829852776982
+              },
+              {
+                "id": "gal-2-sys-0-p2",
+                "systemId": "gal-2-sys-0",
+                "name": "Lumvos II",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 52,
+                "slots": 9,
+                "deposits": {
+                  "food": 2.23,
+                  "ore": 1.5,
+                  "energy": 1.65
+                },
+                "orbitRadius": 124,
+                "orbitAngle": 2.0421561712929854
+              },
+              {
+                "id": "gal-2-sys-0-p3",
+                "systemId": "gal-2-sys-0",
+                "name": "Lumvos III",
+                "kind": "planet",
+                "type": "volcanic",
+                "habitability": 7,
+                "slots": 10,
+                "deposits": {
+                  "ore": 2.22,
+                  "energy": 2.03
+                },
+                "orbitRadius": 185,
+                "orbitAngle": 1.2759303349113418
+              },
+              {
+                "id": "gal-2-sys-0-p3-m1",
+                "systemId": "gal-2-sys-0",
+                "name": "Lumvos III a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-0-p3",
+                "type": "frozen",
+                "habitability": 25,
+                "slots": 4,
+                "deposits": {},
+                "orbitRadius": 16,
+                "orbitAngle": 3.8579482051310414
+              },
+              {
+                "id": "gal-2-sys-0-p4",
+                "systemId": "gal-2-sys-0",
+                "name": "Lumvos IV",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 55,
+                "slots": 12,
+                "deposits": {
+                  "ore": 1.86,
+                  "energy": 1.87
+                },
+                "orbitRadius": 232,
+                "orbitAngle": 2.565516929632148
+              },
+              {
+                "id": "gal-2-sys-0-p5",
+                "systemId": "gal-2-sys-0",
+                "name": "Lumvos V",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 60,
+                "slots": 9,
+                "deposits": {
+                  "ore": 1.59,
+                  "food": 2.32,
+                  "energy": 1.71
+                },
+                "orbitRadius": 289,
+                "orbitAngle": 4.504082385407457
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-2-sys-0-b1",
+                "systemId": "gal-2-sys-0",
+                "name": "Ceinture Lumvos I",
+                "orbitRadius": 393,
+                "deposits": {
+                  "ore": 2.97
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-2-sys-1",
+            "name": "Elothus",
+            "x": 450,
+            "y": 559,
+            "planets": [
+              {
+                "id": "gal-2-sys-1-p1",
+                "systemId": "gal-2-sys-1",
+                "name": "Elothus I",
+                "kind": "planet",
+                "type": "volcanic",
+                "habitability": 19,
+                "slots": 7,
+                "deposits": {
+                  "ore": 2.8,
+                  "energy": 2.65
+                },
+                "orbitRadius": 78,
+                "orbitAngle": 5.503597904132202
+              },
+              {
+                "id": "gal-2-sys-1-p2",
+                "systemId": "gal-2-sys-1",
+                "name": "Elothus II",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 73,
+                "slots": 6,
+                "deposits": {
+                  "ore": 1.94,
+                  "food": 2.23,
+                  "energy": 1.83
+                },
+                "orbitRadius": 125,
+                "orbitAngle": 0.9868860123579679
+              },
+              {
+                "id": "gal-2-sys-1-p2-m1",
+                "systemId": "gal-2-sys-1",
+                "name": "Elothus II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-1-p2",
+                "type": "frozen",
+                "habitability": 27,
+                "slots": 4,
+                "deposits": {},
+                "orbitRadius": 16,
+                "orbitAngle": 5.152458355977723
+              },
+              {
+                "id": "gal-2-sys-1-p3",
+                "systemId": "gal-2-sys-1",
+                "name": "Elothus III",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 11,
+                "slots": 7,
+                "deposits": {},
+                "orbitRadius": 179,
+                "orbitAngle": 1.1710711377563139
+              },
+              {
+                "id": "gal-2-sys-1-p3-m1",
+                "systemId": "gal-2-sys-1",
+                "name": "Elothus III a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-1-p3",
+                "type": "arid",
+                "habitability": 36,
+                "slots": 5,
+                "deposits": {
+                  "ore": 1.95,
+                  "energy": 2.35,
+                  "food": 1.04
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 1.8278697040986438
+              },
+              {
+                "id": "gal-2-sys-1-p3-m2",
+                "systemId": "gal-2-sys-1",
+                "name": "Elothus III b",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-1-p3",
+                "type": "frozen",
+                "habitability": 40,
+                "slots": 5,
+                "deposits": {
+                  "ore": 2.25
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 1.9067962893534378
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-2-sys-1-b1",
+                "systemId": "gal-2-sys-1",
+                "name": "Ceinture Elothus I",
+                "orbitRadius": 270,
+                "deposits": {
+                  "ore": 3.23
+                }
+              },
+              {
+                "id": "gal-2-sys-1-b2",
+                "systemId": "gal-2-sys-1",
+                "name": "Ceinture Elothus II",
+                "orbitRadius": 319,
+                "deposits": {
+                  "ore": 3.42
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-2-sys-2",
+            "name": "Vensror",
+            "x": 308,
+            "y": 631,
+            "planets": [
+              {
+                "id": "gal-2-sys-2-p1",
+                "systemId": "gal-2-sys-2",
+                "name": "Vensror I",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 3,
+                "deposits": {
+                  "energy": 3.06
+                },
+                "orbitRadius": 63,
+                "orbitAngle": 0.7870907230422084
+              },
+              {
+                "id": "gal-2-sys-2-p1-m1",
+                "systemId": "gal-2-sys-2",
+                "name": "Vensror I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-2-p1",
+                "type": "volcanic",
+                "habitability": 7,
+                "slots": 2,
+                "deposits": {
+                  "ore": 2.71,
+                  "energy": 2.37
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 2.0407021945690187
+              },
+              {
+                "id": "gal-2-sys-2-p1-m2",
+                "systemId": "gal-2-sys-2",
+                "name": "Vensror I b",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-2-p1",
+                "type": "frozen",
+                "habitability": 22,
+                "slots": 5,
+                "deposits": {
+                  "ore": 2.25
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 5.043567619921489
+              },
+              {
+                "id": "gal-2-sys-2-p2",
+                "systemId": "gal-2-sys-2",
+                "name": "Vensror II",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 77,
+                "slots": 6,
+                "deposits": {
+                  "food": 1.82,
+                  "energy": 1.54
+                },
+                "orbitRadius": 124,
+                "orbitAngle": 4.647426773282297
+              },
+              {
+                "id": "gal-2-sys-2-p2-m1",
+                "systemId": "gal-2-sys-2",
+                "name": "Vensror II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-2-p2",
+                "type": "frozen",
+                "habitability": 38,
+                "slots": 2,
+                "deposits": {
+                  "ore": 1.99,
+                  "energy": 1.1
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 5.310367288535739
+              },
+              {
+                "id": "gal-2-sys-2-p2-m2",
+                "systemId": "gal-2-sys-2",
+                "name": "Vensror II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-2-p2",
+                "type": "frozen",
+                "habitability": 24,
+                "slots": 2,
+                "deposits": {
+                  "ore": 2.04,
+                  "energy": 1.36
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 3.546116743504717
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-2-sys-2-b1",
+                "systemId": "gal-2-sys-2",
+                "name": "Ceinture Vensror I",
+                "orbitRadius": 227,
+                "deposits": {
+                  "ore": 2.07
+                }
+              },
+              {
+                "id": "gal-2-sys-2-b2",
+                "systemId": "gal-2-sys-2",
+                "name": "Ceinture Vensror II",
+                "orbitRadius": 267,
+                "deposits": {
+                  "ore": 2.67
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-2-sys-3",
+            "name": "Morlum",
+            "x": 933,
+            "y": 418,
+            "planets": [
+              {
+                "id": "gal-2-sys-3-p1",
+                "systemId": "gal-2-sys-3",
+                "name": "Morlum I",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 19,
+                "slots": 12,
+                "deposits": {},
+                "orbitRadius": 78,
+                "orbitAngle": 2.0310602243936873
+              },
+              {
+                "id": "gal-2-sys-3-p1-m1",
+                "systemId": "gal-2-sys-3",
+                "name": "Morlum I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-3-p1",
+                "type": "frozen",
+                "habitability": 28,
+                "slots": 5,
+                "deposits": {
+                  "ore": 2.53,
+                  "food": 0.82
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 4.950417472781107
+              },
+              {
+                "id": "gal-2-sys-3-p2",
+                "systemId": "gal-2-sys-3",
+                "name": "Morlum II",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 15,
+                "slots": 12,
+                "deposits": {
+                  "ore": 2.21,
+                  "food": 0.89
+                },
+                "orbitRadius": 127,
+                "orbitAngle": 5.531787488490112
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-2-sys-3-b1",
+                "systemId": "gal-2-sys-3",
+                "name": "Ceinture Morlum I",
+                "orbitRadius": 224,
+                "deposits": {
+                  "ore": 2.64
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-2-sys-4",
+            "name": "Ferda",
+            "x": 638,
+            "y": 599,
+            "planets": [
+              {
+                "id": "gal-2-sys-4-p1",
+                "systemId": "gal-2-sys-4",
+                "name": "Ferda I",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 45,
+                "slots": 10,
+                "deposits": {
+                  "food": 2.17
+                },
+                "orbitRadius": 62,
+                "orbitAngle": 1.055082937605069
+              },
+              {
+                "id": "gal-2-sys-4-p2",
+                "systemId": "gal-2-sys-4",
+                "name": "Ferda II",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 63,
+                "slots": 8,
+                "deposits": {
+                  "ore": 1.4,
+                  "food": 1.91
+                },
+                "orbitRadius": 125,
+                "orbitAngle": 3.4500497922620226
+              },
+              {
+                "id": "gal-2-sys-4-p2-m1",
+                "systemId": "gal-2-sys-4",
+                "name": "Ferda II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-4-p2",
+                "type": "frozen",
+                "habitability": 14,
+                "slots": 2,
+                "deposits": {
+                  "ore": 2.05,
+                  "energy": 1.37
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 3.180551000292737
+              },
+              {
+                "id": "gal-2-sys-4-p2-m2",
+                "systemId": "gal-2-sys-4",
+                "name": "Ferda II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-4-p2",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 4,
+                "deposits": {
+                  "ore": 2.39,
+                  "energy": 2.53
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 4.549579304445327
+              },
+              {
+                "id": "gal-2-sys-4-p3",
+                "systemId": "gal-2-sys-4",
+                "name": "Ferda III",
+                "kind": "planet",
+                "type": "volcanic",
+                "habitability": 30,
+                "slots": 10,
+                "deposits": {
+                  "ore": 2.11,
+                  "energy": 2.25
+                },
+                "orbitRadius": 172,
+                "orbitAngle": 0.019018568474001397
+              },
+              {
+                "id": "gal-2-sys-4-p4",
+                "systemId": "gal-2-sys-4",
+                "name": "Ferda IV",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 70,
+                "slots": 12,
+                "deposits": {
+                  "ore": 1.65,
+                  "food": 1.66
+                },
+                "orbitRadius": 236,
+                "orbitAngle": 5.937184147596759
+              },
+              {
+                "id": "gal-2-sys-4-p4-m1",
+                "systemId": "gal-2-sys-4",
+                "name": "Ferda IV a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-4-p4",
+                "type": "arid",
+                "habitability": 32,
+                "slots": 5,
+                "deposits": {
+                  "ore": 2.39,
+                  "food": 1.13
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 5.402132998763051
+              },
+              {
+                "id": "gal-2-sys-4-p4-m2",
+                "systemId": "gal-2-sys-4",
+                "name": "Ferda IV b",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-4-p4",
+                "type": "frozen",
+                "habitability": 30,
+                "slots": 2,
+                "deposits": {
+                  "energy": 1.35,
+                  "food": 0.97
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 3.098614174357907
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-2-sys-4-b1",
+                "systemId": "gal-2-sys-4",
+                "name": "Ceinture Ferda I",
+                "orbitRadius": 332,
+                "deposits": {
+                  "ore": 2.56
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-2-sys-5",
+            "name": "Wrernon",
+            "x": 349,
+            "y": 469,
+            "planets": [
+              {
+                "id": "gal-2-sys-5-p1",
+                "systemId": "gal-2-sys-5",
+                "name": "Wrernon I",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 3,
+                "deposits": {
+                  "energy": 2.47
+                },
+                "orbitRadius": 75,
+                "orbitAngle": 4.722039018553228
+              },
+              {
+                "id": "gal-2-sys-5-p1-m1",
+                "systemId": "gal-2-sys-5",
+                "name": "Wrernon I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-5-p1",
+                "type": "frozen",
+                "habitability": 38,
+                "slots": 3,
+                "deposits": {
+                  "ore": 2.56,
+                  "energy": 1.43
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 5.576248310427522
+              },
+              {
+                "id": "gal-2-sys-5-p1-m2",
+                "systemId": "gal-2-sys-5",
+                "name": "Wrernon I b",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-5-p1",
+                "type": "frozen",
+                "habitability": 26,
+                "slots": 2,
+                "deposits": {
+                  "energy": 1.35
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 1.4669879276041073
+              },
+              {
+                "id": "gal-2-sys-5-p1-m3",
+                "systemId": "gal-2-sys-5",
+                "name": "Wrernon I c",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-5-p1",
+                "type": "arid",
+                "habitability": 25,
+                "slots": 2,
+                "deposits": {
+                  "ore": 1.75,
+                  "energy": 2.13
+                },
+                "orbitRadius": 36,
+                "orbitAngle": 3.6706565380813374
+              },
+              {
+                "id": "gal-2-sys-5-p2",
+                "systemId": "gal-2-sys-5",
+                "name": "Wrernon II",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 3,
+                "deposits": {
+                  "energy": 2.71
+                },
+                "orbitRadius": 126,
+                "orbitAngle": 3.2461505013238368
+              },
+              {
+                "id": "gal-2-sys-5-p2-m1",
+                "systemId": "gal-2-sys-5",
+                "name": "Wrernon II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-5-p2",
+                "type": "frozen",
+                "habitability": 13,
+                "slots": 2,
+                "deposits": {
+                  "ore": 2.53
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 1.837925228048721
+              },
+              {
+                "id": "gal-2-sys-5-p2-m2",
+                "systemId": "gal-2-sys-5",
+                "name": "Wrernon II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-5-p2",
+                "type": "volcanic",
+                "habitability": 25,
+                "slots": 5,
+                "deposits": {
+                  "ore": 2.45,
+                  "energy": 2.58
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 4.791516630563216
+              },
+              {
+                "id": "gal-2-sys-5-p3",
+                "systemId": "gal-2-sys-5",
+                "name": "Wrernon III",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 18,
+                "slots": 7,
+                "deposits": {
+                  "ore": 1.94,
+                  "energy": 1.08
+                },
+                "orbitRadius": 188,
+                "orbitAngle": 5.749346229862093
+              },
+              {
+                "id": "gal-2-sys-5-p4",
+                "systemId": "gal-2-sys-5",
+                "name": "Wrernon IV",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 35,
+                "slots": 9,
+                "deposits": {
+                  "ore": 2.08
+                },
+                "orbitRadius": 235,
+                "orbitAngle": 0.8841291542938017
+              },
+              {
+                "id": "gal-2-sys-5-p5",
+                "systemId": "gal-2-sys-5",
+                "name": "Wrernon V",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 19,
+                "slots": 7,
+                "deposits": {},
+                "orbitRadius": 287,
+                "orbitAngle": 2.9270937268028
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-2-sys-5-b1",
+                "systemId": "gal-2-sys-5",
+                "name": "Ceinture Wrernon I",
+                "orbitRadius": 392,
+                "deposits": {
+                  "ore": 2.28
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-2-sys-6",
+            "name": "Nadmia",
+            "x": 470,
+            "y": 179,
+            "planets": [
+              {
+                "id": "gal-2-sys-6-p1",
+                "systemId": "gal-2-sys-6",
+                "name": "Nadmia I",
+                "kind": "planet",
+                "type": "volcanic",
+                "habitability": 27,
+                "slots": 8,
+                "deposits": {
+                  "ore": 2.53
+                },
+                "orbitRadius": 72,
+                "orbitAngle": 4.512205300948065
+              },
+              {
+                "id": "gal-2-sys-6-p2",
+                "systemId": "gal-2-sys-6",
+                "name": "Nadmia II",
+                "kind": "planet",
+                "type": "gas",
+                "habitability": 0,
+                "slots": 4,
+                "deposits": {
+                  "energy": 2.32
+                },
+                "orbitRadius": 132,
+                "orbitAngle": 3.9353193383493004
+              },
+              {
+                "id": "gal-2-sys-6-p2-m1",
+                "systemId": "gal-2-sys-6",
+                "name": "Nadmia II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-6-p2",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 2,
+                "deposits": {
+                  "ore": 1.89
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 5.057674717435868
+              },
+              {
+                "id": "gal-2-sys-6-p3",
+                "systemId": "gal-2-sys-6",
+                "name": "Nadmia III",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 45,
+                "slots": 9,
+                "deposits": {
+                  "energy": 2.07,
+                  "food": 1.23
+                },
+                "orbitRadius": 175,
+                "orbitAngle": 3.2905164544867236
+              },
+              {
+                "id": "gal-2-sys-6-p4",
+                "systemId": "gal-2-sys-6",
+                "name": "Nadmia IV",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 79,
+                "slots": 6,
+                "deposits": {
+                  "ore": 2.05,
+                  "food": 2.17
+                },
+                "orbitRadius": 234,
+                "orbitAngle": 4.6659958016597205
+              },
+              {
+                "id": "gal-2-sys-6-p5",
+                "systemId": "gal-2-sys-6",
+                "name": "Nadmia V",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 55,
+                "slots": 13,
+                "deposits": {
+                  "ore": 1.32,
+                  "food": 2.06
+                },
+                "orbitRadius": 296,
+                "orbitAngle": 4.7898839920429825
+              },
+              {
+                "id": "gal-2-sys-6-p5-m1",
+                "systemId": "gal-2-sys-6",
+                "name": "Nadmia V a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-6-p5",
+                "type": "arid",
+                "habitability": 26,
+                "slots": 4,
+                "deposits": {
+                  "ore": 1.85,
+                  "energy": 2.44,
+                  "food": 1.1
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 2.9336123361576156
+              },
+              {
+                "id": "gal-2-sys-6-p5-m2",
+                "systemId": "gal-2-sys-6",
+                "name": "Nadmia V b",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-6-p5",
+                "type": "volcanic",
+                "habitability": 22,
+                "slots": 2,
+                "deposits": {
+                  "ore": 2.93,
+                  "energy": 2.49
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 3.933293357730504
+              }
+            ],
+            "belts": []
+          },
+          {
+            "id": "gal-2-sys-7",
+            "name": "Ghevae",
+            "x": 533,
+            "y": 295,
+            "planets": [
+              {
+                "id": "gal-2-sys-7-p1",
+                "systemId": "gal-2-sys-7",
+                "name": "Ghevae I",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 60,
+                "slots": 11,
+                "deposits": {
+                  "food": 1.8
+                },
+                "orbitRadius": 73,
+                "orbitAngle": 3.515114176877661
+              },
+              {
+                "id": "gal-2-sys-7-p2",
+                "systemId": "gal-2-sys-7",
+                "name": "Ghevae II",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 51,
+                "slots": 14,
+                "deposits": {
+                  "ore": 2.15,
+                  "energy": 2.53
+                },
+                "orbitRadius": 118,
+                "orbitAngle": 0.22082709492916866
+              },
+              {
+                "id": "gal-2-sys-7-p2-m1",
+                "systemId": "gal-2-sys-7",
+                "name": "Ghevae II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-7-p2",
+                "type": "volcanic",
+                "habitability": 11,
+                "slots": 3,
+                "deposits": {
+                  "ore": 2.21,
+                  "energy": 2
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 4.560947879294959
+              },
+              {
+                "id": "gal-2-sys-7-p3",
+                "systemId": "gal-2-sys-7",
+                "name": "Ghevae III",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 30,
+                "slots": 9,
+                "deposits": {
+                  "ore": 1.62,
+                  "energy": 1.37,
+                  "food": 0.89
+                },
+                "orbitRadius": 188,
+                "orbitAngle": 5.46763242742002
+              },
+              {
+                "id": "gal-2-sys-7-p4",
+                "systemId": "gal-2-sys-7",
+                "name": "Ghevae IV",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 51,
+                "slots": 14,
+                "deposits": {
+                  "food": 0.78
+                },
+                "orbitRadius": 243,
+                "orbitAngle": 2.5246464612245174
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-2-sys-7-b1",
+                "systemId": "gal-2-sys-7",
+                "name": "Ceinture Ghevae I",
+                "orbitRadius": 329,
+                "deposits": {
+                  "ore": 3.24
+                }
+              },
+              {
+                "id": "gal-2-sys-7-b2",
+                "systemId": "gal-2-sys-7",
+                "name": "Ceinture Ghevae II",
+                "orbitRadius": 377,
+                "deposits": {
+                  "ore": 2.06
+                }
+              }
+            ]
+          },
+          {
+            "id": "gal-2-sys-8",
+            "name": "Xansis",
+            "x": 433,
+            "y": 398,
+            "planets": [
+              {
+                "id": "gal-2-sys-8-p1",
+                "systemId": "gal-2-sys-8",
+                "name": "Xansis I",
+                "kind": "planet",
+                "type": "frozen",
+                "habitability": 31,
+                "slots": 10,
+                "deposits": {
+                  "ore": 2.09,
+                  "energy": 1.37
+                },
+                "orbitRadius": 66,
+                "orbitAngle": 1.2311535285204829
+              },
+              {
+                "id": "gal-2-sys-8-p1-m1",
+                "systemId": "gal-2-sys-8",
+                "name": "Xansis I a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-8-p1",
+                "type": "frozen",
+                "habitability": 24,
+                "slots": 5,
+                "deposits": {
+                  "ore": 2.23,
+                  "energy": 0.89
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 1.3514463563424628
+              },
+              {
+                "id": "gal-2-sys-8-p2",
+                "systemId": "gal-2-sys-8",
+                "name": "Xansis II",
+                "kind": "planet",
+                "type": "volcanic",
+                "habitability": 15,
+                "slots": 12,
+                "deposits": {
+                  "ore": 2.93,
+                  "energy": 2.03
+                },
+                "orbitRadius": 133,
+                "orbitAngle": 0.08605602142442738
+              }
+            ],
+            "belts": [],
+            "station": {
+              "id": "gal-2-sys-8-st",
+              "systemId": "gal-2-sys-8",
+              "factionId": "aether_cartel",
+              "name": "Comptoir Xansis"
+            }
+          },
+          {
+            "id": "gal-2-sys-9",
+            "name": "Ophnen",
+            "x": 885,
+            "y": 94,
+            "planets": [
+              {
+                "id": "gal-2-sys-9-p1",
+                "systemId": "gal-2-sys-9",
+                "name": "Ophnen I",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 70,
+                "slots": 8,
+                "deposits": {
+                  "food": 2.04,
+                  "ore": 1.32
+                },
+                "orbitRadius": 73,
+                "orbitAngle": 5.742605060928206
+              },
+              {
+                "id": "gal-2-sys-9-p2",
+                "systemId": "gal-2-sys-9",
+                "name": "Ophnen II",
+                "kind": "planet",
+                "type": "oceanic",
+                "habitability": 58,
+                "slots": 11,
+                "deposits": {
+                  "food": 2.64,
+                  "ore": 1.01,
+                  "energy": 1.79
+                },
+                "orbitRadius": 128,
+                "orbitAngle": 0.7999119214165837
+              },
+              {
+                "id": "gal-2-sys-9-p2-m1",
+                "systemId": "gal-2-sys-9",
+                "name": "Ophnen II a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-9-p2",
+                "type": "volcanic",
+                "habitability": 6,
+                "slots": 4,
+                "deposits": {
+                  "energy": 2.63
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 5.3642998174649055
+              },
+              {
+                "id": "gal-2-sys-9-p2-m2",
+                "systemId": "gal-2-sys-9",
+                "name": "Ophnen II b",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-9-p2",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 3,
+                "deposits": {
+                  "ore": 2.08
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 5.6693520655097736
+              },
+              {
+                "id": "gal-2-sys-9-p3",
+                "systemId": "gal-2-sys-9",
+                "name": "Ophnen III",
+                "kind": "planet",
+                "type": "telluric",
+                "habitability": 56,
+                "slots": 10,
+                "deposits": {
+                  "ore": 1.73,
+                  "food": 1.94,
+                  "energy": 1.46
+                },
+                "orbitRadius": 177,
+                "orbitAngle": 3.3527818057571026
+              },
+              {
+                "id": "gal-2-sys-9-p4",
+                "systemId": "gal-2-sys-9",
+                "name": "Ophnen IV",
+                "kind": "planet",
+                "type": "volcanic",
+                "habitability": 6,
+                "slots": 9,
+                "deposits": {
+                  "ore": 2.57,
+                  "energy": 2.21
+                },
+                "orbitRadius": 235,
+                "orbitAngle": 0.693886281160233
+              },
+              {
+                "id": "gal-2-sys-9-p5",
+                "systemId": "gal-2-sys-9",
+                "name": "Ophnen V",
+                "kind": "planet",
+                "type": "arid",
+                "habitability": 36,
+                "slots": 11,
+                "deposits": {
+                  "ore": 1.98
+                },
+                "orbitRadius": 285,
+                "orbitAngle": 4.748472132764249
+              },
+              {
+                "id": "gal-2-sys-9-p5-m1",
+                "systemId": "gal-2-sys-9",
+                "name": "Ophnen V a",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-9-p5",
+                "type": "arid",
+                "habitability": 40,
+                "slots": 2,
+                "deposits": {
+                  "ore": 2.25
+                },
+                "orbitRadius": 16,
+                "orbitAngle": 4.810404260554533
+              },
+              {
+                "id": "gal-2-sys-9-p5-m2",
+                "systemId": "gal-2-sys-9",
+                "name": "Ophnen V b",
+                "kind": "moon",
+                "parentPlanetId": "gal-2-sys-9-p5",
+                "type": "frozen",
+                "habitability": 15,
+                "slots": 4,
+                "deposits": {
+                  "ore": 2.53
+                },
+                "orbitRadius": 26,
+                "orbitAngle": 3.7711786205438442
+              }
+            ],
+            "belts": [
+              {
+                "id": "gal-2-sys-9-b1",
+                "systemId": "gal-2-sys-9",
+                "name": "Ceinture Ophnen I",
+                "orbitRadius": 394,
+                "deposits": {
+                  "ore": 2.96
+                }
+              }
+            ]
+          }
+        ],
+        "links": [
+          [
+            "gal-2-sys-0",
+            "gal-2-sys-7"
+          ],
+          [
+            "gal-2-sys-0",
+            "gal-2-sys-6"
+          ],
+          [
+            "gal-2-sys-1",
+            "gal-2-sys-5"
+          ],
+          [
+            "gal-2-sys-1",
+            "gal-2-sys-2"
+          ],
+          [
+            "gal-2-sys-2",
+            "gal-2-sys-5"
+          ],
+          [
+            "gal-2-sys-0",
+            "gal-2-sys-3"
+          ],
+          [
+            "gal-2-sys-3",
+            "gal-2-sys-9"
+          ],
+          [
+            "gal-2-sys-1",
+            "gal-2-sys-4"
+          ],
+          [
+            "gal-2-sys-4",
+            "gal-2-sys-8"
+          ],
+          [
+            "gal-2-sys-5",
+            "gal-2-sys-8"
+          ],
+          [
+            "gal-2-sys-6",
+            "gal-2-sys-7"
+          ],
+          [
+            "gal-2-sys-7",
+            "gal-2-sys-8"
+          ],
+          [
+            "gal-2-sys-0",
+            "gal-2-sys-9"
+          ]
+        ],
+        "anchorSystemId": "gal-2-sys-9",
+        "depositBonus": 1.71
+      }
+    ]
+  }
+}

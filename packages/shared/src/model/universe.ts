@@ -69,6 +69,13 @@ export interface Galaxy {
   anchorSystemId: string;
   /** Multiplicateur de richesse des gisements (galaxies lointaines plus riches). */
   depositBonus: number;
+  /**
+   * Parent dans l'arbre inter-galactique (trous de ver), figé par le serveur à la
+   * matérialisation en DB — un changement des constantes de spirale ne recâble donc
+   * jamais le réseau existant. `null` pour la galaxie mère ; absent quand la galaxie
+   * sort du générateur pur (le calcul positionnel sert alors de repli).
+   */
+  parentIndex?: number | null;
 }
 
 /** Méga-projet de portail vers une galaxie lointaine (contributions par convois). */
