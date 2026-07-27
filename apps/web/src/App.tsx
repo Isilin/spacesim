@@ -323,15 +323,7 @@ function MapPage({
             </button>
           </>
         ) : level === "universe" ? (
-          <GatewaysPanel
-            gateways={gateways}
-            universe={universe}
-            activeColony={colony}
-            routes={routes}
-            researched={game.researched}
-            now={now}
-            send={send}
-          />
+          <GatewaysPanel now={now} />
         ) : (
           <p className="muted">Sélectionnez un système (double-clic : vue système).</p>
         )}

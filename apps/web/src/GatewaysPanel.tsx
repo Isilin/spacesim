@@ -1,44 +1,34 @@
-import type { ClientMessage } from "@spacesim/protocol";
 import {
   GATEWAY_COST,
   galaxyIndexOfId,
   gatewayProgressRatio,
   gatewayRemaining,
   maxConvoyCapacity,
-  type Colony,
-  type Gateway,
   type ResourceId,
-  type Route,
-  type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { formatDuration } from "./format.js";
 import { RESOURCE_LABELS } from "./labels.js";
+import { useGameStore } from "./state/game-store.js";
+import { selectActiveColony } from "./state/selectors.js";
 
 interface Props {
-  gateways: Gateway[];
-  universe: Universe;
-  activeColony: Colony | null;
-  routes: Route[];
-  researched: readonly string[];
   now: number;
-  send: (msg: ClientMessage) => void;
 }
 
 const GATEWAY_RESOURCES = Object.keys(GATEWAY_COST) as ResourceId[];
 
-export function GatewaysPanel({
-  gateways,
-  universe,
-  activeColony,
-  routes,
-  researched,
-  now,
-  send,
-}: Props) {
+export function GatewaysPanel({ now }: Props) {
+  const [searchParams] = useSearchParams();
+  const activeColony = useGameStore(selectActiveColony(searchParams.get("colony")));
+  const { gateways, universe, routes, game, send } = useGameStore();
   const [amounts, setAmounts] = useState<Record<string, Partial<Record<ResourceId, string>>>>({});
+  const researched = game?.researched ?? [];
   const hasTech = researched.includes("gateway_engineering");
   const convoyCapacity = activeColony ? maxConvoyCapacity(activeColony, routes) : 0;
+
+  if (!universe) return null;
 
   return (
     <div className="gateways-panel">
