@@ -31,13 +31,13 @@ import {
   type ShipId,
   type TechId,
 } from "@spacesim/shared";
-import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { db, schema } from "../../db/index.js";
 import type { Empire } from "../../empire.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { BlueprintRepository } from "../repositories/blueprint-repository.js";
+import { ColonyRepository } from "../repositories/colony-repository.js";
+import { PlayerRepository } from "../repositories/player-repository.js";
 
 const MAX_BLUEPRINTS = 40;
 
@@ -49,6 +49,8 @@ const MAX_BLUEPRINTS = 40;
  */
 export class IndustryService {
   private readonly blueprintRepo: BlueprintRepository;
+  private readonly colonyRepo: ColonyRepository;
+  private readonly playerRepo: PlayerRepository;
 
   constructor(
     private readonly runtime: GameRuntime,
@@ -57,6 +59,8 @@ export class IndustryService {
     private readonly persistFleet: (fleet: Fleet) => void,
   ) {
     this.blueprintRepo = new BlueprintRepository(runtime.clock.id);
+    this.colonyRepo = new ColonyRepository(runtime.clock.id);
+    this.playerRepo = new PlayerRepository(runtime.clock.id);
   }
 
   private get portalLinks(): [string, string][] {
@@ -449,14 +453,7 @@ export class IndustryService {
   }
 
   persistResearch(empire: Empire): void {
-    db.update(schema.players)
-      .set({
-        researched: JSON.stringify(empire.researched),
-        research: empire.research ? JSON.stringify(empire.research) : null,
-        researchQueue: JSON.stringify(empire.researchQueue),
-      })
-      .where(eq(schema.players.id, empire.id))
-      .run();
+    this.playerRepo.saveResearch(empire);
   }
 
   // ── Production de colonie (tick) ─────────────────────────────────────────
@@ -485,20 +482,6 @@ export class IndustryService {
   }
 
   persistColony(colony: Colony): void {
-    db.update(schema.colonies)
-      .set({
-        resources: JSON.stringify(colony.resources),
-        orbitalResources: JSON.stringify(colony.orbitalResources),
-        liftRules: JSON.stringify(colony.liftRules),
-        buildings: JSON.stringify(colony.buildings),
-        queue: JSON.stringify(colony.queue),
-        population: colony.population,
-        satisfaction: colony.satisfaction,
-        ships: JSON.stringify(colony.ships),
-        shipsBusy: JSON.stringify(colony.shipsBusy),
-        shipQueue: JSON.stringify(colony.shipQueue),
-      })
-      .where(eq(schema.colonies.id, colony.id))
-      .run();
+    this.colonyRepo.save(colony);
   }
 }

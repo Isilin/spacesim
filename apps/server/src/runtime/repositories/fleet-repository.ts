@@ -1,5 +1,5 @@
 import type { Fleet, PirateLair, StoredBattle } from "@spacesim/shared";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 
 /** Propriétaire unique des tables `fleets`, `pirate_lairs` et `battles` (chantier 19.3). */
@@ -46,6 +46,14 @@ export class FleetRepository {
 
   removeFleet(id: string): void {
     db.delete(schema.fleets).where(eq(schema.fleets.id, id)).run();
+  }
+
+  /** Backfill legacy : adopte les flottes SANS propriétaire (sauvegardes pré-7b). */
+  adoptOrphanFleets(ownerId: string): void {
+    db.update(schema.fleets)
+      .set({ ownerId })
+      .where(and(eq(schema.fleets.gameId, this.gameId), isNull(schema.fleets.ownerId)))
+      .run();
   }
 
   async loadLairs(): Promise<PirateLair[]> {

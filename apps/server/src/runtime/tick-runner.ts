@@ -1,8 +1,8 @@
 import { ECONOMY_TICK_TICKS, TICK_MS, type Colony } from "@spacesim/shared";
-import { eq } from "drizzle-orm";
-import { db, schema } from "../db/index.js";
 import type { Empire } from "../empire.js";
 import type { GameRuntime } from "./game-runtime.js";
+import { GameRepository } from "./repositories/game-repository.js";
+import { PlayerRepository } from "./repositories/player-repository.js";
 
 /**
  * Les phases d'un tick, dans l'ordre exact observé en production. Chaque méthode reste
@@ -37,10 +37,15 @@ export interface TickHost {
 
 /** Fait avancer la simulation d'un nombre de ticks donné — boucle, persistance, notification. */
 export class TickRunner {
+  private readonly gameRepo = new GameRepository();
+  private readonly playerRepo: PlayerRepository;
+
   constructor(
     private readonly runtime: GameRuntime,
     private readonly host: TickHost,
-  ) {}
+  ) {
+    this.playerRepo = new PlayerRepository(runtime.clock.id);
+  }
 
   run(ticks: number): void {
     for (let i = 1; i <= ticks; i++) {
@@ -48,15 +53,9 @@ export class TickRunner {
     }
     this.runtime.clock.tick += ticks;
     this.runtime.clock.lastTickAt += ticks * TICK_MS;
-    db.update(schema.games)
-      .set({ tick: this.runtime.clock.tick, lastTickAt: this.runtime.clock.lastTickAt })
-      .where(eq(schema.games.id, this.runtime.clock.id))
-      .run();
+    this.gameRepo.saveTick(this.runtime.clock);
     for (const empire of this.runtime.empires.values()) {
-      db.update(schema.players)
-        .set({ influence: empire.influence, factionRep: JSON.stringify(empire.factionRep) })
-        .where(eq(schema.players.id, empire.id))
-        .run();
+      this.playerRepo.saveInfluence(empire);
       for (const colony of empire.colonyMap.values()) this.host.persistColony(colony);
       this.host.persistOutposts(empire);
     }

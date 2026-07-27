@@ -47,9 +47,7 @@ import {
   type WorldEventKind,
 } from "@spacesim/shared";
 import type { EmpireSnapshot } from "@spacesim/protocol";
-import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { db, schema } from "./db/index.js";
 import { Empire, type Clock } from "./empire.js";
 import { GameRuntime } from "./runtime/game-runtime.js";
 import { consoleLogger, type Logger } from "./runtime/logger.js";
@@ -59,6 +57,7 @@ import { ExplorationService } from "./runtime/services/exploration-service.js";
 import { FleetService } from "./runtime/services/fleet-service.js";
 import { IndustryService } from "./runtime/services/industry-service.js";
 import { LogisticsService } from "./runtime/services/logistics-service.js";
+import { GameRepository } from "./runtime/repositories/game-repository.js";
 import { TickRunner } from "./runtime/tick-runner.js";
 import {
   appendGalaxies,
@@ -270,7 +269,6 @@ export class GameEngine {
       this.runtime,
       () => this.notify(),
       logger,
-      (colony) => this.persistColony(colony),
       (empire) => this.seedStarterBlueprints(empire),
       () => this.ensureFrontier(),
       () => this.exploration.galaxyOccupancy(),
@@ -291,7 +289,7 @@ export class GameEngine {
    * pouvoir repartir de zéro parce que sa base était inaccessible.
    */
   static async load(): Promise<GameEngine> {
-    const row = db.select().from(schema.games).limit(1).get();
+    const row = await new GameRepository().find();
     if (!row) {
       throw new Error("Aucun univers en base — utiliser GameEngine.bootstrapNewUniverse()");
     }
@@ -338,7 +336,8 @@ export class GameEngine {
    * Lève si un univers existe déjà.
    */
   static async bootstrapNewUniverse(): Promise<GameEngine> {
-    if (db.select().from(schema.games).limit(1).get()) {
+    const gameRepo = new GameRepository();
+    if (await gameRepo.find()) {
       throw new Error("Un univers existe déjà en base — utiliser GameEngine.load()");
     }
     const row = {
@@ -349,7 +348,7 @@ export class GameEngine {
       createdAt: Date.now(),
       galaxyCount: INITIAL_GALAXIES,
     };
-    db.insert(schema.games).values(row).run();
+    gameRepo.insert(row);
     const universe = withParentIndexes(generateUniverse(row.seed, INITIAL_GALAXIES));
     appendGalaxies(row.id, universe.galaxies, INITIAL_GALAXIES);
     const clock: Clock = {
@@ -364,7 +363,7 @@ export class GameEngine {
 
   /** Charge l'univers s'il existe, sinon le crée — comportement dev/tests. */
   static async loadOrBootstrap(): Promise<GameEngine> {
-    return db.select().from(schema.games).limit(1).get()
+    return (await new GameRepository().find())
       ? GameEngine.load()
       : GameEngine.bootstrapNewUniverse();
   }
@@ -372,8 +371,8 @@ export class GameEngine {
   /** Séquence de chargement commune (l'ordre des étapes est un contrat implicite). */
   private static async boot(clock: Clock, universe: Universe, isNew: boolean): Promise<GameEngine> {
     const engine = new GameEngine(clock, universe);
-    engine.ensureDefaultPlayer();
-    engine.loadPlayers();
+    await engine.ensureDefaultPlayer();
+    await engine.loadPlayers();
     await engine.loadRelations();
     await engine.loadProposals();
     await engine.loadObjectives();
@@ -381,7 +380,7 @@ export class GameEngine {
     if (isNew) {
       engine.createHomeColony();
     } else {
-      engine.loadColonies();
+      await engine.loadColonies();
       await engine.loadTransfers();
       await engine.loadMissions();
       await engine.loadMarkets();
@@ -1395,8 +1394,8 @@ export class GameEngine {
    * NB : l'état d'empire des sauvegardes pré-7b a été copié `games`→`players` par la
    * migration 0005 ; les colonnes legacy de `games` sont supprimées en 0006 (Phase D).
    */
-  private ensureDefaultPlayer(): void {
-    this.bootstrap.ensureDefaultPlayer();
+  private async ensureDefaultPlayer(): Promise<void> {
+    await this.bootstrap.ensureDefaultPlayer();
   }
 
   /**
@@ -1405,8 +1404,8 @@ export class GameEngine {
    * et ses claims (par `ownerId`). `defaultEmpire` = premier player (ordre d'insertion),
    * fallback de compatibilité tant que l'identité de connexion (7c-B) n'existe pas.
    */
-  private loadPlayers(): void {
-    this.bootstrap.loadPlayers();
+  private async loadPlayers(): Promise<void> {
+    await this.bootstrap.loadPlayers();
   }
 
   /** Empire propriétaire d'une colonie (pour router les entités dérivées au chargement). */
@@ -1422,8 +1421,8 @@ export class GameEngine {
     this.bootstrap.insertColony(empire, colony);
   }
 
-  private loadColonies(): void {
-    this.bootstrap.loadColonies();
+  private async loadColonies(): Promise<void> {
+    await this.bootstrap.loadColonies();
   }
 
   persistColony(colony: Colony): void {

@@ -9,12 +9,14 @@ import {
   type ResourceId,
   type TechId,
 } from "@spacesim/shared";
-import { and, eq, isNull } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { db, schema } from "../../db/index.js";
 import { Empire } from "../../empire.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
+import { ClaimRepository } from "../repositories/claim-repository.js";
+import { ColonyRepository } from "../repositories/colony-repository.js";
+import { FleetRepository } from "../repositories/fleet-repository.js";
+import { PlayerRepository } from "../repositories/player-repository.js";
 
 /** Empire par défaut d'une partie solo (chantier 7 — socle multi-locataire). */
 const DEFAULT_PLAYER_NAME = "Empire";
@@ -44,17 +46,26 @@ const NPC_EMPIRE_NAMES = [
  * étroits, à l'identique des services précédents.
  */
 export class BootstrapService {
+  private readonly playerRepo: PlayerRepository;
+  private readonly colonyRepo: ColonyRepository;
+  private readonly claimRepo: ClaimRepository;
+  private readonly fleetRepo: FleetRepository;
+
   constructor(
     private readonly runtime: GameRuntime,
     private readonly notify: () => void,
     private readonly logger: Logger,
-    private readonly persistColony: (colony: Colony) => void,
     private readonly seedStarterBlueprints: (empire: Empire) => void,
     private readonly ensureFrontier: () => void,
     private readonly galaxyOccupancy: () => GalaxyOccupancy[],
     private readonly growUniverse: (count: number) => void,
     private readonly markExplored: (empire: Empire, systemId: string) => void,
-  ) {}
+  ) {
+    this.playerRepo = new PlayerRepository(runtime.clock.id);
+    this.colonyRepo = new ColonyRepository(runtime.clock.id);
+    this.claimRepo = new ClaimRepository(runtime.clock.id);
+    this.fleetRepo = new FleetRepository(runtime.clock.id);
+  }
 
   /**
    * Colonie de départ : la planète la plus habitable de la galaxie d'origine.
@@ -65,37 +76,20 @@ export class BootstrapService {
    * NB : l'état d'empire des sauvegardes pré-7b a été copié `games`→`players` par la
    * migration 0005 ; les colonnes legacy de `games` sont supprimées en 0006 (Phase D).
    */
-  ensureDefaultPlayer(): void {
-    const player = db
-      .select()
-      .from(schema.players)
-      .where(eq(schema.players.gameId, this.runtime.clock.id))
-      .limit(1)
-      .get();
+  async ensureDefaultPlayer(): Promise<void> {
+    const player = await this.playerRepo.first();
     const defaultId = player?.id ?? randomUUID();
     if (!player) {
-      db.insert(schema.players)
-        .values({
-          id: defaultId,
-          gameId: this.runtime.clock.id,
-          name: DEFAULT_PLAYER_NAME,
-          color: DEFAULT_PLAYER_COLOR,
-          joinedAt: Date.now(),
-          researched: "[]",
-          research: null,
-          researchQueue: "[]",
-          influence: 0,
-          factionRep: "{}",
-          explored: "[]",
-        })
-        .run();
+      this.playerRepo.insert({
+        id: defaultId,
+        name: DEFAULT_PLAYER_NAME,
+        color: DEFAULT_PLAYER_COLOR,
+      });
     }
-    for (const table of [schema.colonies, schema.fleets, schema.claims]) {
-      db.update(table)
-        .set({ ownerId: defaultId })
-        .where(and(eq(table.gameId, this.runtime.clock.id), isNull(table.ownerId)))
-        .run();
-    }
+    // Sauvegarde mono-locataire pré-7b : backfill des ownerId NULL, table par table.
+    this.colonyRepo.adoptOrphans(defaultId);
+    this.fleetRepo.adoptOrphanFleets(defaultId);
+    this.claimRepo.adoptOrphans(defaultId);
   }
 
   /**
@@ -104,26 +98,16 @@ export class BootstrapService {
    * et ses claims (par `ownerId`). `defaultEmpire` = premier player (ordre d'insertion),
    * fallback de compatibilité tant que l'identité de connexion (7c-B) n'existe pas.
    */
-  loadPlayers(): void {
-    const rows = db
-      .select()
-      .from(schema.players)
-      .where(eq(schema.players.gameId, this.runtime.clock.id))
-      .all();
-    for (const p of rows) {
-      const empire = new Empire(p.id, p.name, p.color, p.accountId, p.kind as "human" | "npc");
-      empire.researched = JSON.parse(p.researched);
-      empire.research = p.research ? JSON.parse(p.research) : null;
-      empire.researchQueue = JSON.parse(p.researchQueue);
+  async loadPlayers(): Promise<void> {
+    for (const p of await this.playerRepo.loadAll()) {
+      const empire = new Empire(p.id, p.name, p.color, p.accountId, p.kind);
+      empire.researched = p.researched;
+      empire.research = p.research;
+      empire.researchQueue = p.researchQueue;
       empire.influence = p.influence;
-      empire.factionRep = JSON.parse(p.factionRep);
-      empire.explored = new Set(JSON.parse(p.explored));
-      empire.claimedSystemIds = db
-        .select()
-        .from(schema.claims)
-        .where(eq(schema.claims.ownerId, p.id))
-        .all()
-        .map((c) => c.systemId);
+      empire.factionRep = p.factionRep;
+      empire.explored = new Set(p.explored);
+      empire.claimedSystemIds = await this.claimRepo.systemIdsOwnedBy(p.id);
       empire.effects = computeEffects(empire.researched as TechId[]);
       this.runtime.empires.set(empire.id, empire);
     }
@@ -173,49 +157,13 @@ export class BootstrapService {
   insertColony(empire: Empire, colony: Colony): void {
     colony.ownerId = empire.id;
     empire.colonyMap.set(colony.id, colony);
-    db.insert(schema.colonies)
-      .values({
-        id: colony.id,
-        gameId: this.runtime.clock.id,
-        ownerId: colony.ownerId,
-        planetId: colony.planetId,
-        name: colony.name,
-        resources: JSON.stringify(colony.resources),
-        orbitalResources: JSON.stringify(colony.orbitalResources),
-        liftRules: JSON.stringify(colony.liftRules),
-        buildings: JSON.stringify(colony.buildings),
-        queue: JSON.stringify(colony.queue),
-        population: colony.population,
-        satisfaction: colony.satisfaction,
-        ships: JSON.stringify(colony.ships),
-        shipsBusy: JSON.stringify(colony.shipsBusy),
-        shipQueue: JSON.stringify(colony.shipQueue),
-        createdAt: Date.now(),
-      })
-      .run();
+    this.colonyRepo.insert(colony);
   }
 
-  loadColonies(): void {
-    const rows = db.select().from(schema.colonies).all();
-    for (const row of rows) {
-      const ownerId = row.ownerId ?? this.runtime.defaultEmpire.id;
-      const empire = this.runtime.empires.get(ownerId) ?? this.runtime.defaultEmpire;
-      empire.colonyMap.set(row.id, {
-        id: row.id,
-        ownerId,
-        planetId: row.planetId,
-        name: row.name,
-        resources: JSON.parse(row.resources),
-        orbitalResources: { ...emptyOrbital(), ...JSON.parse(row.orbitalResources) },
-        liftRules: JSON.parse(row.liftRules),
-        buildings: JSON.parse(row.buildings),
-        queue: JSON.parse(row.queue),
-        population: row.population,
-        satisfaction: row.satisfaction,
-        ships: JSON.parse(row.ships),
-        shipsBusy: JSON.parse(row.shipsBusy),
-        shipQueue: JSON.parse(row.shipQueue),
-      });
+  async loadColonies(): Promise<void> {
+    for (const colony of await this.colonyRepo.loadAll(this.runtime.defaultEmpire.id)) {
+      const empire = this.runtime.empires.get(colony.ownerId!) ?? this.runtime.defaultEmpire;
+      empire.colonyMap.set(colony.id, colony);
     }
   }
 
@@ -269,23 +217,7 @@ export class BootstrapService {
     const index = this.runtime.empires.size;
     const empireName = (name?.trim() || `Empire ${index + 1}`).slice(0, 40);
     const color = DEV_EMPIRE_COLORS[index % DEV_EMPIRE_COLORS.length]!;
-    db.insert(schema.players)
-      .values({
-        id,
-        gameId: this.runtime.clock.id,
-        accountId,
-        kind,
-        name: empireName,
-        color,
-        joinedAt: Date.now(),
-        researched: "[]",
-        research: null,
-        researchQueue: "[]",
-        influence: 0,
-        factionRep: "{}",
-        explored: "[]",
-      })
-      .run();
+    this.playerRepo.insert({ id, accountId, kind, name: empireName, color });
     const empire = new Empire(id, empireName, color, accountId, kind);
     this.runtime.empires.set(id, empire);
     this.foundHomeColony(empire, home);
@@ -345,10 +277,7 @@ export class BootstrapService {
       orphan.accountId = accountId;
       const empireName = name?.trim().slice(0, 40);
       if (empireName) orphan.name = empireName;
-      db.update(schema.players)
-        .set({ accountId, name: orphan.name })
-        .where(eq(schema.players.id, orphan.id))
-        .run();
+      this.playerRepo.adopt(orphan.id, accountId, orphan.name);
       this.logger.info(`[game] empire « ${orphan.name} » adopté par un compte`);
       this.notify();
       return orphan;
@@ -406,7 +335,7 @@ export class BootstrapService {
       updated[res] = (updated[res] ?? 0) + amount;
     }
     this.runtime.defaultEmpire.colonyMap.set(colony.id, { ...colony, resources: updated });
-    this.persistColony(this.runtime.defaultEmpire.colonyMap.get(colony.id)!);
+    this.colonyRepo.save(this.runtime.defaultEmpire.colonyMap.get(colony.id)!);
     this.notify();
   }
 }

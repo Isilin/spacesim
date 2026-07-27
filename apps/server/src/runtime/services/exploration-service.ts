@@ -18,11 +18,11 @@ import {
   type Mission,
   type ResourceId,
 } from "@spacesim/shared";
-import { eq } from "drizzle-orm";
-import { db, schema } from "../../db/index.js";
 import type { Empire } from "../../empire.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
+import { ClaimRepository } from "../repositories/claim-repository.js";
+import { PlayerRepository } from "../repositories/player-repository.js";
 import { appendGalaxies, withParentIndexes } from "../universe-store.js";
 
 /**
@@ -32,6 +32,9 @@ import { appendGalaxies, withParentIndexes } from "../universe-store.js";
  * patron déjà utilisé par les autres services.
  */
 export class ExplorationService {
+  private readonly claimRepo: ClaimRepository;
+  private readonly playerRepo: PlayerRepository;
+
   constructor(
     private readonly runtime: GameRuntime,
     private readonly notify: () => void,
@@ -46,7 +49,10 @@ export class ExplorationService {
     ) => void,
     private readonly initMarkets: () => void,
     private readonly initGateways: () => void,
-  ) {}
+  ) {
+    this.claimRepo = new ClaimRepository(runtime.clock.id);
+    this.playerRepo = new PlayerRepository(runtime.clock.id);
+  }
 
   private get portalLinks(): [string, string][] {
     return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
@@ -254,14 +260,7 @@ export class ExplorationService {
     }
     empire.influence -= CLAIM_COST;
     empire.claimedSystemIds = [...empire.claimedSystemIds, systemId];
-    db.insert(schema.claims)
-      .values({
-        systemId,
-        gameId: this.runtime.clock.id,
-        ownerId: empire.id,
-        claimedAt: Date.now(),
-      })
-      .run();
+    this.claimRepo.insert(systemId, empire.id);
     this.notify();
     return null;
   }
@@ -276,7 +275,7 @@ export class ExplorationService {
 
   dropClaim(empire: Empire, systemId: string): void {
     empire.claimedSystemIds = empire.claimedSystemIds.filter((id) => id !== systemId);
-    db.delete(schema.claims).where(eq(schema.claims.systemId, systemId)).run();
+    this.claimRepo.remove(systemId);
   }
 
   /** Génération d'influence ; entretien impayé = la revendication la plus récente tombe. */
@@ -304,9 +303,6 @@ export class ExplorationService {
     if (empire.explored.has(systemId)) return;
     empire.explored.add(systemId);
     empire.explorationDirty = true;
-    db.update(schema.players)
-      .set({ explored: JSON.stringify([...empire.explored]) })
-      .where(eq(schema.players.id, empire.id))
-      .run();
+    this.playerRepo.saveExplored(empire);
   }
 }
