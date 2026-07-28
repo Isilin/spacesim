@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Button, Field } from "@spacesim/ui";
 import type { Auth } from "./useAuth.js";
 
 interface Props {
@@ -60,48 +61,42 @@ export function AuthView({ auth }: Props) {
           </button>
         </nav>
 
-        <label className="auth-field">
-          <span>Adresse e-mail</span>
-          <input
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
+        <Field
+          label="Adresse e-mail"
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-        <label className="auth-field">
-          <span>Mot de passe</span>
-          <input
-            type="password"
-            autoComplete={mode === "register" ? "new-password" : "current-password"}
-            required
-            minLength={mode === "register" ? 8 : undefined}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {mode === "register" && <em className="small muted">8 caractères minimum.</em>}
-        </label>
+        <Field
+          label="Mot de passe"
+          type="password"
+          autoComplete={mode === "register" ? "new-password" : "current-password"}
+          required
+          minLength={mode === "register" ? 8 : undefined}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          hint={mode === "register" ? "8 caractères minimum." : undefined}
+        />
 
         {mode === "register" && (
-          <label className="auth-field">
-            <span>Nom de l'empire</span>
-            <input
-              type="text"
-              maxLength={40}
-              placeholder="Consortium d'Elyssia"
-              value={empireName}
-              onChange={(e) => setEmpireName(e.target.value)}
-            />
-          </label>
+          <Field
+            label="Nom de l'empire"
+            type="text"
+            maxLength={40}
+            placeholder="Consortium d'Elyssia"
+            value={empireName}
+            onChange={(e) => setEmpireName(e.target.value)}
+          />
         )}
 
         {error && <p className="auth-error">{error}</p>}
 
-        <button className="action-button auth-submit" type="submit" disabled={busy}>
+        <Button type="submit" disabled={busy} className="auth-submit">
           {busy ? "…" : mode === "login" ? "Se connecter" : "Fonder l'empire"}
-        </button>
+        </Button>
       </form>
     </div>
   );

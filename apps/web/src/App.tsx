@@ -17,7 +17,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Button } from "@spacesim/ui";
+import { Badge, Button, Select } from "@spacesim/ui";
 import {
   Navigate,
   NavLink,
@@ -366,25 +366,19 @@ export function App({ auth }: Props) {
           <TabLink to="/empire">Empire</TabLink>
         </nav>
         {colonies.length > 1 && (
-          <select
-            className="colony-select"
+          <Select
             value={colony?.id ?? ""}
             onChange={(e) => setColonyId(e.target.value)}
-          >
-            {colonies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            options={colonies.map((c) => ({ value: c.id, label: c.name }))}
+          />
         )}
-        <span className="stat influence" title="Influence de l'empire">
+        <Badge variant="violet" title="Influence de l'empire">
           ✦ {Math.floor(game.influence)}
-        </span>
-        <span className="stat">Tick {game.tick}</span>
-        <span className={`stat ${connected ? "ok" : "ko"}`}>
+        </Badge>
+        <Badge>Tick {game.tick}</Badge>
+        <Badge variant={connected ? "ok" : "ko"}>
           {connected ? "● LIAISON ÉTABLIE" : "○ LIAISON PERDUE"}
-        </span>
+        </Badge>
         <span className="stat empire-badge" title={auth.email ?? ""}>
           <span
             className="empire-dot"

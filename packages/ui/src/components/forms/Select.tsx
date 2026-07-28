@@ -1,4 +1,4 @@
-import type { SelectHTMLAttributes } from "react";
+import { useId, type SelectHTMLAttributes } from "react";
 
 export interface SelectOption {
   value: string;
@@ -12,11 +12,25 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   options: SelectOption[];
 }
 
-export function Select({ label, hint, error, options = [], ...selectProps }: SelectProps) {
+export function Select({
+  label,
+  hint,
+  error,
+  options = [],
+  className,
+  id,
+  ...selectProps
+}: SelectProps) {
+  const generatedId = useId();
+  const selectId = id ?? generatedId;
   return (
     <div className="ss-field">
-      {label && <label>{label}</label>}
-      <select className="ss-select" {...selectProps}>
+      {label && <label htmlFor={selectId}>{label}</label>}
+      <select
+        id={selectId}
+        className={["ss-select", className ?? ""].filter(Boolean).join(" ")}
+        {...selectProps}
+      >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

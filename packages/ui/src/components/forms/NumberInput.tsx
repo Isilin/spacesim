@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes } from "react";
 
 export interface NumberInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"> {
   label?: string;
@@ -7,14 +7,25 @@ export interface NumberInputProps extends Omit<InputHTMLAttributes<HTMLInputElem
   error?: string;
 }
 
-export function NumberInput({ label, unit, hint, error, ...inputProps }: NumberInputProps) {
+export function NumberInput({
+  label,
+  unit,
+  hint,
+  error,
+  className,
+  id,
+  ...inputProps
+}: NumberInputProps) {
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
   return (
     <div className="ss-field">
-      {label && <label>{label}</label>}
+      {label && <label htmlFor={inputId}>{label}</label>}
       <div style={{ position: "relative" }}>
         <input
+          id={inputId}
           type="number"
-          className="ss-input"
+          className={["ss-input", className ?? ""].filter(Boolean).join(" ")}
           style={unit ? { paddingRight: 36, width: "100%" } : { width: "100%" }}
           {...inputProps}
         />

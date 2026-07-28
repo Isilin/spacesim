@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes } from "react";
 
 export interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -6,11 +6,17 @@ export interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string;
 }
 
-export function Field({ label, hint, error, ...inputProps }: FieldProps) {
+export function Field({ label, hint, error, className, id, ...inputProps }: FieldProps) {
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
   return (
     <div className="ss-field">
-      {label && <label>{label}</label>}
-      <input className="ss-input" {...inputProps} />
+      {label && <label htmlFor={inputId}>{label}</label>}
+      <input
+        id={inputId}
+        className={["ss-input", className ?? ""].filter(Boolean).join(" ")}
+        {...inputProps}
+      />
       {error ? (
         <span className="ss-field-error">{error}</span>
       ) : hint ? (
