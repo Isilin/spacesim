@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import styles from "./toast.module.css";
 
 export interface ToastProps {
   variant?: "info" | "error";
@@ -7,8 +8,8 @@ export interface ToastProps {
 
 export function Toast({ variant = "info", children }: ToastProps) {
   return (
-    <div className={`ss-cut-frame ss-toast ss-toast--${variant}`}>
-      <div className="ss-cut-in">{children}</div>
+    <div className={styles.toast} data-variant={variant}>
+      <div className={styles.toastIn}>{children}</div>
     </div>
   );
 }

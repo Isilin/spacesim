@@ -1,25 +1,27 @@
-.ss-toast {
+.toast {
+  composes: cutFrame from "../../shared/cut-frame.module.css";
   --cut: var(--cut-sm);
 }
-.ss-toast .ss-cut-in {
+.toastIn {
+  composes: cutIn from "../../shared/cut-frame.module.css";
   padding: 10px 14px;
   font-size: var(--fs-sm);
 }
-.ss-toast--info {
+.toast[data-variant="info"] {
   --frame-border: var(--ok);
   box-shadow: var(--glow-ok);
 }
-.ss-toast--info .ss-cut-in {
+.toast[data-variant="info"] .toastIn {
   color: var(--ok);
 }
-.ss-toast--error {
+.toast[data-variant="error"] {
   --frame-border: var(--ko);
   box-shadow: var(--glow-ko);
 }
-.ss-toast--error .ss-cut-in {
+.toast[data-variant="error"] .toastIn {
   color: var(--ko);
 }
-.ss-toast-stack {
+.stack {
   position: fixed;
   top: 20px;
   right: 20px;
@@ -27,5 +29,6 @@
   flex-direction: column;
   gap: 8px;
   width: 280px;
+  max-width: calc(100vw - 40px);
   z-index: 50;
 }

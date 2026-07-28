@@ -1,4 +1,4 @@
-.ss-modal-overlay {
+.overlay {
   position: fixed;
   inset: 0;
   background: color-mix(in oklch, var(--bg) 80%, transparent);
@@ -8,16 +8,18 @@
   justify-content: center;
   z-index: 100;
 }
-.ss-modal {
+.modal {
+  composes: cutFrame from "../../shared/cut-frame.module.css";
   --cut: var(--cut-lg);
   --frame-border: var(--border-bright);
   width: min(480px, 90vw);
   box-shadow: var(--shadow-panel), 0 0 40px -10px color-mix(in oklch, var(--cyan) 25%, transparent);
 }
-.ss-modal .ss-cut-in {
+.modalIn {
+  composes: cutIn from "../../shared/cut-frame.module.css";
   padding: 20px;
 }
-.ss-modal-head {
+.head {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -25,14 +27,14 @@
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border);
 }
-.ss-modal-title {
+.title {
   font-family: var(--font-display);
   font-size: var(--fs-lg);
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--cyan);
 }
-.ss-modal-close {
+.close {
   background: none;
   border: none;
   color: var(--muted);
@@ -41,11 +43,12 @@
   line-height: 1;
   padding: 0;
 }
-.ss-modal-close:hover {
+.close:hover {
   color: var(--text);
 }
-.ss-modal-actions {
+.actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 18px;

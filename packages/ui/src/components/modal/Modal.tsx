@@ -1,4 +1,5 @@
 import type { MouseEvent, ReactNode } from "react";
+import styles from "./modal.module.css";
 
 export interface ModalProps {
   open?: boolean;
@@ -11,19 +12,19 @@ export interface ModalProps {
 export function Modal({ open = true, title, onClose, actions, children }: ModalProps) {
   if (!open) return null;
   return (
-    <div className="ss-modal-overlay" onClick={onClose}>
-      <div className="ss-cut-frame ss-modal" onClick={(e: MouseEvent) => e.stopPropagation()}>
-        <div className="ss-cut-in">
-          <div className="ss-modal-head">
-            <span className="ss-modal-title">{title}</span>
+    <div className={styles.overlay} onClick={onClose}>
+      <div className={styles.modal} onClick={(e: MouseEvent) => e.stopPropagation()}>
+        <div className={styles.modalIn}>
+          <div className={styles.head}>
+            <span className={styles.title}>{title}</span>
             {onClose && (
-              <button type="button" className="ss-modal-close" onClick={onClose}>
+              <button type="button" className={styles.close} onClick={onClose}>
                 ×
               </button>
             )}
           </div>
           {children}
-          {actions && <div className="ss-modal-actions">{actions}</div>}
+          {actions && <div className={styles.actions}>{actions}</div>}
         </div>
       </div>
     </div>
