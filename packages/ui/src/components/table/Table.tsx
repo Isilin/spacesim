@@ -35,7 +35,11 @@ export function Table<Row = Record<string, unknown>>({ columns = [], rows = [] }
                 const content = c.render ? c.render(raw, row) : (raw as ReactNode);
                 const trend = c.trend?.(row);
                 return (
-                  <td key={c.key} className={c.align === "right" ? styles.num : undefined} data-trend={trend}>
+                  <td
+                    key={c.key}
+                    className={c.align === "right" ? styles.num : undefined}
+                    data-trend={trend}
+                  >
                     {content}
                   </td>
                 );

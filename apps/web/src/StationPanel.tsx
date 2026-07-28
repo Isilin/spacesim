@@ -28,7 +28,16 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
-import { Button, ListRow, Select, Table, type TableColumn } from "@spacesim/ui";
+import {
+  Button,
+  ListRow,
+  NumberInput,
+  Panel,
+  SectionTitle,
+  Select,
+  Table,
+  type TableColumn,
+} from "@spacesim/ui";
 import { formatDuration, systemIdOf } from "./format.js";
 import { FACTION_LABELS, RESOURCE_LABELS, repTierName, shipLabel } from "./labels.js";
 
@@ -112,8 +121,7 @@ export function StationPanel({
   const canTrade = activeColony && jumps >= 0;
 
   return (
-    <div className="station-panel">
-      <h2>⬡ {station.name}</h2>
+    <Panel title={`⬡ ${station.name}`}>
       <p className="muted small">
         {faction?.name ?? station.factionId} — {faction?.description ?? ""}
       </p>
@@ -195,22 +203,19 @@ export function StationPanel({
 
       {canTrade && market && (
         <>
-          <div className="transfer-form">
-            <strong className="small">Vendre</strong>
+          <SectionTitle>Vendre</SectionTitle>
+          <div className="form-stack">
             {/* On ne vend que ce qui est déjà en orbite (chantier 12). */}
             {MARKET_RESOURCES.map((res) => (
-              <label key={res} className="small muted transfer-amount">
-                {RESOURCE_LABELS[res]} (orbite :{" "}
-                {Math.floor(activeColony.orbitalResources[res] ?? 0)})
-                <input
-                  type="number"
-                  min={0}
-                  max={Math.floor(activeColony.orbitalResources[res] ?? 0)}
-                  value={sellAmounts[res] ?? ""}
-                  placeholder="0"
-                  onChange={(e) => setSellAmounts({ ...sellAmounts, [res]: e.target.value })}
-                />
-              </label>
+              <NumberInput
+                key={res}
+                label={`${RESOURCE_LABELS[res]} (orbite : ${Math.floor(activeColony.orbitalResources[res] ?? 0)})`}
+                min={0}
+                max={Math.floor(activeColony.orbitalResources[res] ?? 0)}
+                value={sellAmounts[res] ?? ""}
+                placeholder="0"
+                onChange={(e) => setSellAmounts({ ...sellAmounts, [res]: e.target.value })}
+              />
             ))}
             <span className={`small ${overCapacity ? "ko" : "muted"}`}>
               Soute disponible : {convoyCapacity}
@@ -237,24 +242,21 @@ export function StationPanel({
             </Button>
           </div>
 
-          <div className="transfer-form">
-            <strong className="small">Acheter</strong>
+          <SectionTitle>Acheter</SectionTitle>
+          <div className="form-stack">
             <Select
               label="Ressource"
               value={buyResource}
               onChange={(e) => setBuyResource(e.target.value as MarketResource)}
               options={MARKET_RESOURCES.map((res) => ({ value: res, label: RESOURCE_LABELS[res] }))}
             />
-            <label className="small muted transfer-amount">
-              Budget (crédits)
-              <input
-                type="number"
-                min={0}
-                value={buyBudget}
-                placeholder="0"
-                onChange={(e) => setBuyBudget(e.target.value)}
-              />
-            </label>
+            <NumberInput
+              label="Budget (crédits)"
+              min={0}
+              value={buyBudget}
+              placeholder="0"
+              onChange={(e) => setBuyBudget(e.target.value)}
+            />
             {estimatedPurchase && estimatedPurchase.bought > 0 && (
               <span className="small ok">
                 ~{estimatedPurchase.bought} {RESOURCE_LABELS[buyResource]} pour{" "}
@@ -292,7 +294,7 @@ export function StationPanel({
           />
         </>
       )}
-    </div>
+    </Panel>
   );
 }
 
@@ -318,8 +320,8 @@ function BlueprintMarket({
   const idleShipEntries = Object.entries(activeColony.ships).filter(([, n]) => (n ?? 0) > 0);
 
   return (
-    <div className="transfer-form">
-      <strong className="small">Plans de vaisseaux</strong>
+    <>
+      <SectionTitle>Plans de vaisseaux</SectionTitle>
 
       <span className="muted small">
         Catalogue de la station (marge {Math.round((BLUEPRINT_BUY_MARKUP - 1) * 100)} %)
@@ -427,6 +429,6 @@ function BlueprintMarket({
           </ul>
         </>
       )}
-    </div>
+    </>
   );
 }

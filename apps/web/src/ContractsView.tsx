@@ -99,9 +99,7 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
                 <li key={c.id} className="route-item">
                   <div className="queue-head">
                     <strong style={{ color: c.issuerColor }}>{c.issuerName}</strong>
-                    <span className="small muted">
-                      échéance {formatDuration(c.deadline - now)}
-                    </span>
+                    <span className="small muted">échéance {formatDuration(c.deadline - now)}</span>
                   </div>
                   <span className="small muted">
                     Demande {c.remaining} {RESOURCE_LABELS[c.resource]} à {c.colonyName}, payé{" "}
@@ -114,7 +112,9 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
                       max={c.remaining}
                       value={entry}
                       placeholder="0"
-                      onChange={(e) => setAcceptAmounts({ ...acceptAmounts, [c.id]: e.target.value })}
+                      onChange={(e) =>
+                        setAcceptAmounts({ ...acceptAmounts, [c.id]: e.target.value })
+                      }
                     />
                     <Button
                       disabled={!colony || !validWanted}

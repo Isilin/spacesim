@@ -26,7 +26,9 @@ export function NumberInput({
         <input
           id={inputId}
           type="number"
-          className={[styles.input, unit ? styles.numberInput : "", className].filter(Boolean).join(" ")}
+          className={[styles.input, unit ? styles.numberInput : "", className]
+            .filter(Boolean)
+            .join(" ")}
           {...inputProps}
         />
         {unit && <span className={styles.unit}>{unit}</span>}

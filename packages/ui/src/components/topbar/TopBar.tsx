@@ -23,7 +23,14 @@ export interface TopBarProps {
   children?: ReactNode;
 }
 
-export function TopBar({ brand = "SPACESIM", items = [], active, onNavChange, status, children }: TopBarProps) {
+export function TopBar({
+  brand = "SPACESIM",
+  items = [],
+  active,
+  onNavChange,
+  status,
+  children,
+}: TopBarProps) {
   return (
     <header className={styles.topbar}>
       <span className={styles.brand}>{brand}</span>
@@ -37,7 +44,15 @@ export function TopBar({ brand = "SPACESIM", items = [], active, onNavChange, st
             disabled={it.disabled}
             onClick={(e) => {
               if (it.disabled) return;
-              if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+              if (
+                e.defaultPrevented ||
+                e.button !== 0 ||
+                e.metaKey ||
+                e.ctrlKey ||
+                e.shiftKey ||
+                e.altKey
+              )
+                return;
               if (it.href) e.preventDefault();
               onNavChange?.(it.value);
             }}

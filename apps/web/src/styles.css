@@ -533,18 +533,6 @@
   stroke-width: 1.5;
 }
 
-.station-panel {
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 12px;
-  margin: 10px 0;
-  background: var(--panel);
-}
-
-.station-panel h2 {
-  color: #e0b64f;
-}
-
 .route-list {
   list-style: none;
   padding: 0;

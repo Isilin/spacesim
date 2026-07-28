@@ -18,7 +18,14 @@ import {
 } from "@spacesim/shared";
 import { useEffect, useMemo, useState } from "react";
 import { Badge, Button, Select, Toast, ToastStack, TopBar } from "@spacesim/ui";
-import { Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import { BodyView } from "./BodyView.js";
 import { ColonyView } from "./ColonyView.js";
 import { EmpireView } from "./EmpireView.js";
@@ -331,7 +338,10 @@ export function App({ auth }: Props) {
     { value: "colony", label: "Colonie" },
     { value: "map", label: "Carte" },
     { value: "logistics", label: "Logistique" },
-    { value: "fleets", label: `Flottes${pirateLairs.length > 0 ? ` (${pirateLairs.length}☠)` : ""}` },
+    {
+      value: "fleets",
+      label: `Flottes${pirateLairs.length > 0 ? ` (${pirateLairs.length}☠)` : ""}`,
+    },
     { value: "shipyard", label: "Chantier" },
     { value: "research", label: "Recherche" },
     { value: "empire", label: "Empire" },

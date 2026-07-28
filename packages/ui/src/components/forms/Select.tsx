@@ -27,7 +27,11 @@ export function Select({
   return (
     <div className={styles.field}>
       {label && <label htmlFor={selectId}>{label}</label>}
-      <select id={selectId} className={[styles.select, className].filter(Boolean).join(" ")} {...selectProps}>
+      <select
+        id={selectId}
+        className={[styles.select, className].filter(Boolean).join(" ")}
+        {...selectProps}
+      >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

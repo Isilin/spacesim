@@ -12,7 +12,11 @@ export function Gauge({ value = 0, capacity = 100, markAt }: GaugeProps) {
   const markPct = markAt ? Math.min(100, (capacity / markAt) * 100) : 100;
   return (
     <div className={styles.gauge}>
-      <div className={styles.gaugeFill} data-status={over ? "over" : "default"} style={{ width: `${pct}%` }} />
+      <div
+        className={styles.gaugeFill}
+        data-status={over ? "over" : "default"}
+        style={{ width: `${pct}%` }}
+      />
       {markAt && <div className={styles.gaugeMax} style={{ left: `${markPct}%` }} />}
     </div>
   );

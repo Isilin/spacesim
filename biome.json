@@ -34,5 +34,10 @@
       "quoteStyle": "double",
       "trailingCommas": "all"
     }
+  },
+  "css": {
+    "parser": {
+      "cssModules": true
+    }
   }
 }

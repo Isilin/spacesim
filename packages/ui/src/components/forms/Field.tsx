@@ -13,7 +13,11 @@ export function Field({ label, hint, error, className, id, ...inputProps }: Fiel
   return (
     <div className={styles.field}>
       {label && <label htmlFor={inputId}>{label}</label>}
-      <input id={inputId} className={[styles.input, className].filter(Boolean).join(" ")} {...inputProps} />
+      <input
+        id={inputId}
+        className={[styles.input, className].filter(Boolean).join(" ")}
+        {...inputProps}
+      />
       {error ? (
         <span className={styles.error}>{error}</span>
       ) : hint ? (
