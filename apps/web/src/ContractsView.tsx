@@ -7,7 +7,7 @@ import {
   type MarketResource,
 } from "@spacesim/shared";
 import { useState } from "react";
-import { Badge, Button, Select } from "@spacesim/ui";
+import { Badge, Button, NumberInput, Panel, Select } from "@spacesim/ui";
 import { formatDuration } from "./format.js";
 import { RESOURCE_LABELS } from "./labels.js";
 
@@ -52,148 +52,147 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
   const canPost = colony && validQty && validPrice;
 
   return (
-    <div className="contracts-view">
-      <h3>Mes contrats</h3>
-      {mine.length === 0 ? (
-        <p className="muted">Aucun contrat publié.</p>
-      ) : (
-        <ul className="route-list">
-          {mine.map((c) => (
-            <li key={c.id} className="route-item">
-              <div className="queue-head">
-                <strong>
-                  {RESOURCE_LABELS[c.resource]} — {c.remaining} / {c.quantity} à {c.pricePerUnit}{" "}
-                  cr/u
-                </strong>
-                <Badge variant={c.status === "open" ? "ok" : "neutral"}>
-                  {STATUS_LABELS[c.status]}
-                </Badge>
-              </div>
-              <span className="small muted">
-                {c.colonyName}
-                {c.status === "open" && ` · échéance ${formatDuration(c.deadline - now)}`}
-              </span>
-              {c.status === "open" && (
-                <div className="route-actions">
-                  <Button onClick={() => send({ type: "cancelContract", contractId: c.id })}>
-                    Annuler
-                  </Button>
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <h3 className="routes-create-title">Contrats disponibles</h3>
-      {available.length === 0 ? (
-        <p className="muted">Aucune offre en attente d'un fournisseur.</p>
-      ) : (
-        <ul className="route-list">
-          {available.map((c) => {
-            const entry = acceptAmounts[c.id] ?? "";
-            const wanted = Math.floor(Number(entry));
-            const validWanted = Number.isFinite(wanted) && wanted > 0 && wanted <= c.remaining;
-            return (
+    <>
+      <Panel title="Mes contrats">
+        {mine.length === 0 ? (
+          <p className="muted">Aucun contrat publié.</p>
+        ) : (
+          <ul className="route-list">
+            {mine.map((c) => (
               <li key={c.id} className="route-item">
                 <div className="queue-head">
-                  <strong style={{ color: c.issuerColor }}>{c.issuerName}</strong>
-                  <span className="small muted">échéance {formatDuration(c.deadline - now)}</span>
+                  <strong>
+                    {RESOURCE_LABELS[c.resource]} — {c.remaining} / {c.quantity} à {c.pricePerUnit}{" "}
+                    cr/u
+                  </strong>
+                  <Badge variant={c.status === "open" ? "ok" : "neutral"}>
+                    {STATUS_LABELS[c.status]}
+                  </Badge>
                 </div>
                 <span className="small muted">
-                  Demande {c.remaining} {RESOURCE_LABELS[c.resource]} à {c.colonyName}, payé{" "}
-                  {c.pricePerUnit} cr/u
+                  {c.colonyName}
+                  {c.status === "open" && ` · échéance ${formatDuration(c.deadline - now)}`}
                 </span>
-                <div className="transfer-form">
-                  <label className="small muted transfer-amount">
-                    Quantité livrée
-                    <input
-                      type="number"
+                {c.status === "open" && (
+                  <div className="route-actions">
+                    <Button onClick={() => send({ type: "cancelContract", contractId: c.id })}>
+                      Annuler
+                    </Button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+
+      <Panel title="Contrats disponibles">
+        {available.length === 0 ? (
+          <p className="muted">Aucune offre en attente d'un fournisseur.</p>
+        ) : (
+          <ul className="route-list">
+            {available.map((c) => {
+              const entry = acceptAmounts[c.id] ?? "";
+              const wanted = Math.floor(Number(entry));
+              const validWanted = Number.isFinite(wanted) && wanted > 0 && wanted <= c.remaining;
+              return (
+                <li key={c.id} className="route-item">
+                  <div className="queue-head">
+                    <strong style={{ color: c.issuerColor }}>{c.issuerName}</strong>
+                    <span className="small muted">
+                      échéance {formatDuration(c.deadline - now)}
+                    </span>
+                  </div>
+                  <span className="small muted">
+                    Demande {c.remaining} {RESOURCE_LABELS[c.resource]} à {c.colonyName}, payé{" "}
+                    {c.pricePerUnit} cr/u
+                  </span>
+                  <div className="form-stack">
+                    <NumberInput
+                      label="Quantité livrée"
                       min={1}
                       max={c.remaining}
                       value={entry}
                       placeholder="0"
-                      onChange={(e) =>
-                        setAcceptAmounts({ ...acceptAmounts, [c.id]: e.target.value })
-                      }
+                      onChange={(e) => setAcceptAmounts({ ...acceptAmounts, [c.id]: e.target.value })}
                     />
-                  </label>
-                  <Button
-                    disabled={!colony || !validWanted}
-                    onClick={() => {
-                      send({
-                        type: "acceptContract",
-                        colonyId: colony!.id,
-                        contractId: c.id,
-                        quantity: wanted,
-                      });
-                      setAcceptAmounts({ ...acceptAmounts, [c.id]: "" });
-                    }}
-                  >
-                    Affréter le convoi
-                  </Button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                    <Button
+                      disabled={!colony || !validWanted}
+                      onClick={() => {
+                        send({
+                          type: "acceptContract",
+                          colonyId: colony!.id,
+                          contractId: c.id,
+                          quantity: wanted,
+                        });
+                        setAcceptAmounts({ ...acceptAmounts, [c.id]: "" });
+                      }}
+                    >
+                      Affréter le convoi
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Panel>
 
-      <h3 className="routes-create-title">Publier un contrat</h3>
-      {!colony ? (
-        <p className="muted">Aucune colonie.</p>
-      ) : (
-        <div className="transfer-form">
-          <Select
-            label="Ressource"
-            value={resource}
-            onChange={(e) => setResource(e.target.value as MarketResource)}
-            options={MARKET_RESOURCES.map((res) => ({ value: res, label: RESOURCE_LABELS[res] }))}
-          />
-          <label className="small muted transfer-amount">
-            Quantité
-            <input
-              type="number"
+      <Panel title="Publier un contrat">
+        {!colony ? (
+          <p className="muted">Aucune colonie.</p>
+        ) : (
+          <div className="form-stack">
+            <Select
+              label="Ressource"
+              value={resource}
+              onChange={(e) => setResource(e.target.value as MarketResource)}
+              options={MARKET_RESOURCES.map((res) => ({ value: res, label: RESOURCE_LABELS[res] }))}
+            />
+            <NumberInput
+              label="Quantité"
               min={1}
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
             />
-          </label>
-          <label className="small muted transfer-amount">
-            Prix (cr/unité)
-            <input type="number" min={1} value={price} onChange={(e) => setPrice(e.target.value)} />
-          </label>
-          <Select
-            label="Échéance"
-            value={durationMs}
-            onChange={(e) => setDurationMs(Number(e.target.value))}
-            options={DURATION_OPTIONS.map((opt) => ({ value: String(opt.ms), label: opt.label }))}
-          />
-          {escrow > 0 && (
-            <span className="small muted">
-              Séquestre : {escrow} crédits (soldée dispo : {Math.floor(colony.resources.credits)})
-            </span>
-          )}
-          <Button
-            disabled={!canPost}
-            onClick={() => {
-              if (!colony) return;
-              send({
-                type: "postContract",
-                colonyId: colony.id,
-                resource,
-                quantity: qty,
-                pricePerUnit: unitPrice,
-                durationMs,
-              });
-              setQuantity("");
-              setPrice("");
-            }}
-          >
-            Publier le contrat
-          </Button>
-        </div>
-      )}
-    </div>
+            <NumberInput
+              label="Prix (cr/unité)"
+              min={1}
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+            />
+            <Select
+              label="Échéance"
+              value={durationMs}
+              onChange={(e) => setDurationMs(Number(e.target.value))}
+              options={DURATION_OPTIONS.map((opt) => ({ value: String(opt.ms), label: opt.label }))}
+            />
+            {escrow > 0 && (
+              <span className="small muted">
+                Séquestre : {escrow} crédits (soldée dispo : {Math.floor(colony.resources.credits)})
+              </span>
+            )}
+            <Button
+              disabled={!canPost}
+              onClick={() => {
+                if (!colony) return;
+                send({
+                  type: "postContract",
+                  colonyId: colony.id,
+                  resource,
+                  quantity: qty,
+                  pricePerUnit: unitPrice,
+                  durationMs,
+                });
+                setQuantity("");
+                setPrice("");
+              }}
+            >
+              Publier le contrat
+            </Button>
+          </div>
+        )}
+      </Panel>
+    </>
   );
 }

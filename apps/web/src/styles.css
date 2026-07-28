@@ -155,6 +155,12 @@
   padding: 16px;
 }
 
+.logistics-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .colony-header h2 {
   color: var(--accent);
   font-size: 18px;
@@ -292,10 +298,6 @@
   padding: 1px 5px;
 }
 
-.transfer-panel {
-  margin-top: 20px;
-}
-
 .transfer-form {
   display: flex;
   flex-direction: column;
@@ -322,26 +324,14 @@
   width: 90px;
 }
 
-.transfer-form button {
-  align-self: flex-start;
-  background: var(--bg);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  font: inherit;
-  padding: 6px 14px;
-  border-radius: 3px;
-  cursor: pointer;
-}
+/* .transfer-form ne stylise plus les boutons par sélecteur de type (chantier 22.11) :
+   tout bouton qu'il contient est un <Button> du design system (packages/ui), un
+   sélecteur `button` générique entrait en collision de spécificité avec sa classe. */
 
-.transfer-form button:hover:not(:disabled) {
-  background: var(--accent);
-  color: var(--bg);
-}
-
-.transfer-form button:disabled {
-  border-color: var(--border);
-  color: var(--muted);
-  cursor: not-allowed;
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .building.locked {
@@ -555,18 +545,6 @@
   color: #e0b64f;
 }
 
-.routes-view h3 {
-  color: var(--text);
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin-bottom: 10px;
-}
-
-.routes-create-title {
-  margin-top: 20px;
-}
-
 .route-list {
   list-style: none;
   padding: 0;
@@ -587,13 +565,8 @@
 
 .route-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-}
-
-.route-actions .action-button {
-  margin-top: 4px;
-  padding: 3px 10px;
-  font-size: 12px;
 }
 
 .anchor-ring {
@@ -605,13 +578,6 @@
 
 .gateway-active {
   fill: var(--accent);
-}
-
-.gateways-panel h2 {
-  color: #b48fe0;
-  font-size: 16px;
-  letter-spacing: 1px;
-  margin-bottom: 10px;
 }
 
 .gateway-item {

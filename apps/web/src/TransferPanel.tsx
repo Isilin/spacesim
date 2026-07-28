@@ -17,7 +17,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
-import { Button, Select } from "@spacesim/ui";
+import { Button, NumberInput, Panel, Select } from "@spacesim/ui";
 import { formatDuration, systemIdOf } from "./format.js";
 import { RESOURCE_LABELS, SHIP_LABELS } from "./labels.js";
 
@@ -105,9 +105,7 @@ export function TransferPanel({
   const missingFuel = fuel > orbitalEnergy;
 
   return (
-    <section className="transfer-panel">
-      <h3>Convois</h3>
-
+    <Panel title="Convois">
       {related.length > 0 && (
         <ul className="queue-list">
           {related.map((t) => {
@@ -135,7 +133,7 @@ export function TransferPanel({
       {others.length === 0 ? (
         <p className="muted small">Fondez une seconde colonie pour envoyer des convois.</p>
       ) : (
-        <div className="transfer-form">
+        <div className="form-stack">
           <Select
             label="Destination"
             value={destination?.id ?? ""}
@@ -144,32 +142,28 @@ export function TransferPanel({
           />
           {/* La cargaison part de l'orbite : c'est ce stock-là qui borne la saisie. */}
           {CARGO_RESOURCES.map((res) => (
-            <label key={res} className="small muted transfer-amount">
-              {RESOURCE_LABELS[res]} (orbite : {Math.floor(colony.orbitalResources[res] ?? 0)})
-              <input
-                type="number"
-                min={0}
-                max={Math.floor(colony.orbitalResources[res] ?? 0)}
-                value={amounts[res] ?? ""}
-                placeholder="0"
-                onChange={(e) => setAmounts({ ...amounts, [res]: e.target.value })}
-              />
-            </label>
+            <NumberInput
+              key={res}
+              label={`${RESOURCE_LABELS[res]} (orbite : ${Math.floor(colony.orbitalResources[res] ?? 0)})`}
+              min={0}
+              max={Math.floor(colony.orbitalResources[res] ?? 0)}
+              value={amounts[res] ?? ""}
+              placeholder="0"
+              onChange={(e) => setAmounts({ ...amounts, [res]: e.target.value })}
+            />
           ))}
 
           <span className="small muted">Convoi</span>
           {SHIP_IDS.map((shipId) => (
-            <label key={shipId} className="small muted transfer-amount">
-              {SHIP_LABELS[shipId].name} (dispo : {idle[shipId] ?? 0})
-              <input
-                type="number"
-                min={0}
-                max={idle[shipId] ?? 0}
-                value={shipCounts[shipId] ?? ""}
-                placeholder="0"
-                onChange={(e) => setShipCounts({ ...shipCounts, [shipId]: e.target.value })}
-              />
-            </label>
+            <NumberInput
+              key={shipId}
+              label={`${SHIP_LABELS[shipId].name} (dispo : ${idle[shipId] ?? 0})`}
+              min={0}
+              max={idle[shipId] ?? 0}
+              value={shipCounts[shipId] ?? ""}
+              placeholder="0"
+              onChange={(e) => setShipCounts({ ...shipCounts, [shipId]: e.target.value })}
+            />
           ))}
 
           {jumps >= 0 && (
@@ -214,6 +208,6 @@ export function TransferPanel({
           </Button>
         </div>
       )}
-    </section>
+    </Panel>
   );
 }

@@ -17,7 +17,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
-import { Badge, Button, Select } from "@spacesim/ui";
+import { Badge, Button, NumberInput, Panel, Select } from "@spacesim/ui";
 import { formatDuration } from "./format.js";
 import { RESOURCE_LABELS, SHIP_LABELS } from "./labels.js";
 
@@ -135,182 +135,170 @@ export function RoutesView({
   };
 
   return (
-    <div className="routes-view">
-      <h3>Routes logistiques</h3>
-      {routes.length === 0 ? (
-        <p className="muted">Aucune route. La flotte attend vos ordres.</p>
-      ) : (
-        <ul className="route-list">
-          {routes.map((route) => {
-            const names = nameOf(route);
-            const cycle = route.activeCycle;
-            const status = route.paused
-              ? "en pause"
-              : cycle
-                ? cycle.carrying > 0
-                  ? `en route (${cycle.carrying} ${RESOURCE_LABELS[route.resource]}) — livraison ${formatDuration(cycle.arrivesAt - now)}`
-                  : `retour — ${formatDuration(cycle.backAt - now)}`
-                : "au repos (règle non déclenchée)";
-            return (
-              <li key={route.id} className="route-item">
-                <div className="queue-head">
-                  <strong>
-                    {names.from} → {names.to}
-                  </strong>
-                  <Badge variant={route.paused ? "neutral" : "ok"}>{status}</Badge>
-                </div>
-                <span className="small muted">
-                  {RESOURCE_LABELS[route.resource]} · {RULE_LABELS[route.rule.type]}
-                  {route.rule.type === "maintain" &&
-                    ` (≥ ${route.rule.minAtDestination} dest., garde ${route.rule.keepAtSource})`}
-                  {route.rule.type === "fixed" && ` (${route.rule.amount}/cycle)`}
-                  {route.rule.type === "surplus" && ` (garde ${route.rule.keepAtSource})`}
-                  {" · soute "}
-                  {fleetCapacity(route.ships)}
-                </span>
-                <div className="route-actions">
-                  <Button
-                    onClick={() =>
-                      send({ type: "setRoutePaused", routeId: route.id, paused: !route.paused })
-                    }
-                  >
-                    {route.paused ? "Reprendre" : "Suspendre"}
-                  </Button>
-                  <Button
-                    disabled={!!route.activeCycle}
-                    title={route.activeCycle ? "Attendez le retour du cycle en cours" : ""}
-                    onClick={() => send({ type: "deleteRoute", routeId: route.id })}
-                  >
-                    Supprimer
-                  </Button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      <h3 className="routes-create-title">Nouvelle route</h3>
-      <div className="transfer-form">
-        <Select
-          label="Source"
-          value={source?.id ?? ""}
-          onChange={(e) => setFromId(e.target.value)}
-          options={sources.map((s) => ({ value: s.id, label: s.label }))}
-        />
-        {fromOutpost && (
-          <Select
-            label="Cargos fournis par"
-            value={owner?.id ?? ""}
-            onChange={(e) => setOwnerId(e.target.value)}
-            options={colonies.map((c) => ({ value: c.id, label: c.name }))}
-          />
+    <>
+      <Panel title="Routes logistiques">
+        {routes.length === 0 ? (
+          <p className="muted">Aucune route. La flotte attend vos ordres.</p>
+        ) : (
+          <ul className="route-list">
+            {routes.map((route) => {
+              const names = nameOf(route);
+              const cycle = route.activeCycle;
+              const status = route.paused
+                ? "en pause"
+                : cycle
+                  ? cycle.carrying > 0
+                    ? `en route (${cycle.carrying} ${RESOURCE_LABELS[route.resource]}) — livraison ${formatDuration(cycle.arrivesAt - now)}`
+                    : `retour — ${formatDuration(cycle.backAt - now)}`
+                  : "au repos (règle non déclenchée)";
+              return (
+                <li key={route.id} className="route-item">
+                  <div className="queue-head">
+                    <strong>
+                      {names.from} → {names.to}
+                    </strong>
+                    <Badge variant={route.paused ? "neutral" : "ok"}>{status}</Badge>
+                  </div>
+                  <span className="small muted">
+                    {RESOURCE_LABELS[route.resource]} · {RULE_LABELS[route.rule.type]}
+                    {route.rule.type === "maintain" &&
+                      ` (≥ ${route.rule.minAtDestination} dest., garde ${route.rule.keepAtSource})`}
+                    {route.rule.type === "fixed" && ` (${route.rule.amount}/cycle)`}
+                    {route.rule.type === "surplus" && ` (garde ${route.rule.keepAtSource})`}
+                    {" · soute "}
+                    {fleetCapacity(route.ships)}
+                  </span>
+                  <div className="route-actions">
+                    <Button
+                      onClick={() =>
+                        send({ type: "setRoutePaused", routeId: route.id, paused: !route.paused })
+                      }
+                    >
+                      {route.paused ? "Reprendre" : "Suspendre"}
+                    </Button>
+                    <Button
+                      disabled={!!route.activeCycle}
+                      title={route.activeCycle ? "Attendez le retour du cycle en cours" : ""}
+                      onClick={() => send({ type: "deleteRoute", routeId: route.id })}
+                    >
+                      Supprimer
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
-        <Select
-          label="Destination"
-          value={destination?.id ?? ""}
-          onChange={(e) => setToId(e.target.value)}
-          options={destinations.map((d) => ({ value: d.id, label: d.label }))}
-        />
-        <Select
-          label="Ressource"
-          value={effectiveResource}
-          onChange={(e) => setResource(e.target.value as ResourceId)}
-          options={availableResources.map((res) => ({
-            value: res,
-            label: RESOURCE_LABELS[res as ResourceId],
-          }))}
-        />
-        <Select
-          label="Règle"
-          value={ruleType}
-          onChange={(e) => setRuleType(e.target.value as RuleType)}
-          options={(Object.keys(RULE_LABELS) as RuleType[])
-            .filter((r) => !(toStation && r === "maintain"))
-            .map((r) => ({ value: r, label: RULE_LABELS[r] }))}
-        />
-        {ruleType === "maintain" && (
-          <>
-            <label className="small muted transfer-amount">
-              Stock min à destination
-              <input
-                type="number"
+      </Panel>
+
+      <Panel title="Nouvelle route">
+        <div className="form-stack">
+          <Select
+            label="Source"
+            value={source?.id ?? ""}
+            onChange={(e) => setFromId(e.target.value)}
+            options={sources.map((s) => ({ value: s.id, label: s.label }))}
+          />
+          {fromOutpost && (
+            <Select
+              label="Cargos fournis par"
+              value={owner?.id ?? ""}
+              onChange={(e) => setOwnerId(e.target.value)}
+              options={colonies.map((c) => ({ value: c.id, label: c.name }))}
+            />
+          )}
+          <Select
+            label="Destination"
+            value={destination?.id ?? ""}
+            onChange={(e) => setToId(e.target.value)}
+            options={destinations.map((d) => ({ value: d.id, label: d.label }))}
+          />
+          <Select
+            label="Ressource"
+            value={effectiveResource}
+            onChange={(e) => setResource(e.target.value as ResourceId)}
+            options={availableResources.map((res) => ({
+              value: res,
+              label: RESOURCE_LABELS[res as ResourceId],
+            }))}
+          />
+          <Select
+            label="Règle"
+            value={ruleType}
+            onChange={(e) => setRuleType(e.target.value as RuleType)}
+            options={(Object.keys(RULE_LABELS) as RuleType[])
+              .filter((r) => !(toStation && r === "maintain"))
+              .map((r) => ({ value: r, label: RULE_LABELS[r] }))}
+          />
+          {ruleType === "maintain" && (
+            <>
+              <NumberInput
+                label="Stock min à destination"
                 min={1}
                 value={param1}
                 onChange={(e) => setParam1(e.target.value)}
               />
-            </label>
-            <label className="small muted transfer-amount">
-              Garder à la source
-              <input
-                type="number"
+              <NumberInput
+                label="Garder à la source"
                 min={0}
                 value={param2}
                 onChange={(e) => setParam2(e.target.value)}
               />
-            </label>
-          </>
-        )}
-        {ruleType === "fixed" && (
-          <label className="small muted transfer-amount">
-            Quantité par cycle
-            <input
-              type="number"
+            </>
+          )}
+          {ruleType === "fixed" && (
+            <NumberInput
+              label="Quantité par cycle"
               min={1}
               value={param1}
               onChange={(e) => setParam1(e.target.value)}
             />
-          </label>
-        )}
-        {ruleType === "surplus" && (
-          <label className="small muted transfer-amount">
-            Garder à la source
-            <input
-              type="number"
+          )}
+          {ruleType === "surplus" && (
+            <NumberInput
+              label="Garder à la source"
               min={0}
               value={param1}
               placeholder="0"
               onChange={(e) => setParam1(e.target.value)}
             />
-          </label>
-        )}
-        {SHIP_IDS.map((shipId) => (
-          <label key={shipId} className="small muted transfer-amount">
-            {SHIP_LABELS[shipId].name} (dispo : {idle[shipId] ?? 0})
-            <input
-              type="number"
+          )}
+          {SHIP_IDS.map((shipId) => (
+            <NumberInput
+              key={shipId}
+              label={`${SHIP_LABELS[shipId].name} (dispo : ${idle[shipId] ?? 0})`}
               min={0}
               max={idle[shipId] ?? 0}
               value={shipCounts[shipId] ?? ""}
               placeholder="0"
               onChange={(e) => setShipCounts({ ...shipCounts, [shipId]: e.target.value })}
             />
-          </label>
-        ))}
-        {capacity > 0 && <span className="small ok">Soute totale : {capacity}</span>}
-        <Button
-          disabled={!canCreate}
-          onClick={() => {
-            if (!source || !owner || !destination || !rule) return;
-            send({
-              type: "createRoute",
-              ownerColonyId: owner.id,
-              fromId: source.id,
-              fromKind: source.kind,
-              toId: destination.id,
-              toKind: destination.kind,
-              resource: effectiveResource,
-              rule,
-              ships,
-            });
-            setShipCounts({});
-            setParam1("");
-            setParam2("");
-          }}
-        >
-          Créer la route
-        </Button>
-      </div>
-    </div>
+          ))}
+          {capacity > 0 && <span className="small ok">Soute totale : {capacity}</span>}
+          <Button
+            disabled={!canCreate}
+            onClick={() => {
+              if (!source || !owner || !destination || !rule) return;
+              send({
+                type: "createRoute",
+                ownerColonyId: owner.id,
+                fromId: source.id,
+                fromKind: source.kind,
+                toId: destination.id,
+                toKind: destination.kind,
+                resource: effectiveResource,
+                rule,
+                ships,
+              });
+              setShipCounts({});
+              setParam1("");
+              setParam2("");
+            }}
+          >
+            Créer la route
+          </Button>
+        </div>
+      </Panel>
+    </>
   );
 }

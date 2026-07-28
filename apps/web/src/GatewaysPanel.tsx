@@ -8,7 +8,7 @@ import {
 } from "@spacesim/shared";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Badge, Button, ProgressBar } from "@spacesim/ui";
+import { Badge, Button, NumberInput, Panel, ProgressBar } from "@spacesim/ui";
 import { formatDuration } from "./format.js";
 import { RESOURCE_LABELS } from "./labels.js";
 import { useGameStore } from "./state/game-store.js";
@@ -32,8 +32,7 @@ export function GatewaysPanel({ now }: Props) {
   if (!universe) return null;
 
   return (
-    <div className="gateways-panel">
-      <h2>Portails inter-galactiques</h2>
+    <Panel title="Portails inter-galactiques">
       {!hasTech && (
         <p className="muted small">
           Recherchez « Ingénierie des portails » pour contribuer aux chantiers.
@@ -83,23 +82,21 @@ export function GatewaysPanel({ now }: Props) {
                   Rang {galaxyIndexOfId(gateway.galaxyId)} · gisements ×{galaxy.depositBonus}
                 </span>
                 {hasTech && activeColony && (
-                  <div className="transfer-form">
+                  <div className="form-stack">
                     {GATEWAY_RESOURCES.filter((res) => (remaining[res] ?? 0) > 0).map((res) => (
-                      <label key={res} className="small muted transfer-amount">
-                        {RESOURCE_LABELS[res]} (reste {remaining[res]})
-                        <input
-                          type="number"
-                          min={0}
-                          value={entry[res] ?? ""}
-                          placeholder="0"
-                          onChange={(e) =>
-                            setAmounts({
-                              ...amounts,
-                              [gateway.galaxyId]: { ...entry, [res]: e.target.value },
-                            })
-                          }
-                        />
-                      </label>
+                      <NumberInput
+                        key={res}
+                        label={`${RESOURCE_LABELS[res]} (reste ${remaining[res]})`}
+                        min={0}
+                        value={entry[res] ?? ""}
+                        placeholder="0"
+                        onChange={(e) =>
+                          setAmounts({
+                            ...amounts,
+                            [gateway.galaxyId]: { ...entry, [res]: e.target.value },
+                          })
+                        }
+                      />
                     ))}
                     <span className={`small ${overCapacity ? "ko" : "muted"}`}>
                       Soute disponible : {convoyCapacity}
@@ -131,6 +128,6 @@ export function GatewaysPanel({ now }: Props) {
           </div>
         );
       })}
-    </div>
+    </Panel>
   );
 }
