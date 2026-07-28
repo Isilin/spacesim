@@ -14,6 +14,9 @@ export type { NumberInputProps } from "./components/forms/NumberInput.js";
 export { Select } from "./components/forms/Select.js";
 export type { SelectOption, SelectProps } from "./components/forms/Select.js";
 
+export { Link } from "./components/link/Link.js";
+export type { LinkProps } from "./components/link/Link.js";
+
 export { ListRow } from "./components/list/ListRow.js";
 export type { ListRowProps } from "./components/list/ListRow.js";
 export { RowHeader } from "./components/list/RowHeader.js";
@@ -44,6 +47,9 @@ export type { StatProps } from "./components/stat/Stat.js";
 
 export { Table } from "./components/table/Table.js";
 export type { TableColumn, TableProps } from "./components/table/Table.js";
+
+export { TopBar } from "./components/topbar/TopBar.js";
+export type { TopBarNavItem, TopBarProps, TopBarStatus } from "./components/topbar/TopBar.js";
 
 export { Tabs } from "./components/tabs/Tabs.js";
 export type { TabItem, TabsProps } from "./components/tabs/Tabs.js";
