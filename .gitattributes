@@ -1,0 +1,3 @@
+# Scripts exécutés dans des conteneurs Linux (bind-mount depuis l'hôte Windows,
+# voir docker-compose.yml) : un shebang en CRLF casse l'interpréteur.
+*.sh text eol=lf
