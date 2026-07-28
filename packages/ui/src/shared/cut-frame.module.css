@@ -1,0 +1,26 @@
+.cutFrame {
+  position: relative;
+  padding: 1px;
+  clip-path: polygon(
+    var(--cut, var(--cut-md)) 0,
+    100% 0,
+    100% calc(100% - var(--cut, var(--cut-md))),
+    calc(100% - var(--cut, var(--cut-md))) 100%,
+    0 100%,
+    0 var(--cut, var(--cut-md))
+  );
+  background: var(--frame-border, var(--border-bright));
+}
+
+.cutIn {
+  clip-path: polygon(
+    var(--cut, var(--cut-md)) 0,
+    100% 0,
+    100% calc(100% - var(--cut, var(--cut-md))),
+    calc(100% - var(--cut, var(--cut-md))) 100%,
+    0 100%,
+    0 var(--cut, var(--cut-md))
+  );
+  background: var(--frame-bg, var(--panel));
+  height: 100%;
+}
