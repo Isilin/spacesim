@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
-import { db, schema } from "../../db/index.js";
+import { schema, withTransaction } from "../../db/index.js";
 import { consoleLogger, type Logger } from "../logger.js";
 import type { DrainedDelete, DrainedUpsert, WriteSet } from "./write-set.js";
 
@@ -88,14 +88,20 @@ async function applyDelete(tx: any, entry: DrainedDelete): Promise<void> {
  * en cause retournent dans le `WriteSet` pour un nouvel essai au flush suivant — les
  * appelants (fin de commande WS, fin de lot de ticks) l'invoquent en fire-and-forget,
  * la RAM fait déjà autorité (`notify()` est parti avant, sans attendre ce flush).
+ *
+ * Sérialisation par CHAÎNAGE (`tail`) plutôt que par le couple inFlight/queued
+ * (chantier 20.3, bug corrigé) : l'ancienne version relançait un flush « rattrapage »
+ * via `void this.flush()` — non attendu par l'appelant, qui pouvait donc considérer
+ * son `await flush()` terminé alors qu'un flush chaîné tournait encore, capable de
+ * retarder l'écriture de lignes dont d'autres flush (tests, boot) dépendaient déjà.
+ * Chaque appel s'accroche maintenant à la queue : son `Promise` ne se résout qu'une
+ * fois SA place dans la chaîne (et tout ce qui la précède) réellement flushée.
  */
 export class Persister {
   lastFlushAt: number | null = null;
   lastFlushError: string | null = null;
 
-  private inFlight: Promise<void> | null = null;
-  /** Une demande de flush est arrivée pendant qu'un autre tournait déjà. */
-  private queued = false;
+  private tail: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly writeSet: WriteSet,
@@ -103,27 +109,15 @@ export class Persister {
   ) {}
 
   flush(): Promise<void> {
-    if (this.inFlight) {
-      this.queued = true;
-      return this.inFlight;
-    }
-    this.inFlight = this.runFlush().finally(() => {
-      this.inFlight = null;
-      if (this.queued) {
-        this.queued = false;
-        // Le WriteSet a pu se reprovisionner pendant ce flush — on relance.
-        void this.flush();
-      }
-    });
-    return this.inFlight;
+    this.tail = this.tail.then(() => this.runFlush());
+    return this.tail;
   }
 
   private async runFlush(): Promise<void> {
     if (this.writeSet.isEmpty()) return;
     const { upserts, deletes } = this.writeSet.drain();
     try {
-      // biome-ignore lint/suspicious/noExplicitAny: tx dynamique (union pg/PGlite, voir applyUpsert/applyDelete)
-      await db.transaction(async (tx: any) => {
+      await withTransaction(async (tx) => {
         for (const entry of upserts) await applyUpsert(tx, entry);
         for (const entry of deletes) await applyDelete(tx, entry);
       });

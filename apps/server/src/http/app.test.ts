@@ -2,36 +2,14 @@ import { sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db, schema } from "../db/index.js";
 import { GameEngine } from "../game.js";
+import { ALL_TABLES } from "../test-harness.js";
 import { buildApp } from "./app.js";
 
-/** Toutes les tables, vidées avant chaque test (même liste que game.test.ts, + comptes/sessions). */
-const ALL_TABLES = [
-  schema.transfers,
-  schema.missions,
-  schema.outposts,
-  schema.routes,
-  schema.colonies,
-  schema.battles,
-  schema.pirateLairs,
-  schema.fleets,
-  schema.contracts,
-  schema.factionStates,
-  schema.relations,
-  schema.relationProposals,
-  schema.objectives,
-  schema.worldEvents,
-  schema.blueprints,
-  schema.gateways,
-  schema.claims,
-  schema.players,
-  schema.stationStates,
-  schema.games,
-  schema.sessions,
-  schema.accounts,
-] as const;
+/** Même liste que test-harness.ts (univers + entités de partie), + comptes/sessions. */
+const TABLES = [...ALL_TABLES, schema.sessions, schema.accounts] as const;
 
 async function resetDb(): Promise<void> {
-  const names = ALL_TABLES.map((t) => sql`${t}`);
+  const names = TABLES.map((t) => sql`${t}`);
   await db.execute(sql`TRUNCATE TABLE ${sql.join(names, sql`, `)} CASCADE`);
 }
 

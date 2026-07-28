@@ -11,7 +11,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { eq } from "drizzle-orm";
-import { db, schema } from "../db/index.js";
+import { db, schema, withTransaction } from "../db/index.js";
 import type { WriteSet } from "./persistence/write-set.js";
 
 /**
@@ -130,7 +130,7 @@ export async function appendGalaxies(
   galaxyCount: number,
 ): Promise<void> {
   const now = Date.now();
-  await db.transaction(async (tx) => {
+  await withTransaction(async (tx) => {
     for (const galaxy of galaxies) {
       const exists = await tx
         .select({ id: schema.universeGalaxies.id })

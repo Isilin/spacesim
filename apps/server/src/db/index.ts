@@ -51,4 +51,25 @@ export async function runMigrations(url: string, database: Db): Promise<void> {
 // disparu (chantier 20.1).
 export const db = createDb(config.databaseUrl);
 
+/**
+ * File d'attente GLOBALE de transactions (chantier 20.3) : PGlite est une connexion
+ * unique — deux `db.transaction()` lancées en parallèle (le flush du `Persister` d'un
+ * côté, `appendGalaxies` de l'autre) peuvent s'entrelacer et casser la visibilité
+ * read-your-writes d'une transaction sur l'autre (constaté : un flush voit encore
+ * absente une ligne pourtant déjà validée par une transaction précédente). Toute
+ * transaction du process passe par `withTransaction` plutôt que `db.transaction`
+ * directement, pour ne jamais en avoir deux en vol à la fois sur cette connexion.
+ */
+let transactionTail: Promise<unknown> = Promise.resolve();
+
+export function withTransaction<T>(run: (tx: Db) => Promise<T>): Promise<T> {
+  const result = transactionTail.then(() =>
+    // biome-ignore lint/suspicious/noExplicitAny: `db.transaction` diffère entre les deux dialectes pg (node-postgres/PGlite)
+    (db as any).transaction(run),
+  );
+  // La file continue même si cette transaction échoue — seul l'appelant doit voir l'erreur.
+  transactionTail = result.catch(() => {});
+  return result as Promise<T>;
+}
+
 export { schema };

@@ -1,38 +1,8 @@
 import { ClientMessageSchema, type ClientMessage } from "@spacesim/protocol";
-import { sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
-import { db, schema } from "../db/index.js";
 import { GameEngine } from "../game.js";
+import { resetDb } from "../test-harness.js";
 import { dispatchClientMessage } from "./dispatch.js";
-
-/** Même liste que game.test.ts : DB en mémoire, table vidées avant chaque test. */
-const ALL_TABLES = [
-  schema.transfers,
-  schema.missions,
-  schema.outposts,
-  schema.routes,
-  schema.colonies,
-  schema.battles,
-  schema.pirateLairs,
-  schema.fleets,
-  schema.contracts,
-  schema.factionStates,
-  schema.relations,
-  schema.relationProposals,
-  schema.objectives,
-  schema.worldEvents,
-  schema.blueprints,
-  schema.gateways,
-  schema.claims,
-  schema.players,
-  schema.stationStates,
-  schema.games,
-] as const;
-
-async function resetDb(): Promise<void> {
-  const names = ALL_TABLES.map((t) => sql`${t}`);
-  await db.execute(sql`TRUNCATE TABLE ${sql.join(names, sql`, `)} CASCADE`);
-}
 
 beforeEach(() => resetDb());
 
