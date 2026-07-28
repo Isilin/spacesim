@@ -15,7 +15,7 @@ import {
 } from "@spacesim/shared";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Button, Field, Gauge as SsGauge, Select } from "@spacesim/ui";
+import { Button, Field, Gauge as SsGauge, Panel, Select } from "@spacesim/ui";
 import { BlueprintList } from "./BlueprintList.js";
 import { formatDuration } from "./format.js";
 import { CHASSIS_LABELS, MODULE_LABELS, RESOURCE_LABELS, SLOT_LABELS } from "./labels.js";
@@ -107,11 +107,11 @@ export function ShipDesigner({ effects }: Props) {
 
   return (
     <div className="designer-layout">
-      <section className="designer-list">
-        <div className="panel-head">
-          <h3>Plans de vaisseaux</h3>
-          <Button onClick={startNew}>+ Nouveau plan</Button>
-        </div>
+      <Panel
+        className="designer-list"
+        title="Plans de vaisseaux"
+        actions={<Button onClick={startNew}>+ Nouveau plan</Button>}
+      >
         <BlueprintList
           blueprints={blueprints}
           activeColony={activeColony}
@@ -120,139 +120,143 @@ export function ShipDesigner({ effects }: Props) {
           onEdit={startEdit}
           send={send}
         />
-      </section>
+      </Panel>
 
-      <section className="designer-editor">
-        <h3>{editingId ? "Modifier le plan" : "Nouveau plan"}</h3>
+      <Panel className="designer-editor" title={editingId ? "Modifier le plan" : "Nouveau plan"}>
+        <div className="designer-editor-body">
+          <Field
+            label="Nom"
+            value={draft.name}
+            placeholder="Nom du plan"
+            onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+          />
 
-        <Field
-          label="Nom"
-          value={draft.name}
-          placeholder="Nom du plan"
-          onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-        />
+          <Select
+            label="Châssis"
+            value={draft.chassisId}
+            onChange={(e) =>
+              setDraft({ name: draft.name, chassisId: e.target.value as ChassisId, modules: [] })
+            }
+            options={[
+              { value: "", label: "— Choisir —" },
+              ...unlockedChassis.map((id) => ({
+                value: id,
+                label: `${CHASSIS_LABELS[id].name} (${CHASSIS[id].domain === "colony" ? "civil" : "flotte"})`,
+              })),
+            ]}
+          />
 
-        <Select
-          label="Châssis"
-          value={draft.chassisId}
-          onChange={(e) =>
-            setDraft({ name: draft.name, chassisId: e.target.value as ChassisId, modules: [] })
-          }
-          options={[
-            { value: "", label: "— Choisir —" },
-            ...unlockedChassis.map((id) => ({
-              value: id,
-              label: `${CHASSIS_LABELS[id].name} (${CHASSIS[id].domain === "colony" ? "civil" : "flotte"})`,
-            })),
-          ]}
-        />
+          {chassis && stats && (
+            <>
+              <p className="muted small">{CHASSIS_LABELS[chassis.id].description}</p>
 
-        {chassis && stats && (
-          <>
-            <p className="muted small">{CHASSIS_LABELS[chassis.id].description}</p>
-
-            <div className="designer-preview">
-              <ShipHullDiagram
-                chassisId={draft.chassisId}
-                modules={draft.modules}
-                onRemoveAt={removeModuleAt}
-              />
-              <div className="hull-legend">
-                {SLOT_LEGEND.map(({ slot, varName }) => (
-                  <span key={slot} className="hull-legend-item">
-                    <span className="hull-legend-dot" style={{ background: `var(${varName})` }} />
-                    {SLOT_LABELS[slot]}
-                  </span>
-                ))}
-                <span className="muted small">Cliquez un emplacement rempli pour le retirer.</span>
-              </div>
-            </div>
-
-            <div className="gauges">
-              <Gauge label="Énergie" used={load.power} max={chassis.power} />
-              <Gauge label="Tonnage" used={load.tonnage} max={chassis.tonnage} />
-              <Gauge label="Calcul" used={load.calc} max={chassis.calc} />
-            </div>
-
-            {/* Emplacements montés */}
-            <div className="fit-slots">
-              {SLOT_TYPES.map((slot) => (
-                <div key={slot} className="fit-slot">
-                  <div className="fit-slot-head">
-                    <strong>{SLOT_LABELS[slot]}</strong>
-                    <span className={slotUsed(slot) > chassis.slots[slot] ? "gauge-over" : "muted"}>
-                      {slotUsed(slot)}/{chassis.slots[slot]}
+              <div className="designer-preview">
+                <ShipHullDiagram
+                  chassisId={draft.chassisId}
+                  modules={draft.modules}
+                  onRemoveAt={removeModuleAt}
+                />
+                <div className="hull-legend">
+                  {SLOT_LEGEND.map(({ slot, varName }) => (
+                    <span key={slot} className="hull-legend-item">
+                      <span className="hull-legend-dot" style={{ background: `var(${varName})` }} />
+                      {SLOT_LABELS[slot]}
                     </span>
-                  </div>
-                  <div className="fit-chips">
-                    {draft.modules
-                      .map((m, i) => ({ m, i }))
-                      .filter(({ m }) => MODULES[m].slot === slot)
-                      .map(({ m, i }) => (
-                        <button key={i} className="chip" onClick={() => removeModuleAt(i)}>
-                          {MODULE_LABELS[m].name} ×
+                  ))}
+                  <span className="muted small">
+                    Cliquez un emplacement rempli pour le retirer.
+                  </span>
+                </div>
+              </div>
+
+              <div className="gauges">
+                <Gauge label="Énergie" used={load.power} max={chassis.power} />
+                <Gauge label="Tonnage" used={load.tonnage} max={chassis.tonnage} />
+                <Gauge label="Calcul" used={load.calc} max={chassis.calc} />
+              </div>
+
+              {/* Emplacements montés */}
+              <div className="fit-slots">
+                {SLOT_TYPES.map((slot) => (
+                  <div key={slot} className="fit-slot">
+                    <div className="fit-slot-head">
+                      <strong>{SLOT_LABELS[slot]}</strong>
+                      <span
+                        className={slotUsed(slot) > chassis.slots[slot] ? "gauge-over" : "muted"}
+                      >
+                        {slotUsed(slot)}/{chassis.slots[slot]}
+                      </span>
+                    </div>
+                    <div className="fit-chips">
+                      {draft.modules
+                        .map((m, i) => ({ m, i }))
+                        .filter(({ m }) => MODULES[m].slot === slot)
+                        .map(({ m, i }) => (
+                          <button key={i} className="chip" onClick={() => removeModuleAt(i)}>
+                            {MODULE_LABELS[m].name} ×
+                          </button>
+                        ))}
+                    </div>
+                    <div className="fit-add">
+                      {MODULE_IDS.filter(
+                        (id) => MODULES[id].slot === slot && effects.unlockedModules.has(id),
+                      ).map((id) => (
+                        <button
+                          key={id}
+                          className="chip add"
+                          disabled={slotUsed(slot) >= chassis.slots[slot]}
+                          title={MODULE_LABELS[id].description}
+                          onClick={() => addModule(id)}
+                        >
+                          + {MODULE_LABELS[id].name}
                         </button>
                       ))}
+                    </div>
                   </div>
-                  <div className="fit-add">
-                    {MODULE_IDS.filter(
-                      (id) => MODULES[id].slot === slot && effects.unlockedModules.has(id),
-                    ).map((id) => (
-                      <button
-                        key={id}
-                        className="chip add"
-                        disabled={slotUsed(slot) >= chassis.slots[slot]}
-                        title={MODULE_LABELS[id].description}
-                        onClick={() => addModule(id)}
-                      >
-                        + {MODULE_LABELS[id].name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Récap stats */}
-            <div className="stats-recap">
-              <span>Coque {Math.round(stats.hull)}</span>
-              <span>Bouclier {Math.round(stats.shield)}</span>
-              <span>
-                Feu {Math.round(stats.weapons.long)}/{Math.round(stats.weapons.medium)}/
-                {Math.round(stats.weapons.short)}
-              </span>
-              <span>Init. {Math.round(stats.initiative)}</span>
-              {stats.capacity > 0 && <span>Soute {Math.round(stats.capacity)}</span>}
-              {stats.miningYield > 0 && <span>Minage {Math.round(stats.miningYield)}</span>}
-              {stats.colonizer && <span>Colonisateur</span>}
-              <span>Vitesse ×{stats.speedMult.toFixed(2)}</span>
-              <span>Carburant {Math.round(stats.fuelPerJump)}</span>
-              <span className="muted">
-                {formatCost(stats.cost)} — {formatDuration(stats.buildMs)}
-              </span>
-            </div>
-
-            {problems.length > 0 && (
-              <ul className="problems">
-                {problems.map((p, i) => (
-                  <li key={i}>{p}</li>
                 ))}
-              </ul>
-            )}
+              </div>
 
-            <div className="editor-actions">
-              <Button disabled={problems.length > 0} onClick={save}>
-                {editingId ? "Enregistrer" : "Créer le plan"}
-              </Button>
-              {editingId && (
-                <Button variant="link" onClick={startNew}>
-                  Annuler
-                </Button>
+              {/* Récap stats */}
+              <div className="stats-recap">
+                <span>Coque {Math.round(stats.hull)}</span>
+                <span>Bouclier {Math.round(stats.shield)}</span>
+                <span>
+                  Feu {Math.round(stats.weapons.long)}/{Math.round(stats.weapons.medium)}/
+                  {Math.round(stats.weapons.short)}
+                </span>
+                <span>Init. {Math.round(stats.initiative)}</span>
+                {stats.capacity > 0 && <span>Soute {Math.round(stats.capacity)}</span>}
+                {stats.miningYield > 0 && <span>Minage {Math.round(stats.miningYield)}</span>}
+                {stats.colonizer && <span>Colonisateur</span>}
+                <span>Vitesse ×{stats.speedMult.toFixed(2)}</span>
+                <span>Carburant {Math.round(stats.fuelPerJump)}</span>
+                <span className="muted">
+                  {formatCost(stats.cost)} — {formatDuration(stats.buildMs)}
+                </span>
+              </div>
+
+              {problems.length > 0 && (
+                <ul className="problems">
+                  {problems.map((p, i) => (
+                    <li key={i}>{p}</li>
+                  ))}
+                </ul>
               )}
-            </div>
-          </>
-        )}
-      </section>
+
+              <div className="editor-actions">
+                <Button disabled={problems.length > 0} onClick={save}>
+                  {editingId ? "Enregistrer" : "Créer le plan"}
+                </Button>
+                {editingId && (
+                  <Button variant="link" onClick={startNew}>
+                    Annuler
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </Panel>
     </div>
   );
 }

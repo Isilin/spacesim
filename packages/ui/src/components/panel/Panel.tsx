@@ -6,12 +6,21 @@ export interface PanelProps {
   accent?: "cyan" | "violet" | "amber";
   glow?: boolean;
   actions?: ReactNode;
+  className?: string;
   children?: ReactNode;
 }
 
-export function Panel({ title, accent = "cyan", glow = false, actions, children }: PanelProps) {
+export function Panel({
+  title,
+  accent = "cyan",
+  glow = false,
+  actions,
+  className,
+  children,
+}: PanelProps) {
+  const cls = [styles.panel, className].filter(Boolean).join(" ");
   return (
-    <div className={styles.panel} data-accent={accent} data-glow={glow}>
+    <div className={cls} data-accent={accent} data-glow={glow}>
       <div className={styles.panelIn}>
         {title && (
           <div className={styles.panelHead}>
