@@ -11,7 +11,7 @@ Monorepo pnpm workspaces, TypeScript partout :
 
 - `packages/shared` — types du modèle de jeu, constantes d'équilibrage, génération d'univers et logique de simulation **pure et déterministe** (testée avec vitest). Aucune dépendance runtime.
 - `packages/protocol` — contrats HTTP/WebSocket et schémas Zod (`ClientMessage`, `ServerMessage`, `EmpireSnapshot`). Dépend de `shared` ; `apps/server` et `apps/web` en dépendent, jamais l'inverse.
-- `packages/ui` — package React réel (chantier 21, consommé en source directe comme `shared` — pas d'étape de build) : design system HUD (16 composants `ss-`-préfixés — `Button`, `Panel`, `Table`, `Tabs`, `Toast`, `ZoomableSvg`…) + tokens de couleur/typographie. Aucun import de `game-store` ni de `protocol` (le futur client admin en dépendra aussi) ; aucune logique de jeu.
+- `packages/ui` — package React réel (chantier 21, consommé en source directe comme `shared` — pas d'étape de build) : design system HUD (18 composants — `Button`, `Link`, `Panel`, `Table`, `Tabs`, `Toast`, `TopBar`, `ZoomableSvg`…) + tokens de couleur/typographie. Chaque composant porte son propre `*.module.css` (CSS Modules, chantier 22) plutôt qu'une feuille globale ; les variantes se pilotent par `data-variant`/`data-*` (toujours émis, jamais omis à la valeur par défaut) plutôt que par suffixe de classe conditionnel. Le motif transverse « cut-frame » (bordures en coin coupé) vit dans `shared/cut-frame.module.css`, consommé via `composes`. Aucun import de `game-store` ni de `protocol` (le futur client admin en dépendra aussi) ; aucune logique de jeu, y compris la navigation — `TopBar`/`Link` restent agnostiques du routeur.
 - `apps/server` — Fastify + WebSocket (`/ws`), moteur de ticks, Postgres (`drizzle-orm/node-postgres` en prod, PGlite WASM embarqué en tests/e2e — même dialecte SQL). **Serveur autoritaire** : toute la simulation vit ici, le client n'est qu'un dashboard.
 - `apps/web` — React + Vite + React Router. Proxy Vite `/ws` → serveur :3001.
 
@@ -91,14 +91,17 @@ La séparation des responsabilités est stricte :
   depuis leur parent ; celles où une dérivation (colonie active, système exploré…) apparaît
   dupliquée passent par un sélecteur (`state/selectors.ts`), consommé directement via
   `useGameStore(selectXxx(...))` plutôt que transitée par une chaîne de props.
-- `packages/ui` héberge le design system HUD (chantier 21) : composants React génériques
-  (`Button`, `Panel`, `Table`, `Tabs`, `Toast`, `ZoomableSvg`…), tokens et styles, consommés
-  en source directe par `apps/web`. Les cartes SVG (rendu des nœuds), labels, calculs
-  d'affichage et interactions métier propres au jeu restent dans les features de `apps/web` —
-  `ui` ne connaît ni `game-store` ni `protocol`. Le futur client admin réutilisera `protocol`
-  et `ui`. La direction visuelle a été itérée via **DesignSync** (projet claude.ai/design) :
-  l'utilisateur y ajuste des cartes seed, les composants sont ensuite tirés
-  (`list_files`/`get_file`) et implémentés ici, puis repoussés en preview pour revue.
+- `packages/ui` héberge le design system HUD (chantier 21, CSS Modules + data-attributes
+  chantier 22) : composants React génériques (`Button`, `Link`, `Panel`, `Table`, `Tabs`,
+  `Toast`, `TopBar`, `ZoomableSvg`…), tokens et styles, consommés en source directe par
+  `apps/web`. Les cartes SVG (rendu des nœuds), labels, calculs d'affichage et interactions
+  métier propres au jeu restent dans les features de `apps/web` — `ui` ne connaît ni
+  `game-store` ni `protocol`. Le futur client admin réutilisera `protocol` et `ui`. La
+  direction visuelle a été itérée via **DesignSync** (projet claude.ai/design) : l'utilisateur
+  y ajuste des cartes seed, les composants sont ensuite tirés (`list_files`/`get_file`) et
+  implémentés ici — en camelCase CSS Modules plutôt qu'en classes globales, le seed restant
+  la référence visuelle, pas le gabarit d'implémentation littéral — puis repoussés en preview
+  pour revue.
 
 ## Workflow de changement
 

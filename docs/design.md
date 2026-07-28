@@ -731,10 +731,11 @@ réel.
 `list/{ListRow,RowHeader}`, `menu`, `modal`, `panel`, `popover`, `progress/{Gauge,ProgressBar}`,
 `section-title`, `stat`, `table`, `tabs`, `toast/{Toast,ToastStack}`, `zoomable-svg`),
 consommés en source directe par `apps/web` (même convention que `shared` — pas d'étape de
-build). Classes `ss-` préfixées, variantes par `data-variant`/suffixe de classe, tokens HUD
-(cyan/violet/ambre + `ok`/`ko` sémantiques, police d'affichage Rajdhani + JetBrains Mono pour
-les données). Aucun import de `game-store` ni de `protocol` dans `packages/ui` — le futur
-client admin en dépendra aussi.
+build). Classes `ss-` préfixées, variantes par `data-variant`/suffixe de classe *(convention
+remplacée par des CSS Modules camelCase + `data-*` systématique au chantier 22, voir plus
+bas)*, tokens HUD (cyan/violet/ambre + `ok`/`ko` sémantiques, police d'affichage Rajdhani +
+JetBrains Mono pour les données). Aucun import de `game-store` ni de `protocol` dans
+`packages/ui` — le futur client admin en dépendra aussi.
 
 **Protocole DesignSync** : la direction visuelle (brief HUD, cartes seed, tokens) a d'abord
 été itérée par l'utilisateur seul dans claude.ai/design ; chaque vague de composants a été
@@ -757,3 +758,57 @@ tests par rôle).
 `apps/web/src/styles.css` purgé des recettes désormais dupliquées dans `packages/ui` : 1743 →
 1434 lignes, ne reste que le CSS spécifique aux cartes SVG (galaxie/système/corps) et aux
 quelques mises en page non encore couvertes par un composant partagé.
+
+### Chantier 22 — CSS Modules, data-attributes, header, généralisation du design system ✅ (28/07/2026)
+
+Finit ce que le 21 avait laissé en chantier : un bug caché (les classes `.tabs`/`.active` de la
+nav principale avaient été supprimées à la migration vers `packages/ui` sans que `App.tsx` soit
+mis à jour — la barre d'onglets n'avait plus aucun style) et une migration d'`apps/web`
+inachevée (boutons du design system débordant de cartes en CSS ad hoc, faute de `flex-wrap` ou
+en collision de spécificité avec des sélecteurs de type legacy comme `.transfer-form button`).
+
+**CSS Modules** : les 16 familles de composants du chantier 21 (+ `Link`/`TopBar`, nouveaux)
+passent de classes globales `ss-` à un `*.module.css` par composant, en camelCase idiomatique
+(`.button`, `.panelActions` — le préfixe devient redondant une fois le scoping en place). Le
+motif transverse « cut-frame » (`Panel`/`Menu`/`Modal`/`Popover`/`Toast`) est extrait dans
+`shared/cut-frame.module.css`, consommé via `composes` (feature CSS Modules native, supportée
+par Vite sans config). `packages/ui/src/styles.css` se réduit à l'import des tokens globaux —
+chaque composant embarque désormais son propre module, bundlé via le graphe d'imports JS.
+Déclarations de types ajoutées (`apps/web/src/vite-env.d.ts`, `packages/ui/src/css-modules.d.ts`
+— autonome, `packages/ui` n'a pas `vite` en dépendance). Biome ne parsait pas `composes`
+(syntaxe non standard) : `css.parser.cssModules: true` ajouté à `biome.json`.
+
+**data-attributes systématiques** : les variantes (Button, Badge, Panel, Stat, Toast,
+ProgressBar/Gauge, Link) passent de suffixe de classe conditionnel à `data-variant`/`data-size`/
+`data-tone`/`data-accent`/`data-glow`/`data-status`, **toujours émis** (plus d'omission à la
+valeur par défaut) — généralise le pattern déjà en place pour `Tabs`(`data-active`)/`Menu`
+(`data-danger`). `disabled` reste l'attribut HTML natif.
+
+**`Link` + `TopBar`** (nouveaux, générés via DesignSync puis portés en CSS Modules) : `Link` à
+3 variantes (`inline`/`nav`/`quiet`), `TopBar` shell racine (brand/nav/actions/status) qui
+compose `Link` en interne plutôt que dupliquer le markup du seed. Tous deux agnostiques du
+routeur — `apps/web` fournit `href`/`onNavChange`, un garde-fou générique dans `TopBar` respecte
+les clics modifiés (ouverture en nouvel onglet) sans dépendance à react-router dans `ui`.
+`apps/web/src/App.tsx` : `TabLink`/`navLinkClass` maison remplacés par `<TopBar>`, fixant le bug
+de nav ci-dessus.
+
+**Résilience layout**, appliquée en convertissant chaque composant : `flex-wrap` sur
+`Panel.panelActions`/`Tabs`/`ToastStack`/`.route-actions`/`.map-nav`/`.building`, ellipsis +
+`min-width:0` sur `ListRow`, wrapper `overflow-x:auto` sur `Table`, garde-fous `max-width` sur
+`Menu`/`Popover`/`ToastStack`.
+
+**Retrofit `apps/web`** par vagues (miroir du 21) : logistique (`RoutesView`, `ContractsView`,
+`TransferPanel`, `GatewaysPanel`, `StationPanel`), empire/recherche/chantier (`EmpireView`,
+`ShipDesigner`, `BlueprintList`), HUD non-SVG (`SystemPanel`, `MapNav`, `MarketsView`) — cartes
+`<div>` ad hoc remplacées par `<Panel title>`, champs numériques par `<NumberInput>`. Panel
+gagne une prop `className` (aligné sur les autres composants qui la forwardaient déjà). Trois
+collisions de spécificité trouvées et corrigées à la racine (`.transfer-form button`,
+`.panel-head`/`.editor-actions button`, `.building button` — un sélecteur de type sur un
+ancêtre stylait aussi les `<Button>`/`<Select>` du design system rendus dedans) ; une trouvée
+tardivement sur `.map-nav button` (matchait aussi les `<Button>` de `.map-shortcuts`, un
+descendant) et une régression introduite puis corrigée dans la même vague (`.brand` supprimé en
+croyant la classe morte, encore utilisée par `AuthView` — repéré par un script de recoupement
+classes CSS ↔ usages JSX en passe de purge finale). `ResearchView` non touché : layout
+SVG+sidebar dédié à hauteur pleine, hors périmètre design system, aucun bug constaté.
+
+`apps/web/src/styles.css` : 1434 → 1283 lignes.
