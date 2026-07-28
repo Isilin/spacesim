@@ -15,6 +15,7 @@ import {
 } from "@spacesim/shared";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { Button, Field, Gauge as SsGauge, Select } from "@spacesim/ui";
 import { BlueprintList } from "./BlueprintList.js";
 import { formatDuration } from "./format.js";
 import { CHASSIS_LABELS, MODULE_LABELS, RESOURCE_LABELS, SLOT_LABELS } from "./labels.js";
@@ -35,8 +36,8 @@ interface Props {
 
 const EMPTY = { name: "", chassisId: "" as ChassisId | "", modules: [] as ModuleId[] };
 
+/** En-tête label + used/max ; le remplissage lui-même vient du design system (chantier 21.6). */
 function Gauge({ label, used, max }: { label: string; used: number; max: number }) {
-  const pct = max > 0 ? Math.min(100, (used / max) * 100) : 0;
   const over = used > max;
   return (
     <div className="gauge">
@@ -46,9 +47,7 @@ function Gauge({ label, used, max }: { label: string; used: number; max: number 
           {used}/{max}
         </span>
       </div>
-      <div className="gauge-track">
-        <div className={`gauge-fill${over ? " over" : ""}`} style={{ width: `${pct}%` }} />
-      </div>
+      <SsGauge value={used} capacity={max} />
     </div>
   );
 }
@@ -111,7 +110,7 @@ export function ShipDesigner({ effects }: Props) {
       <section className="designer-list">
         <div className="panel-head">
           <h3>Plans de vaisseaux</h3>
-          <button onClick={startNew}>+ Nouveau plan</button>
+          <Button onClick={startNew}>+ Nouveau plan</Button>
         </div>
         <BlueprintList
           blueprints={blueprints}
@@ -126,31 +125,27 @@ export function ShipDesigner({ effects }: Props) {
       <section className="designer-editor">
         <h3>{editingId ? "Modifier le plan" : "Nouveau plan"}</h3>
 
-        <label className="field">
-          <span>Nom</span>
-          <input
-            value={draft.name}
-            placeholder="Nom du plan"
-            onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-          />
-        </label>
+        <Field
+          label="Nom"
+          value={draft.name}
+          placeholder="Nom du plan"
+          onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+        />
 
-        <label className="field">
-          <span>Châssis</span>
-          <select
-            value={draft.chassisId}
-            onChange={(e) =>
-              setDraft({ name: draft.name, chassisId: e.target.value as ChassisId, modules: [] })
-            }
-          >
-            <option value="">— Choisir —</option>
-            {unlockedChassis.map((id) => (
-              <option key={id} value={id}>
-                {CHASSIS_LABELS[id].name} ({CHASSIS[id].domain === "colony" ? "civil" : "flotte"})
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          label="Châssis"
+          value={draft.chassisId}
+          onChange={(e) =>
+            setDraft({ name: draft.name, chassisId: e.target.value as ChassisId, modules: [] })
+          }
+          options={[
+            { value: "", label: "— Choisir —" },
+            ...unlockedChassis.map((id) => ({
+              value: id,
+              label: `${CHASSIS_LABELS[id].name} (${CHASSIS[id].domain === "colony" ? "civil" : "flotte"})`,
+            })),
+          ]}
+        />
 
         {chassis && stats && (
           <>
@@ -246,13 +241,13 @@ export function ShipDesigner({ effects }: Props) {
             )}
 
             <div className="editor-actions">
-              <button disabled={problems.length > 0} onClick={save}>
+              <Button disabled={problems.length > 0} onClick={save}>
                 {editingId ? "Enregistrer" : "Créer le plan"}
-              </button>
+              </Button>
               {editingId && (
-                <button className="link-button" onClick={startNew}>
+                <Button variant="link" onClick={startNew}>
                   Annuler
-                </button>
+                </Button>
               )}
             </div>
           </>

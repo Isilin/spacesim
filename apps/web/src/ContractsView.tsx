@@ -7,6 +7,7 @@ import {
   type MarketResource,
 } from "@spacesim/shared";
 import { useState } from "react";
+import { Badge, Button, Select } from "@spacesim/ui";
 import { formatDuration } from "./format.js";
 import { RESOURCE_LABELS } from "./labels.js";
 
@@ -64,9 +65,9 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
                   {RESOURCE_LABELS[c.resource]} — {c.remaining} / {c.quantity} à {c.pricePerUnit}{" "}
                   cr/u
                 </strong>
-                <span className={c.status === "open" ? "ok" : "muted"}>
+                <Badge variant={c.status === "open" ? "ok" : "neutral"}>
                   {STATUS_LABELS[c.status]}
-                </span>
+                </Badge>
               </div>
               <span className="small muted">
                 {c.colonyName}
@@ -74,12 +75,9 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
               </span>
               {c.status === "open" && (
                 <div className="route-actions">
-                  <button
-                    className="action-button"
-                    onClick={() => send({ type: "cancelContract", contractId: c.id })}
-                  >
+                  <Button onClick={() => send({ type: "cancelContract", contractId: c.id })}>
                     Annuler
-                  </button>
+                  </Button>
                 </div>
               )}
             </li>
@@ -120,7 +118,7 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
                       }
                     />
                   </label>
-                  <button
+                  <Button
                     disabled={!colony || !validWanted}
                     onClick={() => {
                       send({
@@ -133,7 +131,7 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
                     }}
                   >
                     Affréter le convoi
-                  </button>
+                  </Button>
                 </div>
               </li>
             );
@@ -146,19 +144,12 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
         <p className="muted">Aucune colonie.</p>
       ) : (
         <div className="transfer-form">
-          <label className="small muted">
-            Ressource{" "}
-            <select
-              value={resource}
-              onChange={(e) => setResource(e.target.value as MarketResource)}
-            >
-              {MARKET_RESOURCES.map((res) => (
-                <option key={res} value={res}>
-                  {RESOURCE_LABELS[res]}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            label="Ressource"
+            value={resource}
+            onChange={(e) => setResource(e.target.value as MarketResource)}
+            options={MARKET_RESOURCES.map((res) => ({ value: res, label: RESOURCE_LABELS[res] }))}
+          />
           <label className="small muted transfer-amount">
             Quantité
             <input
@@ -172,22 +163,18 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
             Prix (cr/unité)
             <input type="number" min={1} value={price} onChange={(e) => setPrice(e.target.value)} />
           </label>
-          <label className="small muted">
-            Échéance{" "}
-            <select value={durationMs} onChange={(e) => setDurationMs(Number(e.target.value))}>
-              {DURATION_OPTIONS.map((opt) => (
-                <option key={opt.ms} value={opt.ms}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            label="Échéance"
+            value={durationMs}
+            onChange={(e) => setDurationMs(Number(e.target.value))}
+            options={DURATION_OPTIONS.map((opt) => ({ value: String(opt.ms), label: opt.label }))}
+          />
           {escrow > 0 && (
             <span className="small muted">
               Séquestre : {escrow} crédits (soldée dispo : {Math.floor(colony.resources.credits)})
             </span>
           )}
-          <button
+          <Button
             disabled={!canPost}
             onClick={() => {
               if (!colony) return;
@@ -204,7 +191,7 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
             }}
           >
             Publier le contrat
-          </button>
+          </Button>
         </div>
       )}
     </div>

@@ -14,7 +14,7 @@ import {
 import { useMemo, useState } from "react";
 import { formatDuration } from "./format.js";
 import { BRANCH_LABELS, TECH_LABELS } from "./labels.js";
-import { ZoomableSvg, type ViewBox } from "./ZoomableSvg.js";
+import { Badge, Button, ZoomableSvg, type ViewBox } from "@spacesim/ui";
 
 interface Props {
   game: GameState;
@@ -102,26 +102,27 @@ export function ResearchView({ game, colonies, now, send }: Props) {
   return (
     <div className="research-view">
       <div className="research-header">
-        <span className="stat">Science disponible : {Math.floor(totalScience)}</span>
+        <Badge>Science disponible : {Math.floor(totalScience)}</Badge>
         {active ? (
-          <span className="stat ok">
+          <Badge variant="ok">
             En cours : {TECH_LABELS[active.techId as TechId]?.name ?? active.techId} —{" "}
             {formatDuration(active.finishesAt - now)}
-          </span>
+          </Badge>
         ) : (
-          <span className="stat muted">Aucune recherche en cours</span>
+          <Badge>Aucune recherche en cours</Badge>
         )}
         {queue.length > 0 && (
-          <span className="stat">
+          <Badge>
             File : {queue.length} tech{queue.length > 1 ? "s" : ""} planifiée
             {queue.length > 1 ? "s" : ""}
-            <button
-              className="link-button research-clear"
+            <Button
+              variant="link"
+              className="research-clear"
               onClick={() => send({ type: "clearResearchQueue" })}
             >
               vider
-            </button>
-          </span>
+            </Button>
+          </Badge>
         )}
       </div>
 
@@ -231,8 +232,7 @@ export function ResearchView({ game, colonies, now, send }: Props) {
                   Recherche en cours — {formatDuration(active!.finishesAt - now)}
                 </p>
               ) : detailState === "available" ? (
-                <button
-                  className="action-button"
+                <Button
                   disabled={!!active || totalScience < detail.cost}
                   title={
                     active
@@ -244,7 +244,7 @@ export function ResearchView({ game, colonies, now, send }: Props) {
                   onClick={() => send({ type: "research", techId: selected })}
                 >
                   Lancer
-                </button>
+                </Button>
               ) : (
                 <>
                   <p className="small muted">
@@ -258,12 +258,9 @@ export function ResearchView({ game, colonies, now, send }: Props) {
                       </li>
                     ))}
                   </ol>
-                  <button
-                    className="action-button"
-                    onClick={() => send({ type: "queueResearch", techId: selected })}
-                  >
+                  <Button onClick={() => send({ type: "queueResearch", techId: selected })}>
                     Planifier la chaîne
-                  </button>
+                  </Button>
                 </>
               )}
             </>

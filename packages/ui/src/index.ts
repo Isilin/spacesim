@@ -52,3 +52,6 @@ export { Toast } from "./components/toast/Toast.js";
 export type { ToastProps } from "./components/toast/Toast.js";
 export { ToastStack } from "./components/toast/ToastStack.js";
 export type { ToastStackProps } from "./components/toast/ToastStack.js";
+
+export { ZoomableSvg } from "./components/zoomable-svg/ZoomableSvg.js";
+export type { ViewBox, ZoomableSvgProps } from "./components/zoomable-svg/ZoomableSvg.js";

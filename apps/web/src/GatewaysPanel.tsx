@@ -8,6 +8,7 @@ import {
 } from "@spacesim/shared";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { Badge, Button, ProgressBar } from "@spacesim/ui";
 import { formatDuration } from "./format.js";
 import { RESOURCE_LABELS } from "./labels.js";
 import { useGameStore } from "./state/game-store.js";
@@ -59,20 +60,18 @@ export function GatewaysPanel({ now }: Props) {
             <div className="queue-head">
               <strong>{galaxy.name}</strong>
               {gateway.active ? (
-                <span className="ok">◈ Portail actif</span>
+                <Badge variant="ok">◈ Portail actif</Badge>
               ) : gateway.activatesAt ? (
-                <span className="ok">
+                <Badge variant="ok">
                   Chantier final — {formatDuration(gateway.activatesAt - now)}
-                </span>
+                </Badge>
               ) : (
-                <span className="muted">{Math.round(ratio * 100)} %</span>
+                <Badge>{Math.round(ratio * 100)} %</Badge>
               )}
             </div>
             {!gateway.active && !gateway.activatesAt && (
               <>
-                <div className="progress">
-                  <div className="progress-fill" style={{ width: `${ratio * 100}%` }} />
-                </div>
+                <ProgressBar value={ratio * 100} max={100} />
                 <span className="small muted">
                   Reste :{" "}
                   {Object.entries(remaining)
@@ -106,7 +105,7 @@ export function GatewaysPanel({ now }: Props) {
                       Soute disponible : {convoyCapacity}
                       {overCapacity ? ` — trop lourd (${physical})` : ""}
                     </span>
-                    <button
+                    <Button
                       disabled={Object.keys(cargo).length === 0 || overCapacity}
                       onClick={() => {
                         send({
@@ -119,7 +118,7 @@ export function GatewaysPanel({ now }: Props) {
                       }}
                     >
                       Envoyer le convoi de chantier
-                    </button>
+                    </Button>
                   </div>
                 )}
               </>

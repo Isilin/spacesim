@@ -17,6 +17,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
+import { Button, Select } from "@spacesim/ui";
 import { formatDuration, systemIdOf } from "./format.js";
 import { RESOURCE_LABELS, SHIP_LABELS } from "./labels.js";
 
@@ -135,19 +136,12 @@ export function TransferPanel({
         <p className="muted small">Fondez une seconde colonie pour envoyer des convois.</p>
       ) : (
         <div className="transfer-form">
-          <label className="small muted">
-            Destination{" "}
-            <select
-              value={destination?.id ?? ""}
-              onChange={(e) => setDestinationId(e.target.value)}
-            >
-              {others.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            label="Destination"
+            value={destination?.id ?? ""}
+            onChange={(e) => setDestinationId(e.target.value)}
+            options={others.map((c) => ({ value: c.id, label: c.name }))}
+          />
           {/* La cargaison part de l'orbite : c'est ce stock-là qui borne la saisie. */}
           {CARGO_RESOURCES.map((res) => (
             <label key={res} className="small muted transfer-amount">
@@ -195,7 +189,7 @@ export function TransferPanel({
               Carburant insuffisant en orbite : {fuel} requis, {orbitalEnergy} disponible.
             </span>
           )}
-          <button
+          <Button
             disabled={
               !hasCargo ||
               !destination ||
@@ -217,7 +211,7 @@ export function TransferPanel({
             }}
           >
             Envoyer le convoi
-          </button>
+          </Button>
         </div>
       )}
     </section>

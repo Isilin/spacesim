@@ -8,6 +8,7 @@ import {
   type Planet,
   type ResourceId,
 } from "@spacesim/shared";
+import { Button } from "@spacesim/ui";
 import { formatDuration } from "./format.js";
 import { RESOURCE_LABELS } from "./labels.js";
 
@@ -58,8 +59,7 @@ export function BodyActions({ body, colonies, missions, activeColony, game, now,
   const enoughInfluence = game.influence >= influenceCost;
 
   return (
-    <button
-      className="action-button"
+    <Button
       disabled={!affordable || !enoughInfluence}
       title={
         !activeColony
@@ -75,6 +75,6 @@ export function BodyActions({ body, colonies, missions, activeColony, game, now,
       }
     >
       Coloniser{influenceCost > 0 ? ` (${influenceCost} ✦)` : ""}
-    </button>
+    </Button>
   );
 }

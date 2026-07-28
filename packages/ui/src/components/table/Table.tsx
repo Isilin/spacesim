@@ -9,8 +9,8 @@ export interface TableColumn<Row = Record<string, unknown>> {
 }
 
 export interface TableProps<Row = Record<string, unknown>> {
-  columns: TableColumn<Row>[];
-  rows: Row[];
+  columns: readonly TableColumn<Row>[];
+  rows: readonly Row[];
 }
 
 export function Table<Row = Record<string, unknown>>({ columns = [], rows = [] }: TableProps<Row>) {

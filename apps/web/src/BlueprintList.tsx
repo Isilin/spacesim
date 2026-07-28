@@ -9,6 +9,7 @@ import {
   type ResourceId,
 } from "@spacesim/shared";
 import { useState } from "react";
+import { Button, Select } from "@spacesim/ui";
 import { formatDuration } from "./format.js";
 import { CHASSIS_LABELS, RESOURCE_LABELS } from "./labels.js";
 import { ShipHullDiagram } from "./ShipHullDiagram.js";
@@ -78,24 +79,18 @@ export function BlueprintList({
             </div>
             <div className="blueprint-actions">
               {!isColony && (
-                <select
-                  className="fleet-select"
+                <Select
                   value={targetFleetId}
                   onChange={(e) => setFleetChoice((c) => ({ ...c, [bp.id]: e.target.value }))}
                   disabled={fleets.length === 0}
-                >
-                  {fleets.length === 0 ? (
-                    <option value="">Aucune flotte</option>
-                  ) : (
-                    fleets.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.name}
-                      </option>
-                    ))
-                  )}
-                </select>
+                  options={
+                    fleets.length === 0
+                      ? [{ value: "", label: "Aucune flotte" }]
+                      : fleets.map((f) => ({ value: f.id, label: f.name }))
+                  }
+                />
               )}
-              <button
+              <Button
                 disabled={isColony ? !canBuildColony : !canBuildFleet}
                 title={
                   isColony
@@ -115,16 +110,16 @@ export function BlueprintList({
                 }
               >
                 Produire
-              </button>
-              <button className="link-button" onClick={() => onEdit(bp.id)}>
+              </Button>
+              <Button variant="link" onClick={() => onEdit(bp.id)}>
                 Éditer
-              </button>
-              <button
-                className="link-button"
+              </Button>
+              <Button
+                variant="link"
                 onClick={() => send({ type: "deleteBlueprint", blueprintId: bp.id })}
               >
                 Supprimer
-              </button>
+              </Button>
             </div>
           </li>
         );

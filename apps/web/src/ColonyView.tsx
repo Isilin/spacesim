@@ -23,6 +23,7 @@ import {
 } from "@spacesim/shared";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { Badge, Button, EmptyState, ListRow, Panel, ProgressBar, RowHeader } from "@spacesim/ui";
 import { formatDuration } from "./format.js";
 import { BUILDING_LABELS, PLANET_TYPE_LABELS, RESOURCE_LABELS, TECH_LABELS } from "./labels.js";
 
@@ -151,8 +152,7 @@ export function ColonyView({ effects }: Props) {
       </div>
 
       <div className="colony-columns">
-        <section className="buildings-panel">
-          <h3>Bâtiments</h3>
+        <Panel title="Bâtiments">
           <ul className="building-list">
             {BUILDING_IDS.map((id) => {
               const def = BUILDINGS[id];
@@ -160,17 +160,11 @@ export function ColonyView({ effects }: Props) {
               if (locked) {
                 const tech = unlockingTech(id);
                 return (
-                  <li key={id} className="building locked">
-                    <div className="building-info">
-                      <div className="building-head">
-                        <strong className="muted">{BUILDING_LABELS[id].name}</strong>
-                        <span className="muted small">🔒 verrouillé</span>
-                      </div>
-                      <span className="muted small">
-                        Requiert : {tech ? TECH_LABELS[tech].name : "technologie inconnue"}
-                      </span>
-                    </div>
-                  </li>
+                  <ListRow
+                    key={id}
+                    title={BUILDING_LABELS[id].name}
+                    meta={`🔒 verrouillé — Requiert : ${tech ? TECH_LABELS[tech].name : "technologie inconnue"}`}
+                  />
                 );
               }
               const count = colony.buildings[id] ?? 0;
@@ -180,56 +174,49 @@ export function ColonyView({ effects }: Props) {
               const queueFull = colony.queue.length >= MAX_QUEUE_LENGTH + effects.queueBonus;
               const slotsFull = slots >= planet.slots;
               const disabled = !affordable || queueFull || slotsFull;
+              const hasShortage = shortages.some((s) => s.buildingId === id);
               return (
-                <li key={id} className="building">
-                  <div className="building-info">
-                    <div className="building-head">
-                      <strong>{BUILDING_LABELS[id].name}</strong>
-                      <span className="level">
-                        ×{count}
-                        {queued > 0 ? ` (+${queued})` : ""}
-                      </span>
-                      {shortages.some((s) => s.buildingId === id) && (
-                        <span className="shortage" title="Intrants manquants : bâtiment à l'arrêt">
+                <ListRow
+                  key={id}
+                  title={BUILDING_LABELS[id].name}
+                  level={`×${count}${queued > 0 ? ` (+${queued})` : ""}`}
+                  meta={`${BUILDING_LABELS[id].description} · ${formatCost(cost)} — ${formatDuration(buildingBuildMs(def))} l'instance`}
+                  right={
+                    <>
+                      {hasShortage && (
+                        <Badge variant="ko" title="Intrants manquants : bâtiment à l'arrêt">
                           ⚠ pénurie
-                        </span>
+                        </Badge>
                       )}
-                    </div>
-                    <span className="muted small">{BUILDING_LABELS[id].description}</span>
-                    <span className="small">
-                      {formatCost(cost)} — {formatDuration(buildingBuildMs(def))} l'instance
-                    </span>
-                  </div>
-                  <button
-                    disabled={disabled}
-                    title={
-                      queueFull
-                        ? "File pleine"
-                        : slotsFull
-                          ? "Plus d'emplacements"
-                          : !affordable
-                            ? "Ressources insuffisantes"
-                            : ""
-                    }
-                    onClick={() => send({ type: "build", colonyId: colony.id, buildingId: id })}
-                  >
-                    Construire
-                  </button>
-                </li>
+                      <Button
+                        size="sm"
+                        disabled={disabled}
+                        title={
+                          queueFull
+                            ? "File pleine"
+                            : slotsFull
+                              ? "Plus d'emplacements"
+                              : !affordable
+                                ? "Ressources insuffisantes"
+                                : ""
+                        }
+                        onClick={() => send({ type: "build", colonyId: colony.id, buildingId: id })}
+                      >
+                        Construire
+                      </Button>
+                    </>
+                  }
+                />
               );
             })}
           </ul>
-        </section>
+        </Panel>
 
-        <section className="queue-panel">
-          <h3>
-            File de construction{" "}
-            <span className="muted small">
-              {colony.queue.length}/{MAX_QUEUE_LENGTH + effects.queueBonus}
-            </span>
-          </h3>
+        <Panel
+          title={`File de construction — ${colony.queue.length}/${MAX_QUEUE_LENGTH + effects.queueBonus}`}
+        >
           {colony.queue.length === 0 ? (
-            <p className="muted">Aucune construction en cours.</p>
+            <EmptyState>Aucune construction en cours.</EmptyState>
           ) : (
             <ul className="queue-list">
               {colony.queue.map((item, i) => {
@@ -238,17 +225,15 @@ export function ColonyView({ effects }: Props) {
                   now < item.startedAt ? 0 : Math.min(1, (now - item.startedAt) / total);
                 return (
                   <li key={`${item.buildingId}-${item.startedAt}`} className="queue-item">
-                    <div className="queue-head">
-                      <span>{BUILDING_LABELS[item.buildingId].name}</span>
-                      <span className="muted">
-                        {now < item.startedAt && i > 0
+                    <RowHeader
+                      label={BUILDING_LABELS[item.buildingId].name}
+                      value={
+                        now < item.startedAt && i > 0
                           ? "en attente"
-                          : formatDuration(item.finishesAt - now)}
-                      </span>
-                    </div>
-                    <div className="progress">
-                      <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
-                    </div>
+                          : formatDuration(item.finishesAt - now)
+                      }
+                    />
+                    <ProgressBar value={progress * 100} max={100} />
                   </li>
                 );
               })}
@@ -269,7 +254,7 @@ export function ColonyView({ effects }: Props) {
             Soute orbitale : {Math.floor(orbitalUsed(colony))}/{orbitalCap(colony, effects)} —
             réglages et convois dans l'onglet Logistique.
           </p>
-        </section>
+        </Panel>
       </div>
     </div>
   );

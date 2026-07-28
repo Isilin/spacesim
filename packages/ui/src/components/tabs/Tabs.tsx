@@ -15,6 +15,7 @@ export function Tabs({ items = [], active, onChange }: TabsProps) {
       {items.map((it) => (
         <button
           key={it.value}
+          type="button"
           className="ss-tab"
           data-active={it.value === active}
           onClick={() => onChange?.(it.value)}

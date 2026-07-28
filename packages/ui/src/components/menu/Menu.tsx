@@ -22,6 +22,7 @@ export function Menu({ items = [], style }: MenuProps) {
           ) : (
             <button
               key={i}
+              type="button"
               className="ss-menu-item"
               data-danger={!!it.danger}
               disabled={it.disabled}

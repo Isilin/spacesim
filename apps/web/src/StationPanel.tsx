@@ -28,6 +28,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
+import { Button, ListRow, Select, Table, type TableColumn } from "@spacesim/ui";
 import { formatDuration, systemIdOf } from "./format.js";
 import { FACTION_LABELS, RESOURCE_LABELS, repTierName, shipLabel } from "./labels.js";
 
@@ -140,39 +141,35 @@ export function StationPanel({
       })()}
 
       {market ? (
-        <table className="market-table">
-          <thead>
-            <tr>
-              <th>Ressource</th>
-              <th>Stock</th>
-              <th>Prix</th>
-            </tr>
-          </thead>
-          <tbody>
-            {MARKET_RESOURCES.map((res) => {
-              const stock = market.stocks[res];
-              const price = stationPrice(res, stock, priceContext);
-              // Écart au prix de référence : c'est lui qui signale une occasion.
-              const gap = price / BASE_PRICES[res] - 1;
-              const trend = gap > 0.15 ? "high" : gap < -0.15 ? "low" : "";
-              return (
-                <tr key={res}>
-                  <td>{RESOURCE_LABELS[res]}</td>
-                  <td className="muted">{Math.floor(stock)}</td>
-                  <td className={trend === "high" ? "ok" : trend === "low" ? "ko" : ""}>
-                    {price.toFixed(2)}
-                    <span className="muted small">
-                      {" "}
-                      ({gap >= 0 ? "+" : ""}
-                      {Math.round(gap * 100)} %)
-                    </span>
-                    {trend === "high" ? " ▲" : trend === "low" ? " ▼" : ""}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <Table
+          columns={
+            [
+              { key: "res", label: "Ressource", render: (_, res) => RESOURCE_LABELS[res] },
+              {
+                key: "stock",
+                label: "Stock",
+                align: "right",
+                render: (_, res) => Math.floor(market.stocks[res]),
+              },
+              {
+                key: "price",
+                label: "Prix",
+                align: "right",
+                trend: (res) => {
+                  const gap =
+                    stationPrice(res, market.stocks[res], priceContext) / BASE_PRICES[res] - 1;
+                  return gap > 0.15 ? "up" : gap < -0.15 ? "down" : undefined;
+                },
+                render: (_, res) => {
+                  const price = stationPrice(res, market.stocks[res], priceContext);
+                  const gap = price / BASE_PRICES[res] - 1;
+                  return `${price.toFixed(2)} (${gap >= 0 ? "+" : ""}${Math.round(gap * 100)} %)`;
+                },
+              },
+            ] satisfies TableColumn<MarketResource>[]
+          }
+          rows={MARKET_RESOURCES}
+        />
       ) : (
         <p className="muted small">Marché inconnu.</p>
       )}
@@ -224,7 +221,7 @@ export function StationPanel({
                 Revenu estimé au prix actuel : ~{estimatedRevenue} crédits
               </span>
             )}
-            <button
+            <Button
               disabled={!hasCargo || overCapacity || convoyCapacity === 0}
               onClick={() => {
                 send({
@@ -237,24 +234,17 @@ export function StationPanel({
               }}
             >
               Envoyer le convoi de vente
-            </button>
+            </Button>
           </div>
 
           <div className="transfer-form">
             <strong className="small">Acheter</strong>
-            <label className="small muted">
-              Ressource{" "}
-              <select
-                value={buyResource}
-                onChange={(e) => setBuyResource(e.target.value as MarketResource)}
-              >
-                {MARKET_RESOURCES.map((res) => (
-                  <option key={res} value={res}>
-                    {RESOURCE_LABELS[res]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Select
+              label="Ressource"
+              value={buyResource}
+              onChange={(e) => setBuyResource(e.target.value as MarketResource)}
+              options={MARKET_RESOURCES.map((res) => ({ value: res, label: RESOURCE_LABELS[res] }))}
+            />
             <label className="small muted transfer-amount">
               Budget (crédits)
               <input
@@ -271,7 +261,7 @@ export function StationPanel({
                 {estimatedPurchase.spent} crédits (au prix actuel)
               </span>
             )}
-            <button
+            <Button
               disabled={!validBudget || activeColony.resources.credits < budget + fee}
               title={
                 activeColony.resources.credits < budget + fee
@@ -290,7 +280,7 @@ export function StationPanel({
               }}
             >
               Envoyer le convoi d'achat
-            </button>
+            </Button>
           </div>
 
           <BlueprintMarket
@@ -339,26 +329,28 @@ function BlueprintMarket({
           const price = Math.round(blueprintValue(resolveBlueprint(preset)) * BLUEPRINT_BUY_MARKUP);
           const affordable = activeColony.resources.credits >= price;
           return (
-            <li key={preset.id} className="building">
-              <div className="building-info">
-                <strong className="small">{preset.name}</strong>
-                <span className="muted small">{price} crédits</span>
-              </div>
-              <button
-                disabled={!affordable}
-                title={affordable ? "" : "Crédits insuffisants"}
-                onClick={() =>
-                  send({
-                    type: "buyBlueprintFromStation",
-                    colonyId: activeColony.id,
-                    stationId: station.id,
-                    presetId: preset.id,
-                  })
-                }
-              >
-                Acheter
-              </button>
-            </li>
+            <ListRow
+              key={preset.id}
+              title={preset.name}
+              meta={`${price} crédits`}
+              right={
+                <Button
+                  size="sm"
+                  disabled={!affordable}
+                  title={affordable ? "" : "Crédits insuffisants"}
+                  onClick={() =>
+                    send({
+                      type: "buyBlueprintFromStation",
+                      colonyId: activeColony.id,
+                      stationId: station.id,
+                      presetId: preset.id,
+                    })
+                  }
+                >
+                  Acheter
+                </Button>
+              }
+            />
           );
         })}
       </ul>
@@ -374,24 +366,26 @@ function BlueprintMarket({
                 blueprintValue(resolveBlueprint(bp)) * BLUEPRINT_SELL_FRACTION,
               );
               return (
-                <li key={bp.id} className="building">
-                  <div className="building-info">
-                    <strong className="small">{bp.name}</strong>
-                    <span className="muted small">{price} crédits</span>
-                  </div>
-                  <button
-                    onClick={() =>
-                      send({
-                        type: "sellBlueprint",
-                        colonyId: activeColony.id,
-                        stationId: station.id,
-                        blueprintId: bp.id,
-                      })
-                    }
-                  >
-                    Vendre
-                  </button>
-                </li>
+                <ListRow
+                  key={bp.id}
+                  title={bp.name}
+                  meta={`${price} crédits`}
+                  right={
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        send({
+                          type: "sellBlueprint",
+                          colonyId: activeColony.id,
+                          stationId: station.id,
+                          blueprintId: bp.id,
+                        })
+                      }
+                    >
+                      Vendre
+                    </Button>
+                  }
+                />
               );
             })}
           </ul>
@@ -406,26 +400,28 @@ function BlueprintMarket({
               const dispo = Math.min(idle[shipId] ?? 0, owned ?? 0);
               const name = blueprints.find((b) => b.id === shipId)?.name ?? shipLabel(shipId).name;
               return (
-                <li key={shipId} className="building">
-                  <div className="building-info">
-                    <strong className="small">{name}</strong>
-                    <span className="muted small">{dispo} disponible(s)</span>
-                  </div>
-                  <button
-                    disabled={dispo === 0}
-                    onClick={() =>
-                      send({
-                        type: "sellShip",
-                        colonyId: activeColony.id,
-                        stationId: station.id,
-                        shipId,
-                        count: 1,
-                      })
-                    }
-                  >
-                    Vendre ×1
-                  </button>
-                </li>
+                <ListRow
+                  key={shipId}
+                  title={name}
+                  meta={`${dispo} disponible(s)`}
+                  right={
+                    <Button
+                      size="sm"
+                      disabled={dispo === 0}
+                      onClick={() =>
+                        send({
+                          type: "sellShip",
+                          colonyId: activeColony.id,
+                          stationId: station.id,
+                          shipId,
+                          count: 1,
+                        })
+                      }
+                    >
+                      Vendre ×1
+                    </Button>
+                  }
+                />
               );
             })}
           </ul>

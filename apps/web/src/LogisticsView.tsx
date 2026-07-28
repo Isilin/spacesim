@@ -1,6 +1,7 @@
 import type { EmpireEffects } from "@spacesim/shared";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { Tabs } from "@spacesim/ui";
 import { ContractsView } from "./ContractsView.js";
 import { MarketsView } from "./MarketsView.js";
 import { OrbitPanel } from "./OrbitPanel.js";
@@ -50,13 +51,14 @@ export function LogisticsView({ effects, portalLinks, now }: Props) {
 
   return (
     <div className="logistics-view">
-      <nav className="tabs logistics-tabs">
-        {(Object.keys(TAB_LABELS) as Tab[]).map((id) => (
-          <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>
-            {TAB_LABELS[id]}
-          </button>
-        ))}
-      </nav>
+      <Tabs
+        items={(Object.keys(TAB_LABELS) as Tab[]).map((id) => ({
+          value: id,
+          label: TAB_LABELS[id],
+        }))}
+        active={tab}
+        onChange={(value) => setTab(value as Tab)}
+      />
 
       {tab === "routes" ? (
         <RoutesView

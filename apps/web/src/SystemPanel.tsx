@@ -9,6 +9,7 @@ import {
   type StarSystem,
 } from "@spacesim/shared";
 import { useSearchParams } from "react-router-dom";
+import { Button } from "@spacesim/ui";
 import { BodyActions, COLONY_SHIP_COST_TEXT } from "./BodyActions.js";
 import { formatDuration } from "./format.js";
 import { PLANET_TYPE_LABELS, RESOURCE_LABELS } from "./labels.js";
@@ -50,8 +51,7 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
             Sonde en route — {formatDuration(probeMission.arrivesAt - now)}
           </p>
         ) : (
-          <button
-            className="action-button"
+          <Button
             disabled={!activeColony || activeColony.resources.credits < probeCost}
             onClick={() =>
               activeColony &&
@@ -59,7 +59,7 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
             }
           >
             Sonder ({probeCost} crédits)
-          </button>
+          </Button>
         )}
       </>
     );
@@ -133,22 +133,18 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
       {claimed ? (
         <p className="small claim-badge">
           ✦ Système revendiqué — production +15 %{" "}
-          <button
-            className="action-button"
-            onClick={() => send({ type: "unclaimSystem", systemId: system.id })}
-          >
+          <Button onClick={() => send({ type: "unclaimSystem", systemId: system.id })}>
             Abandonner
-          </button>
+          </Button>
         </p>
       ) : hasOwnColony ? (
-        <button
-          className="action-button"
+        <Button
           disabled={game.influence < CLAIM_COST}
           title={game.influence < CLAIM_COST ? "Influence insuffisante" : ""}
           onClick={() => send({ type: "claimSystem", systemId: system.id })}
         >
           Revendiquer le système ({CLAIM_COST} ✦)
-        </button>
+        </Button>
       ) : null}
       {system.station && (
         <StationPanel
@@ -206,8 +202,7 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
                   Chantier en route — {formatDuration(buildMission.arrivesAt - now)}
                 </p>
               ) : (
-                <button
-                  className="action-button"
+                <Button
                   disabled={!outpostAffordable}
                   title={`Coût : ${OUTPOST_COST_TEXT}`}
                   onClick={() =>
@@ -216,7 +211,7 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
                   }
                 >
                   Construire un avant-poste
-                </button>
+                </Button>
               )}
             </li>
           );

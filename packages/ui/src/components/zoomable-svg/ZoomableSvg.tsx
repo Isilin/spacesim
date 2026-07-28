@@ -24,7 +24,7 @@ interface DragState {
   y: number;
 }
 
-interface Props {
+export interface ZoomableSvgProps {
   /** Cadrage initial, et cible du bouton « recentrer ». */
   home: ViewBox;
   children: ReactNode;
@@ -45,13 +45,23 @@ const MAX_SCALE = 12;
 const WHEEL_SENSITIVITY = 0.0015;
 
 /**
- * Enveloppe SVG déplaçable et zoomable (chantier 9) : molette = zoom au curseur,
- * glisser = déplacement, double-clic = zoom avant, bouton = recentrage.
+ * Enveloppe SVG déplaçable et zoomable (chantier 9, promue au design system chantier
+ * 21.6) : molette = zoom au curseur, glisser = déplacement, double-clic = zoom avant
+ * (à la charge de l'appelant sur les nœuds), bouton = recentrage.
  *
  * Rendue nécessaire par l'univers infini — un `viewBox` figé ne peut plus cadrer une
- * carte sans bord — mais réutilisée par les trois niveaux (univers, galaxie, système).
+ * carte sans bord — mais réutilisée par les trois niveaux (univers, galaxie, système) et
+ * l'arbre de recherche. Le rendu des nœuds (SVG passé en `children`) reste dans
+ * apps/web : cette enveloppe ne connaît rien du jeu, seulement pan/zoom.
  */
-export function ZoomableSvg({ home, children, className, ariaLabel, focus, onViewChange }: Props) {
+export function ZoomableSvg({
+  home,
+  children,
+  className,
+  ariaLabel,
+  focus,
+  onViewChange,
+}: ZoomableSvgProps) {
   const [view, setView] = useState<ViewBox>(home);
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -146,7 +156,7 @@ export function ZoomableSvg({ home, children, className, ariaLabel, focus, onVie
   };
 
   return (
-    <div className="zoomable">
+    <div className="ss-zoomable">
       <svg
         ref={svgRef}
         className={className}
@@ -169,7 +179,7 @@ export function ZoomableSvg({ home, children, className, ariaLabel, focus, onVie
       >
         {children}
       </svg>
-      <div className="zoom-controls">
+      <div className="ss-zoom-controls">
         <button type="button" title="Zoom avant" onClick={() => zoomAround(1.4, center())}>
           +
         </button>

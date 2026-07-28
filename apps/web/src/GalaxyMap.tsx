@@ -8,7 +8,7 @@ import {
   type Territory,
 } from "@spacesim/shared";
 import { useMemo } from "react";
-import { ZoomableSvg, type ViewBox } from "./ZoomableSvg.js";
+import { ZoomableSvg, type ViewBox } from "@spacesim/ui";
 
 interface Props {
   galaxy: Galaxy;

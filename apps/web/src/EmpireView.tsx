@@ -20,6 +20,7 @@ import {
   type Universe,
   type WorldEvent,
 } from "@spacesim/shared";
+import { Button, ProgressBar } from "@spacesim/ui";
 import { formatDuration } from "./format.js";
 import {
   FACTION_MOOD_LABELS,
@@ -226,8 +227,8 @@ export function EmpireView({
                           <span className="small muted">
                             Propose {incoming.kind === "nap" ? "un pacte" : "une alliance"}
                           </span>
-                          <button
-                            className="action-button small"
+                          <Button
+                            size="sm"
                             onClick={() =>
                               send({
                                 type: "respondRelation",
@@ -237,9 +238,9 @@ export function EmpireView({
                             }
                           >
                             Accepter
-                          </button>
-                          <button
-                            className="action-button small"
+                          </Button>
+                          <Button
+                            size="sm"
                             onClick={() =>
                               send({
                                 type: "respondRelation",
@@ -249,54 +250,54 @@ export function EmpireView({
                             }
                           >
                             Refuser
-                          </button>
+                          </Button>
                         </>
                       ) : outgoing ? (
                         <>
                           <span className="small muted">
                             Proposition envoyée ({outgoing.kind === "nap" ? "pacte" : "alliance"})
                           </span>
-                          <button
-                            className="action-button small"
+                          <Button
+                            size="sm"
                             onClick={() =>
                               send({ type: "cancelProposal", proposalId: outgoing.id })
                             }
                           >
                             Annuler
-                          </button>
+                          </Button>
                         </>
                       ) : e.relation === "war" ? (
-                        <button
-                          className="action-button small"
+                        <Button
+                          size="sm"
                           onClick={() => send({ type: "makePeace", targetEmpireId: e.id })}
                         >
                           Faire la paix
-                        </button>
+                        </Button>
                       ) : e.relation === "alliance" || e.relation === "nap" ? (
-                        <button
-                          className="action-button small"
+                        <Button
+                          size="sm"
                           onClick={() => send({ type: "breakRelation", targetEmpireId: e.id })}
                         >
                           {e.relation === "alliance" ? "Rompre l'alliance" : "Rompre le pacte"}
-                        </button>
+                        </Button>
                       ) : (
                         <>
-                          <button
-                            className="action-button small"
+                          <Button
+                            size="sm"
                             onClick={() => send({ type: "declareWar", targetEmpireId: e.id })}
                           >
                             Déclarer la guerre
-                          </button>
-                          <button
-                            className="action-button small"
+                          </Button>
+                          <Button
+                            size="sm"
                             onClick={() =>
                               send({ type: "proposeRelation", targetEmpireId: e.id, kind: "nap" })
                             }
                           >
                             Proposer un pacte
-                          </button>
-                          <button
-                            className="action-button small"
+                          </Button>
+                          <Button
+                            size="sm"
                             onClick={() =>
                               send({
                                 type: "proposeRelation",
@@ -306,7 +307,7 @@ export function EmpireView({
                             }
                           >
                             Proposer une alliance
-                          </button>
+                          </Button>
                         </>
                       )}
                     </div>
@@ -340,12 +341,7 @@ export function EmpireView({
                   {nextTier ? `/${nextTier.min}` : " (max)"}
                 </span>
               </div>
-              <div className="progress">
-                <div
-                  className={`progress-fill ${!nextTier ? "reached" : ""}`}
-                  style={{ width: `${progress * 100}%` }}
-                />
-              </div>
+              <ProgressBar value={progress * 100} max={100} status={!nextTier ? "ok" : "default"} />
               <span className={`small ${mood.tone}`}>{mood.name}</span>
               {openContract && (
                 <span className="small muted">
@@ -376,12 +372,7 @@ export function EmpireView({
                   {Math.min(value, m.threshold)}/{m.threshold}
                 </span>
               </div>
-              <div className="progress">
-                <div
-                  className={`progress-fill ${reached ? "reached" : ""}`}
-                  style={{ width: `${progress * 100}%` }}
-                />
-              </div>
+              <ProgressBar value={progress * 100} max={100} status={reached ? "ok" : "default"} />
             </li>
           );
         })}

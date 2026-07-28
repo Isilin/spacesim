@@ -17,7 +17,7 @@ export function Modal({ open = true, title, onClose, actions, children }: ModalP
           <div className="ss-modal-head">
             <span className="ss-modal-title">{title}</span>
             {onClose && (
-              <button className="ss-modal-close" onClick={onClose}>
+              <button type="button" className="ss-modal-close" onClick={onClose}>
                 ×
               </button>
             )}

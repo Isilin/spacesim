@@ -17,6 +17,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
+import { Badge, Button, Select } from "@spacesim/ui";
 import { formatDuration } from "./format.js";
 import { RESOURCE_LABELS, SHIP_LABELS } from "./labels.js";
 
@@ -156,7 +157,7 @@ export function RoutesView({
                   <strong>
                     {names.from} → {names.to}
                   </strong>
-                  <span className={route.paused ? "muted" : "ok"}>{status}</span>
+                  <Badge variant={route.paused ? "neutral" : "ok"}>{status}</Badge>
                 </div>
                 <span className="small muted">
                   {RESOURCE_LABELS[route.resource]} · {RULE_LABELS[route.rule.type]}
@@ -168,22 +169,20 @@ export function RoutesView({
                   {fleetCapacity(route.ships)}
                 </span>
                 <div className="route-actions">
-                  <button
-                    className="action-button"
+                  <Button
                     onClick={() =>
                       send({ type: "setRoutePaused", routeId: route.id, paused: !route.paused })
                     }
                   >
                     {route.paused ? "Reprendre" : "Suspendre"}
-                  </button>
-                  <button
-                    className="action-button"
+                  </Button>
+                  <Button
                     disabled={!!route.activeCycle}
                     title={route.activeCycle ? "Attendez le retour du cycle en cours" : ""}
                     onClick={() => send({ type: "deleteRoute", routeId: route.id })}
                   >
                     Supprimer
-                  </button>
+                  </Button>
                 </div>
               </li>
             );
@@ -193,63 +192,43 @@ export function RoutesView({
 
       <h3 className="routes-create-title">Nouvelle route</h3>
       <div className="transfer-form">
-        <label className="small muted">
-          Source{" "}
-          <select value={source?.id ?? ""} onChange={(e) => setFromId(e.target.value)}>
-            {sources.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          label="Source"
+          value={source?.id ?? ""}
+          onChange={(e) => setFromId(e.target.value)}
+          options={sources.map((s) => ({ value: s.id, label: s.label }))}
+        />
         {fromOutpost && (
-          <label className="small muted">
-            Cargos fournis par{" "}
-            <select value={owner?.id ?? ""} onChange={(e) => setOwnerId(e.target.value)}>
-              {colonies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            label="Cargos fournis par"
+            value={owner?.id ?? ""}
+            onChange={(e) => setOwnerId(e.target.value)}
+            options={colonies.map((c) => ({ value: c.id, label: c.name }))}
+          />
         )}
-        <label className="small muted">
-          Destination{" "}
-          <select value={destination?.id ?? ""} onChange={(e) => setToId(e.target.value)}>
-            {destinations.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="small muted">
-          Ressource{" "}
-          <select
-            value={effectiveResource}
-            onChange={(e) => setResource(e.target.value as ResourceId)}
-          >
-            {availableResources.map((res) => (
-              <option key={res} value={res}>
-                {RESOURCE_LABELS[res as ResourceId]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="small muted">
-          Règle{" "}
-          <select value={ruleType} onChange={(e) => setRuleType(e.target.value as RuleType)}>
-            {(Object.keys(RULE_LABELS) as RuleType[])
-              .filter((r) => !(toStation && r === "maintain"))
-              .map((r) => (
-                <option key={r} value={r}>
-                  {RULE_LABELS[r]}
-                </option>
-              ))}
-          </select>
-        </label>
+        <Select
+          label="Destination"
+          value={destination?.id ?? ""}
+          onChange={(e) => setToId(e.target.value)}
+          options={destinations.map((d) => ({ value: d.id, label: d.label }))}
+        />
+        <Select
+          label="Ressource"
+          value={effectiveResource}
+          onChange={(e) => setResource(e.target.value as ResourceId)}
+          options={availableResources.map((res) => ({
+            value: res,
+            label: RESOURCE_LABELS[res as ResourceId],
+          }))}
+        />
+        <Select
+          label="Règle"
+          value={ruleType}
+          onChange={(e) => setRuleType(e.target.value as RuleType)}
+          options={(Object.keys(RULE_LABELS) as RuleType[])
+            .filter((r) => !(toStation && r === "maintain"))
+            .map((r) => ({ value: r, label: RULE_LABELS[r] }))}
+        />
         {ruleType === "maintain" && (
           <>
             <label className="small muted transfer-amount">
@@ -309,7 +288,7 @@ export function RoutesView({
           </label>
         ))}
         {capacity > 0 && <span className="small ok">Soute totale : {capacity}</span>}
-        <button
+        <Button
           disabled={!canCreate}
           onClick={() => {
             if (!source || !owner || !destination || !rule) return;
@@ -330,7 +309,7 @@ export function RoutesView({
           }}
         >
           Créer la route
-        </button>
+        </Button>
       </div>
     </div>
   );

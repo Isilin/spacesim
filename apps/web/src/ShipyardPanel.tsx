@@ -10,6 +10,7 @@ import {
   type Route,
   type TechId,
 } from "@spacesim/shared";
+import { Badge, Button, EmptyState, ListRow, Panel, RowHeader } from "@spacesim/ui";
 import { formatDuration } from "./format.js";
 import { RESOURCE_LABELS, SHIP_LABELS, shipLabel, TECH_LABELS } from "./labels.js";
 
@@ -32,17 +33,15 @@ export function ShipyardPanel({ colony, routes, researched, now, send }: Props) 
   const idle = idleShips(colony, routes);
 
   return (
-    <section className="shipyard-panel">
-      <h3>
-        Flotte civile{" "}
-        {hasShipyard && (
-          <span className="muted small">
-            file {colony.shipQueue.length}/{MAX_SHIP_QUEUE_LENGTH}
-          </span>
-        )}
-      </h3>
+    <Panel
+      title={
+        hasShipyard
+          ? `Flotte civile — file ${colony.shipQueue.length}/${MAX_SHIP_QUEUE_LENGTH}`
+          : "Flotte civile"
+      }
+    >
       {!hasShipyard && (
-        <p className="muted small">Construisez un chantier naval pour produire des cargos.</p>
+        <EmptyState>Construisez un chantier naval pour produire des cargos.</EmptyState>
       )}
       <ul className="building-list">
         {SHIP_IDS.map((shipId) => {
@@ -53,45 +52,39 @@ export function ShipyardPanel({ colony, routes, researched, now, send }: Props) 
           const affordable = canAfford(colony, def.cost);
           const queueFull = colony.shipQueue.length >= MAX_SHIP_QUEUE_LENGTH;
           return (
-            <li key={shipId} className={`building ${techLocked ? "locked" : ""}`}>
-              <div className="building-info">
-                <div className="building-head">
-                  <strong>{SHIP_LABELS[shipId].name}</strong>
-                  <span className="level">
-                    ×{owned}
-                    {queued > 0 ? ` (+${queued})` : ""}
-                  </span>
-                  <span className="muted small">{Math.min(idle[shipId] ?? 0, owned)} dispo</span>
-                </div>
-                <span className="muted small">{SHIP_LABELS[shipId].description}</span>
-                {techLocked ? (
-                  <span className="muted small">
-                    Requiert : {TECH_LABELS[def.requiresTech as TechId].name}
-                  </span>
-                ) : (
-                  <span className="small">
-                    {formatCost(def.cost)} — {formatDuration(def.buildMs)}
-                  </span>
-                )}
-              </div>
-              {!techLocked && (
-                <button
-                  disabled={!hasShipyard || !affordable || queueFull}
-                  title={
-                    !hasShipyard
-                      ? "Chantier naval requis"
-                      : queueFull
-                        ? "File navale pleine"
-                        : !affordable
-                          ? "Ressources insuffisantes"
-                          : ""
-                  }
-                  onClick={() => send({ type: "buildShip", colonyId: colony.id, shipId })}
-                >
-                  Produire
-                </button>
-              )}
-            </li>
+            <ListRow
+              key={shipId}
+              title={SHIP_LABELS[shipId].name}
+              level={`×${owned}${queued > 0 ? ` (+${queued})` : ""}`}
+              meta={
+                techLocked
+                  ? `${SHIP_LABELS[shipId].description} · Requiert : ${TECH_LABELS[def.requiresTech as TechId].name}`
+                  : `${SHIP_LABELS[shipId].description} · ${formatCost(def.cost)} — ${formatDuration(def.buildMs)}`
+              }
+              right={
+                <>
+                  <Badge>{Math.min(idle[shipId] ?? 0, owned)} dispo</Badge>
+                  {!techLocked && (
+                    <Button
+                      size="sm"
+                      disabled={!hasShipyard || !affordable || queueFull}
+                      title={
+                        !hasShipyard
+                          ? "Chantier naval requis"
+                          : queueFull
+                            ? "File navale pleine"
+                            : !affordable
+                              ? "Ressources insuffisantes"
+                              : ""
+                      }
+                      onClick={() => send({ type: "buildShip", colonyId: colony.id, shipId })}
+                    >
+                      Produire
+                    </Button>
+                  )}
+                </>
+              }
+            />
           );
         })}
       </ul>
@@ -99,14 +92,14 @@ export function ShipyardPanel({ colony, routes, researched, now, send }: Props) 
         <ul className="queue-list">
           {colony.shipQueue.map((item) => (
             <li key={`${item.shipId}-${item.startedAt}`} className="queue-item">
-              <div className="queue-head">
-                <span>{shipLabel(item.shipId).name}</span>
-                <span className="muted">{formatDuration(item.finishesAt - now)}</span>
-              </div>
+              <RowHeader
+                label={shipLabel(item.shipId).name}
+                value={formatDuration(item.finishesAt - now)}
+              />
             </li>
           ))}
         </ul>
       )}
-    </section>
+    </Panel>
   );
 }

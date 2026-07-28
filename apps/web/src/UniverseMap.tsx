@@ -13,7 +13,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useMemo, useState } from "react";
-import { ZoomableSvg, type ViewBox } from "./ZoomableSvg.js";
+import { ZoomableSvg, type ViewBox } from "@spacesim/ui";
 
 interface Props {
   universe: Universe;

@@ -25,6 +25,7 @@ import {
   type WarshipId,
 } from "@spacesim/shared";
 import { useMemo, useState } from "react";
+import { Badge, Button, ListRow, Panel, Select } from "@spacesim/ui";
 import { formatDuration } from "./format.js";
 import { DIRECTIVE_LABELS, RESOURCE_LABELS, WARSHIP_LABELS } from "./labels.js";
 
@@ -96,8 +97,7 @@ export function FleetsView({
   return (
     <div className="fleets-view">
       <div className="colony-columns">
-        <section className="buildings-panel">
-          <h3>Flottes</h3>
+        <Panel title="Flottes">
           {fleets.length === 0 && <p className="muted">Aucune flotte.</p>}
           <ul className="route-list">
             {fleets.map((fleet) => {
@@ -136,9 +136,9 @@ export function FleetsView({
                         const def = WARSHIPS[id];
                         const locked = !researched.includes(def.requiresTech);
                         return (
-                          <button
+                          <Button
                             key={id}
-                            className="action-button small"
+                            size="sm"
                             disabled={locked}
                             title={
                               locked
@@ -152,7 +152,7 @@ export function FleetsView({
                             }
                           >
                             + {WARSHIP_LABELS[id].name}
-                          </button>
+                          </Button>
                         );
                       })}
                     </div>
@@ -161,33 +161,29 @@ export function FleetsView({
                   {/* Directives par phase */}
                   <div className="directives">
                     {COMBAT_PHASES.map((phase) => (
-                      <label key={phase} className="small muted">
-                        {PHASE_LABELS[phase]}
-                        <select
-                          value={fleet.directives[phase]}
-                          onChange={(e) =>
-                            send({
-                              type: "setFleetDirectives",
-                              fleetId: fleet.id,
-                              directives: { ...fleet.directives, [phase]: e.target.value },
-                            })
-                          }
-                        >
-                          {COMBAT_DIRECTIVES.map((d) => (
-                            <option key={d} value={d}>
-                              {DIRECTIVE_LABELS[d].name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                      <Select
+                        key={phase}
+                        label={PHASE_LABELS[phase]}
+                        value={fleet.directives[phase]}
+                        onChange={(e) =>
+                          send({
+                            type: "setFleetDirectives",
+                            fleetId: fleet.id,
+                            directives: { ...fleet.directives, [phase]: e.target.value },
+                          })
+                        }
+                        options={COMBAT_DIRECTIVES.map((d) => ({
+                          value: d,
+                          label: DIRECTIVE_LABELS[d].name,
+                        }))}
+                      />
                     ))}
                   </div>
 
                   {/* Déplacement */}
                   {!fleet.movement && (
                     <div className="route-actions">
-                      <select
-                        className="colony-select"
+                      <Select
                         defaultValue=""
                         onChange={(e) => {
                           if (e.target.value)
@@ -198,80 +194,71 @@ export function FleetsView({
                             });
                           e.target.value = "";
                         }}
-                      >
-                        <option value="">Déplacer vers…</option>
-                        {allSystems(universe)
-                          .filter((s) => s.id !== fleet.systemId)
-                          .map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.name}
-                            </option>
-                          ))}
-                      </select>
-                      <button
-                        className="action-button"
-                        onClick={() => send({ type: "disbandFleet", fleetId: fleet.id })}
-                      >
+                        options={[
+                          { value: "", label: "Déplacer vers…" },
+                          ...allSystems(universe)
+                            .filter((s) => s.id !== fleet.systemId)
+                            .map((s) => ({ value: s.id, label: s.name })),
+                        ]}
+                      />
+                      <Button onClick={() => send({ type: "disbandFleet", fleetId: fleet.id })}>
                         Dissoudre
-                      </button>
+                      </Button>
                     </div>
                   )}
 
                   {/* Repaires attaquables sur place */}
                   {lairsHere.map((lair) => (
                     <div key={lair.id} className="lair-target">
-                      <span className="small ko">
+                      <Badge variant="ko">
                         ☠ Repaire pirate — {compositionText(lair.ships, nameOf)} · butin{" "}
                         {lair.bounty} ✧
-                      </span>
-                      <button
-                        className="action-button"
+                      </Badge>
+                      <Button
                         disabled={!!fleet.movement}
                         onClick={() =>
                           send({ type: "attackLair", fleetId: fleet.id, lairId: lair.id })
                         }
                       >
                         Attaquer
-                      </button>
+                      </Button>
                     </div>
                   ))}
 
                   {/* PvP : flottes étrangères sur zone */}
                   {enemyFleetsHere.map((ef) => (
                     <div key={ef.id} className="lair-target">
-                      <span className="small ko">
+                      <Badge variant="ko">
                         ⚔ Flotte {ef.name}{" "}
                         <span style={{ color: ef.ownerColor }}>({ef.ownerName})</span> —{" "}
                         {compositionText(ef.ships as FleetComposition, nameOf)}
-                      </span>
-                      <button
-                        className="action-button"
+                      </Badge>
+                      <Button
                         disabled={!!fleet.movement}
                         onClick={() =>
                           send({ type: "attackFleet", fleetId: fleet.id, targetFleetId: ef.id })
                         }
                       >
                         Attaquer
-                      </button>
+                      </Button>
                     </div>
                   ))}
 
                   {/* PvP : colonies étrangères sur zone (raid) */}
                   {enemyColoniesHere.map((ec) => (
                     <div key={ec.id} className="lair-target">
-                      <span className="small ko">
+                      <Badge variant="ko">
                         🎯 Colonie {ec.name}{" "}
                         <span style={{ color: ec.ownerColor }}>({ec.ownerName})</span>
-                      </span>
-                      <button
-                        className="action-button"
+                      </Badge>
+                      <Button
                         disabled={!!fleet.movement}
                         onClick={() =>
                           send({ type: "attackColony", fleetId: fleet.id, targetColonyId: ec.id })
                         }
                       >
                         Raid
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </li>
@@ -282,26 +269,19 @@ export function FleetsView({
           {colonies.length > 0 && (
             <div className="transfer-form">
               <strong className="small">Nouvelle flotte</strong>
-              <label className="small muted">
-                Rattachée à{" "}
-                <select
-                  value={colony?.id ?? ""}
-                  onChange={(e) => setNewFleetColony(e.target.value)}
-                >
-                  {colonies.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <Select
+                label="Rattachée à"
+                value={colony?.id ?? ""}
+                onChange={(e) => setNewFleetColony(e.target.value)}
+                options={colonies.map((c) => ({ value: c.id, label: c.name }))}
+              />
               <input
                 className="fleet-name"
                 placeholder="Nom de la flotte"
                 value={newFleetName}
                 onChange={(e) => setNewFleetName(e.target.value)}
               />
-              <button
+              <Button
                 disabled={!colony}
                 onClick={() => {
                   if (!colony) return;
@@ -310,23 +290,21 @@ export function FleetsView({
                 }}
               >
                 Créer la flotte
-              </button>
+              </Button>
             </div>
           )}
-        </section>
+        </Panel>
 
-        <section className="queue-panel">
-          <h3>Menaces & rapports</h3>
+        <Panel title="Menaces & rapports">
           {pirateLairs.length > 0 && (
             <ul className="queue-list">
               {pirateLairs.map((lair) => (
-                <li key={lair.id} className="queue-item">
-                  <div className="queue-head">
-                    <span className="ko">☠ {systemName(lair.systemId)}</span>
-                    <span className="muted small">{fleetPower(lair.ships, combatDefs)}</span>
-                  </div>
-                  <span className="small muted">{compositionText(lair.ships, nameOf)}</span>
-                </li>
+                <ListRow
+                  key={lair.id}
+                  title={`☠ ${systemName(lair.systemId)}`}
+                  meta={compositionText(lair.ships, nameOf)}
+                  right={<Badge variant="ko">{fleetPower(lair.ships, combatDefs)}</Badge>}
+                />
               ))}
             </ul>
           )}
@@ -347,7 +325,7 @@ export function FleetsView({
                   return (
                     <li key={b.id} className="queue-item">
                       <div className="queue-head">
-                        <span className="ok">🎯 Raid — {systemName(b.systemId)}</span>
+                        <Badge variant="ok">🎯 Raid — {systemName(b.systemId)}</Badge>
                         <span className="muted small">{b.attackerName}</span>
                       </div>
                       <span className="small muted">
@@ -364,10 +342,10 @@ export function FleetsView({
                       className="queue-head battle-head"
                       onClick={() => setOpenBattle(openBattle === b.id ? null : b.id)}
                     >
-                      <span className={won ? "ok" : "ko"}>
+                      <Badge variant={won ? "ok" : "ko"}>
                         {won ? "Victoire" : report.winner === "draw" ? "Nul" : "Défaite"} —{" "}
                         {systemName(b.systemId)}
-                      </span>
+                      </Badge>
                       <span className="muted small">{b.attackerName}</span>
                     </div>
                     {openBattle === b.id && (
@@ -393,7 +371,7 @@ export function FleetsView({
               })}
             </ul>
           )}
-        </section>
+        </Panel>
       </div>
     </div>
   );

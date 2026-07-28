@@ -22,7 +22,7 @@ export function Panel({ title, accent = "cyan", glow, actions, children }: Panel
       <div className="ss-cut-in">
         {title && (
           <div className="ss-panel-head">
-            <span className="ss-panel-title">{title}</span>
+            <h3 className="ss-panel-title">{title}</h3>
             {actions && <div className="ss-panel-actions">{actions}</div>}
           </div>
         )}

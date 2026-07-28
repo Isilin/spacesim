@@ -17,7 +17,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Badge, Button, Select } from "@spacesim/ui";
+import { Badge, Button, Select, Toast, ToastStack } from "@spacesim/ui";
 import {
   Navigate,
   NavLink,
@@ -275,9 +275,7 @@ function MapPage({
               now={now}
               onOpenBody={openBody}
             />
-            <button className="action-button" onClick={() => openSystem(focusedSystem)}>
-              Ouvrir la vue système
-            </button>
+            <Button onClick={() => openSystem(focusedSystem)}>Ouvrir la vue système</Button>
           </>
         ) : level === "universe" ? (
           <GatewaysPanel now={now} />
@@ -391,16 +389,14 @@ export function App({ auth }: Props) {
         </Button>
       </header>
 
-      {actionError && <div className="toast-error">{actionError}</div>}
+      {actionError && <Toast variant="error">{actionError}</Toast>}
 
       {notifications.length > 0 && (
-        <div className="toast-stack">
+        <ToastStack>
           {notifications.map((n) => (
-            <div key={n.id} className="toast-info">
-              {n.text}
-            </div>
+            <Toast key={n.id}>{n.text}</Toast>
           ))}
-        </div>
+        </ToastStack>
       )}
 
       <Routes>

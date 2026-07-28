@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Button, Field } from "@spacesim/ui";
+import { Button, Field, Tabs } from "@spacesim/ui";
 import type { Auth } from "./useAuth.js";
 
 interface Props {
@@ -44,22 +44,14 @@ export function AuthView({ auth }: Props) {
             : "Fondez un empire dans l'univers partagé."}
         </p>
 
-        <nav className="auth-tabs">
-          <button
-            type="button"
-            className={mode === "login" ? "active" : ""}
-            onClick={() => switchMode("login")}
-          >
-            Connexion
-          </button>
-          <button
-            type="button"
-            className={mode === "register" ? "active" : ""}
-            onClick={() => switchMode("register")}
-          >
-            Inscription
-          </button>
-        </nav>
+        <Tabs
+          items={[
+            { value: "login", label: "Connexion" },
+            { value: "register", label: "Inscription" },
+          ]}
+          active={mode}
+          onChange={(value) => switchMode(value as Mode)}
+        />
 
         <Field
           label="Adresse e-mail"

@@ -14,6 +14,7 @@ import {
   type StarSystem,
 } from "@spacesim/shared";
 import { useSearchParams } from "react-router-dom";
+import { Panel } from "@spacesim/ui";
 import { BodyActions } from "./BodyActions.js";
 import { BUILDING_LABELS, PLANET_TYPE_LABELS, RESOURCE_LABELS } from "./labels.js";
 import { useGameStore } from "./state/game-store.js";
@@ -175,8 +176,7 @@ export function BodyView({
         </svg>
 
         <div className="body-panels">
-          <section className="body-card">
-            <h3>Relevés</h3>
+          <Panel title="Relevés">
             <dl className="body-stats">
               <div>
                 <dt>Rayon</dt>
@@ -213,10 +213,9 @@ export function BodyView({
                 <dd>{moons.length}</dd>
               </div>
             </dl>
-          </section>
+          </Panel>
 
-          <section className="body-card">
-            <h3>Gisements</h3>
+          <Panel title="Gisements">
             {Object.keys(body.deposits).length > 0 ? (
               <div className="deposits">
                 {Object.entries(body.deposits).map(([res, mod]) => (
@@ -228,15 +227,9 @@ export function BodyView({
             ) : (
               <p className="small muted">Aucun gisement notable.</p>
             )}
-          </section>
+          </Panel>
 
-          <section className="body-card">
-            <h3>
-              Sol{" "}
-              <span className="muted small">
-                {colony ? usedSlots(colony) : 0}/{body.slots} emplacements
-              </span>
-            </h3>
+          <Panel title={`Sol — ${colony ? usedSlots(colony) : 0}/${body.slots} emplacements`}>
             <SlotGrid body={body} colony={colony} />
             {colony ? (
               <p className="small muted">
@@ -249,7 +242,7 @@ export function BodyView({
             ) : (
               <p className="small muted">Aucune implantation.</p>
             )}
-          </section>
+          </Panel>
         </div>
       </div>
     </div>

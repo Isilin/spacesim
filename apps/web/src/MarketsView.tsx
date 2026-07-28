@@ -14,6 +14,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useMemo, useState } from "react";
+import { Select, Stat, Table, type TableColumn } from "@spacesim/ui";
 import { RESOURCE_LABELS } from "./labels.js";
 
 interface Props {
@@ -89,22 +90,61 @@ export function MarketsView({
   }, [universe, markets, exploredSystemIds, resource, fromSystem, portalLinks]);
 
   const best = rows[0];
+  type MarketRow = (typeof rows)[number];
+  const gapOf = (row: MarketRow) => row.price / BASE_PRICES[resource] - 1;
+
+  const columns: TableColumn<MarketRow>[] = [
+    {
+      key: "station",
+      label: "Comptoir",
+      render: (_, row) =>
+        row.station.id === best?.station.id ? `★ ${row.station.name}` : row.station.name,
+    },
+    { key: "galaxyName", label: "Galaxie" },
+    { key: "stock", label: "Stock", align: "right", render: (_, row) => Math.floor(row.stock) },
+    {
+      key: "price",
+      label: "Prix",
+      align: "right",
+      render: (_, row) => row.price.toFixed(2),
+      trend: (row) => (gapOf(row) > 0.15 ? "up" : gapOf(row) < -0.15 ? "down" : undefined),
+    },
+    {
+      key: "gap",
+      label: "Écart",
+      align: "right",
+      render: (_, row) => `${gapOf(row) >= 0 ? "+" : ""}${Math.round(gapOf(row) * 100)} %`,
+      trend: (row) => (gapOf(row) >= 0 ? "up" : "down"),
+    },
+    {
+      key: "jumps",
+      label: "Distance",
+      render: (_, row) => (row.jumps >= 0 ? `${row.jumps} sauts` : "hors portée"),
+    },
+    {
+      key: "fees",
+      label: "Frais + carburant",
+      render: (_, row) => (row.jumps >= 0 ? `${row.fees} cr · ${row.fuel} én.` : "—"),
+    },
+    {
+      key: "net",
+      label: `Lot de ${REFERENCE_LOT} net`,
+      align: "right",
+      render: (_, row) => (row.net === null ? "—" : `${row.net} cr`),
+    },
+  ];
 
   return (
     <div className="markets-view">
       <div className="research-header">
-        <label className="small muted">
-          Ressource{" "}
-          <select value={resource} onChange={(e) => setResource(e.target.value as MarketResource)}>
-            {MARKET_RESOURCES.map((res) => (
-              <option key={res} value={res}>
-                {RESOURCE_LABELS[res]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span className="stat">Prix de référence : {BASE_PRICES[resource]}</span>
-        {activeColony && <span className="stat">Depuis : {activeColony.name}</span>}
+        <Select
+          label="Ressource"
+          value={resource}
+          onChange={(e) => setResource(e.target.value as MarketResource)}
+          options={MARKET_RESOURCES.map((res) => ({ value: res, label: RESOURCE_LABELS[res] }))}
+        />
+        <Stat label="Prix de référence" value={BASE_PRICES[resource]} />
+        {activeColony && <Stat label="Depuis" value={activeColony.name} />}
       </div>
 
       {rows.length === 0 ? (
@@ -112,47 +152,7 @@ export function MarketsView({
           Aucun comptoir découvert. Explorez des systèmes pour comparer les marchés.
         </p>
       ) : (
-        <table className="market-table markets-table">
-          <thead>
-            <tr>
-              <th>Comptoir</th>
-              <th>Galaxie</th>
-              <th>Stock</th>
-              <th>Prix</th>
-              <th>Écart</th>
-              <th>Distance</th>
-              <th>Frais + carburant</th>
-              <th>Lot de {REFERENCE_LOT} net</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => {
-              const gap = row.price / BASE_PRICES[resource] - 1;
-              return (
-                <tr
-                  key={row.station.id}
-                  className={row.station.id === best?.station.id ? "best" : ""}
-                >
-                  <td>{row.station.name}</td>
-                  <td className="muted">{row.galaxyName}</td>
-                  <td className="muted">{Math.floor(row.stock)}</td>
-                  <td className={gap > 0.15 ? "ok" : gap < -0.15 ? "ko" : ""}>
-                    {row.price.toFixed(2)}
-                  </td>
-                  <td className={gap >= 0 ? "ok" : "ko"}>
-                    {gap >= 0 ? "+" : ""}
-                    {Math.round(gap * 100)} %
-                  </td>
-                  <td className="muted">{row.jumps >= 0 ? `${row.jumps} sauts` : "hors portée"}</td>
-                  <td className="muted">
-                    {row.jumps >= 0 ? `${row.fees} cr · ${row.fuel} én.` : "—"}
-                  </td>
-                  <td>{row.net === null ? "—" : `${row.net} cr`}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <Table columns={columns} rows={rows} />
       )}
 
       <p className="small muted">

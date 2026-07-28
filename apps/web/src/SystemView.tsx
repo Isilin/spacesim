@@ -1,6 +1,6 @@
 import { SYSTEM_VIEW_SIZE, type Planet, type StarSystem } from "@spacesim/shared";
 import { useMemo } from "react";
-import { ZoomableSvg, type ViewBox } from "./ZoomableSvg.js";
+import { ZoomableSvg, type ViewBox } from "@spacesim/ui";
 import { useGameStore } from "./state/game-store.js";
 import { selectExplored } from "./state/selectors.js";
 

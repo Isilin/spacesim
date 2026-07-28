@@ -1,6 +1,7 @@
 import type { Colony, Universe } from "@spacesim/shared";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@spacesim/ui";
 
 /** Cible de navigation : ce que la recherche et les raccourcis savent ouvrir. */
 export type NavTarget =
@@ -146,8 +147,7 @@ export function MapNav({
       </div>
 
       <div className="map-shortcuts">
-        <button
-          type="button"
+        <Button
           disabled={!homeTarget}
           onClick={() =>
             homeTarget &&
@@ -155,9 +155,8 @@ export function MapNav({
           }
         >
           Ma capitale
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
           disabled={!fleetTarget}
           title={fleetTarget ? "" : "Aucune flotte en service"}
           onClick={() =>
@@ -166,10 +165,8 @@ export function MapNav({
           }
         >
           Mes flottes
-        </button>
-        <button type="button" onClick={() => go({ kind: "universe" })}>
-          Vue d'ensemble
-        </button>
+        </Button>
+        <Button onClick={() => go({ kind: "universe" })}>Vue d'ensemble</Button>
       </div>
     </div>
   );
