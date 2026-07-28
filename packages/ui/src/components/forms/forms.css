@@ -1,0 +1,52 @@
+.ss-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ss-field label {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ss-input,
+.ss-select {
+  font: var(--fs-base) var(--font-mono);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 10px;
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+}
+.ss-input:focus,
+.ss-select:focus {
+  border-color: var(--cyan);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--cyan);
+}
+.ss-input::placeholder {
+  color: var(--dim);
+}
+.ss-input:disabled,
+.ss-select:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ss-field-hint {
+  font-size: var(--fs-xs);
+  color: var(--dim);
+}
+.ss-field-error {
+  font-size: var(--fs-xs);
+  color: var(--ko);
+}
+select.ss-select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 16px) center, calc(100% - 11px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 28px;
+}

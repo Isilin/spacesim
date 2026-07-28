@@ -1,0 +1,49 @@
+.ss-panel {
+  --frame-border: var(--border-bright);
+  --cut: var(--cut-md);
+  box-shadow: var(--shadow-panel);
+}
+.ss-panel .ss-cut-in {
+  padding: 16px;
+}
+.ss-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.ss-panel-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.ss-panel-actions {
+  display: flex;
+  gap: 8px;
+}
+.ss-panel--violet {
+  --frame-border: var(--violet);
+}
+.ss-panel--violet .ss-panel-title {
+  color: var(--violet);
+}
+.ss-panel--amber {
+  --frame-border: var(--amber);
+}
+.ss-panel--amber .ss-panel-title {
+  color: var(--amber);
+}
+.ss-panel--glow {
+  box-shadow: var(--shadow-panel), var(--glow-cyan);
+}
+.ss-panel--glow.ss-panel--violet {
+  box-shadow: var(--shadow-panel), var(--glow-violet);
+}
+.ss-panel--glow.ss-panel--amber {
+  box-shadow: var(--shadow-panel), var(--glow-amber);
+}

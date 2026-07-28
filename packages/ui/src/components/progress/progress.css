@@ -1,0 +1,40 @@
+.ss-progress {
+  height: 4px;
+  background: var(--border);
+  overflow: hidden;
+}
+.ss-progress--lg {
+  height: 8px;
+}
+.ss-progress-fill {
+  height: 100%;
+  background: var(--cyan);
+  transition: width var(--motion-med);
+}
+.ss-progress-fill--ok {
+  background: var(--ok);
+}
+.ss-progress-fill--over {
+  background: var(--ko);
+  box-shadow: var(--glow-ko);
+}
+.ss-gauge {
+  position: relative;
+  height: 8px;
+  background: var(--border);
+}
+.ss-gauge-fill {
+  height: 100%;
+  background: var(--cyan);
+}
+.ss-gauge-fill--over {
+  background: var(--ko);
+  box-shadow: var(--glow-ko);
+}
+.ss-gauge-max {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--text);
+}

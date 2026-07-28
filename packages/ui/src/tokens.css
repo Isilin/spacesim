@@ -1,0 +1,145 @@
+/*
+ * Design system SpaceSim — direction HUD immersif type EVE Online / Elite Dangerous
+ * (chantier 21). Fusion des 5 fichiers tokens/*.css produits via claude.ai/design.
+ *
+ * Polices : Rajdhani (--font-display) et JetBrains Mono (--font-mono) sont référencées
+ * par nom ci-dessous, sans @font-face — aucun fichier de police n'est fourni pour
+ * l'instant (le repli système de la pile de fallback est actif : 'Rajdhani',
+ * ui-sans-serif, sans-serif / 'JetBrains Mono', 'Cascadia Code', ui-monospace,
+ * monospace). Fichiers de police à ajouter plus tard (ne pas pointer vers un CDN
+ * externe type Google Fonts — dépendance réseau non voulue dans le produit final).
+ */
+
+:root {
+  /* Couleurs (tokens/colors.css) */
+  --bg: #080b10;
+  --bg-2: #0d131c;
+  --panel: #111a26;
+  --panel-2: #152233;
+  --border: #22384c;
+  --border-bright: #2f5670;
+  --text: #cdd9e6;
+  --muted: #5d7590;
+  --dim: #3a4c60;
+  --cyan: #4fd8ff;
+  --cyan-dim: #1c5a70;
+  --cyan-bg: #0f2836;
+  --violet: #b98bff;
+  --violet-dim: #4a3670;
+  --violet-bg: #211a34;
+  --amber: #ffb04f;
+  --amber-dim: #6b4a1c;
+  --amber-bg: #2a1d0d;
+  --ok: #5ee08a;
+  --ok-bg: #0f2a1c;
+  --ko: #ff5f5f;
+  --ko-bg: #2c1315;
+
+  /* Typographie (tokens/typography.css) */
+  --font-display: "Rajdhani", ui-sans-serif, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", ui-monospace, monospace;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-base: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 28px;
+  --lh-tight: 1.2;
+  --lh-base: 1.5;
+  --tracking-label: 2px;
+  --tracking-brand: 6px;
+
+  /* Espacement (tokens/spacing.css) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+
+  /* Effets (tokens/effects.css) */
+  --cut-sm: 6px;
+  --cut-md: 10px;
+  --cut-lg: 16px;
+  --radius-sm: 2px;
+  --glow-cyan: 0 0 16px color-mix(in oklch, var(--cyan) 45%, transparent);
+  --glow-violet: 0 0 16px color-mix(in oklch, var(--violet) 45%, transparent);
+  --glow-amber: 0 0 16px color-mix(in oklch, var(--amber) 45%, transparent);
+  --glow-ok: 0 0 16px color-mix(in oklch, var(--ok) 45%, transparent);
+  --glow-ko: 0 0 16px color-mix(in oklch, var(--ko) 45%, transparent);
+  --shadow-panel: 0 8px 24px -12px #000;
+  --motion-fast: 120ms ease;
+  --motion-med: 200ms ease;
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--cyan);
+}
+
+/*
+ * Alias de compatibilité — les 8 tokens historiques de packages/ui (chantier 12→20),
+ * encore utilisés partout dans apps/web/src/styles.css tant que les vagues de
+ * migration 21.3→21.6 n'ont pas remplacé leurs usages. Vérifiés un par un contre la
+ * nouvelle palette ci-dessus :
+ *   --bg, --panel, --border, --text, --muted, --ok, --ko  → déjà définis plus haut
+ *   sous le même nom (aucun alias nécessaire, la valeur change, pas le nom) ;
+ *   --accent                                              → renommé --cyan, alias
+ *   requis ci-dessous.
+ * Supprimé en 21.7 une fois toutes les vues migrées vers packages/ui.
+ */
+:root {
+  --accent: var(--cyan);
+}
+
+/* Base globale (tokens/base.css) */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: var(--fs-base) / var(--lh-base) var(--font-mono);
+  background-image: radial-gradient(ellipse at 30% -10%, var(--bg-2) 0%, var(--bg) 60%);
+}
+
+a {
+  color: var(--cyan);
+  text-decoration: none;
+}
+
+a:hover {
+  color: #8fe6ff;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ss-cut-frame {
+  position: relative;
+  padding: 1px;
+  clip-path: polygon(
+    var(--cut, var(--cut-md)) 0,
+    100% 0,
+    100% calc(100% - var(--cut, var(--cut-md))),
+    calc(100% - var(--cut, var(--cut-md))) 100%,
+    0 100%,
+    0 var(--cut, var(--cut-md))
+  );
+  background: var(--frame-border, var(--border-bright));
+}
+
+.ss-cut-frame > .ss-cut-in {
+  clip-path: polygon(
+    var(--cut, var(--cut-md)) 0,
+    100% 0,
+    100% calc(100% - var(--cut, var(--cut-md))),
+    calc(100% - var(--cut, var(--cut-md))) 100%,
+    0 100%,
+    0 var(--cut, var(--cut-md))
+  );
+  background: var(--frame-bg, var(--panel));
+  height: 100%;
+}

@@ -1,0 +1,34 @@
+.ss-tabs {
+  display: flex;
+  gap: 2px;
+}
+.ss-tab {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-md);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  clip-path: polygon(
+    var(--cut-sm) 0,
+    100% 0,
+    100% calc(100% - var(--cut-sm)),
+    calc(100% - var(--cut-sm)) 100%,
+    0 100%,
+    0 var(--cut-sm)
+  );
+  transition: color var(--motion-fast), background var(--motion-fast);
+}
+.ss-tab:hover {
+  color: var(--text);
+  background: color-mix(in oklch, var(--border) 60%, transparent);
+}
+.ss-tab[data-active="true"] {
+  color: var(--cyan);
+  background: var(--cyan-dim);
+  box-shadow: inset 0 0 0 1px var(--cyan), var(--glow-cyan);
+}

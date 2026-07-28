@@ -1,0 +1,52 @@
+.ss-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in oklch, var(--bg) 80%, transparent);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.ss-modal {
+  --cut: var(--cut-lg);
+  --frame-border: var(--border-bright);
+  width: min(480px, 90vw);
+  box-shadow: var(--shadow-panel), 0 0 40px -10px color-mix(in oklch, var(--cyan) 25%, transparent);
+}
+.ss-modal .ss-cut-in {
+  padding: 20px;
+}
+.ss-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.ss-modal-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+.ss-modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: var(--fs-lg);
+  line-height: 1;
+  padding: 0;
+}
+.ss-modal-close:hover {
+  color: var(--text);
+}
+.ss-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}

@@ -1,0 +1,31 @@
+.ss-toast {
+  --cut: var(--cut-sm);
+}
+.ss-toast .ss-cut-in {
+  padding: 10px 14px;
+  font-size: var(--fs-sm);
+}
+.ss-toast--info {
+  --frame-border: var(--ok);
+  box-shadow: var(--glow-ok);
+}
+.ss-toast--info .ss-cut-in {
+  color: var(--ok);
+}
+.ss-toast--error {
+  --frame-border: var(--ko);
+  box-shadow: var(--glow-ko);
+}
+.ss-toast--error .ss-cut-in {
+  color: var(--ko);
+}
+.ss-toast-stack {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 280px;
+  z-index: 50;
+}

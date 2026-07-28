@@ -1,0 +1,41 @@
+.ss-menu {
+  --cut: var(--cut-sm);
+  --frame-border: var(--border-bright);
+  position: absolute;
+  z-index: 60;
+  min-width: 180px;
+  box-shadow: var(--shadow-panel);
+}
+.ss-menu .ss-cut-in {
+  padding: 4px;
+}
+.ss-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font: var(--fs-sm) var(--font-mono);
+  cursor: pointer;
+}
+.ss-menu-item:hover {
+  background: var(--cyan-dim);
+  color: var(--cyan);
+}
+.ss-menu-item[data-danger="true"]:hover {
+  background: var(--ko-bg);
+  color: var(--ko);
+}
+.ss-menu-item[disabled] {
+  color: var(--dim);
+  cursor: not-allowed;
+}
+.ss-menu-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}

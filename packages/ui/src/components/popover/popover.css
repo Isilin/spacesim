@@ -1,0 +1,12 @@
+.ss-popover {
+  --cut: var(--cut-sm);
+  --frame-border: var(--border-bright);
+  position: absolute;
+  z-index: 60;
+  min-width: 180px;
+  box-shadow: var(--shadow-panel);
+}
+.ss-popover .ss-cut-in {
+  padding: 10px 12px;
+  font-size: var(--fs-sm);
+}
