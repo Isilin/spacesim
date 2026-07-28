@@ -10,16 +10,12 @@ export class GatewayRepository {
   ) {}
 
   async loadAll(): Promise<Gateway[]> {
-    return db
-      .select()
-      .from(schema.gateways)
-      .all()
-      .map((row) => ({
-        galaxyId: row.galaxyId,
-        progress: JSON.parse(row.progress),
-        activatesAt: row.activatesAt,
-        active: row.active === 1,
-      }));
+    return (await db.select().from(schema.gateways)).map((row) => ({
+      galaxyId: row.galaxyId,
+      progress: JSON.parse(row.progress),
+      activatesAt: row.activatesAt,
+      active: row.active === 1,
+    }));
   }
 
   private toRow(gateway: Gateway) {

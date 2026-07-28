@@ -1,1 +1,0 @@
-ALTER TABLE `games` ADD `galaxy_count` integer DEFAULT 3 NOT NULL;

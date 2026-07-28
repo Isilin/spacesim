@@ -7,6 +7,9 @@ dist/
 *.db-shm
 .env
 
+# PGlite (chantier 20.3) : dossier de données du dev local sans serveur Postgres.
+apps/server/spacesim-pgdata/
+
 # Playwright (chantier 5.3)
 apps/web/test-results/
 apps/web/playwright-report/

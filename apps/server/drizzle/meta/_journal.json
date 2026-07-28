@@ -1,117 +1,12 @@
 {
   "version": "7",
-  "dialect": "sqlite",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "6",
-      "when": 1783955262466,
-      "tag": "0000_thankful_lily_hollister",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1783973757558,
-      "tag": "0001_lethal_nebula",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1784017280199,
-      "tag": "0002_wide_captain_britain",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1784057652672,
-      "tag": "0003_gifted_maddog",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1784669048805,
-      "tag": "0004_simple_daredevil",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1784671495367,
-      "tag": "0005_supreme_marvel_apes",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "6",
-      "when": 1784809475795,
-      "tag": "0006_spotty_black_panther",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "6",
-      "when": 1784842050056,
-      "tag": "0007_silent_skaar",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "6",
-      "when": 1784847303727,
-      "tag": "0008_true_johnny_storm",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "6",
-      "when": 1784848463762,
-      "tag": "0009_shiny_whirlwind",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "6",
-      "when": 1784863405762,
-      "tag": "0010_slim_lilandra",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "6",
-      "when": 1784863999025,
-      "tag": "0011_sturdy_the_renegades",
-      "breakpoints": true
-    },
-    {
-      "idx": 12,
-      "version": "6",
-      "when": 1784940378031,
-      "tag": "0012_wide_maddog",
-      "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "6",
-      "when": 1785008895620,
-      "tag": "0013_salty_mach_iv",
-      "breakpoints": true
-    },
-    {
-      "idx": 14,
-      "version": "6",
-      "when": 1785008924183,
-      "tag": "0014_secret_mongoose",
-      "breakpoints": true
-    },
-    {
-      "idx": 15,
-      "version": "6",
-      "when": 1785172295231,
-      "tag": "0015_nasty_stranger",
+      "version": "7",
+      "when": 1785230943147,
+      "tag": "0000_wise_cable",
       "breakpoints": true
     }
   ]

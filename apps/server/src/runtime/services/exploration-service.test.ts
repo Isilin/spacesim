@@ -34,7 +34,7 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
     const e1 = await GameEngine.loadOrBootstrap();
     const known = e1.universe.galaxies;
     // Simule une extension déjà survenue en partie (le compteur fait foi au boot).
-    db.update(schema.games).set({ galaxyCount: 7 }).run();
+    await db.update(schema.games).set({ galaxyCount: 7 });
 
     const e2 = await GameEngine.loadOrBootstrap();
     expect(e2.universe.galaxies).toHaveLength(7);
@@ -44,13 +44,7 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
     const stationIds = e2.universe.galaxies
       .flatMap((g) => g.systems)
       .flatMap((s) => (s.station ? [s.station.id] : []));
-    const stocked = new Set(
-      db
-        .select()
-        .from(schema.stationStates)
-        .all()
-        .map((r) => r.stationId),
-    );
+    const stocked = new Set((await db.select().from(schema.stationStates)).map((r) => r.stationId));
     expect(stationIds.every((id) => stocked.has(id))).toBe(true);
   });
 
@@ -108,7 +102,7 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
   it("étendre l'univers ne coûte rien aux empires en place", async () => {
     const e1 = await GameEngine.loadOrBootstrap();
     const before = summaries(e1);
-    db.update(schema.games).set({ galaxyCount: 9 }).run();
+    await db.update(schema.games).set({ galaxyCount: 9 });
 
     const e2 = await GameEngine.loadOrBootstrap();
     expect(e2.universe.galaxies).toHaveLength(9);
@@ -124,10 +118,10 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
 describe("GameEngine — univers persistant (chantier 18)", () => {
   it("le boot matérialise l'univers : tables peuplées, compteur aligné", async () => {
     const engine = await GameEngine.loadOrBootstrap();
-    const galaxies = db.select().from(schema.universeGalaxies).all();
+    const galaxies = await db.select().from(schema.universeGalaxies);
     expect(galaxies).toHaveLength(engine.universe.galaxies.length);
-    expect(db.select().from(schema.universeSystems).all().length).toBeGreaterThan(0);
-    expect(db.select().from(schema.universeBodies).all().length).toBeGreaterThan(0);
+    expect((await db.select().from(schema.universeSystems)).length).toBeGreaterThan(0);
+    expect((await db.select().from(schema.universeBodies)).length).toBeGreaterThan(0);
     // La mère n'a pas de parent ; toutes les autres pointent une voisine d'index inférieur.
     for (const g of galaxies) {
       if (g.index === 0) expect(g.parentGalaxyIndex).toBeNull();
@@ -145,10 +139,10 @@ describe("GameEngine — univers persistant (chantier 18)", () => {
   it("la DB est la vérité : une correction manuelle survit au reboot", async () => {
     const e1 = await GameEngine.loadOrBootstrap();
     const planet = e1.universe.galaxies[0]!.systems[0]!.planets[0]!;
-    db.update(schema.universeBodies)
+    await db
+      .update(schema.universeBodies)
       .set({ name: "Monde corrigé" })
-      .where(eq(schema.universeBodies.id, planet.id))
-      .run();
+      .where(eq(schema.universeBodies.id, planet.id));
     const e2 = await GameEngine.loadOrBootstrap();
     const reloaded = e2.universe.galaxies[0]!.systems[0]!.planets[0]!;
     expect(reloaded.id).toBe(planet.id);
@@ -157,48 +151,43 @@ describe("GameEngine — univers persistant (chantier 18)", () => {
 
   it("rattrapage one-shot : une base d'avant le chantier 18 est matérialisée au boot", async () => {
     // Simule une base legacy : ligne games seule, aucune table universe_* peuplée.
-    db.insert(schema.games)
-      .values({
-        id: "legacy",
-        seed: "legacy-seed",
-        tick: 0,
-        lastTickAt: Date.now(),
-        createdAt: Date.now(),
-        galaxyCount: INITIAL_GALAXIES,
-      })
-      .run();
+    await db.insert(schema.games).values({
+      id: "legacy",
+      seed: "legacy-seed",
+      tick: 0,
+      lastTickAt: Date.now(),
+      createdAt: Date.now(),
+      galaxyCount: INITIAL_GALAXIES,
+    });
     const engine = await GameEngine.load();
-    expect(db.select().from(schema.universeGalaxies).all()).toHaveLength(INITIAL_GALAXIES);
+    expect(await db.select().from(schema.universeGalaxies)).toHaveLength(INITIAL_GALAXIES);
     expect(engine.universe.galaxies).toHaveLength(engine.universe.galaxies.length);
     // Rejouer load() est un no-op : rien de plus n'est matérialisé.
-    const before = db.select().from(schema.universeBodies).all().length;
+    const before = (await db.select().from(schema.universeBodies)).length;
     await GameEngine.load();
-    expect(db.select().from(schema.universeBodies).all()).toHaveLength(before);
+    expect(await db.select().from(schema.universeBodies)).toHaveLength(before);
   });
 
   it("étendre l'univers matérialise les galaxies neuves sans toucher aux anciennes", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const before = engine.universe.galaxies.length;
-    const namesBefore = db
-      .select()
-      .from(schema.universeGalaxies)
-      .all()
-      .map((g) => [g.id, g.name] as const);
+    const namesBefore = (await db.select().from(schema.universeGalaxies)).map(
+      (g) => [g.id, g.name] as const,
+    );
     // Remplit la galaxie de départ (MAX_EMPIRES_PER_GALAXY) : le suivant colonise
     // ailleurs et la frontière glissante doit s'ouvrir — donc se matérialiser.
     for (let i = 0; i < MAX_EMPIRES_PER_GALAXY; i++) engine.devSpawnEmpire(`ext-${i}`);
     engine.ensureFrontier();
+    // `ensureFrontier` staged les nouvelles galaxies dans le WriteSet (chantier 20.3,
+    // write-behind) — flush explicite avant de relire la DB directement ci-dessous.
+    await engine.flush();
     expect(engine.universe.galaxies.length).toBeGreaterThan(before);
-    expect(db.select().from(schema.universeGalaxies).all()).toHaveLength(
+    expect(await db.select().from(schema.universeGalaxies)).toHaveLength(
       engine.universe.galaxies.length,
     );
     // Les galaxies déjà matérialisées sont intactes, et tout survit au reboot.
     const after = new Map(
-      db
-        .select()
-        .from(schema.universeGalaxies)
-        .all()
-        .map((g) => [g.id, g.name] as const),
+      (await db.select().from(schema.universeGalaxies)).map((g) => [g.id, g.name] as const),
     );
     for (const [id, name] of namesBefore) expect(after.get(id)).toBe(name);
     const reloaded = await GameEngine.loadOrBootstrap();

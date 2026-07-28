@@ -22,12 +22,12 @@ const objectiveRow = (id: string, overrides: Partial<Record<string, unknown>> = 
   ...overrides,
 });
 
-const readObjective = (id: string) =>
-  db.select().from(schema.objectives).where(eq(schema.objectives.id, id)).get();
+const readObjective = async (id: string) => {
+  const rows = await db.select().from(schema.objectives).where(eq(schema.objectives.id, id));
+  return rows[0];
+};
 
-beforeEach(() => {
-  resetDb();
-});
+beforeEach(() => resetDb());
 
 describe("Persister.flush", () => {
   it("dernière écriture gagne : deux upserts du même pk avant flush ne produisent que le dernier", async () => {
@@ -38,7 +38,7 @@ describe("Persister.flush", () => {
     writeSet.upsert("objectives", "obj-1", objectiveRow("obj-1", { reward: 2 }));
     await persister.flush();
 
-    expect(readObjective("obj-1")?.reward).toBe(2);
+    expect((await readObjective("obj-1"))?.reward).toBe(2);
   });
 
   it("delete après save : le delete l'emporte au flush", async () => {
@@ -49,7 +49,7 @@ describe("Persister.flush", () => {
     writeSet.delete("objectives", "obj-2");
     await persister.flush();
 
-    expect(readObjective("obj-2")).toBeUndefined();
+    expect(await readObjective("obj-2")).toBeUndefined();
   });
 
   it("save après delete (recréation) : l'upsert l'emporte au flush", async () => {
@@ -63,7 +63,7 @@ describe("Persister.flush", () => {
     writeSet.upsert("objectives", "obj-3", objectiveRow("obj-3", { reward: 9 }));
     await persister.flush();
 
-    expect(readObjective("obj-3")?.reward).toBe(9);
+    expect((await readObjective("obj-3"))?.reward).toBe(9);
   });
 
   it("une update ré-écrit la ligne existante (pas seulement à l'insertion)", async () => {
@@ -75,7 +75,7 @@ describe("Persister.flush", () => {
     writeSet.upsert("objectives", "obj-4", objectiveRow("obj-4", { status: "done" }));
     await persister.flush();
 
-    expect(readObjective("obj-4")?.status).toBe("done");
+    expect((await readObjective("obj-4"))?.status).toBe("done");
   });
 
   it("reprise après un flush qui échoue : l'entrée reste en attente et se rejoue au flush suivant", async () => {
@@ -93,7 +93,7 @@ describe("Persister.flush", () => {
     await persister.flush();
 
     expect(persister.lastFlushError).not.toBeNull();
-    expect(readObjective("obj-5")).toBeUndefined();
+    expect(await readObjective("obj-5")).toBeUndefined();
     expect(writeSet.isEmpty()).toBe(false); // l'entrée en échec est retournée au WriteSet.
 
     // Correction et nouvel essai : le flush suivant réussit.
@@ -101,7 +101,7 @@ describe("Persister.flush", () => {
     await persister.flush();
 
     expect(persister.lastFlushError).toBeNull();
-    expect(readObjective("obj-5")?.reward).toBe(42);
+    expect((await readObjective("obj-5"))?.reward).toBe(42);
   });
 
   it("flush sans rien en attente ne touche pas la base et reste silencieux", async () => {
@@ -124,7 +124,7 @@ describe("Persister.flush", () => {
 
     await Promise.all([first, second]);
 
-    expect(readObjective("obj-6")?.reward).toBe(1);
-    expect(readObjective("obj-7")?.reward).toBe(7);
+    expect((await readObjective("obj-6"))?.reward).toBe(1);
+    expect((await readObjective("obj-7"))?.reward).toBe(7);
   });
 });

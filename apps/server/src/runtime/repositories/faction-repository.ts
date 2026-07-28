@@ -10,15 +10,11 @@ export class FactionRepository {
   ) {}
 
   async loadAll(): Promise<FactionState[]> {
-    return db
-      .select()
-      .from(schema.factionStates)
-      .all()
-      .map((row) => ({
-        factionId: row.factionId,
-        mood: row.mood as FactionState["mood"],
-        moodUntil: row.moodUntil,
-      }));
+    return (await db.select().from(schema.factionStates)).map((row) => ({
+      factionId: row.factionId,
+      mood: row.mood as FactionState["mood"],
+      moodUntil: row.moodUntil,
+    }));
   }
 
   private toRow(state: FactionState) {

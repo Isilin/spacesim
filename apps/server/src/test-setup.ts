@@ -1,3 +1,4 @@
+import { config } from "./config.js";
 import { db, runMigrations } from "./db/index.js";
 
 /**
@@ -6,4 +7,4 @@ import { db, runMigrations } from "./db/index.js";
  * isolé doit donc les appliquer explicitement une fois avant ses propres `beforeEach`
  * (plusieurs fichiers touchent `db` directement sans passer par `GameEngine.boot`).
  */
-runMigrations(db);
+await runMigrations(config.databaseUrl, db);

@@ -14,11 +14,12 @@ import type { WriteSet } from "../persistence/write-set.js";
  */
 export class GameRepository {
   async find(): Promise<typeof schema.games.$inferSelect | null> {
-    return db.select().from(schema.games).limit(1).get() ?? null;
+    const rows = await db.select().from(schema.games).limit(1);
+    return rows[0] ?? null;
   }
 
-  insert(row: typeof schema.games.$inferInsert): void {
-    db.insert(schema.games).values(row).run();
+  async insert(row: typeof schema.games.$inferInsert): Promise<void> {
+    await db.insert(schema.games).values(row);
   }
 
   /**

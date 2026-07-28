@@ -23,7 +23,7 @@ import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { ClaimRepository } from "../repositories/claim-repository.js";
 import { PlayerRepository } from "../repositories/player-repository.js";
-import { appendGalaxies, withParentIndexes } from "../universe-store.js";
+import { stageGalaxies, withParentIndexes } from "../universe-store.js";
 
 /**
  * Exploration et territoire : sondes, colonisation, revendications de systèmes et
@@ -221,14 +221,20 @@ export class ExplorationService {
     });
     this.runtime.clock.galaxyCount = this.runtime.universe.galaxies.length;
     this.runtime.reindexUniverse();
+    // Staging synchrone dans le WriteSet (chantier 20.3) — `growUniverse` tourne dans
+    // le chemin de tick, qui ne peut pas `await` une requête Postgres. `games.galaxyCount`
+    // (déjà mis à jour en RAM ci-dessus) est porté par `TickRunner.saveTick`, pas ici.
+    // AVANT `initMarkets`/`initGateways` : ceux-ci stagent des lignes qui référencent
+    // (FK réelles, chantier 20.3) les tables `universe_*` d'ici — le `Persister` applique
+    // le flush dans l'ordre de staging au sein d'une même transaction.
+    stageGalaxies(
+      this.runtime.writeSet,
+      this.runtime.clock.id,
+      this.runtime.universe.galaxies.slice(from),
+    );
     // Les galaxies neuves arrivent avec leurs comptoirs et leur chantier de portail.
     this.initMarkets();
     this.initGateways();
-    appendGalaxies(
-      this.runtime.clock.id,
-      this.runtime.universe.galaxies.slice(from),
-      this.runtime.clock.galaxyCount,
-    );
     // Tous les clients doivent recevoir la nouvelle carte, y compris ceux qui n'ont
     // rien exploré depuis leur dernier message.
     for (const empire of this.runtime.empires.values()) empire.universeDirty = true;

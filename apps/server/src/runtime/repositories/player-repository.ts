@@ -10,6 +10,7 @@ export interface PlayerRecord {
   kind: "human" | "npc";
   name: string;
   color: string;
+  joinedAt: number;
   researched: Empire["researched"];
   research: Empire["research"];
   researchQueue: Empire["researchQueue"];
@@ -19,13 +20,13 @@ export interface PlayerRecord {
 }
 
 /**
- * Propriétaire unique de la table `players` (chantier 19.3). `insert()` reste une
- * écriture DIRECTE (chantier 20.2) : elle a lieu à la création d'un empire (bootstrap
- * ou inscription d'un compte), toujours suivie d'autres opérations qui présument
- * l'empire déjà lisible en base dans le même appel synchrone (ex. `bootstrap.
- * insertColony`) — la faire passer par le `WriteSet` casserait cet ordre sans qu'un
- * flush intermédiaire n'ait de sens ici. Les mises à jour courantes (recherche,
- * brouillard, influence de fin de tick), elles, passent par le `WriteSet`.
+ * Propriétaire unique de la table `players` (chantier 19.3). `insert()`/`adopt()`
+ * passent par le `WriteSet` (chantier 20.3) : le créateur (`createEmpireForAccount`,
+ * dev tools) ne relit jamais la ligne en base dans le même appel. EXCEPTION :
+ * `insertDefault()` reste une écriture DIRECTE — `ensureDefaultPlayer()` l'appelle
+ * juste avant `loadPlayers()`, qui LUI fait un vrai `SELECT` (reconstruit `Empire`
+ * depuis la base, pas depuis la RAM) ; un upsert seulement staged serait invisible à
+ * ce `SELECT` avant le prochain flush.
  */
 export class PlayerRepository {
   constructor(
@@ -40,6 +41,7 @@ export class PlayerRepository {
       kind: row.kind as "human" | "npc",
       name: row.name,
       color: row.color,
+      joinedAt: row.joinedAt,
       researched: JSON.parse(row.researched),
       research: row.research ? JSON.parse(row.research) : null,
       researchQueue: JSON.parse(row.researchQueue),
@@ -51,22 +53,42 @@ export class PlayerRepository {
 
   /** Premier player de l'univers (ordre d'insertion) — sonde d'`ensureDefaultPlayer`. */
   async first(): Promise<PlayerRecord | null> {
-    const row = db
+    const rows = await db
       .select()
       .from(schema.players)
       .where(eq(schema.players.gameId, this.gameId))
-      .limit(1)
-      .get();
-    return row ? this.mapRow(row) : null;
+      .limit(1);
+    return rows[0] ? this.mapRow(rows[0]) : null;
   }
 
   async loadAll(): Promise<PlayerRecord[]> {
-    return db
-      .select()
-      .from(schema.players)
-      .where(eq(schema.players.gameId, this.gameId))
-      .all()
-      .map((row) => this.mapRow(row));
+    return (
+      await db.select().from(schema.players).where(eq(schema.players.gameId, this.gameId))
+    ).map((row) => this.mapRow(row));
+  }
+
+  private newRow(record: {
+    id: string;
+    accountId?: string | null;
+    kind?: "human" | "npc";
+    name: string;
+    color: string;
+  }) {
+    return {
+      id: record.id,
+      gameId: this.gameId,
+      accountId: record.accountId ?? null,
+      kind: record.kind ?? "human",
+      name: record.name,
+      color: record.color,
+      joinedAt: Date.now(),
+      researched: "[]",
+      research: null,
+      researchQueue: "[]",
+      influence: 0,
+      factionRep: "{}",
+      explored: "[]",
+    };
   }
 
   insert(record: {
@@ -76,28 +98,28 @@ export class PlayerRepository {
     name: string;
     color: string;
   }): void {
-    db.insert(schema.players)
-      .values({
-        id: record.id,
-        gameId: this.gameId,
-        accountId: record.accountId ?? null,
-        kind: record.kind ?? "human",
-        name: record.name,
-        color: record.color,
-        joinedAt: Date.now(),
-        researched: "[]",
-        research: null,
-        researchQueue: "[]",
-        influence: 0,
-        factionRep: "{}",
-        explored: "[]",
-      })
-      .run();
+    this.writeSet.upsert("players", record.id, this.newRow(record));
   }
 
-  /** Adoption d'un empire orphelin par un compte (chantier 8). */
-  adopt(id: string, accountId: string, name: string): void {
-    db.update(schema.players).set({ accountId, name }).where(eq(schema.players.id, id)).run();
+  /** Voir le commentaire de classe : écriture directe, boot seulement (`ensureDefaultPlayer`). */
+  async insertDefault(record: {
+    id: string;
+    accountId?: string | null;
+    kind?: "human" | "npc";
+    name: string;
+    color: string;
+  }): Promise<void> {
+    await db.insert(schema.players).values(this.newRow(record));
+  }
+
+  /**
+   * Adoption d'un empire orphelin par un compte (chantier 8). Prend l'`Empire` déjà
+   * muté (accountId/name à jour) : `rowFor` reconstruit la ligne complète exigée par
+   * le `WriteSet` — un simple patch `{accountId, name}` ne suffirait pas au contrat
+   * d'upsert (ligne toujours complète).
+   */
+  adopt(empire: Empire): void {
+    this.writeSet.upsert("players", empire.id, this.rowFor(empire));
   }
 
   saveResearch(empire: Empire): void {
@@ -114,10 +136,11 @@ export class PlayerRepository {
   }
 
   /**
-   * Ligne reconstruite depuis l'`Empire` en mémoire — SANS `joinedAt` (pas porté par
-   * `Empire`, immuable après `insert()`). Sans risque : `insert()` est une écriture
-   * directe qui précède toujours ces sauvegardes (voir le commentaire de classe), donc
-   * le fallback INSERT du flush (qui exigerait `joinedAt`) ne se déclenche jamais ici.
+   * Ligne reconstruite depuis l'`Empire` en mémoire — ligne TOUJOURS complète (contrat
+   * du `WriteSet` : `insert()`/`adopt()` passent par la même map que `saveResearch`/
+   * `saveExplored`/`saveInfluence`, last-write-wins — un upsert partiel écraserait un
+   * upsert complet précédent encore non flushé). `joinedAt` vient de `Empire` (fixé à
+   * la construction ou à l'hydratation, jamais recalculé ici).
    */
   private rowFor(empire: Empire) {
     return {
@@ -127,6 +150,7 @@ export class PlayerRepository {
       kind: empire.kind,
       name: empire.name,
       color: empire.color,
+      joinedAt: empire.joinedAt,
       researched: JSON.stringify(empire.researched),
       research: empire.research ? JSON.stringify(empire.research) : null,
       researchQueue: JSON.stringify(empire.researchQueue),

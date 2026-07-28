@@ -10,21 +10,17 @@ export class ObjectiveRepository {
   ) {}
 
   async loadAll(): Promise<Objective[]> {
-    return db
-      .select()
-      .from(schema.objectives)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        empireId: row.empireId,
-        kind: row.kind as ObjectiveKind,
-        ...(row.targetCount !== null ? { targetCount: row.targetCount } : {}),
-        ...(row.targetSystemId !== null ? { targetSystemId: row.targetSystemId } : {}),
-        reward: row.reward,
-        createdAt: row.createdAt,
-        deadline: row.deadline,
-        status: row.status as Objective["status"],
-      }));
+    return (await db.select().from(schema.objectives)).map((row) => ({
+      id: row.id,
+      empireId: row.empireId,
+      kind: row.kind as ObjectiveKind,
+      ...(row.targetCount !== null ? { targetCount: row.targetCount } : {}),
+      ...(row.targetSystemId !== null ? { targetSystemId: row.targetSystemId } : {}),
+      reward: row.reward,
+      createdAt: row.createdAt,
+      deadline: row.deadline,
+      status: row.status as Objective["status"],
+    }));
   }
 
   private toRow(objective: Objective) {

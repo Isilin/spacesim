@@ -12,6 +12,7 @@ import {
 } from "@spacesim/shared";
 import { eq } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
+import type { WriteSet } from "./persistence/write-set.js";
 
 /**
  * Persistance de l'univers matérialisé (chantier 18). Ces fonctions sont le SEUL
@@ -37,152 +38,177 @@ export function withParentIndexes(universe: Universe): Universe {
   };
 }
 
+/** Lignes à écrire pour une galaxie (partagées entre les deux chemins d'écriture ci-dessous). */
+function galaxyRows(galaxy: Galaxy, gameId: string, now: number) {
+  const index = galaxyIndexOfId(galaxy.id);
+  if (index > 0 && galaxy.parentIndex === undefined) {
+    throw new Error(`Galaxie ${galaxy.id} sans parentIndex figé — voir withParentIndexes()`);
+  }
+  return {
+    galaxy: {
+      id: galaxy.id,
+      gameId,
+      index,
+      name: galaxy.name,
+      x: galaxy.x,
+      y: galaxy.y,
+      depositBonus: galaxy.depositBonus,
+      anchorSystemId: galaxy.anchorSystemId,
+      parentGalaxyIndex: galaxy.parentIndex ?? null,
+      generatorVersion: GENERATOR_VERSION,
+      materializedAt: now,
+    },
+    systems: galaxy.systems.map((system, systemIndex) => ({
+      id: system.id,
+      galaxyId: galaxy.id,
+      systemIndex,
+      name: system.name,
+      x: system.x,
+      y: system.y,
+    })),
+    bodies: galaxy.systems.flatMap((system) =>
+      system.planets.map((body, bodyIndex) => ({
+        id: body.id,
+        systemId: system.id,
+        bodyIndex,
+        kind: body.kind,
+        parentPlanetId: body.parentPlanetId ?? null,
+        name: body.name,
+        type: body.type,
+        habitability: body.habitability,
+        slots: body.slots,
+        deposits: JSON.stringify(body.deposits),
+        orbitRadius: body.orbitRadius,
+        orbitAngle: body.orbitAngle,
+      })),
+    ),
+    belts: galaxy.systems.flatMap((system) =>
+      system.belts.map((belt, beltIndex) => ({
+        id: belt.id,
+        systemId: system.id,
+        beltIndex,
+        name: belt.name,
+        orbitRadius: belt.orbitRadius,
+        deposits: JSON.stringify(belt.deposits),
+      })),
+    ),
+    stations: galaxy.systems.flatMap((system) =>
+      system.station
+        ? [
+            {
+              id: system.station.id,
+              systemId: system.id,
+              factionId: system.station.factionId,
+              name: system.station.name,
+            },
+          ]
+        : [],
+    ),
+    links: galaxy.links.map(([aSystemId, bSystemId], linkIndex) => ({
+      galaxyId: galaxy.id,
+      aSystemId,
+      bSystemId,
+      linkIndex,
+    })),
+  };
+}
+
 /**
  * Matérialise en UNE transaction les galaxies encore absentes de la base et aligne
  * `games.galaxyCount`. Idempotent : une galaxie déjà en base est ignorée (jamais
  * réécrite). Les `Galaxy` passées doivent porter `parentIndex` (voir
  * `withParentIndexes`) — l'arbre inter-galactique se fige ici.
+ *
+ * Chemin BOOT SEULEMENT (`GameEngine.load()`/`bootstrapNewUniverse()`) : appelé
+ * avant que `GameRuntime`/`WriteSet` n'existent, donc écriture DIRECTE — voir
+ * `stageGalaxies` pour le chemin tick (`growUniverse`), qui lui passe par le
+ * `WriteSet` pour rester synchrone.
  */
-export function appendGalaxies(
+export async function appendGalaxies(
   gameId: string,
   galaxies: readonly Galaxy[],
   galaxyCount: number,
-): void {
+): Promise<void> {
   const now = Date.now();
-  db.transaction((tx) => {
+  await db.transaction(async (tx) => {
     for (const galaxy of galaxies) {
-      const index = galaxyIndexOfId(galaxy.id);
-      if (index > 0 && galaxy.parentIndex === undefined) {
-        throw new Error(`Galaxie ${galaxy.id} sans parentIndex figé — voir withParentIndexes()`);
-      }
-      const exists = tx
+      const exists = await tx
         .select({ id: schema.universeGalaxies.id })
         .from(schema.universeGalaxies)
         .where(eq(schema.universeGalaxies.id, galaxy.id))
-        .get();
-      if (exists) continue;
+        .limit(1);
+      if (exists.length > 0) continue;
 
-      tx.insert(schema.universeGalaxies)
-        .values({
-          id: galaxy.id,
-          gameId,
-          index,
-          name: galaxy.name,
-          x: galaxy.x,
-          y: galaxy.y,
-          depositBonus: galaxy.depositBonus,
-          anchorSystemId: galaxy.anchorSystemId,
-          parentGalaxyIndex: galaxy.parentIndex ?? null,
-          generatorVersion: GENERATOR_VERSION,
-          materializedAt: now,
-        })
-        .run();
-
-      tx.insert(schema.universeSystems)
-        .values(
-          galaxy.systems.map((system, systemIndex) => ({
-            id: system.id,
-            galaxyId: galaxy.id,
-            systemIndex,
-            name: system.name,
-            x: system.x,
-            y: system.y,
-          })),
-        )
-        .run();
-
-      for (const system of galaxy.systems) {
-        if (system.planets.length > 0) {
-          tx.insert(schema.universeBodies)
-            .values(
-              system.planets.map((body, bodyIndex) => ({
-                id: body.id,
-                systemId: system.id,
-                bodyIndex,
-                kind: body.kind,
-                parentPlanetId: body.parentPlanetId ?? null,
-                name: body.name,
-                type: body.type,
-                habitability: body.habitability,
-                slots: body.slots,
-                deposits: JSON.stringify(body.deposits),
-                orbitRadius: body.orbitRadius,
-                orbitAngle: body.orbitAngle,
-              })),
-            )
-            .run();
-        }
-        if (system.belts.length > 0) {
-          tx.insert(schema.universeBelts)
-            .values(
-              system.belts.map((belt, beltIndex) => ({
-                id: belt.id,
-                systemId: system.id,
-                beltIndex,
-                name: belt.name,
-                orbitRadius: belt.orbitRadius,
-                deposits: JSON.stringify(belt.deposits),
-              })),
-            )
-            .run();
-        }
-        if (system.station) {
-          tx.insert(schema.universeStations)
-            .values({
-              id: system.station.id,
-              systemId: system.id,
-              factionId: system.station.factionId,
-              name: system.station.name,
-            })
-            .run();
-        }
-      }
-
-      if (galaxy.links.length > 0) {
-        tx.insert(schema.universeLinks)
-          .values(
-            galaxy.links.map(([aSystemId, bSystemId], linkIndex) => ({
-              galaxyId: galaxy.id,
-              aSystemId,
-              bSystemId,
-              linkIndex,
-            })),
-          )
-          .run();
-      }
+      const rows = galaxyRows(galaxy, gameId, now);
+      await tx.insert(schema.universeGalaxies).values(rows.galaxy);
+      await tx.insert(schema.universeSystems).values(rows.systems);
+      if (rows.bodies.length > 0) await tx.insert(schema.universeBodies).values(rows.bodies);
+      if (rows.belts.length > 0) await tx.insert(schema.universeBelts).values(rows.belts);
+      if (rows.stations.length > 0) await tx.insert(schema.universeStations).values(rows.stations);
+      if (rows.links.length > 0) await tx.insert(schema.universeLinks).values(rows.links);
     }
-
-    tx.update(schema.games).set({ galaxyCount }).where(eq(schema.games.id, gameId)).run();
+    await tx.update(schema.games).set({ galaxyCount }).where(eq(schema.games.id, gameId));
   });
 }
 
+/**
+ * Équivalent tick-path de `appendGalaxies` : stage les galaxies neuves dans le
+ * `WriteSet` au lieu d'une transaction directe — `growUniverse()` (appelé depuis
+ * `TickRunner.run()`, synchrone) ne peut pas `await` une requête Postgres. Ne touche
+ * PAS `games.galaxyCount` : `TickRunner.run()` le persiste déjà à chaque lot via
+ * `GameRepository.saveTick`, qui s'exécute après `ensureFrontier()` dans le même tick.
+ * Pas de vérification d'existence : le seul appelant (`growUniverse`) ne passe jamais
+ * que des galaxies au-delà de ce que la RAM (chargée depuis la DB au boot) connaît déjà
+ * — un doublon serait de toute façon un upsert inoffensif (contenu déterministe par seed).
+ */
+export function stageGalaxies(
+  writeSet: WriteSet,
+  gameId: string,
+  galaxies: readonly Galaxy[],
+): void {
+  const now = Date.now();
+  for (const galaxy of galaxies) {
+    const rows = galaxyRows(galaxy, gameId, now);
+    writeSet.upsert("universeGalaxies", rows.galaxy.id, rows.galaxy);
+    for (const system of rows.systems) writeSet.upsert("universeSystems", system.id, system);
+    for (const body of rows.bodies) writeSet.upsert("universeBodies", body.id, body);
+    for (const belt of rows.belts) writeSet.upsert("universeBelts", belt.id, belt);
+    for (const station of rows.stations) writeSet.upsert("universeStations", station.id, station);
+    for (const link of rows.links) {
+      writeSet.upsert("universeLinks", [link.aSystemId, link.bSystemId], link);
+    }
+  }
+}
+
 /** Nombre de galaxies matérialisées pour cet univers. */
-export function materializedGalaxyCount(gameId: string): number {
-  return db
+export async function materializedGalaxyCount(gameId: string): Promise<number> {
+  const rows = await db
     .select({ id: schema.universeGalaxies.id })
     .from(schema.universeGalaxies)
-    .where(eq(schema.universeGalaxies.gameId, gameId))
-    .all().length;
+    .where(eq(schema.universeGalaxies.gameId, gameId));
+  return rows.length;
 }
 
 /**
  * Reconstruit l'univers depuis les tables (ordre garanti par les colonnes `*_index`).
  * Renvoie `null` si aucune galaxie n'est matérialisée.
  */
-export function loadUniverse(gameId: string, seed: string): Universe | null {
-  const galaxyRows = db
-    .select()
-    .from(schema.universeGalaxies)
-    .where(eq(schema.universeGalaxies.gameId, gameId))
-    .all()
-    .sort((a, b) => a.index - b.index);
-  if (galaxyRows.length === 0) return null;
+export async function loadUniverse(gameId: string, seed: string): Promise<Universe | null> {
+  const galaxyRowsDb = (
+    await db
+      .select()
+      .from(schema.universeGalaxies)
+      .where(eq(schema.universeGalaxies.gameId, gameId))
+  ).sort((a, b) => a.index - b.index);
+  if (galaxyRowsDb.length === 0) return null;
 
-  const systemRows = db.select().from(schema.universeSystems).all();
-  const bodyRows = db.select().from(schema.universeBodies).all();
-  const beltRows = db.select().from(schema.universeBelts).all();
-  const stationRows = db.select().from(schema.universeStations).all();
-  const linkRows = db.select().from(schema.universeLinks).all();
+  const [systemRows, bodyRows, beltRows, stationRows, linkRows] = await Promise.all([
+    db.select().from(schema.universeSystems),
+    db.select().from(schema.universeBodies),
+    db.select().from(schema.universeBelts),
+    db.select().from(schema.universeStations),
+    db.select().from(schema.universeLinks),
+  ]);
 
   const bodiesBySystem = groupBy(bodyRows, (r) => r.systemId);
   const beltsBySystem = groupBy(beltRows, (r) => r.systemId);
@@ -190,7 +216,7 @@ export function loadUniverse(gameId: string, seed: string): Universe | null {
   const systemsByGalaxy = groupBy(systemRows, (r) => r.galaxyId);
   const linksByGalaxy = groupBy(linkRows, (r) => r.galaxyId);
 
-  const galaxies: Galaxy[] = galaxyRows.map((galaxyRow) => {
+  const galaxies: Galaxy[] = galaxyRowsDb.map((galaxyRow) => {
     const systems: StarSystem[] = (systemsByGalaxy.get(galaxyRow.id) ?? [])
       .sort((a, b) => a.systemIndex - b.systemIndex)
       .map((systemRow) => {

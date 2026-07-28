@@ -72,6 +72,14 @@ export class Empire {
   factionRep: Record<string, number> = {};
   /** Systèmes revendiqués (bonus locaux, entretien en influence). */
   claimedSystemIds: string[] = [];
+  /**
+   * Horodatage d'entrée dans l'univers — immuable après création. Par défaut l'instant
+   * de construction (empire neuf) ; l'hydratation depuis une ligne `players` existante
+   * l'écrase avec la vraie valeur (voir `BootstrapService.loadEmpires`). Porté ici (et
+   * non recalculé côté repository) car `PlayerRepository.rowFor` doit pouvoir écrire
+   * une ligne `players` complète à chaque upsert (contrat du `WriteSet`).
+   */
+  joinedAt: number = Date.now();
 
   constructor(
     readonly id: string,

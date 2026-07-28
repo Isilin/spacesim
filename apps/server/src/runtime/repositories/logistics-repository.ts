@@ -15,18 +15,14 @@ export class LogisticsRepository {
   // ── Convois manuels ──────────────────────────────────────────────────────
 
   async loadTransfers(): Promise<Transfer[]> {
-    return db
-      .select()
-      .from(schema.transfers)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        fromColonyId: row.fromColonyId,
-        toColonyId: row.toColonyId,
-        resources: JSON.parse(row.resources),
-        departedAt: row.departedAt,
-        arrivesAt: row.arrivesAt,
-      }));
+    return (await db.select().from(schema.transfers)).map((row) => ({
+      id: row.id,
+      fromColonyId: row.fromColonyId,
+      toColonyId: row.toColonyId,
+      resources: JSON.parse(row.resources),
+      departedAt: row.departedAt,
+      arrivesAt: row.arrivesAt,
+    }));
   }
 
   private transferRow(transfer: Transfer) {
@@ -57,23 +53,19 @@ export class LogisticsRepository {
   // ── Missions ─────────────────────────────────────────────────────────────
 
   async loadMissions(): Promise<Mission[]> {
-    return db
-      .select()
-      .from(schema.missions)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        kind: row.kind as Mission["kind"],
-        fromColonyId: row.fromColonyId,
-        targetId: row.targetId,
-        departedAt: row.departedAt,
-        arrivesAt: row.arrivesAt,
-        ...(row.cargo ? { cargo: JSON.parse(row.cargo) } : {}),
-        ...(row.budget !== null ? { budget: row.budget } : {}),
-        ...(row.buyResource ? { buyResource: row.buyResource as ResourceId } : {}),
-        ...(row.capacity !== null ? { capacity: row.capacity } : {}),
-        ...(row.contractId ? { contractId: row.contractId } : {}),
-      }));
+    return (await db.select().from(schema.missions)).map((row) => ({
+      id: row.id,
+      kind: row.kind as Mission["kind"],
+      fromColonyId: row.fromColonyId,
+      targetId: row.targetId,
+      departedAt: row.departedAt,
+      arrivesAt: row.arrivesAt,
+      ...(row.cargo ? { cargo: JSON.parse(row.cargo) } : {}),
+      ...(row.budget !== null ? { budget: row.budget } : {}),
+      ...(row.buyResource ? { buyResource: row.buyResource as ResourceId } : {}),
+      ...(row.capacity !== null ? { capacity: row.capacity } : {}),
+      ...(row.contractId ? { contractId: row.contractId } : {}),
+    }));
   }
 
   private missionRow(mission: Mission) {
@@ -109,23 +101,19 @@ export class LogisticsRepository {
   // ── Routes automatiques ──────────────────────────────────────────────────
 
   async loadRoutes(): Promise<Route[]> {
-    return db
-      .select()
-      .from(schema.routes)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        ownerColonyId: row.ownerColonyId,
-        fromId: row.fromId,
-        fromKind: row.fromKind as Route["fromKind"],
-        toId: row.toId,
-        toKind: row.toKind as Route["toKind"],
-        resource: row.resource as ResourceId,
-        rule: JSON.parse(row.rule),
-        ships: JSON.parse(row.ships),
-        activeCycle: row.activeCycle ? JSON.parse(row.activeCycle) : null,
-        paused: row.paused === 1,
-      }));
+    return (await db.select().from(schema.routes)).map((row) => ({
+      id: row.id,
+      ownerColonyId: row.ownerColonyId,
+      fromId: row.fromId,
+      fromKind: row.fromKind as Route["fromKind"],
+      toId: row.toId,
+      toKind: row.toKind as Route["toKind"],
+      resource: row.resource as ResourceId,
+      rule: JSON.parse(row.rule),
+      ships: JSON.parse(row.ships),
+      activeCycle: row.activeCycle ? JSON.parse(row.activeCycle) : null,
+      paused: row.paused === 1,
+    }));
   }
 
   private routeRow(route: Route) {
@@ -160,16 +148,12 @@ export class LogisticsRepository {
   // ── Avant-postes miniers ─────────────────────────────────────────────────
 
   async loadOutposts(): Promise<MiningOutpost[]> {
-    return db
-      .select()
-      .from(schema.outposts)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        beltId: row.beltId,
-        ownerColonyId: row.ownerColonyId,
-        oreStock: row.oreStock,
-      }));
+    return (await db.select().from(schema.outposts)).map((row) => ({
+      id: row.id,
+      beltId: row.beltId,
+      ownerColonyId: row.ownerColonyId,
+      oreStock: row.oreStock,
+    }));
   }
 
   private outpostRow(outpost: MiningOutpost, createdAt: number) {

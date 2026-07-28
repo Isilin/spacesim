@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import type { SQLiteTable } from "drizzle-orm/sqlite-core";
+import type { PgTable } from "drizzle-orm/pg-core";
 import { db, schema } from "../../db/index.js";
 import { consoleLogger, type Logger } from "../logger.js";
 import type { DrainedDelete, DrainedUpsert, WriteSet } from "./write-set.js";
@@ -33,18 +33,24 @@ const PRIMARY_KEYS: Partial<Record<SchemaKey, readonly string[]>> = {
   battles: ["id"],
   players: ["id"],
   contracts: ["id"],
+  universeGalaxies: ["id"],
+  universeSystems: ["id"],
+  universeBodies: ["id"],
+  universeBelts: ["id"],
+  universeStations: ["id"],
+  universeLinks: ["aSystemId", "bSystemId"],
 };
 
-function tableFor(name: string): { table: SQLiteTable; pkNames: readonly string[] } {
+function tableFor(name: string): { table: PgTable; pkNames: readonly string[] } {
   const pkNames = PRIMARY_KEYS[name as SchemaKey];
-  const table = schema[name as SchemaKey] as SQLiteTable | undefined;
+  const table = schema[name as SchemaKey] as PgTable | undefined;
   if (!table || !pkNames) {
     throw new Error(`Persister: table inconnue ou sans clé déclarée "${name}"`);
   }
   return { table, pkNames };
 }
 
-function whereClause(table: SQLiteTable, pkNames: readonly string[], pk: readonly unknown[]) {
+function whereClause(table: PgTable, pkNames: readonly string[], pk: readonly unknown[]) {
   // biome-ignore lint/suspicious/noExplicitAny: table dynamique, colonnes indexées par nom
   const t = table as any;
   const conditions = pkNames.map((name, i) => eq(t[name], pk[i]));
@@ -55,23 +61,24 @@ function whereClause(table: SQLiteTable, pkNames: readonly string[], pk: readonl
  * Applique un upsert SANS s'appuyer sur `ON CONFLICT` (plusieurs tables mutées par les
  * repositories n'ont pas d'index UNIQUE déclaré, ex. `relations`) : UPDATE d'abord, et
  * seulement si 0 ligne touchée, INSERT — sûr puisque `WriteSet.upsert()` garantit une
- * ligne toujours complète (voir son commentaire).
+ * ligne toujours complète (voir son commentaire). `.returning()` (plutôt que
+ * `rowCount`) pour rester portable entre les deux dialectes pg (node-postgres, PGlite).
  */
 // biome-ignore lint/suspicious/noExplicitAny: transaction dynamique table par table
-function applyUpsert(tx: any, entry: DrainedUpsert): void {
+async function applyUpsert(tx: any, entry: DrainedUpsert): Promise<void> {
   const { table, pkNames } = tableFor(entry.table);
   const where = whereClause(table, pkNames, entry.pk);
-  const result = tx.update(table).set(entry.values).where(where).run();
-  if (result.changes === 0) {
-    tx.insert(table).values(entry.values).run();
+  const updated = await tx.update(table).set(entry.values).where(where).returning();
+  if (updated.length === 0) {
+    await tx.insert(table).values(entry.values);
   }
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: transaction dynamique table par table
-function applyDelete(tx: any, entry: DrainedDelete): void {
+async function applyDelete(tx: any, entry: DrainedDelete): Promise<void> {
   const { table, pkNames } = tableFor(entry.table);
   const where = whereClause(table, pkNames, entry.pk);
-  tx.delete(table).where(where).run();
+  await tx.delete(table).where(where);
 }
 
 /**
@@ -115,9 +122,10 @@ export class Persister {
     if (this.writeSet.isEmpty()) return;
     const { upserts, deletes } = this.writeSet.drain();
     try {
-      db.transaction((tx) => {
-        for (const entry of upserts) applyUpsert(tx, entry);
-        for (const entry of deletes) applyDelete(tx, entry);
+      // biome-ignore lint/suspicious/noExplicitAny: tx dynamique (union pg/PGlite, voir applyUpsert/applyDelete)
+      await db.transaction(async (tx: any) => {
+        for (const entry of upserts) await applyUpsert(tx, entry);
+        for (const entry of deletes) await applyDelete(tx, entry);
       });
       this.lastFlushAt = Date.now();
       this.lastFlushError = null;

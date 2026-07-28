@@ -10,11 +10,10 @@ export class MarketRepository {
   ) {}
 
   async loadAll(): Promise<{ stationId: string; stocks: Stocks }[]> {
-    return db
-      .select()
-      .from(schema.stationStates)
-      .all()
-      .map((row) => ({ stationId: row.stationId, stocks: JSON.parse(row.stocks) }));
+    return (await db.select().from(schema.stationStates)).map((row) => ({
+      stationId: row.stationId,
+      stocks: JSON.parse(row.stocks),
+    }));
   }
 
   private toRow(stationId: string, stocks: Stocks) {

@@ -10,26 +10,22 @@ export class ContractRepository {
   ) {}
 
   async loadAll(): Promise<Contract[]> {
-    return db
-      .select()
-      .from(schema.contracts)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        issuerId: row.issuerId,
-        issuerName: row.issuerName,
-        issuerColor: row.issuerColor,
-        colonyId: row.colonyId,
-        colonyName: row.colonyName,
-        systemId: row.systemId,
-        resource: row.resource as ResourceId,
-        quantity: row.quantity,
-        remaining: row.remaining,
-        pricePerUnit: row.pricePerUnit,
-        createdAt: row.createdAt,
-        deadline: row.deadline,
-        status: row.status as Contract["status"],
-      }));
+    return (await db.select().from(schema.contracts)).map((row) => ({
+      id: row.id,
+      issuerId: row.issuerId,
+      issuerName: row.issuerName,
+      issuerColor: row.issuerColor,
+      colonyId: row.colonyId,
+      colonyName: row.colonyName,
+      systemId: row.systemId,
+      resource: row.resource as ResourceId,
+      quantity: row.quantity,
+      remaining: row.remaining,
+      pricePerUnit: row.pricePerUnit,
+      createdAt: row.createdAt,
+      deadline: row.deadline,
+      status: row.status as Contract["status"],
+    }));
   }
 
   private toRow(contract: Contract) {

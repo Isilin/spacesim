@@ -10,18 +10,14 @@ export class BlueprintRepository {
   ) {}
 
   async loadAll(): Promise<Blueprint[]> {
-    return db
-      .select()
-      .from(schema.blueprints)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        ownerId: row.ownerId,
-        name: row.name,
-        chassisId: row.chassisId,
-        modules: JSON.parse(row.modules),
-        createdAt: row.createdAt,
-      }));
+    return (await db.select().from(schema.blueprints)).map((row) => ({
+      id: row.id,
+      ownerId: row.ownerId,
+      name: row.name,
+      chassisId: row.chassisId,
+      modules: JSON.parse(row.modules),
+      createdAt: row.createdAt,
+    }));
   }
 
   save(bp: Blueprint): void {

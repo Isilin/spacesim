@@ -1,4 +1,5 @@
 import { WARSHIPS } from "@spacesim/shared";
+import { sql } from "drizzle-orm";
 import { db, schema } from "./db/index.js";
 import type { GameEngine } from "./game.js";
 
@@ -45,8 +46,14 @@ export const ALL_TABLES = [
   schema.games,
 ] as const;
 
-export function resetDb(): void {
-  for (const table of ALL_TABLES) db.delete(table).run();
+/**
+ * `TRUNCATE` plutôt qu'un `DELETE` par table dans un ordre respectant les FK
+ * (chantier 20.3 : les FK sont désormais RÉELLES en Postgres) — une seule instruction,
+ * toutes les tables ensemble, `CASCADE` couvre les FK vers des tables hors de la liste.
+ */
+export async function resetDb(): Promise<void> {
+  const names = ALL_TABLES.map((t) => sql`${t}`);
+  await db.execute(sql`TRUNCATE TABLE ${sql.join(names, sql`, `)} CASCADE`);
 }
 
 /** Type des résumés renvoyés par `devEmpireSummaries` (outil de dev). */

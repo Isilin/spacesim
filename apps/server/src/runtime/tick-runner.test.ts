@@ -13,9 +13,9 @@ import { TickRunner, type TickServices } from "./tick-runner.js";
 
 /** Vide la seule table que TickRunner.run touche directement (games/players — pas de DB
  *  mémoire dédiée ici, ce module réutilise le singleton `db` comme le reste des tests serveur). */
-beforeEach(() => {
-  db.delete(schema.players).run();
-  db.delete(schema.games).run();
+beforeEach(async () => {
+  await db.delete(schema.players);
+  await db.delete(schema.games);
 });
 
 /** Empire minimal, avec une colonie pour exercer `persistColony`/`persistOutposts`. */
@@ -93,7 +93,7 @@ function recordingServices(): { services: TickServices; notify: () => void; call
 }
 
 describe("TickRunner — ordre des phases", () => {
-  it("un tick non-économique saute les phases réservées au tick éco", () => {
+  it("un tick non-économique saute les phases réservées au tick éco", async () => {
     const runtime = new GameRuntime(
       {
         id: "g",
@@ -104,9 +104,7 @@ describe("TickRunner — ordre des phases", () => {
       },
       generateUniverse("tick-runner-test", 1),
     );
-    db.insert(schema.games)
-      .values({ ...runtime.clock, createdAt: Date.now() })
-      .run();
+    await db.insert(schema.games).values({ ...runtime.clock, createdAt: Date.now() });
     runtime.empires.set("a", makeEmpire("a"));
 
     const { services, notify, calls } = recordingServices();
@@ -131,7 +129,7 @@ describe("TickRunner — ordre des phases", () => {
     ]);
   });
 
-  it("un tick économique déroule aussi les phases éco, dans l'ordre documenté", () => {
+  it("un tick économique déroule aussi les phases éco, dans l'ordre documenté", async () => {
     const runtime = new GameRuntime(
       {
         id: "g",
@@ -142,9 +140,7 @@ describe("TickRunner — ordre des phases", () => {
       },
       generateUniverse("tick-runner-test", 1),
     );
-    db.insert(schema.games)
-      .values({ ...runtime.clock, createdAt: Date.now() })
-      .run();
+    await db.insert(schema.games).values({ ...runtime.clock, createdAt: Date.now() });
     runtime.empires.set("a", makeEmpire("a"));
 
     const { services, notify, calls } = recordingServices();
@@ -187,9 +183,7 @@ describe("TickRunner — ordre des phases", () => {
       },
       generateUniverse("tick-runner-test", 1),
     );
-    db.insert(schema.games)
-      .values({ ...runtime.clock, createdAt: Date.now() })
-      .run();
+    await db.insert(schema.games).values({ ...runtime.clock, createdAt: Date.now() });
 
     const { services, notify } = recordingServices();
     const persister = new Persister(runtime.writeSet);
@@ -199,7 +193,7 @@ describe("TickRunner — ordre des phases", () => {
     await persister.flush();
 
     expect(runtime.clock.tick).toBe(8);
-    const row = db.select().from(schema.games).get()!;
-    expect(row.tick).toBe(8);
+    const rows = await db.select().from(schema.games);
+    expect(rows[0]!.tick).toBe(8);
   });
 });

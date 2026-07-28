@@ -12,21 +12,17 @@ export class FleetRepository {
 
   /** `fallbackOwnerId` : propriétaire des flottes legacy sans `ownerId` (pré-chantier 7). */
   async loadFleets(fallbackOwnerId: string): Promise<Fleet[]> {
-    return db
-      .select()
-      .from(schema.fleets)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        ownerId: row.ownerId ?? fallbackOwnerId,
-        name: row.name,
-        systemId: row.systemId,
-        homeColonyId: row.homeColonyId,
-        ships: JSON.parse(row.ships),
-        directives: JSON.parse(row.directives),
-        queue: JSON.parse(row.queue),
-        movement: row.movement ? JSON.parse(row.movement) : null,
-      }));
+    return (await db.select().from(schema.fleets)).map((row) => ({
+      id: row.id,
+      ownerId: row.ownerId ?? fallbackOwnerId,
+      name: row.name,
+      systemId: row.systemId,
+      homeColonyId: row.homeColonyId,
+      ships: JSON.parse(row.ships),
+      directives: JSON.parse(row.directives),
+      queue: JSON.parse(row.queue),
+      movement: row.movement ? JSON.parse(row.movement) : null,
+    }));
   }
 
   saveFleet(fleet: Fleet): void {
@@ -49,25 +45,21 @@ export class FleetRepository {
   }
 
   /** Backfill legacy : adopte les flottes SANS propriétaire (sauvegardes pré-7b). Écriture directe : opération de démarrage ponctuelle, hors WriteSet. */
-  adoptOrphanFleets(ownerId: string): void {
-    db.update(schema.fleets)
+  async adoptOrphanFleets(ownerId: string): Promise<void> {
+    await db
+      .update(schema.fleets)
       .set({ ownerId })
-      .where(and(eq(schema.fleets.gameId, this.gameId), isNull(schema.fleets.ownerId)))
-      .run();
+      .where(and(eq(schema.fleets.gameId, this.gameId), isNull(schema.fleets.ownerId)));
   }
 
   async loadLairs(): Promise<PirateLair[]> {
-    return db
-      .select()
-      .from(schema.pirateLairs)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        systemId: row.systemId,
-        ships: JSON.parse(row.ships),
-        directives: JSON.parse(row.directives),
-        bounty: row.bounty,
-      }));
+    return (await db.select().from(schema.pirateLairs)).map((row) => ({
+      id: row.id,
+      systemId: row.systemId,
+      ships: JSON.parse(row.ships),
+      directives: JSON.parse(row.directives),
+      bounty: row.bounty,
+    }));
   }
 
   saveLair(lair: PirateLair): void {
@@ -86,18 +78,14 @@ export class FleetRepository {
   }
 
   async loadBattles(): Promise<StoredBattle[]> {
-    return db
-      .select()
-      .from(schema.battles)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        at: row.at,
-        systemId: row.systemId,
-        attackerName: row.attackerName,
-        defenderName: row.defenderName,
-        report: JSON.parse(row.report),
-      }));
+    return (await db.select().from(schema.battles)).map((row) => ({
+      id: row.id,
+      at: row.at,
+      systemId: row.systemId,
+      attackerName: row.attackerName,
+      defenderName: row.defenderName,
+      report: JSON.parse(row.report),
+    }));
   }
 
   insertBattle(battle: StoredBattle): void {
@@ -112,10 +100,9 @@ export class FleetRepository {
     });
   }
 
-  /** Purge des batailles archivées au-delà de la fenêtre conservée. */
-  removeBattlesExcept(keep: ReadonlySet<string>): void {
-    for (const row of db.select({ id: schema.battles.id }).from(schema.battles).all()) {
-      if (!keep.has(row.id)) this.writeSet.delete("battles", row.id);
-    }
+  /** Purge d'une bataille tombée hors de la fenêtre conservée (chantier 20.3 : plus de
+   *  requête de purge — l'appelant connaît déjà l'id via `runtime.battleLog` en RAM). */
+  removeBattle(id: string): void {
+    this.writeSet.delete("battles", id);
   }
 }

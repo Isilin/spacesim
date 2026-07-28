@@ -36,7 +36,7 @@ const env = parseEnv();
 export const config = {
   port: env.PORT,
   /** URL/chemin de connexion DB : `DATABASE_URL` (postgres://…) sinon `SPACESIM_DB` (chemin SQLite / ":memory:") sinon fichier par défaut. */
-  databaseUrl: env.DATABASE_URL ?? env.SPACESIM_DB ?? "spacesim.db",
+  databaseUrl: env.DATABASE_URL ?? env.SPACESIM_DB ?? "./spacesim-pgdata",
   nodeEnv: env.NODE_ENV,
   logLevel: env.LOG_LEVEL,
   corsOrigin: env.CORS_ORIGIN,

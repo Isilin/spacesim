@@ -1,1 +1,0 @@
-ALTER TABLE `players` ADD `research_queue` text DEFAULT '[]' NOT NULL;

@@ -10,12 +10,11 @@ export class ClaimRepository {
   ) {}
 
   async systemIdsOwnedBy(ownerId: string): Promise<string[]> {
-    return db
+    const rows = await db
       .select({ systemId: schema.claims.systemId })
       .from(schema.claims)
-      .where(eq(schema.claims.ownerId, ownerId))
-      .all()
-      .map((row) => row.systemId);
+      .where(eq(schema.claims.ownerId, ownerId));
+    return rows.map((row) => row.systemId);
   }
 
   insert(systemId: string, ownerId: string): void {
@@ -32,10 +31,10 @@ export class ClaimRepository {
   }
 
   /** Backfill legacy : adopte les claims SANS propriétaire (sauvegardes pré-7b). Écriture directe : opération de démarrage ponctuelle, hors WriteSet. */
-  adoptOrphans(ownerId: string): void {
-    db.update(schema.claims)
+  async adoptOrphans(ownerId: string): Promise<void> {
+    await db
+      .update(schema.claims)
       .set({ ownerId })
-      .where(and(eq(schema.claims.gameId, this.gameId), isNull(schema.claims.ownerId)))
-      .run();
+      .where(and(eq(schema.claims.gameId, this.gameId), isNull(schema.claims.ownerId)));
   }
 }

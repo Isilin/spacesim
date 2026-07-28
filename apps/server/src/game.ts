@@ -229,27 +229,30 @@ export class GameEngine {
     // Rattrapage one-shot : base d'avant le chantier 18 (compteur seul persisté) —
     // matérialise les galaxies manquantes depuis la seed, parents figés sur les
     // positions RÉELLES déjà en base. Idempotent, rejouable après un crash.
-    const done = materializedGalaxyCount(clock.id);
+    const done = await materializedGalaxyCount(clock.id);
     if (done < clock.galaxyCount) {
-      const existing = loadUniverse(clock.id, clock.seed) ?? { seed: clock.seed, galaxies: [] };
+      const existing = (await loadUniverse(clock.id, clock.seed)) ?? {
+        seed: clock.seed,
+        galaxies: [],
+      };
       const missing: Universe["galaxies"] = [];
       for (let i = done; i < clock.galaxyCount; i++) missing.push(generateGalaxyAt(clock.seed, i));
       const stamped = withParentIndexes({
         seed: clock.seed,
         galaxies: [...existing.galaxies, ...missing],
       });
-      appendGalaxies(clock.id, stamped.galaxies.slice(done), clock.galaxyCount);
+      await appendGalaxies(clock.id, stamped.galaxies.slice(done), clock.galaxyCount);
       console.log(
         `[game] rattrapage one-shot : ${clock.galaxyCount - done} galaxie(s) matérialisée(s) depuis la seed`,
       );
     } else if (done > clock.galaxyCount) {
       // Les tables font autorité : le compteur se réaligne sur elles.
-      appendGalaxies(clock.id, [], done);
+      await appendGalaxies(clock.id, [], done);
       clock.galaxyCount = done;
       console.warn(`[game] games.galaxyCount réaligné sur les tables univers (${done})`);
     }
 
-    const universe = loadUniverse(clock.id, clock.seed);
+    const universe = await loadUniverse(clock.id, clock.seed);
     if (!universe) {
       throw new Error("Univers introuvable en base malgré une ligne games — base corrompue ?");
     }
@@ -273,9 +276,9 @@ export class GameEngine {
       createdAt: Date.now(),
       galaxyCount: INITIAL_GALAXIES,
     };
-    gameRepo.insert(row);
+    await gameRepo.insert(row);
     const universe = withParentIndexes(generateUniverse(row.seed, INITIAL_GALAXIES));
-    appendGalaxies(row.id, universe.galaxies, INITIAL_GALAXIES);
+    await appendGalaxies(row.id, universe.galaxies, INITIAL_GALAXIES);
     const clock: Clock = {
       id: row.id,
       seed: row.seed,

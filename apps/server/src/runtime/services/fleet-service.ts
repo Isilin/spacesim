@@ -421,10 +421,12 @@ export class FleetService {
       defenderName,
       report,
     };
-    this.runtime.battleLog = [battle, ...this.runtime.battleLog].slice(0, MAX_BATTLES);
+    const merged = [battle, ...this.runtime.battleLog];
+    this.runtime.battleLog = merged.slice(0, MAX_BATTLES);
     this.repo.insertBattle(battle);
-    // Purge des batailles au-delà de la limite.
-    this.repo.removeBattlesExcept(new Set(this.runtime.battleLog.map((b) => b.id)));
+    // Purge des batailles tombées hors de la fenêtre conservée (celles que le slice a
+    // écartées) — la RAM connaît déjà la liste, pas besoin de requêter la DB (chantier 20.3).
+    for (const dropped of merged.slice(MAX_BATTLES)) this.repo.removeBattle(dropped.id);
   }
 
   /**

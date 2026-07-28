@@ -9,10 +9,10 @@ import { dispatchClientMessage } from "../../ws/dispatch.js";
 const WS_UNAUTHORIZED = 4001;
 
 export function registerWsRoutes(app: FastifyInstance, engine: GameEngine): void {
-  app.get("/ws", { websocket: true }, (socket, request) => {
+  app.get("/ws", { websocket: true }, async (socket, request) => {
     const send = (msg: ServerMessage) => socket.send(JSON.stringify(msg));
     // Identité de connexion (chantier 8) : jeton de session `?session=` → compte → empire.
-    const account = resolveSession((request.query as { session?: string }).session);
+    const account = await resolveSession((request.query as { session?: string }).session);
     if (!account) {
       socket.close(WS_UNAUTHORIZED, "Session invalide");
       return;

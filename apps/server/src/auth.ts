@@ -82,13 +82,13 @@ function clearFailures(ip: string): void {
 // ── Sessions ─────────────────────────────────────────────────────────────────
 
 /** Ouvre une session pour un compte : jeton opaque de 32 octets. */
-export function createSession(
+export async function createSession(
   accountId: string,
   now = Date.now(),
-): { token: string; expiresAt: number } {
+): Promise<{ token: string; expiresAt: number }> {
   const token = randomBytes(32).toString("base64url");
   const expiresAt = now + SESSION_TTL_MS;
-  db.insert(schema.sessions).values({ token, accountId, createdAt: now, expiresAt }).run();
+  await db.insert(schema.sessions).values({ token, accountId, createdAt: now, expiresAt });
   return { token, expiresAt };
 }
 
@@ -97,55 +97,60 @@ export function createSession(
  * Retourne null si le jeton est inconnu, expiré (la ligne est alors purgée) ou
  * si le compte a disparu.
  */
-export function resolveSession(token: string | undefined, now = Date.now()): Account | null {
+export async function resolveSession(
+  token: string | undefined,
+  now = Date.now(),
+): Promise<Account | null> {
   if (!token) return null;
-  const session = db.select().from(schema.sessions).where(eq(schema.sessions.token, token)).get();
+  const sessions = await db.select().from(schema.sessions).where(eq(schema.sessions.token, token));
+  const session = sessions[0];
   if (!session) return null;
   if (session.expiresAt <= now) {
-    db.delete(schema.sessions).where(eq(schema.sessions.token, token)).run();
+    await db.delete(schema.sessions).where(eq(schema.sessions.token, token));
     return null;
   }
-  const account = db
+  const accounts = await db
     .select()
     .from(schema.accounts)
-    .where(eq(schema.accounts.id, session.accountId))
-    .get();
+    .where(eq(schema.accounts.id, session.accountId));
+  const account = accounts[0];
   if (!account) return null;
   // TTL glissant : on n'écrit que lorsque le gain dépasse un jour (évite un UPDATE par message).
   if (session.expiresAt - now < SESSION_TTL_MS - SESSION_REFRESH_MS) {
-    db.update(schema.sessions)
+    await db
+      .update(schema.sessions)
       .set({ expiresAt: now + SESSION_TTL_MS })
-      .where(eq(schema.sessions.token, token))
-      .run();
+      .where(eq(schema.sessions.token, token));
   }
   return { id: account.id, email: account.email };
 }
 
-export function revokeSession(token: string): void {
-  db.delete(schema.sessions).where(eq(schema.sessions.token, token)).run();
+export async function revokeSession(token: string): Promise<void> {
+  await db.delete(schema.sessions).where(eq(schema.sessions.token, token));
 }
 
 /** Purge les sessions expirées (appelée au boot). */
-export function purgeExpiredSessions(now = Date.now()): void {
-  db.delete(schema.sessions).where(lt(schema.sessions.expiresAt, now)).run();
+export async function purgeExpiredSessions(now = Date.now()): Promise<void> {
+  await db.delete(schema.sessions).where(lt(schema.sessions.expiresAt, now));
 }
 
 // ── Comptes ──────────────────────────────────────────────────────────────────
 
-export function findAccountByEmail(email: string): { id: string; passwordHash: string } | null {
-  const row = db
+export async function findAccountByEmail(
+  email: string,
+): Promise<{ id: string; passwordHash: string } | null> {
+  const rows = await db
     .select()
     .from(schema.accounts)
-    .where(eq(schema.accounts.email, normalizeEmail(email)))
-    .get();
-  return row ? { id: row.id, passwordHash: row.passwordHash } : null;
+    .where(eq(schema.accounts.email, normalizeEmail(email)));
+  return rows[0] ? { id: rows[0].id, passwordHash: rows[0].passwordHash } : null;
 }
 
 /**
  * Inscrit un compte et ouvre sa session. L'empire associé est créé par l'appelant
  * (le moteur de jeu) : ce module ne connaît que l'identité.
  */
-export function register(email: string, password: string, ip = "?"): AuthResult {
+export async function register(email: string, password: string, ip = "?"): Promise<AuthResult> {
   const parsedEmail = emailSchema.safeParse(email ?? "");
   if (!parsedEmail.success) return { ok: false, error: "Adresse e-mail invalide" };
   const parsedPassword = passwordSchema.safeParse(password);
@@ -159,22 +164,20 @@ export function register(email: string, password: string, ip = "?"): AuthResult 
     return { ok: false, error: "Mot de passe trop long" };
   }
   const normalized = parsedEmail.data;
-  if (findAccountByEmail(normalized)) {
+  if (await findAccountByEmail(normalized)) {
     return { ok: false, error: "Un compte existe déjà pour cette adresse" };
   }
   const now = Date.now();
   const id = randomUUID();
-  db.insert(schema.accounts)
-    .values({
-      id,
-      email: normalized,
-      passwordHash: hashPassword(password),
-      createdAt: now,
-      lastLoginAt: now,
-    })
-    .run();
+  await db.insert(schema.accounts).values({
+    id,
+    email: normalized,
+    passwordHash: hashPassword(password),
+    createdAt: now,
+    lastLoginAt: now,
+  });
   clearFailures(ip);
-  const { token, expiresAt } = createSession(id, now);
+  const { token, expiresAt } = await createSession(id, now);
   return { ok: true, account: { id, email: normalized }, token, expiresAt };
 }
 
@@ -182,7 +185,7 @@ export function register(email: string, password: string, ip = "?"): AuthResult 
  * Connecte un compte existant. Le message d'erreur ne distingue jamais
  * « adresse inconnue » de « mot de passe incorrect » (pas d'énumération de comptes).
  */
-export function login(email: string, password: string, ip = "?"): AuthResult {
+export async function login(email: string, password: string, ip = "?"): Promise<AuthResult> {
   if (isRateLimited(ip)) {
     return { ok: false, error: "Trop de tentatives — réessayez dans quelques minutes" };
   }
@@ -193,7 +196,7 @@ export function login(email: string, password: string, ip = "?"): AuthResult {
     return invalid;
   }
   const normalized = parsedEmail.data;
-  const account = findAccountByEmail(normalized);
+  const account = await findAccountByEmail(normalized);
   if (!account) {
     recordFailure(ip);
     return invalid;
@@ -203,12 +206,12 @@ export function login(email: string, password: string, ip = "?"): AuthResult {
     return invalid;
   }
   const now = Date.now();
-  db.update(schema.accounts)
+  await db
+    .update(schema.accounts)
     .set({ lastLoginAt: now })
-    .where(eq(schema.accounts.id, account.id))
-    .run();
+    .where(eq(schema.accounts.id, account.id));
   clearFailures(ip);
-  const { token, expiresAt } = createSession(account.id, now);
+  const { token, expiresAt } = await createSession(account.id, now);
   return { ok: true, account: { id: account.id, email: normalized }, token, expiresAt };
 }
 
@@ -220,16 +223,15 @@ export function bearerToken(header: string | undefined): string | undefined {
 }
 
 /** Ferme toutes les sessions d'un compte (changement de mot de passe, déconnexion globale). */
-export function revokeAllSessions(accountId: string): void {
-  db.delete(schema.sessions).where(eq(schema.sessions.accountId, accountId)).run();
+export async function revokeAllSessions(accountId: string): Promise<void> {
+  await db.delete(schema.sessions).where(eq(schema.sessions.accountId, accountId));
 }
 
 /** Nombre de sessions actives d'un compte (diagnostic / tests). */
-export function activeSessionCount(accountId: string, now = Date.now()): number {
-  return db
+export async function activeSessionCount(accountId: string, now = Date.now()): Promise<number> {
+  const rows = await db
     .select()
     .from(schema.sessions)
-    .where(eq(schema.sessions.accountId, accountId))
-    .all()
-    .filter((s) => s.expiresAt > now).length;
+    .where(eq(schema.sessions.accountId, accountId));
+  return rows.filter((s) => s.expiresAt > now).length;
 }

@@ -1,4 +1,5 @@
 import { ClientMessageSchema, type ClientMessage } from "@spacesim/protocol";
+import { sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db, schema } from "../db/index.js";
 import { GameEngine } from "../game.js";
@@ -28,8 +29,9 @@ const ALL_TABLES = [
   schema.games,
 ] as const;
 
-function resetDb(): void {
-  for (const table of ALL_TABLES) db.delete(table).run();
+async function resetDb(): Promise<void> {
+  const names = ALL_TABLES.map((t) => sql`${t}`);
+  await db.execute(sql`TRUNCATE TABLE ${sql.join(names, sql`, `)} CASCADE`);
 }
 
 beforeEach(() => resetDb());

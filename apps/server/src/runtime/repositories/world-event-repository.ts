@@ -10,18 +10,14 @@ export class WorldEventRepository {
   ) {}
 
   async loadAll(): Promise<WorldEvent[]> {
-    return db
-      .select()
-      .from(schema.worldEvents)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        kind: row.kind as WorldEventKind,
-        ...(row.galaxyId !== null ? { galaxyId: row.galaxyId } : {}),
-        ...(row.factionId !== null ? { factionId: row.factionId } : {}),
-        createdAt: row.createdAt,
-        expiresAt: row.expiresAt,
-      }));
+    return (await db.select().from(schema.worldEvents)).map((row) => ({
+      id: row.id,
+      kind: row.kind as WorldEventKind,
+      ...(row.galaxyId !== null ? { galaxyId: row.galaxyId } : {}),
+      ...(row.factionId !== null ? { factionId: row.factionId } : {}),
+      createdAt: row.createdAt,
+      expiresAt: row.expiresAt,
+    }));
   }
 
   private toRow(event: WorldEvent) {

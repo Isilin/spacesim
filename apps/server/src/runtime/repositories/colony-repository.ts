@@ -21,26 +21,22 @@ export class ColonyRepository {
 
   /** `fallbackOwnerId` : colonies legacy sans `ownerId` (pré-chantier 7). */
   async loadAll(fallbackOwnerId: string): Promise<Colony[]> {
-    return db
-      .select()
-      .from(schema.colonies)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        ownerId: row.ownerId ?? fallbackOwnerId,
-        planetId: row.planetId,
-        name: row.name,
-        resources: JSON.parse(row.resources),
-        orbitalResources: { ...emptyOrbital(), ...JSON.parse(row.orbitalResources) },
-        liftRules: JSON.parse(row.liftRules),
-        buildings: JSON.parse(row.buildings),
-        queue: JSON.parse(row.queue),
-        population: row.population,
-        satisfaction: row.satisfaction,
-        ships: JSON.parse(row.ships),
-        shipsBusy: JSON.parse(row.shipsBusy),
-        shipQueue: JSON.parse(row.shipQueue),
-      }));
+    return (await db.select().from(schema.colonies)).map((row) => ({
+      id: row.id,
+      ownerId: row.ownerId ?? fallbackOwnerId,
+      planetId: row.planetId,
+      name: row.name,
+      resources: JSON.parse(row.resources),
+      orbitalResources: { ...emptyOrbital(), ...JSON.parse(row.orbitalResources) },
+      liftRules: JSON.parse(row.liftRules),
+      buildings: JSON.parse(row.buildings),
+      queue: JSON.parse(row.queue),
+      population: row.population,
+      satisfaction: row.satisfaction,
+      ships: JSON.parse(row.ships),
+      shipsBusy: JSON.parse(row.shipsBusy),
+      shipQueue: JSON.parse(row.shipQueue),
+    }));
   }
 
   private toRow(colony: Colony, createdAt: number) {
@@ -76,10 +72,10 @@ export class ColonyRepository {
   }
 
   /** Backfill legacy : adopte les colonies SANS propriétaire (sauvegardes pré-7b). Écriture directe : opération de démarrage ponctuelle, hors WriteSet. */
-  adoptOrphans(ownerId: string): void {
-    db.update(schema.colonies)
+  async adoptOrphans(ownerId: string): Promise<void> {
+    await db
+      .update(schema.colonies)
       .set({ ownerId })
-      .where(and(eq(schema.colonies.gameId, this.gameId), isNull(schema.colonies.ownerId)))
-      .run();
+      .where(and(eq(schema.colonies.gameId, this.gameId), isNull(schema.colonies.ownerId)));
   }
 }

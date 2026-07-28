@@ -13,17 +13,13 @@ export class DiplomacyRepository {
   ) {}
 
   async loadRelations(): Promise<Relation[]> {
-    return db
-      .select()
-      .from(schema.relations)
-      .all()
-      .map((row) => ({
-        empireA: row.empireA,
-        empireB: row.empireB,
-        state: row.state as RelationState,
-        since: row.since,
-        until: row.until,
-      }));
+    return (await db.select().from(schema.relations)).map((row) => ({
+      empireA: row.empireA,
+      empireB: row.empireB,
+      state: row.state as RelationState,
+      since: row.since,
+      until: row.until,
+    }));
   }
 
   private saveRelationImpl(relation: Relation): void {
@@ -46,17 +42,13 @@ export class DiplomacyRepository {
   }
 
   async loadProposals(): Promise<RelationProposal[]> {
-    return db
-      .select()
-      .from(schema.relationProposals)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        fromEmpireId: row.fromEmpireId,
-        toEmpireId: row.toEmpireId,
-        kind: row.kind as ProposalKind,
-        createdAt: row.createdAt,
-      }));
+    return (await db.select().from(schema.relationProposals)).map((row) => ({
+      id: row.id,
+      fromEmpireId: row.fromEmpireId,
+      toEmpireId: row.toEmpireId,
+      kind: row.kind as ProposalKind,
+      createdAt: row.createdAt,
+    }));
   }
 
   insertProposal(proposal: RelationProposal): void {

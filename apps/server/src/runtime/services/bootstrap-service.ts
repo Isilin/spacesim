@@ -80,16 +80,16 @@ export class BootstrapService {
     const player = await this.playerRepo.first();
     const defaultId = player?.id ?? randomUUID();
     if (!player) {
-      this.playerRepo.insert({
+      await this.playerRepo.insertDefault({
         id: defaultId,
         name: DEFAULT_PLAYER_NAME,
         color: DEFAULT_PLAYER_COLOR,
       });
     }
     // Sauvegarde mono-locataire pré-7b : backfill des ownerId NULL, table par table.
-    this.colonyRepo.adoptOrphans(defaultId);
-    this.fleetRepo.adoptOrphanFleets(defaultId);
-    this.claimRepo.adoptOrphans(defaultId);
+    await this.colonyRepo.adoptOrphans(defaultId);
+    await this.fleetRepo.adoptOrphanFleets(defaultId);
+    await this.claimRepo.adoptOrphans(defaultId);
   }
 
   /**
@@ -101,6 +101,7 @@ export class BootstrapService {
   async loadPlayers(): Promise<void> {
     for (const p of await this.playerRepo.loadAll()) {
       const empire = new Empire(p.id, p.name, p.color, p.accountId, p.kind);
+      empire.joinedAt = p.joinedAt;
       empire.researched = p.researched;
       empire.research = p.research;
       empire.researchQueue = p.researchQueue;
@@ -277,7 +278,7 @@ export class BootstrapService {
       orphan.accountId = accountId;
       const empireName = name?.trim().slice(0, 40);
       if (empireName) orphan.name = empireName;
-      this.playerRepo.adopt(orphan.id, accountId, orphan.name);
+      this.playerRepo.adopt(orphan);
       this.logger.info(`[game] empire « ${orphan.name} » adopté par un compte`);
       this.notify();
       return orphan;
