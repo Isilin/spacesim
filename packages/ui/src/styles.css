@@ -4,8 +4,6 @@
  * l'orchestration se fait ici, à l'identique du patron produit par
  * claude.ai/design (voir `.claude-export/styles.css` avant sa suppression). */
 @import "./tokens.css";
-@import "./components/panel/panel.css";
 @import "./components/toast/toast.css";
 @import "./components/modal/modal.css";
-@import "./components/popover/popover.css";
 @import "./components/zoomable-svg/zoomable-svg.css";

@@ -1,12 +1,14 @@
-.ss-panel {
+.panel {
+  composes: cutFrame from "../../shared/cut-frame.module.css";
   --frame-border: var(--border-bright);
   --cut: var(--cut-md);
   box-shadow: var(--shadow-panel);
 }
-.ss-panel .ss-cut-in {
+.panelIn {
+  composes: cutIn from "../../shared/cut-frame.module.css";
   padding: 16px;
 }
-.ss-panel-head {
+.panelHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -15,7 +17,7 @@
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
 }
-.ss-panel-title {
+.panelTitle {
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--fs-md);
@@ -24,28 +26,30 @@
   text-transform: uppercase;
   color: var(--text);
 }
-.ss-panel-actions {
+.panelActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  justify-content: flex-end;
 }
-.ss-panel--violet {
+.panel[data-accent="violet"] {
   --frame-border: var(--violet);
 }
-.ss-panel--violet .ss-panel-title {
+.panel[data-accent="violet"] .panelTitle {
   color: var(--violet);
 }
-.ss-panel--amber {
+.panel[data-accent="amber"] {
   --frame-border: var(--amber);
 }
-.ss-panel--amber .ss-panel-title {
+.panel[data-accent="amber"] .panelTitle {
   color: var(--amber);
 }
-.ss-panel--glow {
+.panel[data-glow="true"] {
   box-shadow: var(--shadow-panel), var(--glow-cyan);
 }
-.ss-panel--glow.ss-panel--violet {
+.panel[data-glow="true"][data-accent="violet"] {
   box-shadow: var(--shadow-panel), var(--glow-violet);
 }
-.ss-panel--glow.ss-panel--amber {
+.panel[data-glow="true"][data-accent="amber"] {
   box-shadow: var(--shadow-panel), var(--glow-amber);
 }

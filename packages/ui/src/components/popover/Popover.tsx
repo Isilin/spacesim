@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import styles from "./popover.module.css";
 
 export interface PopoverProps {
   style?: CSSProperties;
@@ -7,8 +8,8 @@ export interface PopoverProps {
 
 export function Popover({ style, children }: PopoverProps) {
   return (
-    <div className="ss-cut-frame ss-popover" style={style}>
-      <div className="ss-cut-in">{children}</div>
+    <div className={styles.popover} style={style}>
+      <div className={styles.popoverIn}>{children}</div>
     </div>
   );
 }

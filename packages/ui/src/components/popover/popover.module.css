@@ -1,12 +1,15 @@
-.ss-popover {
+.popover {
+  composes: cutFrame from "../../shared/cut-frame.module.css";
   --cut: var(--cut-sm);
   --frame-border: var(--border-bright);
   position: absolute;
   z-index: 60;
   min-width: 180px;
+  max-width: min(280px, calc(100vw - 24px));
   box-shadow: var(--shadow-panel);
 }
-.ss-popover .ss-cut-in {
+.popoverIn {
+  composes: cutIn from "../../shared/cut-frame.module.css";
   padding: 10px 12px;
   font-size: var(--fs-sm);
 }

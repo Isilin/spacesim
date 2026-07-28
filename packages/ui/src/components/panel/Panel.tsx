@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import styles from "./panel.module.css";
 
 export interface PanelProps {
   title?: string;
@@ -8,22 +9,14 @@ export interface PanelProps {
   children?: ReactNode;
 }
 
-export function Panel({ title, accent = "cyan", glow, actions, children }: PanelProps) {
-  const cls = [
-    "ss-cut-frame",
-    "ss-panel",
-    accent !== "cyan" ? `ss-panel--${accent}` : "",
-    glow ? "ss-panel--glow" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+export function Panel({ title, accent = "cyan", glow = false, actions, children }: PanelProps) {
   return (
-    <div className={cls}>
-      <div className="ss-cut-in">
+    <div className={styles.panel} data-accent={accent} data-glow={glow}>
+      <div className={styles.panelIn}>
         {title && (
-          <div className="ss-panel-head">
-            <h3 className="ss-panel-title">{title}</h3>
-            {actions && <div className="ss-panel-actions">{actions}</div>}
+          <div className={styles.panelHead}>
+            <h3 className={styles.panelTitle}>{title}</h3>
+            {actions && <div className={styles.panelActions}>{actions}</div>}
           </div>
         )}
         {children}
