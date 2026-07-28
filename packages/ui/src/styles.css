@@ -5,9 +5,7 @@
  * claude.ai/design (voir `.claude-export/styles.css` avant sa suppression). */
 @import "./tokens.css";
 @import "./components/panel/panel.css";
-@import "./components/progress/progress.css";
 @import "./components/tabs/tabs.css";
-@import "./components/table/table.css";
 @import "./components/toast/toast.css";
 @import "./components/modal/modal.css";
 @import "./components/popover/popover.css";

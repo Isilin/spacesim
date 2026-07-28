@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import styles from "./table.module.css";
 
 export interface TableColumn<Row = Record<string, unknown>> {
   key: string;
@@ -15,39 +16,34 @@ export interface TableProps<Row = Record<string, unknown>> {
 
 export function Table<Row = Record<string, unknown>>({ columns = [], rows = [] }: TableProps<Row>) {
   return (
-    <table className="ss-table">
-      <thead>
-        <tr>
-          {columns.map((c) => (
-            <th key={c.key} className={c.align === "right" ? "num" : ""}>
-              {c.label}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row, i) => (
-          <tr key={i}>
-            {columns.map((c) => {
-              const raw = (row as Record<string, unknown>)[c.key];
-              const content = c.render ? c.render(raw, row) : (raw as ReactNode);
-              const trend = c.trend?.(row);
-              const cls = [
-                c.align === "right" ? "num" : "",
-                trend === "up" ? "up" : "",
-                trend === "down" ? "down" : "",
-              ]
-                .filter(Boolean)
-                .join(" ");
-              return (
-                <td key={c.key} className={cls}>
-                  {content}
-                </td>
-              );
-            })}
+    <div className={styles.tableWrapper}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            {columns.map((c) => (
+              <th key={c.key} className={c.align === "right" ? styles.num : undefined}>
+                {c.label}
+              </th>
+            ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i}>
+              {columns.map((c) => {
+                const raw = (row as Record<string, unknown>)[c.key];
+                const content = c.render ? c.render(raw, row) : (raw as ReactNode);
+                const trend = c.trend?.(row);
+                return (
+                  <td key={c.key} className={c.align === "right" ? styles.num : undefined} data-trend={trend}>
+                    {content}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

@@ -1,37 +1,37 @@
-.ss-progress {
+.progress {
   height: 4px;
   background: var(--border);
   overflow: hidden;
 }
-.ss-progress--lg {
+.progress[data-size="lg"] {
   height: 8px;
 }
-.ss-progress-fill {
+.progressFill {
   height: 100%;
   background: var(--cyan);
   transition: width var(--motion-med);
 }
-.ss-progress-fill--ok {
+.progressFill[data-status="ok"] {
   background: var(--ok);
 }
-.ss-progress-fill--over {
+.progressFill[data-status="over"] {
   background: var(--ko);
   box-shadow: var(--glow-ko);
 }
-.ss-gauge {
+.gauge {
   position: relative;
   height: 8px;
   background: var(--border);
 }
-.ss-gauge-fill {
+.gaugeFill {
   height: 100%;
   background: var(--cyan);
 }
-.ss-gauge-fill--over {
+.gaugeFill[data-status="over"] {
   background: var(--ko);
   box-shadow: var(--glow-ko);
 }
-.ss-gauge-max {
+.gaugeMax {
   position: absolute;
   top: -3px;
   bottom: -3px;
