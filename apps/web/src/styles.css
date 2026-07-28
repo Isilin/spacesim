@@ -174,19 +174,6 @@
   color: var(--accent);
 }
 
-.toast-error {
-  position: fixed;
-  top: 52px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #2d1215;
-  border: 1px solid var(--ko);
-  color: var(--ko);
-  padding: 8px 16px;
-  border-radius: 4px;
-  z-index: 10;
-}
-
 .content-single {
   flex: 1;
   min-height: 0;
@@ -242,22 +229,6 @@
   display: flex;
   gap: 16px;
   align-items: flex-start;
-}
-
-.buildings-panel {
-  flex: 1;
-}
-.queue-panel {
-  width: 320px;
-}
-
-.buildings-panel h3,
-.queue-panel h3 {
-  color: var(--text);
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin-bottom: 10px;
 }
 
 .building-list,
@@ -339,12 +310,6 @@
   overflow: hidden;
 }
 
-.progress-fill {
-  height: 100%;
-  background: var(--accent);
-  transition: width 1s linear;
-}
-
 .shortage {
   color: var(--ko);
   font-size: 11px;
@@ -405,16 +370,6 @@
   cursor: not-allowed;
 }
 
-.colony-select {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font: inherit;
-  padding: 4px 8px;
-  border-radius: 3px;
-  max-width: 240px;
-}
-
 .building.locked {
   opacity: 0.6;
 }
@@ -423,32 +378,6 @@
   display: flex;
   gap: 24px;
   margin-bottom: 16px;
-}
-
-.research-columns {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.research-branch {
-  flex: 1;
-}
-
-.research-branch h3 {
-  color: var(--accent);
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin-bottom: 10px;
-}
-
-.tech-list {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 
 .tech {
@@ -463,19 +392,6 @@
 }
 .tech.locked {
   opacity: 0.55;
-}
-
-.tech-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
-.tech-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 4px;
 }
 
 .milestones-title {
@@ -503,28 +419,6 @@
 
 .milestone.reached {
   border-color: var(--ok);
-}
-.progress-fill.reached {
-  background: var(--ok);
-}
-
-.toast-stack {
-  position: fixed;
-  top: 52px;
-  right: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  z-index: 10;
-}
-
-.toast-info {
-  background: #0d2018;
-  border: 1px solid var(--ok);
-  color: var(--ok);
-  padding: 8px 14px;
-  border-radius: 4px;
-  font-size: 13px;
 }
 
 .breadcrumb {
@@ -687,32 +581,6 @@
   color: #e0b64f;
 }
 
-.market-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 10px 0;
-  font-size: 13px;
-}
-
-.market-table th {
-  text-align: left;
-  color: var(--muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  padding: 4px 6px;
-  border-bottom: 1px solid var(--border);
-}
-
-.market-table td {
-  padding: 4px 6px;
-  border-bottom: 1px solid var(--border);
-}
-
-.shipyard-panel {
-  margin-top: 20px;
-}
-.shipyard-panel h3,
 .routes-view h3 {
   color: var(--text);
   font-size: 13px;
@@ -888,53 +756,6 @@
 .auth-tagline {
   text-align: center;
   margin-top: -8px;
-}
-
-.auth-tabs {
-  display: flex;
-  gap: 8px;
-  border-bottom: 1px solid var(--border);
-}
-
-.auth-tabs button {
-  flex: 1;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--muted);
-  font: inherit;
-  padding: 8px 0;
-  cursor: pointer;
-}
-
-.auth-tabs button.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-
-.auth-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.auth-field > span {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.auth-field input {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  color: var(--text);
-  font: inherit;
-  padding: 8px 10px;
-}
-
-.auth-field input:focus {
-  outline: none;
-  border-color: var(--accent);
 }
 
 .auth-error {
@@ -1125,20 +946,6 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.body-card {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 10px 12px;
-}
-
-.body-card h3 {
-  font-size: 13px;
-  font-weight: normal;
-  color: var(--accent);
-  margin-bottom: 8px;
 }
 
 .body-stats {
@@ -1368,51 +1175,6 @@
 
 /* ── Sol / orbite (chantier 12) ──────────────────────────────────────────── */
 
-.orbit-panel {
-  margin-top: 16px;
-}
-
-.orbit-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 8px;
-  font-size: 13px;
-}
-
-.orbit-table th {
-  text-align: left;
-  font-weight: normal;
-  color: var(--muted);
-  font-size: 12px;
-  padding-bottom: 4px;
-}
-
-.orbit-table td {
-  padding: 2px 6px 2px 0;
-  border-top: 1px solid var(--border);
-}
-
-.orbit-table select,
-.orbit-threshold {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  color: var(--text);
-  font: inherit;
-  font-size: 12px;
-  padding: 2px 4px;
-}
-
-.orbit-threshold {
-  width: 76px;
-}
-
-.orbit-table select:disabled,
-.orbit-threshold:disabled {
-  color: var(--muted);
-  cursor: not-allowed;
-}
-
 /* Anneau de soute orbitale autour d'un corps colonisé. */
 .orbital-ring {
   fill: none;
@@ -1425,21 +1187,6 @@
 }
 
 /* ── Vue logistique unifiée (chantier 12) ────────────────────────────────── */
-
-.logistics-tabs {
-  margin-bottom: 14px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 8px;
-}
-
-.markets-table {
-  width: 100%;
-  margin-top: 12px;
-}
-
-.markets-table tr.best td {
-  background: #101c26;
-}
 
 .colony-logistics-hint {
   margin-top: 16px;
@@ -1508,15 +1255,6 @@
   align-items: center;
 }
 
-.fleet-select {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font: inherit;
-  padding: 6px 8px;
-  border-radius: 3px;
-}
-
 .gauges {
   display: flex;
   flex-direction: column;
@@ -1528,23 +1266,6 @@
   justify-content: space-between;
   font-size: 11px;
   margin-bottom: 3px;
-}
-
-.gauge-track {
-  height: 6px;
-  background: var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.gauge-fill {
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.2s ease;
-}
-
-.gauge-fill.over {
-  background: var(--ko);
 }
 
 .gauge-over {
