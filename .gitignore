@@ -10,6 +10,9 @@ dist/
 # PGlite (chantier 20.3) : dossier de données du dev local sans serveur Postgres.
 apps/server/spacesim-pgdata/
 
+# Sauvegardes locales (chantier 20.6) : jamais commises.
+backups/
+
 # Playwright (chantier 5.3)
 apps/web/test-results/
 apps/web/playwright-report/
