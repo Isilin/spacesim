@@ -126,4 +126,29 @@ describe("buildApp — routes HTTP", () => {
     const res = await app.inject({ method: "GET", url: "/dev/empires" });
     expect(res.statusCode).toBe(200);
   });
+
+  it("CORS : l'origine configurée reçoit l'en-tête d'autorisation (chantier 20.5)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const res = await app.inject({
+      method: "GET",
+      url: "/health",
+      headers: { origin: "http://localhost:5173" },
+    });
+    expect(res.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
+  });
+
+  it("rate-limit : /auth/login renvoie 429 au-delà du quota strict (chantier 20.5)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const attempt = () =>
+      app.inject({
+        method: "POST",
+        url: "/auth/login",
+        payload: { email: "inconnu@exemple.fr", password: "x" },
+      });
+    // La 1re tentative échoue (401) sans être bloquée par `isRateLimited` (compte inconnu,
+    // pas de compteur d'échecs par IP encore atteint) — seul le quota strict compte ici.
+    let last = await attempt();
+    for (let i = 1; i < 12; i++) last = await attempt();
+    expect(last.statusCode).toBe(429);
+  });
 });

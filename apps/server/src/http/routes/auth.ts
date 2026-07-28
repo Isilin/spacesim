@@ -20,9 +20,13 @@ function authPayload(engine: GameEngine, result: Extract<AuthResult, { ok: true 
   };
 }
 
+/** Quota `@fastify/rate-limit` strict (chantier 20.5), en plus du blocage par IP
+ *  déjà géré par `auth.ts` (`isRateLimited`, sur les échecs seulement). */
+const STRICT_AUTH_LIMIT = { rateLimit: { max: 10, timeWindow: "1 minute" } };
+
 // ── Comptes (chantier 8) ─────────────────────────────────────────────────────
 export function registerAuthRoutes(app: FastifyInstance, engine: GameEngine): void {
-  app.post("/auth/register", async (request, reply) => {
+  app.post("/auth/register", { config: STRICT_AUTH_LIMIT }, async (request, reply) => {
     const { email, password, empireName } = (request.body ?? {}) as {
       email?: string;
       password?: string;
@@ -37,7 +41,7 @@ export function registerAuthRoutes(app: FastifyInstance, engine: GameEngine): vo
     return authPayload(engine, result);
   });
 
-  app.post("/auth/login", async (request, reply) => {
+  app.post("/auth/login", { config: STRICT_AUTH_LIMIT }, async (request, reply) => {
     const { email, password } = (request.body ?? {}) as { email?: string; password?: string };
     const result = await login(email ?? "", password ?? "", request.ip);
     if (!result.ok) return reply.code(401).send({ error: result.error });

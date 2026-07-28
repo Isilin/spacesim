@@ -1,3 +1,5 @@
+import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import websocket from "@fastify/websocket";
 import Fastify, { type FastifyInstance } from "fastify";
 import { config } from "../config.js";
@@ -17,8 +19,15 @@ export async function buildApp(
   opts: BuildAppOptions = {},
 ): Promise<FastifyInstance> {
   // Niveau par défaut inchangé (warn) ; LOG_LEVEL permet de le baisser en dev sans redéploiement.
-  const app = Fastify({ logger: { level: config.logLevel } });
+  // Jeton de session jamais journalisé, même par erreur (chantier 20.5).
+  const app = Fastify({
+    logger: { level: config.logLevel, redact: ["req.headers.authorization"] },
+  });
   await app.register(websocket);
+  await app.register(cors, { origin: config.corsOrigin });
+  // Global généreux (config, défaut 100/min) ; `/auth/*` a sa propre limite plus stricte,
+  // en plus (pas à la place) du blocage par IP déjà géré par `auth.ts` (isRateLimited).
+  await app.register(rateLimit, { max: config.rateLimitMax, timeWindow: "1 minute" });
   // Le moteur journalise désormais via ce même logger (mêmes messages, même niveau).
   engine.setLogger(app.log);
 
