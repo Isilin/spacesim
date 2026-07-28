@@ -1,10 +1,10 @@
-.ss-zoomable {
+.zoomable {
   position: relative;
   width: 100%;
   height: 100%;
 }
 
-.ss-zoom-controls {
+.controls {
   position: absolute;
   right: 10px;
   bottom: 10px;
@@ -13,7 +13,7 @@
   gap: 4px;
 }
 
-.ss-zoom-controls button {
+.controls button {
   width: 28px;
   height: 28px;
   background: var(--panel);
@@ -26,7 +26,7 @@
   cursor: pointer;
 }
 
-.ss-zoom-controls button:hover {
+.controls button:hover {
   color: var(--cyan);
   border-color: var(--cyan);
 }

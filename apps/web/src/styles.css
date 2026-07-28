@@ -783,16 +783,18 @@
 }
 
 /* ── Cartes déplaçables et zoomables (chantier 9) ────────────────────────── */
-/* L'enveloppe pan/zoom (.ss-zoomable / .ss-zoom-controls) a déménagé dans
-   @spacesim/ui (chantier 21.6) — ne reste ici que ce qui est spécifique à CE
-   consommateur (curseur grab/grabbing sur le SVG de carte galaxie/système). */
+/* L'enveloppe pan/zoom (ZoomableSvg) est dans @spacesim/ui (chantier 21.6,
+   passée en CSS Modules au 22.8) — ne reste ici que ce qui est spécifique à
+   CE consommateur (curseur grab/grabbing sur le SVG de carte galaxie/système).
+   .galaxy-map est la classe posée par apps/web sur le <svg> via la prop
+   `className` de ZoomableSvg, pas besoin de la scoper à un ancêtre. */
 
-.ss-zoomable .galaxy-map {
+.galaxy-map {
   cursor: grab;
   touch-action: none;
 }
 
-.ss-zoomable .galaxy-map:active {
+.galaxy-map:active {
   cursor: grabbing;
 }
 

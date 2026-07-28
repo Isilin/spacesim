@@ -1,7 +1,6 @@
-/* Feuille de styles publiée du design system (chantier 21) — point d'entrée
- * unique consommé par apps/web via `@spacesim/ui/styles.css` (voir package.json
- * `exports`). Les composants React n'importent pas leur CSS individuellement :
- * l'orchestration se fait ici, à l'identique du patron produit par
- * claude.ai/design (voir `.claude-export/styles.css` avant sa suppression). */
+/* Feuille de styles publiée du design system (chantier 21, réduite au 22.8) —
+ * point d'entrée consommé par apps/web via `@spacesim/ui/styles.css` (voir
+ * package.json `exports`). Chaque composant importe désormais son propre
+ * *.module.css (CSS Modules, chantier 22) ; il ne reste ici que les tokens
+ * globaux (couleurs, typo, espacement, effets) et le reset de base. */
 @import "./tokens.css";
-@import "./components/zoomable-svg/zoomable-svg.css";

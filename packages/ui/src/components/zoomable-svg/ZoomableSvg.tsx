@@ -7,6 +7,7 @@ import {
   type ReactNode,
   type WheelEvent as ReactWheelEvent,
 } from "react";
+import styles from "./zoomable-svg.module.css";
 
 /** Rectangle de vue SVG. */
 export interface ViewBox {
@@ -156,7 +157,7 @@ export function ZoomableSvg({
   };
 
   return (
-    <div className="ss-zoomable">
+    <div className={styles.zoomable}>
       <svg
         ref={svgRef}
         className={className}
@@ -179,7 +180,7 @@ export function ZoomableSvg({
       >
         {children}
       </svg>
-      <div className="ss-zoom-controls">
+      <div className={styles.controls}>
         <button type="button" title="Zoom avant" onClick={() => zoomAround(1.4, center())}>
           +
         </button>
