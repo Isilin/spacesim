@@ -1,4 +1,5 @@
 import { useId, type InputHTMLAttributes } from "react";
+import styles from "./forms.module.css";
 
 export interface NumberInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"> {
   label?: string;
@@ -19,35 +20,21 @@ export function NumberInput({
   const generatedId = useId();
   const inputId = id ?? generatedId;
   return (
-    <div className="ss-field">
+    <div className={styles.field}>
       {label && <label htmlFor={inputId}>{label}</label>}
-      <div style={{ position: "relative" }}>
+      <div className={styles.numberWrap}>
         <input
           id={inputId}
           type="number"
-          className={["ss-input", className ?? ""].filter(Boolean).join(" ")}
-          style={unit ? { paddingRight: 36, width: "100%" } : { width: "100%" }}
+          className={[styles.input, unit ? styles.numberInput : "", className].filter(Boolean).join(" ")}
           {...inputProps}
         />
-        {unit && (
-          <span
-            style={{
-              position: "absolute",
-              right: 10,
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "var(--muted)",
-              fontSize: "var(--fs-xs)",
-            }}
-          >
-            {unit}
-          </span>
-        )}
+        {unit && <span className={styles.unit}>{unit}</span>}
       </div>
       {error ? (
-        <span className="ss-field-error">{error}</span>
+        <span className={styles.error}>{error}</span>
       ) : hint ? (
-        <span className="ss-field-hint">{hint}</span>
+        <span className={styles.hint}>{hint}</span>
       ) : null}
     </div>
   );

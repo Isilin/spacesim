@@ -1,15 +1,8 @@
-.ss-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.ss-row {
+.row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   background: var(--panel);
   border: 1px solid var(--border);
@@ -17,37 +10,44 @@
   clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
   transition: border-color var(--motion-fast);
 }
-.ss-row:hover {
+.row:hover {
   border-color: var(--border-bright);
 }
-.ss-row-main {
+.rowMain {
   display: flex;
   flex-direction: column;
   gap: 3px;
+  min-width: 0;
 }
-.ss-row-title {
+.rowTitle {
   display: flex;
   gap: 10px;
   align-items: baseline;
+  min-width: 0;
 }
-.ss-row-meta {
+.rowTitle > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rowMeta {
   font-size: var(--fs-xs);
   color: var(--muted);
   font-family: var(--font-mono);
 }
-.ss-row-level {
+.rowLevel {
   color: var(--cyan);
   font-size: var(--fs-xs);
   font-family: var(--font-display);
   letter-spacing: 1px;
 }
-.ss-row-header {
+.rowHeader {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   font-size: var(--fs-sm);
 }
-.ss-row-header .ss-row-header-value {
+.rowHeaderValue {
   font-family: var(--font-mono);
   color: var(--text);
 }

@@ -1,4 +1,5 @@
 import { useId, type InputHTMLAttributes } from "react";
+import styles from "./forms.module.css";
 
 export interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -10,17 +11,13 @@ export function Field({ label, hint, error, className, id, ...inputProps }: Fiel
   const generatedId = useId();
   const inputId = id ?? generatedId;
   return (
-    <div className="ss-field">
+    <div className={styles.field}>
       {label && <label htmlFor={inputId}>{label}</label>}
-      <input
-        id={inputId}
-        className={["ss-input", className ?? ""].filter(Boolean).join(" ")}
-        {...inputProps}
-      />
+      <input id={inputId} className={[styles.input, className].filter(Boolean).join(" ")} {...inputProps} />
       {error ? (
-        <span className="ss-field-error">{error}</span>
+        <span className={styles.error}>{error}</span>
       ) : hint ? (
-        <span className="ss-field-hint">{hint}</span>
+        <span className={styles.hint}>{hint}</span>
       ) : null}
     </div>
   );

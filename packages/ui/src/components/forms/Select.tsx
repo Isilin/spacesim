@@ -1,4 +1,5 @@
 import { useId, type SelectHTMLAttributes } from "react";
+import styles from "./forms.module.css";
 
 export interface SelectOption {
   value: string;
@@ -24,13 +25,9 @@ export function Select({
   const generatedId = useId();
   const selectId = id ?? generatedId;
   return (
-    <div className="ss-field">
+    <div className={styles.field}>
       {label && <label htmlFor={selectId}>{label}</label>}
-      <select
-        id={selectId}
-        className={["ss-select", className ?? ""].filter(Boolean).join(" ")}
-        {...selectProps}
-      >
+      <select id={selectId} className={[styles.select, className].filter(Boolean).join(" ")} {...selectProps}>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -38,9 +35,9 @@ export function Select({
         ))}
       </select>
       {error ? (
-        <span className="ss-field-error">{error}</span>
+        <span className={styles.error}>{error}</span>
       ) : hint ? (
-        <span className="ss-field-hint">{hint}</span>
+        <span className={styles.hint}>{hint}</span>
       ) : null}
     </div>
   );

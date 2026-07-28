@@ -1,3 +1,5 @@
+import styles from "./list.module.css";
+
 export interface RowHeaderProps {
   label: string;
   value: string;
@@ -5,9 +7,9 @@ export interface RowHeaderProps {
 
 export function RowHeader({ label, value }: RowHeaderProps) {
   return (
-    <div className="ss-row-header">
+    <div className={styles.rowHeader}>
       <span>{label}</span>
-      <span className="ss-row-header-value">{value}</span>
+      <span className={styles.rowHeaderValue}>{value}</span>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import styles from "./list.module.css";
 
 export interface ListRowProps {
   title: string;
@@ -10,13 +11,13 @@ export interface ListRowProps {
 
 export function ListRow({ title, level, meta, right, children }: ListRowProps) {
   return (
-    <li className="ss-row">
-      <div className="ss-row-main">
-        <div className="ss-row-title">
+    <li className={styles.row}>
+      <div className={styles.rowMain}>
+        <div className={styles.rowTitle}>
           <span>{title}</span>
-          {level && <span className="ss-row-level">{level}</span>}
+          {level && <span className={styles.rowLevel}>{level}</span>}
         </div>
-        {meta && <span className="ss-row-meta">{meta}</span>}
+        {meta && <span className={styles.rowMeta}>{meta}</span>}
       </div>
       {right || children}
     </li>
