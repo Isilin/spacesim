@@ -19,32 +19,6 @@
   height: 100vh;
 }
 
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
-}
-
-.brand {
-  color: var(--accent);
-  letter-spacing: 4px;
-  font-weight: bold;
-}
-
-.stat {
-  color: var(--muted);
-}
-
-.stat.ok {
-  color: var(--ok);
-}
-.stat.ko {
-  color: var(--ko);
-}
-
 .content {
   display: flex;
   flex: 1;
@@ -766,20 +740,6 @@
 .auth-submit {
   margin-top: 4px;
   padding: 9px 14px;
-}
-
-.empire-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text);
-}
-
-.empire-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  display: inline-block;
 }
 
 /* ── Cartes déplaçables et zoomables (chantier 9) ────────────────────────── */

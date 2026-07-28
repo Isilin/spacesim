@@ -16,17 +16,9 @@ import {
   type Territory,
   type Universe,
 } from "@spacesim/shared";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Badge, Button, Select, Toast, ToastStack } from "@spacesim/ui";
-import {
-  Navigate,
-  NavLink,
-  Route,
-  Routes,
-  useLocation,
-  useNavigate,
-  useSearchParams,
-} from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Badge, Button, Select, Toast, ToastStack, TopBar } from "@spacesim/ui";
+import { Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { BodyView } from "./BodyView.js";
 import { ColonyView } from "./ColonyView.js";
 import { EmpireView } from "./EmpireView.js";
@@ -59,20 +51,6 @@ function useNow(): number {
     return () => window.clearInterval(timer);
   }, []);
   return now;
-}
-
-/** Onglet de la barre de navigation : conserve la recherche courante (`?colony=…`). */
-function TabLink({ to, children }: { to: string; children: ReactNode }) {
-  const location = useLocation();
-  return (
-    <NavLink to={{ pathname: to, search: location.search }} className={navLinkClass}>
-      {children}
-    </NavLink>
-  );
-}
-
-function navLinkClass({ isActive }: { isActive: boolean }): string {
-  return isActive ? "active" : "";
 }
 
 interface MapPageProps {
@@ -316,6 +294,7 @@ export function App({ auth }: Props) {
     send,
   } = useGameStore();
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const colonyId = searchParams.get("colony");
   const setColonyId = (id: string) => {
@@ -348,21 +327,28 @@ export function App({ auth }: Props) {
 
   const colony = colonies.find((c) => c.id === colonyId) ?? colonies[0] ?? null;
 
+  const routeTabs = [
+    { value: "colony", label: "Colonie" },
+    { value: "map", label: "Carte" },
+    { value: "logistics", label: "Logistique" },
+    { value: "fleets", label: `Flottes${pirateLairs.length > 0 ? ` (${pirateLairs.length}☠)` : ""}` },
+    { value: "shipyard", label: "Chantier" },
+    { value: "research", label: "Recherche" },
+    { value: "empire", label: "Empire" },
+  ].map((t) => ({ ...t, href: `/${t.value}${location.search}` }));
+  const activeTab = routeTabs.find((t) => location.pathname.startsWith(`/${t.value}`))?.value;
+
   return (
     <div className="layout">
-      <header className="topbar">
-        <span className="brand">SPACESIM</span>
-        <nav className="tabs">
-          <TabLink to="/colony">Colonie</TabLink>
-          <TabLink to="/map">Carte</TabLink>
-          <TabLink to="/logistics">Logistique</TabLink>
-          <TabLink to="/fleets">
-            Flottes{pirateLairs.length > 0 ? ` (${pirateLairs.length}☠)` : ""}
-          </TabLink>
-          <TabLink to="/shipyard">Chantier</TabLink>
-          <TabLink to="/research">Recherche</TabLink>
-          <TabLink to="/empire">Empire</TabLink>
-        </nav>
+      <TopBar
+        items={routeTabs}
+        active={activeTab}
+        onNavChange={(value) => navigate({ pathname: `/${value}`, search: location.search })}
+        status={{
+          label: connected ? "● LIAISON ÉTABLIE" : "○ LIAISON PERDUE",
+          tone: connected ? "ok" : "ko",
+        }}
+      >
         {colonies.length > 1 && (
           <Select
             value={colony?.id ?? ""}
@@ -374,20 +360,23 @@ export function App({ auth }: Props) {
           ✦ {Math.floor(game.influence)}
         </Badge>
         <Badge>Tick {game.tick}</Badge>
-        <Badge variant={connected ? "ok" : "ko"}>
-          {connected ? "● LIAISON ÉTABLIE" : "○ LIAISON PERDUE"}
-        </Badge>
-        <span className="stat empire-badge" title={auth.email ?? ""}>
+        <span title={auth.email ?? ""}>
           <span
-            className="empire-dot"
-            style={{ background: auth.empire?.color ?? "var(--accent)" }}
+            style={{
+              display: "inline-block",
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              marginRight: 6,
+              background: auth.empire?.color ?? "var(--cyan)",
+            }}
           />
           {auth.empire?.name ?? "Empire"}
         </span>
         <Button variant="link" onClick={() => void auth.logout()}>
           Déconnexion
         </Button>
-      </header>
+      </TopBar>
 
       {actionError && <Toast variant="error">{actionError}</Toast>}
 
