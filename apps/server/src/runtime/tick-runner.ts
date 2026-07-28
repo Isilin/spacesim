@@ -1,5 +1,6 @@
 import { ECONOMY_TICK_TICKS, TICK_MS } from "@spacesim/shared";
 import type { GameRuntime } from "./game-runtime.js";
+import type { Persister } from "./persistence/persister.js";
 import { GameRepository } from "./repositories/game-repository.js";
 import { PlayerRepository } from "./repositories/player-repository.js";
 import type { ContractService } from "./services/contract-service.js";
@@ -38,8 +39,9 @@ export class TickRunner {
     private readonly runtime: GameRuntime,
     private readonly services: TickServices,
     private readonly notify: () => void,
+    private readonly persister: Persister,
   ) {
-    this.playerRepo = new PlayerRepository(runtime.clock.id);
+    this.playerRepo = new PlayerRepository(runtime.clock.id, runtime.writeSet);
   }
 
   run(ticks: number): void {
@@ -48,13 +50,17 @@ export class TickRunner {
     }
     this.runtime.clock.tick += ticks;
     this.runtime.clock.lastTickAt += ticks * TICK_MS;
-    this.gameRepo.saveTick(this.runtime.clock);
+    this.gameRepo.saveTick(this.runtime.clock, this.runtime.writeSet);
     for (const empire of this.runtime.empires.values()) {
       this.playerRepo.saveInfluence(empire);
       for (const colony of empire.colonyMap.values()) this.services.industry.persistColony(colony);
       this.services.logistics.persistOutposts(empire);
     }
     this.notify();
+    // Fin de lot de ticks : frontière de flush (chantier 20.2). Fire-and-forget — la
+    // RAM fait déjà autorité, `notify()` est parti sans l'attendre ; le `Persister` se
+    // sérialise et journalise lui-même ses échecs.
+    void this.persister.flush();
   }
 
   /** Une passe de tick : arrivées/recherche, monde partagé, routes/flottes/influence,

@@ -1,10 +1,13 @@
 import type { WorldEvent, WorldEventKind } from "@spacesim/shared";
-import { eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
+import type { WriteSet } from "../persistence/write-set.js";
 
 /** Propriétaire unique de la table `world_events` (chantier 19.3). */
 export class WorldEventRepository {
-  constructor(private readonly gameId: string) {}
+  constructor(
+    private readonly gameId: string,
+    private readonly writeSet: WriteSet,
+  ) {}
 
   async loadAll(): Promise<WorldEvent[]> {
     return db
@@ -21,29 +24,28 @@ export class WorldEventRepository {
       }));
   }
 
+  private toRow(event: WorldEvent) {
+    return {
+      id: event.id,
+      gameId: this.gameId,
+      kind: event.kind,
+      galaxyId: event.galaxyId ?? null,
+      factionId: event.factionId ?? null,
+      createdAt: event.createdAt,
+      expiresAt: event.expiresAt,
+    };
+  }
+
   insert(event: WorldEvent): void {
-    db.insert(schema.worldEvents)
-      .values({
-        id: event.id,
-        gameId: this.gameId,
-        kind: event.kind,
-        galaxyId: event.galaxyId ?? null,
-        factionId: event.factionId ?? null,
-        createdAt: event.createdAt,
-        expiresAt: event.expiresAt,
-      })
-      .run();
+    this.writeSet.upsert("worldEvents", event.id, this.toRow(event));
   }
 
   /** Mise à jour des échéances (bascule d'humeur, décalage de dev-fastforward). */
   save(event: WorldEvent): void {
-    db.update(schema.worldEvents)
-      .set({ expiresAt: event.expiresAt })
-      .where(eq(schema.worldEvents.id, event.id))
-      .run();
+    this.writeSet.upsert("worldEvents", event.id, this.toRow(event));
   }
 
   remove(id: string): void {
-    db.delete(schema.worldEvents).where(eq(schema.worldEvents.id, id)).run();
+    this.writeSet.delete("worldEvents", id);
   }
 }

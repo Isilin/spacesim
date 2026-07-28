@@ -1,10 +1,13 @@
 import type { Objective, ObjectiveKind } from "@spacesim/shared";
-import { eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
+import type { WriteSet } from "../persistence/write-set.js";
 
 /** Propriétaire unique de la table `objectives` (chantier 19.3). */
 export class ObjectiveRepository {
-  constructor(private readonly gameId: string) {}
+  constructor(
+    private readonly gameId: string,
+    private readonly writeSet: WriteSet,
+  ) {}
 
   async loadAll(): Promise<Objective[]> {
     return db
@@ -24,27 +27,26 @@ export class ObjectiveRepository {
       }));
   }
 
+  private toRow(objective: Objective) {
+    return {
+      id: objective.id,
+      gameId: this.gameId,
+      empireId: objective.empireId,
+      kind: objective.kind,
+      targetCount: objective.targetCount ?? null,
+      targetSystemId: objective.targetSystemId ?? null,
+      reward: objective.reward,
+      createdAt: objective.createdAt,
+      deadline: objective.deadline,
+      status: objective.status,
+    };
+  }
+
   insert(objective: Objective): void {
-    db.insert(schema.objectives)
-      .values({
-        id: objective.id,
-        gameId: this.gameId,
-        empireId: objective.empireId,
-        kind: objective.kind,
-        targetCount: objective.targetCount ?? null,
-        targetSystemId: objective.targetSystemId ?? null,
-        reward: objective.reward,
-        createdAt: objective.createdAt,
-        deadline: objective.deadline,
-        status: objective.status,
-      })
-      .run();
+    this.writeSet.upsert("objectives", objective.id, this.toRow(objective));
   }
 
   save(objective: Objective): void {
-    db.update(schema.objectives)
-      .set({ status: objective.status, deadline: objective.deadline })
-      .where(eq(schema.objectives.id, objective.id))
-      .run();
+    this.writeSet.upsert("objectives", objective.id, this.toRow(objective));
   }
 }

@@ -1,10 +1,13 @@
 import type { Contract, ResourceId } from "@spacesim/shared";
-import { eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
+import type { WriteSet } from "../persistence/write-set.js";
 
 /** Propriétaire unique de la table `contracts` (chantier 19.3). */
 export class ContractRepository {
-  constructor(private readonly gameId: string) {}
+  constructor(
+    private readonly gameId: string,
+    private readonly writeSet: WriteSet,
+  ) {}
 
   async loadAll(): Promise<Contract[]> {
     return db
@@ -29,33 +32,32 @@ export class ContractRepository {
       }));
   }
 
-  insert(contract: Contract): void {
-    db.insert(schema.contracts)
-      .values({
-        id: contract.id,
-        gameId: this.gameId,
-        issuerId: contract.issuerId,
-        issuerName: contract.issuerName,
-        issuerColor: contract.issuerColor,
-        colonyId: contract.colonyId,
-        colonyName: contract.colonyName,
-        systemId: contract.systemId,
-        resource: contract.resource,
-        quantity: contract.quantity,
-        remaining: contract.remaining,
-        pricePerUnit: contract.pricePerUnit,
-        createdAt: contract.createdAt,
-        deadline: contract.deadline,
-        status: contract.status,
-      })
-      .run();
+  private toRow(contract: Contract) {
+    return {
+      id: contract.id,
+      gameId: this.gameId,
+      issuerId: contract.issuerId,
+      issuerName: contract.issuerName,
+      issuerColor: contract.issuerColor,
+      colonyId: contract.colonyId,
+      colonyName: contract.colonyName,
+      systemId: contract.systemId,
+      resource: contract.resource,
+      quantity: contract.quantity,
+      remaining: contract.remaining,
+      pricePerUnit: contract.pricePerUnit,
+      createdAt: contract.createdAt,
+      deadline: contract.deadline,
+      status: contract.status,
+    };
   }
 
-  /** Ne met à jour que ce qui bouge après publication : reliquat, statut, échéance. */
+  insert(contract: Contract): void {
+    this.writeSet.upsert("contracts", contract.id, this.toRow(contract));
+  }
+
+  /** Ne met à jour que ce qui bouge après publication : reliquat, statut, échéance — mais écrit la ligne complète (contrat du `WriteSet`). */
   save(contract: Contract): void {
-    db.update(schema.contracts)
-      .set({ remaining: contract.remaining, status: contract.status, deadline: contract.deadline })
-      .where(eq(schema.contracts.id, contract.id))
-      .run();
+    this.writeSet.upsert("contracts", contract.id, this.toRow(contract));
   }
 }

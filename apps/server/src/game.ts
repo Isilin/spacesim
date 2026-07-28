@@ -39,6 +39,7 @@ import type { IndustryService } from "./runtime/services/industry-service.js";
 import type { LogisticsService } from "./runtime/services/logistics-service.js";
 import type { MarketService } from "./runtime/services/market-service.js";
 import type { ObjectiveService } from "./runtime/services/objective-service.js";
+import { Persister } from "./runtime/persistence/persister.js";
 import { GameRepository } from "./runtime/repositories/game-repository.js";
 import { Notifier, type StateListener } from "./runtime/notifier.js";
 import { Scheduler } from "./runtime/scheduler.js";
@@ -97,6 +98,12 @@ export class GameEngine {
   private logger: Logger = consoleLogger;
   private readonly notifier: Notifier;
   private readonly scheduler: Scheduler;
+  /**
+   * Flushe le `WriteSet` du runtime en transaction (chantier 20.2 — write-behind).
+   * Sérialisé en interne, jamais rejeté : `flush()` s'appelle en fire-and-forget aux
+   * frontières commande WS / lot de ticks.
+   */
+  private readonly persister: Persister;
 
   // Accesseurs délégant à `runtime` — préservent chaque site d'appel existant (`this.clock`,
   // `this.empires`, etc.) tel quel pendant que l'état bascule dans GameRuntime.
@@ -179,7 +186,8 @@ export class GameEngine {
       info: (message) => this.logger.info(message),
       warn: (message) => this.logger.warn(message),
     };
-    const composed = composeEngine(this.runtime, logger, () => this.notify());
+    this.persister = new Persister(this.runtime.writeSet, logger);
+    const composed = composeEngine(this.runtime, logger, () => this.notify(), this.persister);
     this.industry = composed.industry;
     this.logistics = composed.logistics;
     this.gateway = composed.gateway;
@@ -546,5 +554,15 @@ export class GameEngine {
 
   notify(): void {
     this.notifier.notify();
+  }
+
+  /**
+   * Flushe le `WriteSet` en base (chantier 20.2). Fire-and-forget côté appelant (la RAM
+   * fait déjà autorité) — appelé après chaque commande WS (`http/routes/ws.ts`) ; le
+   * `TickRunner` le fait aussi à la fin de chaque lot de ticks. Renvoie la promesse pour
+   * les tests qui veulent attendre l'écriture réelle avant d'asserter sur la DB.
+   */
+  flush(): Promise<void> {
+    return this.persister.flush();
   }
 }

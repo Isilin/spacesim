@@ -50,6 +50,9 @@ export function registerWsRoutes(app: FastifyInstance, engine: GameEngine): void
       }
       const error = dispatchClientMessage(engine, empire, parsed.data);
       if (error) send({ type: "actionError", message: error });
+      // Frontière de flush (chantier 20.2) : la commande a déjà muté la mémoire et
+      // notifié — l'écriture en base est fire-and-forget, elle ne retarde pas la réponse.
+      void engine.flush();
     });
 
     socket.on("close", () => {

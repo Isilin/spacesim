@@ -1,15 +1,23 @@
 import { emptyOrbital, type Colony } from "@spacesim/shared";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
+import type { WriteSet } from "../persistence/write-set.js";
 
 /**
  * Propriétaire unique de la table `colonies` (chantier 19.3). Le mapping row↔Colony
  * n'existe plus qu'ICI — il vivait en trois exemplaires (bootstrap ×2, industry).
  * `save` était l'écriture la plus partagée du serveur (callback injecté dans 5
  * services) : chaque service tient désormais sa propre instance du repo.
+ *
+ * `insert`/`save` écrivent dans le `WriteSet` (chantier 20.2) — jamais directement en
+ * base ; `createdAt` n'est fixé qu'à l'insertion (pas de re-timestamp sur `save`, un
+ * upsert ré-appliquerait `Date.now()` sinon).
  */
 export class ColonyRepository {
-  constructor(private readonly gameId: string) {}
+  constructor(
+    private readonly gameId: string,
+    private readonly writeSet: WriteSet,
+  ) {}
 
   /** `fallbackOwnerId` : colonies legacy sans `ownerId` (pré-chantier 7). */
   async loadAll(fallbackOwnerId: string): Promise<Colony[]> {
@@ -35,48 +43,39 @@ export class ColonyRepository {
       }));
   }
 
+  private toRow(colony: Colony, createdAt: number) {
+    return {
+      id: colony.id,
+      gameId: this.gameId,
+      ownerId: colony.ownerId ?? null,
+      planetId: colony.planetId,
+      name: colony.name,
+      resources: JSON.stringify(colony.resources),
+      orbitalResources: JSON.stringify(colony.orbitalResources),
+      liftRules: JSON.stringify(colony.liftRules),
+      buildings: JSON.stringify(colony.buildings),
+      queue: JSON.stringify(colony.queue),
+      population: colony.population,
+      satisfaction: colony.satisfaction,
+      ships: JSON.stringify(colony.ships),
+      shipsBusy: JSON.stringify(colony.shipsBusy),
+      shipQueue: JSON.stringify(colony.shipQueue),
+      createdAt,
+    };
+  }
+
   insert(colony: Colony): void {
-    db.insert(schema.colonies)
-      .values({
-        id: colony.id,
-        gameId: this.gameId,
-        ownerId: colony.ownerId ?? null,
-        planetId: colony.planetId,
-        name: colony.name,
-        resources: JSON.stringify(colony.resources),
-        orbitalResources: JSON.stringify(colony.orbitalResources),
-        liftRules: JSON.stringify(colony.liftRules),
-        buildings: JSON.stringify(colony.buildings),
-        queue: JSON.stringify(colony.queue),
-        population: colony.population,
-        satisfaction: colony.satisfaction,
-        ships: JSON.stringify(colony.ships),
-        shipsBusy: JSON.stringify(colony.shipsBusy),
-        shipQueue: JSON.stringify(colony.shipQueue),
-        createdAt: Date.now(),
-      })
-      .run();
+    this.writeSet.upsert("colonies", colony.id, this.toRow(colony, Date.now()));
   }
 
   save(colony: Colony): void {
-    db.update(schema.colonies)
-      .set({
-        resources: JSON.stringify(colony.resources),
-        orbitalResources: JSON.stringify(colony.orbitalResources),
-        liftRules: JSON.stringify(colony.liftRules),
-        buildings: JSON.stringify(colony.buildings),
-        queue: JSON.stringify(colony.queue),
-        population: colony.population,
-        satisfaction: colony.satisfaction,
-        ships: JSON.stringify(colony.ships),
-        shipsBusy: JSON.stringify(colony.shipsBusy),
-        shipQueue: JSON.stringify(colony.shipQueue),
-      })
-      .where(eq(schema.colonies.id, colony.id))
-      .run();
+    // `createdAt` est un champ figé côté domaine (jamais lu dans `Colony`) : on
+    // réutilise 0 pour ne pas l'écraser en cas de fallback INSERT — cas qui ne se
+    // produit pas ici (`save` ne s'appelle jamais avant `insert` pour une colonie).
+    this.writeSet.upsert("colonies", colony.id, this.toRow(colony, 0));
   }
 
-  /** Backfill legacy : adopte les colonies SANS propriétaire (sauvegardes pré-7b). */
+  /** Backfill legacy : adopte les colonies SANS propriétaire (sauvegardes pré-7b). Écriture directe : opération de démarrage ponctuelle, hors WriteSet. */
   adoptOrphans(ownerId: string): void {
     db.update(schema.colonies)
       .set({ ownerId })

@@ -1,9 +1,13 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
+import type { WriteSet } from "../persistence/write-set.js";
 
 /** Propriétaire unique de la table `claims` (chantier 19.3). */
 export class ClaimRepository {
-  constructor(private readonly gameId: string) {}
+  constructor(
+    private readonly gameId: string,
+    private readonly writeSet: WriteSet,
+  ) {}
 
   async systemIdsOwnedBy(ownerId: string): Promise<string[]> {
     return db
@@ -15,16 +19,19 @@ export class ClaimRepository {
   }
 
   insert(systemId: string, ownerId: string): void {
-    db.insert(schema.claims)
-      .values({ systemId, gameId: this.gameId, ownerId, claimedAt: Date.now() })
-      .run();
+    this.writeSet.upsert("claims", systemId, {
+      systemId,
+      gameId: this.gameId,
+      ownerId,
+      claimedAt: Date.now(),
+    });
   }
 
   remove(systemId: string): void {
-    db.delete(schema.claims).where(eq(schema.claims.systemId, systemId)).run();
+    this.writeSet.delete("claims", systemId);
   }
 
-  /** Backfill legacy : adopte les claims SANS propriétaire (sauvegardes pré-7b). */
+  /** Backfill legacy : adopte les claims SANS propriétaire (sauvegardes pré-7b). Écriture directe : opération de démarrage ponctuelle, hors WriteSet. */
   adoptOrphans(ownerId: string): void {
     db.update(schema.claims)
       .set({ ownerId })

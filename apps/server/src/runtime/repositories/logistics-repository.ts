@@ -1,13 +1,16 @@
 import type { MiningOutpost, Mission, ResourceId, Route, Transfer } from "@spacesim/shared";
-import { eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
+import type { WriteSet } from "../persistence/write-set.js";
 
 /**
  * Propriétaire unique des tables `transfers`, `missions`, `routes` et `outposts`
  * (chantier 19.3) — le transport au sens large.
  */
 export class LogisticsRepository {
-  constructor(private readonly gameId: string) {}
+  constructor(
+    private readonly gameId: string,
+    private readonly writeSet: WriteSet,
+  ) {}
 
   // ── Convois manuels ──────────────────────────────────────────────────────
 
@@ -26,30 +29,29 @@ export class LogisticsRepository {
       }));
   }
 
+  private transferRow(transfer: Transfer) {
+    return {
+      id: transfer.id,
+      gameId: this.gameId,
+      fromColonyId: transfer.fromColonyId,
+      toColonyId: transfer.toColonyId,
+      resources: JSON.stringify(transfer.resources),
+      departedAt: transfer.departedAt,
+      arrivesAt: transfer.arrivesAt,
+    };
+  }
+
   insertTransfer(transfer: Transfer): void {
-    db.insert(schema.transfers)
-      .values({
-        id: transfer.id,
-        gameId: this.gameId,
-        fromColonyId: transfer.fromColonyId,
-        toColonyId: transfer.toColonyId,
-        resources: JSON.stringify(transfer.resources),
-        departedAt: transfer.departedAt,
-        arrivesAt: transfer.arrivesAt,
-      })
-      .run();
+    this.writeSet.upsert("transfers", transfer.id, this.transferRow(transfer));
   }
 
   /** Décalage d'horodatage (dev-fastforward). */
   saveTransferTimes(transfer: Transfer): void {
-    db.update(schema.transfers)
-      .set({ departedAt: transfer.departedAt, arrivesAt: transfer.arrivesAt })
-      .where(eq(schema.transfers.id, transfer.id))
-      .run();
+    this.writeSet.upsert("transfers", transfer.id, this.transferRow(transfer));
   }
 
   removeTransfer(id: string): void {
-    db.delete(schema.transfers).where(eq(schema.transfers.id, id)).run();
+    this.writeSet.delete("transfers", id);
   }
 
   // ── Missions ─────────────────────────────────────────────────────────────
@@ -74,35 +76,34 @@ export class LogisticsRepository {
       }));
   }
 
+  private missionRow(mission: Mission) {
+    return {
+      id: mission.id,
+      gameId: this.gameId,
+      kind: mission.kind,
+      fromColonyId: mission.fromColonyId,
+      targetId: mission.targetId,
+      departedAt: mission.departedAt,
+      arrivesAt: mission.arrivesAt,
+      cargo: mission.cargo ? JSON.stringify(mission.cargo) : null,
+      budget: mission.budget ?? null,
+      buyResource: mission.buyResource ?? null,
+      capacity: mission.capacity ?? null,
+      contractId: mission.contractId ?? null,
+    };
+  }
+
   insertMission(mission: Mission): void {
-    db.insert(schema.missions)
-      .values({
-        id: mission.id,
-        gameId: this.gameId,
-        kind: mission.kind,
-        fromColonyId: mission.fromColonyId,
-        targetId: mission.targetId,
-        departedAt: mission.departedAt,
-        arrivesAt: mission.arrivesAt,
-        cargo: mission.cargo ? JSON.stringify(mission.cargo) : null,
-        budget: mission.budget ?? null,
-        buyResource: mission.buyResource ?? null,
-        capacity: mission.capacity ?? null,
-        contractId: mission.contractId ?? null,
-      })
-      .run();
+    this.writeSet.upsert("missions", mission.id, this.missionRow(mission));
   }
 
   /** Décalage d'horodatage (dev-fastforward). */
   saveMissionTimes(mission: Mission): void {
-    db.update(schema.missions)
-      .set({ departedAt: mission.departedAt, arrivesAt: mission.arrivesAt })
-      .where(eq(schema.missions.id, mission.id))
-      .run();
+    this.writeSet.upsert("missions", mission.id, this.missionRow(mission));
   }
 
   removeMission(id: string): void {
-    db.delete(schema.missions).where(eq(schema.missions.id, id)).run();
+    this.writeSet.delete("missions", id);
   }
 
   // ── Routes automatiques ──────────────────────────────────────────────────
@@ -127,39 +128,33 @@ export class LogisticsRepository {
       }));
   }
 
+  private routeRow(route: Route) {
+    return {
+      id: route.id,
+      gameId: this.gameId,
+      ownerColonyId: route.ownerColonyId,
+      fromId: route.fromId,
+      fromKind: route.fromKind,
+      toId: route.toId,
+      toKind: route.toKind,
+      resource: route.resource,
+      rule: JSON.stringify(route.rule),
+      ships: JSON.stringify(route.ships),
+      activeCycle: route.activeCycle ? JSON.stringify(route.activeCycle) : null,
+      paused: route.paused ? 1 : 0,
+    };
+  }
+
   insertRoute(route: Route): void {
-    db.insert(schema.routes)
-      .values({
-        id: route.id,
-        gameId: this.gameId,
-        ownerColonyId: route.ownerColonyId,
-        fromId: route.fromId,
-        fromKind: route.fromKind,
-        toId: route.toId,
-        toKind: route.toKind,
-        resource: route.resource,
-        rule: JSON.stringify(route.rule),
-        ships: JSON.stringify(route.ships),
-        activeCycle: route.activeCycle ? JSON.stringify(route.activeCycle) : null,
-        paused: route.paused ? 1 : 0,
-      })
-      .run();
+    this.writeSet.upsert("routes", route.id, this.routeRow(route));
   }
 
   saveRoute(route: Route): void {
-    db.update(schema.routes)
-      .set({
-        rule: JSON.stringify(route.rule),
-        ships: JSON.stringify(route.ships),
-        activeCycle: route.activeCycle ? JSON.stringify(route.activeCycle) : null,
-        paused: route.paused ? 1 : 0,
-      })
-      .where(eq(schema.routes.id, route.id))
-      .run();
+    this.writeSet.upsert("routes", route.id, this.routeRow(route));
   }
 
   removeRoute(id: string): void {
-    db.delete(schema.routes).where(eq(schema.routes.id, id)).run();
+    this.writeSet.delete("routes", id);
   }
 
   // ── Avant-postes miniers ─────────────────────────────────────────────────
@@ -177,16 +172,17 @@ export class LogisticsRepository {
       }));
   }
 
+  private outpostRow(outpost: MiningOutpost, createdAt: number) {
+    return { ...outpost, gameId: this.gameId, createdAt };
+  }
+
   insertOutpost(outpost: MiningOutpost): void {
-    db.insert(schema.outposts)
-      .values({ ...outpost, gameId: this.gameId, createdAt: Date.now() })
-      .run();
+    this.writeSet.upsert("outposts", outpost.id, this.outpostRow(outpost, Date.now()));
   }
 
   saveOutpostStock(outpost: MiningOutpost): void {
-    db.update(schema.outposts)
-      .set({ oreStock: outpost.oreStock })
-      .where(eq(schema.outposts.id, outpost.id))
-      .run();
+    // `createdAt` non porté par `MiningOutpost` : sans risque, `save` ne s'appelle
+    // jamais avant `insert` pour un avant-poste (même garantie que `ColonyRepository`).
+    this.writeSet.upsert("outposts", outpost.id, this.outpostRow(outpost, 0));
   }
 }

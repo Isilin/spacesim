@@ -45,7 +45,7 @@ export class GatewayService {
       extras?: Pick<Mission, "cargo" | "budget" | "buyResource" | "capacity" | "contractId">,
     ) => void,
   ) {
-    this.repo = new GatewayRepository(runtime.clock.id);
+    this.repo = new GatewayRepository(runtime.clock.id, runtime.writeSet);
   }
 
   private get portalLinks(): [string, string][] {

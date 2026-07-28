@@ -62,7 +62,7 @@ export class FleetService {
     private readonly atWar: (a: string, b: string) => boolean,
     private readonly worldEventKindsOnGalaxy: (galaxyId: string) => WorldEventKind[],
   ) {
-    this.repo = new FleetRepository(runtime.clock.id);
+    this.repo = new FleetRepository(runtime.clock.id, runtime.writeSet);
   }
 
   private get portalLinks(): [string, string][] {
@@ -119,7 +119,7 @@ export class FleetService {
       movement: null,
     };
     empire.fleetMap.set(fleet.id, fleet);
-    this.persistFleet(fleet, true);
+    this.persistFleet(fleet);
     this.notify();
     return null;
   }
@@ -502,15 +502,12 @@ export class FleetService {
         bounty: pirateBounty(ships),
       };
       this.runtime.lairMap.set(lair.id, lair);
-      this.persistLair(lair, true);
+      this.persistLair(lair);
     }
   }
 
-  persistFleet(fleet: Fleet, insert = false): void {
-    this.repo.saveFleet(
-      { ...fleet, ownerId: fleet.ownerId ?? this.runtime.defaultEmpire.id },
-      insert,
-    );
+  persistFleet(fleet: Fleet): void {
+    this.repo.saveFleet({ ...fleet, ownerId: fleet.ownerId ?? this.runtime.defaultEmpire.id });
   }
 
   /** Outil de dev uniquement : décale les timers de file/déplacement (dev-fastforward). */
@@ -537,8 +534,8 @@ export class FleetService {
     }
   }
 
-  persistLair(lair: PirateLair, insert = false): void {
-    this.repo.saveLair(lair, insert);
+  persistLair(lair: PirateLair): void {
+    this.repo.saveLair(lair);
   }
 
   async loadFleets(): Promise<void> {

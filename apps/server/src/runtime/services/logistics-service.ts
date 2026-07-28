@@ -85,7 +85,7 @@ export class LogisticsService {
     },
     private readonly persistGateway: (gateway: Gateway) => void,
   ) {
-    this.repo = new LogisticsRepository(runtime.clock.id);
+    this.repo = new LogisticsRepository(runtime.clock.id, runtime.writeSet);
   }
 
   private get portalLinks(): [string, string][] {

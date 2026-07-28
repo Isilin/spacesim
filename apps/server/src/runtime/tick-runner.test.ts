@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { db, schema } from "../db/index.js";
 import { Empire } from "../empire.js";
 import { GameRuntime } from "./game-runtime.js";
+import { Persister } from "./persistence/persister.js";
 import { TickRunner, type TickServices } from "./tick-runner.js";
 
 /** Vide la seule table que TickRunner.run touche directement (games/players — pas de DB
@@ -109,7 +110,7 @@ describe("TickRunner — ordre des phases", () => {
     runtime.empires.set("a", makeEmpire("a"));
 
     const { services, notify, calls } = recordingServices();
-    new TickRunner(runtime, services, notify).run(1);
+    new TickRunner(runtime, services, notify, new Persister(runtime.writeSet)).run(1);
 
     expect(calls).toEqual([
       "deliverTransfers",
@@ -147,7 +148,7 @@ describe("TickRunner — ordre des phases", () => {
     runtime.empires.set("a", makeEmpire("a"));
 
     const { services, notify, calls } = recordingServices();
-    new TickRunner(runtime, services, notify).run(1);
+    new TickRunner(runtime, services, notify, new Persister(runtime.writeSet)).run(1);
 
     expect(calls).toEqual([
       "deliverTransfers",
@@ -175,7 +176,7 @@ describe("TickRunner — ordre des phases", () => {
     ]);
   });
 
-  it("avance l'horloge et persiste tick/lastTickAt", () => {
+  it("avance l'horloge et persiste tick/lastTickAt", async () => {
     const runtime = new GameRuntime(
       {
         id: "g",
@@ -191,7 +192,11 @@ describe("TickRunner — ordre des phases", () => {
       .run();
 
     const { services, notify } = recordingServices();
-    new TickRunner(runtime, services, notify).run(3);
+    const persister = new Persister(runtime.writeSet);
+    new TickRunner(runtime, services, notify, persister).run(3);
+    // `run()` déclenche le flush en fire-and-forget (chantier 20.2) : on l'attend ici
+    // pour asserter sur la DB — `flush()` renvoie la même promesse déjà en vol.
+    await persister.flush();
 
     expect(runtime.clock.tick).toBe(8);
     const row = db.select().from(schema.games).get()!;

@@ -1,10 +1,13 @@
 import type { Blueprint } from "@spacesim/shared";
-import { eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
+import type { WriteSet } from "../persistence/write-set.js";
 
 /** Propriétaire unique de la table `blueprints` (chantier 19.3). */
 export class BlueprintRepository {
-  constructor(private readonly gameId: string) {}
+  constructor(
+    private readonly gameId: string,
+    private readonly writeSet: WriteSet,
+  ) {}
 
   async loadAll(): Promise<Blueprint[]> {
     return db
@@ -21,28 +24,19 @@ export class BlueprintRepository {
       }));
   }
 
-  save(bp: Blueprint, insert: boolean): void {
-    if (insert) {
-      db.insert(schema.blueprints)
-        .values({
-          id: bp.id,
-          gameId: this.gameId,
-          ownerId: bp.ownerId,
-          name: bp.name,
-          chassisId: bp.chassisId,
-          modules: JSON.stringify(bp.modules),
-          createdAt: bp.createdAt,
-        })
-        .run();
-      return;
-    }
-    db.update(schema.blueprints)
-      .set({ name: bp.name, chassisId: bp.chassisId, modules: JSON.stringify(bp.modules) })
-      .where(eq(schema.blueprints.id, bp.id))
-      .run();
+  save(bp: Blueprint): void {
+    this.writeSet.upsert("blueprints", bp.id, {
+      id: bp.id,
+      gameId: this.gameId,
+      ownerId: bp.ownerId,
+      name: bp.name,
+      chassisId: bp.chassisId,
+      modules: JSON.stringify(bp.modules),
+      createdAt: bp.createdAt,
+    });
   }
 
   remove(id: string): void {
-    db.delete(schema.blueprints).where(eq(schema.blueprints.id, id)).run();
+    this.writeSet.delete("blueprints", id);
   }
 }

@@ -50,8 +50,8 @@ export class ExplorationService {
     private readonly initMarkets: () => void,
     private readonly initGateways: () => void,
   ) {
-    this.claimRepo = new ClaimRepository(runtime.clock.id);
-    this.playerRepo = new PlayerRepository(runtime.clock.id);
+    this.claimRepo = new ClaimRepository(runtime.clock.id, runtime.writeSet);
+    this.playerRepo = new PlayerRepository(runtime.clock.id, runtime.writeSet);
   }
 
   private get portalLinks(): [string, string][] {

@@ -1,5 +1,6 @@
 import type { GameRuntime } from "./game-runtime.js";
 import type { Logger } from "./logger.js";
+import type { Persister } from "./persistence/persister.js";
 import { BootstrapService } from "./services/bootstrap-service.js";
 import { ContractService } from "./services/contract-service.js";
 import { DevService } from "./services/dev-service.js";
@@ -47,6 +48,7 @@ export function composeEngine(
   runtime: GameRuntime,
   logger: Logger,
   notify: () => void,
+  persister: Persister,
 ): ComposedEngine {
   let logistics: LogisticsService;
   let gateway: GatewayService;
@@ -157,6 +159,7 @@ export function composeEngine(
       objective,
     },
     notify,
+    persister,
   );
   const devService = new DevService(runtime, notify, logger, {
     gateway,

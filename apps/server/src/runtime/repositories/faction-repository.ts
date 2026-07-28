@@ -1,10 +1,13 @@
 import type { FactionState } from "@spacesim/shared";
-import { eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
+import type { WriteSet } from "../persistence/write-set.js";
 
 /** Propriétaire unique de la table `faction_states` (chantier 19.3). */
 export class FactionRepository {
-  constructor(private readonly gameId: string) {}
+  constructor(
+    private readonly gameId: string,
+    private readonly writeSet: WriteSet,
+  ) {}
 
   async loadAll(): Promise<FactionState[]> {
     return db
@@ -18,21 +21,20 @@ export class FactionRepository {
       }));
   }
 
+  private toRow(state: FactionState) {
+    return {
+      factionId: state.factionId,
+      gameId: this.gameId,
+      mood: state.mood,
+      moodUntil: state.moodUntil,
+    };
+  }
+
   insert(state: FactionState): void {
-    db.insert(schema.factionStates)
-      .values({
-        factionId: state.factionId,
-        gameId: this.gameId,
-        mood: state.mood,
-        moodUntil: state.moodUntil,
-      })
-      .run();
+    this.writeSet.upsert("factionStates", state.factionId, this.toRow(state));
   }
 
   save(state: FactionState): void {
-    db.update(schema.factionStates)
-      .set({ mood: state.mood, moodUntil: state.moodUntil })
-      .where(eq(schema.factionStates.factionId, state.factionId))
-      .run();
+    this.writeSet.upsert("factionStates", state.factionId, this.toRow(state));
   }
 }

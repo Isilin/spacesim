@@ -54,7 +54,7 @@ export class ContractService {
       departedAt?: number,
     ) => void,
   ) {
-    this.repo = new ContractRepository(runtime.clock.id);
+    this.repo = new ContractRepository(runtime.clock.id, runtime.writeSet);
   }
 
   private get portalLinks(): [string, string][] {

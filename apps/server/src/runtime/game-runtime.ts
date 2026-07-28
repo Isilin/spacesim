@@ -16,6 +16,7 @@ import type {
   WorldEvent,
 } from "@spacesim/shared";
 import type { Clock, Empire } from "../empire.js";
+import { WriteSet } from "./persistence/write-set.js";
 
 /**
  * Détient l'univers, l'horloge de ticks et les entités partagées (game-scoped, pas de
@@ -58,6 +59,12 @@ export class GameRuntime {
   empires = new Map<string, Empire>();
   /** Empire propriétaire par défaut (solo). Posé par `ensureDefaultPlayer`. */
   defaultEmpire!: Empire;
+  /**
+   * Tampon d'écritures en attente (chantier 20.2) : partagé par tous les repositories
+   * du moteur, flushé en transaction par un `Persister` unique aux frontières
+   * commande WS / lot de ticks.
+   */
+  readonly writeSet = new WriteSet();
 
   /**
    * L'univers est fourni par l'appelant (chantier 18) : chargé depuis les tables

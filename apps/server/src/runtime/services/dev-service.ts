@@ -125,7 +125,7 @@ export class DevService {
       bounty: pirateBounty(ships),
     };
     this.runtime.lairMap.set(lair.id, lair);
-    this.services.fleetService.persistLair(lair, true);
+    this.services.fleetService.persistLair(lair);
     this.notify();
   }
 
@@ -175,7 +175,7 @@ export class DevService {
     };
     empire.fleetMap.set(fleet.id, fleet);
     this.services.exploration.markExplored(empire, systemId);
-    this.services.fleetService.persistFleet(fleet, true);
+    this.services.fleetService.persistFleet(fleet);
     this.notify();
     return fleet.id;
   }

@@ -154,6 +154,9 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     const e1 = await GameEngine.loadOrBootstrap();
     const a = empireFor(e1, "alice");
     engine_createNamed(e1, a);
+    // Création directe (pas une commande WS ni un tick) : flush explicite avant de
+    // simuler un reboot (chantier 20.2), sinon le plan reste dans le WriteSet en mémoire.
+    await e1.flush();
     const e2 = await GameEngine.loadOrBootstrap();
     const a2 = e2.empireForAccount("alice")!;
     expect(e2.snapshotForEmpire(a2).blueprints.map((p) => p.name)).toContain("Persistant");

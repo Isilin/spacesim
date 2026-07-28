@@ -26,7 +26,7 @@ export class ObjectiveService {
     private readonly logger: Logger,
     private readonly persistColony: (colony: Colony) => void,
   ) {
-    this.repo = new ObjectiveRepository(runtime.clock.id);
+    this.repo = new ObjectiveRepository(runtime.clock.id, runtime.writeSet);
   }
 
   async loadObjectives(): Promise<void> {

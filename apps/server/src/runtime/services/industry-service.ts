@@ -58,9 +58,9 @@ export class IndustryService {
     private readonly logger: Logger,
     private readonly persistFleet: (fleet: Fleet) => void,
   ) {
-    this.blueprintRepo = new BlueprintRepository(runtime.clock.id);
-    this.colonyRepo = new ColonyRepository(runtime.clock.id);
-    this.playerRepo = new PlayerRepository(runtime.clock.id);
+    this.blueprintRepo = new BlueprintRepository(runtime.clock.id, runtime.writeSet);
+    this.colonyRepo = new ColonyRepository(runtime.clock.id, runtime.writeSet);
+    this.playerRepo = new PlayerRepository(runtime.clock.id, runtime.writeSet);
   }
 
   private get portalLinks(): [string, string][] {
@@ -109,8 +109,8 @@ export class IndustryService {
     }
   }
 
-  private persistBlueprint(bp: Blueprint, insert = false): void {
-    this.blueprintRepo.save(bp, insert);
+  private persistBlueprint(bp: Blueprint): void {
+    this.blueprintRepo.save(bp);
   }
 
   /** Amorce un empire sans plan avec les designs de départ (presets constructibles). */
@@ -128,7 +128,7 @@ export class IndustryService {
         createdAt: Date.now(),
       };
       empire.blueprintMap.set(bp.id, bp);
-      this.persistBlueprint(bp, true);
+      this.persistBlueprint(bp);
     }
   }
 
@@ -154,7 +154,7 @@ export class IndustryService {
       createdAt: Date.now(),
     };
     empire.blueprintMap.set(bp.id, bp);
-    this.persistBlueprint(bp, true);
+    this.persistBlueprint(bp);
     this.notify();
     return null;
   }
@@ -285,7 +285,7 @@ export class IndustryService {
       createdAt: Date.now(),
     };
     empire.blueprintMap.set(bp.id, bp);
-    this.persistBlueprint(bp, true);
+    this.persistBlueprint(bp);
     empire.colonyMap.set(colony.id, {
       ...colony,
       resources: { ...colony.resources, credits: colony.resources.credits - price },

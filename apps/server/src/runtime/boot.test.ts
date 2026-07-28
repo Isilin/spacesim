@@ -86,6 +86,10 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const colBefore = summaries(e1).find((e) => e.id === spawnedId)!;
     // Les deux colonies mères sont sur des planètes distinctes (clé système/nom).
     expect(defBefore.colonies.map(key)).not.toEqual(colBefore.colonies.map(key));
+    // `devSpawnEmpire` est un appel direct (pas une commande WS ni un tick) : rien ne
+    // déclenche le flush automatiquement (chantier 20.2) — on l'attend explicitement
+    // avant de simuler un reboot, sous peine de « perdre » cet empire au rechargement.
+    await e1.flush();
 
     // Rechargement depuis la même DB en mémoire (simule un reboot serveur).
     const e2 = await GameEngine.loadOrBootstrap();

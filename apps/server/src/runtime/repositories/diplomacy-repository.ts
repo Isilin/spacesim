@@ -1,14 +1,16 @@
 import type { ProposalKind, Relation, RelationProposal, RelationState } from "@spacesim/shared";
-import { and, eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
+import type { WriteSet } from "../persistence/write-set.js";
 
 /**
  * Propriétaire unique des tables `relations` et `relation_proposals` (chantier 19.3).
- * Lectures async (boot uniquement) ; écritures sync — c'est la couture où le
- * write-behind du chantier 20 se branchera sans changer une signature.
+ * Lectures async (boot uniquement) ; écritures dans le `WriteSet` (chantier 20.2).
  */
 export class DiplomacyRepository {
-  constructor(private readonly gameId: string) {}
+  constructor(
+    private readonly gameId: string,
+    private readonly writeSet: WriteSet,
+  ) {}
 
   async loadRelations(): Promise<Relation[]> {
     return db
@@ -24,29 +26,23 @@ export class DiplomacyRepository {
       }));
   }
 
+  private saveRelationImpl(relation: Relation): void {
+    this.writeSet.upsert("relations", [relation.empireA, relation.empireB], {
+      gameId: this.gameId,
+      empireA: relation.empireA,
+      empireB: relation.empireB,
+      state: relation.state,
+      since: relation.since,
+      until: relation.until,
+    });
+  }
+
   insertRelation(relation: Relation): void {
-    db.insert(schema.relations)
-      .values({
-        gameId: this.gameId,
-        empireA: relation.empireA,
-        empireB: relation.empireB,
-        state: relation.state,
-        since: relation.since,
-        until: relation.until,
-      })
-      .run();
+    this.saveRelationImpl(relation);
   }
 
   saveRelation(relation: Relation): void {
-    db.update(schema.relations)
-      .set({ state: relation.state, since: relation.since, until: relation.until })
-      .where(
-        and(
-          eq(schema.relations.empireA, relation.empireA),
-          eq(schema.relations.empireB, relation.empireB),
-        ),
-      )
-      .run();
+    this.saveRelationImpl(relation);
   }
 
   async loadProposals(): Promise<RelationProposal[]> {
@@ -64,19 +60,17 @@ export class DiplomacyRepository {
   }
 
   insertProposal(proposal: RelationProposal): void {
-    db.insert(schema.relationProposals)
-      .values({
-        id: proposal.id,
-        gameId: this.gameId,
-        fromEmpireId: proposal.fromEmpireId,
-        toEmpireId: proposal.toEmpireId,
-        kind: proposal.kind,
-        createdAt: proposal.createdAt,
-      })
-      .run();
+    this.writeSet.upsert("relationProposals", proposal.id, {
+      id: proposal.id,
+      gameId: this.gameId,
+      fromEmpireId: proposal.fromEmpireId,
+      toEmpireId: proposal.toEmpireId,
+      kind: proposal.kind,
+      createdAt: proposal.createdAt,
+    });
   }
 
   removeProposal(id: string): void {
-    db.delete(schema.relationProposals).where(eq(schema.relationProposals.id, id)).run();
+    this.writeSet.delete("relationProposals", id);
   }
 }

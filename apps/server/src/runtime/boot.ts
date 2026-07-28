@@ -50,4 +50,8 @@ export async function bootEngine(engine: GameEngine, isNew: boolean): Promise<vo
   // L'univers doit toujours offrir de la place devant les joueurs (chantier 9).
   engine.exploration.ensureFrontier();
   engine.catchUp();
+  // Un boot frais (colonie mère, marchés/portails idempotents, plans de départ) doit
+  // laisser la DB cohérente avec la mémoire AVANT de servir la moindre commande —
+  // `catchUp()` ne flushe que s'il a rejoué des ticks (chantier 20.2).
+  await engine.flush();
 }

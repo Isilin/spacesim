@@ -1,10 +1,14 @@
 import type { Fleet, PirateLair, StoredBattle } from "@spacesim/shared";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
+import type { WriteSet } from "../persistence/write-set.js";
 
 /** Propriétaire unique des tables `fleets`, `pirate_lairs` et `battles` (chantier 19.3). */
 export class FleetRepository {
-  constructor(private readonly gameId: string) {}
+  constructor(
+    private readonly gameId: string,
+    private readonly writeSet: WriteSet,
+  ) {}
 
   /** `fallbackOwnerId` : propriétaire des flottes legacy sans `ownerId` (pré-chantier 7). */
   async loadFleets(fallbackOwnerId: string): Promise<Fleet[]> {
@@ -25,8 +29,11 @@ export class FleetRepository {
       }));
   }
 
-  saveFleet(fleet: Fleet, insert: boolean): void {
-    const values = {
+  saveFleet(fleet: Fleet): void {
+    this.writeSet.upsert("fleets", fleet.id, {
+      id: fleet.id,
+      gameId: this.gameId,
+      ownerId: fleet.ownerId,
       name: fleet.name,
       systemId: fleet.systemId,
       homeColonyId: fleet.homeColonyId,
@@ -34,21 +41,14 @@ export class FleetRepository {
       directives: JSON.stringify(fleet.directives),
       queue: JSON.stringify(fleet.queue),
       movement: fleet.movement ? JSON.stringify(fleet.movement) : null,
-    };
-    if (insert) {
-      db.insert(schema.fleets)
-        .values({ id: fleet.id, gameId: this.gameId, ownerId: fleet.ownerId, ...values })
-        .run();
-    } else {
-      db.update(schema.fleets).set(values).where(eq(schema.fleets.id, fleet.id)).run();
-    }
+    });
   }
 
   removeFleet(id: string): void {
-    db.delete(schema.fleets).where(eq(schema.fleets.id, id)).run();
+    this.writeSet.delete("fleets", id);
   }
 
-  /** Backfill legacy : adopte les flottes SANS propriétaire (sauvegardes pré-7b). */
+  /** Backfill legacy : adopte les flottes SANS propriétaire (sauvegardes pré-7b). Écriture directe : opération de démarrage ponctuelle, hors WriteSet. */
   adoptOrphanFleets(ownerId: string): void {
     db.update(schema.fleets)
       .set({ ownerId })
@@ -70,24 +70,19 @@ export class FleetRepository {
       }));
   }
 
-  saveLair(lair: PirateLair, insert: boolean): void {
-    const values = {
+  saveLair(lair: PirateLair): void {
+    this.writeSet.upsert("pirateLairs", lair.id, {
+      id: lair.id,
+      gameId: this.gameId,
       systemId: lair.systemId,
       ships: JSON.stringify(lair.ships),
       directives: JSON.stringify(lair.directives),
       bounty: lair.bounty,
-    };
-    if (insert) {
-      db.insert(schema.pirateLairs)
-        .values({ id: lair.id, gameId: this.gameId, ...values })
-        .run();
-    } else {
-      db.update(schema.pirateLairs).set(values).where(eq(schema.pirateLairs.id, lair.id)).run();
-    }
+    });
   }
 
   removeLair(id: string): void {
-    db.delete(schema.pirateLairs).where(eq(schema.pirateLairs.id, id)).run();
+    this.writeSet.delete("pirateLairs", id);
   }
 
   async loadBattles(): Promise<StoredBattle[]> {
@@ -106,23 +101,21 @@ export class FleetRepository {
   }
 
   insertBattle(battle: StoredBattle): void {
-    db.insert(schema.battles)
-      .values({
-        id: battle.id,
-        gameId: this.gameId,
-        at: battle.at,
-        systemId: battle.systemId,
-        attackerName: battle.attackerName,
-        defenderName: battle.defenderName,
-        report: JSON.stringify(battle.report),
-      })
-      .run();
+    this.writeSet.upsert("battles", battle.id, {
+      id: battle.id,
+      gameId: this.gameId,
+      at: battle.at,
+      systemId: battle.systemId,
+      attackerName: battle.attackerName,
+      defenderName: battle.defenderName,
+      report: JSON.stringify(battle.report),
+    });
   }
 
   /** Purge des batailles archivées au-delà de la fenêtre conservée. */
   removeBattlesExcept(keep: ReadonlySet<string>): void {
     for (const row of db.select({ id: schema.battles.id }).from(schema.battles).all()) {
-      if (!keep.has(row.id)) db.delete(schema.battles).where(eq(schema.battles.id, row.id)).run();
+      if (!keep.has(row.id)) this.writeSet.delete("battles", row.id);
     }
   }
 }

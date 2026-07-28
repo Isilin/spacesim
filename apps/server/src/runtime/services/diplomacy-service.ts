@@ -49,9 +49,9 @@ export class DiplomacyService {
     private readonly notify: () => void,
     private readonly logger: Logger,
   ) {
-    this.relationsRepo = new DiplomacyRepository(runtime.clock.id);
-    this.worldEventRepo = new WorldEventRepository(runtime.clock.id);
-    this.factionRepo = new FactionRepository(runtime.clock.id);
+    this.relationsRepo = new DiplomacyRepository(runtime.clock.id, runtime.writeSet);
+    this.worldEventRepo = new WorldEventRepository(runtime.clock.id, runtime.writeSet);
+    this.factionRepo = new FactionRepository(runtime.clock.id, runtime.writeSet);
   }
 
   // ─────────────────────────── Diplomatie (chantier 16) ───────────────────────────

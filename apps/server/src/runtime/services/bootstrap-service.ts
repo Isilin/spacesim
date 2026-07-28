@@ -61,10 +61,10 @@ export class BootstrapService {
     private readonly growUniverse: (count: number) => void,
     private readonly markExplored: (empire: Empire, systemId: string) => void,
   ) {
-    this.playerRepo = new PlayerRepository(runtime.clock.id);
-    this.colonyRepo = new ColonyRepository(runtime.clock.id);
-    this.claimRepo = new ClaimRepository(runtime.clock.id);
-    this.fleetRepo = new FleetRepository(runtime.clock.id);
+    this.playerRepo = new PlayerRepository(runtime.clock.id, runtime.writeSet);
+    this.colonyRepo = new ColonyRepository(runtime.clock.id, runtime.writeSet);
+    this.claimRepo = new ClaimRepository(runtime.clock.id, runtime.writeSet);
+    this.fleetRepo = new FleetRepository(runtime.clock.id, runtime.writeSet);
   }
 
   /**

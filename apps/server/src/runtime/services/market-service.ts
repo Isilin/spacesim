@@ -86,7 +86,7 @@ export class MarketService {
     ) => string | null,
     private readonly insertContract: (contract: Contract) => void,
   ) {
-    this.repo = new MarketRepository(runtime.clock.id);
+    this.repo = new MarketRepository(runtime.clock.id, runtime.writeSet);
   }
 
   private get portalLinks(): [string, string][] {
