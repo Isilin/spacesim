@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import styles from "./menu.module.css";
 
 export interface MenuItem {
   label: string;
@@ -14,16 +15,16 @@ export interface MenuProps {
 
 export function Menu({ items = [], style }: MenuProps) {
   return (
-    <div className="ss-cut-frame ss-menu" style={style}>
-      <div className="ss-cut-in">
+    <div className={styles.menu} style={style}>
+      <div className={styles.menuIn}>
         {items.map((it, i) =>
           it === "separator" ? (
-            <div key={i} className="ss-menu-sep" />
+            <div key={i} className={styles.menuSep} />
           ) : (
             <button
               key={i}
               type="button"
-              className="ss-menu-item"
+              className={styles.menuItem}
               data-danger={!!it.danger}
               disabled={it.disabled}
               onClick={it.onClick}

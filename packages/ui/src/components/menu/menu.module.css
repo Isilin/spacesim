@@ -1,15 +1,18 @@
-.ss-menu {
+.menu {
+  composes: cutFrame from "../../shared/cut-frame.module.css";
   --cut: var(--cut-sm);
   --frame-border: var(--border-bright);
   position: absolute;
   z-index: 60;
   min-width: 180px;
+  max-width: min(280px, calc(100vw - 24px));
   box-shadow: var(--shadow-panel);
 }
-.ss-menu .ss-cut-in {
+.menuIn {
+  composes: cutIn from "../../shared/cut-frame.module.css";
   padding: 4px;
 }
-.ss-menu-item {
+.menuItem {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -22,19 +25,19 @@
   font: var(--fs-sm) var(--font-mono);
   cursor: pointer;
 }
-.ss-menu-item:hover {
+.menuItem:hover {
   background: var(--cyan-dim);
   color: var(--cyan);
 }
-.ss-menu-item[data-danger="true"]:hover {
+.menuItem[data-danger="true"]:hover {
   background: var(--ko-bg);
   color: var(--ko);
 }
-.ss-menu-item[disabled] {
+.menuItem[disabled] {
   color: var(--dim);
   cursor: not-allowed;
 }
-.ss-menu-sep {
+.menuSep {
   height: 1px;
   background: var(--border);
   margin: 4px 0;
