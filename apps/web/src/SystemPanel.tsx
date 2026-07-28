@@ -9,7 +9,7 @@ import {
   type StarSystem,
 } from "@spacesim/shared";
 import { useSearchParams } from "react-router-dom";
-import { Button } from "@spacesim/ui";
+import { Button, Panel } from "@spacesim/ui";
 import { BodyActions, COLONY_SHIP_COST_TEXT } from "./BodyActions.js";
 import { formatDuration } from "./format.js";
 import { PLANET_TYPE_LABELS, RESOURCE_LABELS } from "./labels.js";
@@ -43,8 +43,7 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
 
   if (!explored) {
     return (
-      <>
-        <h2>{system.name}</h2>
+      <Panel title={system.name}>
         <p className="muted">Système non exploré.</p>
         {probeMission ? (
           <p className="small ok">
@@ -61,7 +60,7 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
             Sonder ({probeCost} crédits)
           </Button>
         )}
-      </>
+      </Panel>
     );
   }
 
@@ -123,29 +122,90 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
 
   return (
     <>
-      <h2>{system.name}</h2>
-      <p className="muted">
-        {planets.length} planètes
-        {moonCount > 0 ? `, ${moonCount} lunes` : ""}
-        {system.belts.length > 0 ? `, ${system.belts.length} ceintures` : ""}
-        {system.station ? ", 1 station" : ""}
-      </p>
-      {claimed ? (
-        <p className="small claim-badge">
-          ✦ Système revendiqué — production +15 %{" "}
-          <Button onClick={() => send({ type: "unclaimSystem", systemId: system.id })}>
-            Abandonner
-          </Button>
+      <Panel title={system.name}>
+        <p className="muted">
+          {planets.length} planètes
+          {moonCount > 0 ? `, ${moonCount} lunes` : ""}
+          {system.belts.length > 0 ? `, ${system.belts.length} ceintures` : ""}
+          {system.station ? ", 1 station" : ""}
         </p>
-      ) : hasOwnColony ? (
-        <Button
-          disabled={game.influence < CLAIM_COST}
-          title={game.influence < CLAIM_COST ? "Influence insuffisante" : ""}
-          onClick={() => send({ type: "claimSystem", systemId: system.id })}
-        >
-          Revendiquer le système ({CLAIM_COST} ✦)
-        </Button>
-      ) : null}
+        {claimed ? (
+          <p className="small claim-badge">
+            ✦ Système revendiqué — production +15 %{" "}
+            <Button onClick={() => send({ type: "unclaimSystem", systemId: system.id })}>
+              Abandonner
+            </Button>
+          </p>
+        ) : hasOwnColony ? (
+          <Button
+            disabled={game.influence < CLAIM_COST}
+            title={game.influence < CLAIM_COST ? "Influence insuffisante" : ""}
+            onClick={() => send({ type: "claimSystem", systemId: system.id })}
+          >
+            Revendiquer le système ({CLAIM_COST} ✦)
+          </Button>
+        ) : null}
+        <ul className="planet-list">
+          {planets.flatMap((p) => [
+            renderBody(p),
+            ...system.planets
+              .filter((m) => m.kind === "moon" && m.parentPlanetId === p.id)
+              .map(renderBody),
+          ])}
+          {system.belts.map((belt) => {
+            const outpost = outposts.find((o) => o.beltId === belt.id);
+            const buildMission = missions.find(
+              (m) => m.kind === "build_outpost" && m.targetId === belt.id,
+            );
+            const outpostAffordable =
+              activeColony &&
+              (Object.entries(OUTPOST_COST) as [ResourceId, number][]).every(
+                ([res, n]) => activeColony.resources[res] >= n,
+              );
+            return (
+              <li key={belt.id} className="planet moon-row">
+                <div className="planet-head">
+                  <strong>☄ {belt.name}</strong>
+                  <span className="muted">Astéroïdes</span>
+                </div>
+                <div className="deposits">
+                  {Object.entries(belt.deposits).map(([res, mod]) => (
+                    <span key={res} className="deposit">
+                      {RESOURCE_LABELS[res as ResourceId]} ×{mod}
+                    </span>
+                  ))}
+                </div>
+                {outpost ? (
+                  <p className={`small ${outpost.oreStock >= OUTPOST_STOCK_CAP ? "ko" : "ok"}`}>
+                    ⛏ Avant-poste — stock {Math.floor(outpost.oreStock)}/{OUTPOST_STOCK_CAP}
+                    {outpost.oreStock >= OUTPOST_STOCK_CAP ? " — PLEIN, extraction stoppée" : ""}
+                  </p>
+                ) : buildMission ? (
+                  <p className="small ok">
+                    Chantier en route — {formatDuration(buildMission.arrivesAt - now)}
+                  </p>
+                ) : (
+                  <Button
+                    disabled={!outpostAffordable}
+                    title={`Coût : ${OUTPOST_COST_TEXT}`}
+                    onClick={() =>
+                      activeColony &&
+                      send({ type: "buildOutpost", colonyId: activeColony.id, beltId: belt.id })
+                    }
+                  >
+                    Construire un avant-poste
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        {activeColony && (
+          <p className="small muted">
+            Origine des missions : {activeColony.name}. Vaisseau colonial : {COLONY_SHIP_COST_TEXT}.
+          </p>
+        )}
+      </Panel>
       {system.station && (
         <StationPanel
           station={system.station}
@@ -161,66 +221,6 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
           now={now}
           send={send}
         />
-      )}
-      <ul className="planet-list">
-        {planets.flatMap((p) => [
-          renderBody(p),
-          ...system.planets
-            .filter((m) => m.kind === "moon" && m.parentPlanetId === p.id)
-            .map(renderBody),
-        ])}
-        {system.belts.map((belt) => {
-          const outpost = outposts.find((o) => o.beltId === belt.id);
-          const buildMission = missions.find(
-            (m) => m.kind === "build_outpost" && m.targetId === belt.id,
-          );
-          const outpostAffordable =
-            activeColony &&
-            (Object.entries(OUTPOST_COST) as [ResourceId, number][]).every(
-              ([res, n]) => activeColony.resources[res] >= n,
-            );
-          return (
-            <li key={belt.id} className="planet moon-row">
-              <div className="planet-head">
-                <strong>☄ {belt.name}</strong>
-                <span className="muted">Astéroïdes</span>
-              </div>
-              <div className="deposits">
-                {Object.entries(belt.deposits).map(([res, mod]) => (
-                  <span key={res} className="deposit">
-                    {RESOURCE_LABELS[res as ResourceId]} ×{mod}
-                  </span>
-                ))}
-              </div>
-              {outpost ? (
-                <p className={`small ${outpost.oreStock >= OUTPOST_STOCK_CAP ? "ko" : "ok"}`}>
-                  ⛏ Avant-poste — stock {Math.floor(outpost.oreStock)}/{OUTPOST_STOCK_CAP}
-                  {outpost.oreStock >= OUTPOST_STOCK_CAP ? " — PLEIN, extraction stoppée" : ""}
-                </p>
-              ) : buildMission ? (
-                <p className="small ok">
-                  Chantier en route — {formatDuration(buildMission.arrivesAt - now)}
-                </p>
-              ) : (
-                <Button
-                  disabled={!outpostAffordable}
-                  title={`Coût : ${OUTPOST_COST_TEXT}`}
-                  onClick={() =>
-                    activeColony &&
-                    send({ type: "buildOutpost", colonyId: activeColony.id, beltId: belt.id })
-                  }
-                >
-                  Construire un avant-poste
-                </Button>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      {activeColony && (
-        <p className="small muted">
-          Origine des missions : {activeColony.name}. Vaisseau colonial : {COLONY_SHIP_COST_TEXT}.
-        </p>
       )}
     </>
   );

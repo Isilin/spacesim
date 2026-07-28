@@ -14,7 +14,7 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useMemo, useState } from "react";
-import { Select, Stat, Table, type TableColumn } from "@spacesim/ui";
+import { Panel, Select, Stat, Table, type TableColumn } from "@spacesim/ui";
 import { RESOURCE_LABELS } from "./labels.js";
 
 interface Props {
@@ -135,7 +135,7 @@ export function MarketsView({
   ];
 
   return (
-    <div className="markets-view">
+    <Panel title="Comparateur de marchés">
       <div className="research-header">
         <Select
           label="Ressource"
@@ -160,6 +160,6 @@ export function MarketsView({
         galaxie : les anneaux lointains paient cher le manufacturé et bradent le brut. La colonne «
         net » retranche les frais du voyage pour un cargo léger plein.
       </p>
-    </div>
+    </Panel>
   );
 }

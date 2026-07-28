@@ -97,12 +97,9 @@
   background: var(--panel);
   padding: 16px;
   overflow-y: auto;
-}
-
-.side-panel h2 {
-  color: var(--accent);
-  font-size: 16px;
-  letter-spacing: 1px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .planet-list {
@@ -699,6 +696,7 @@
 
 .map-nav {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 8px;
   margin-bottom: 8px;
@@ -709,7 +707,11 @@
   gap: 4px;
 }
 
-.map-nav button {
+/* Scopé à .map-nav-history (pas .map-nav) : .map-nav contient aussi .map-shortcuts,
+   dont les boutons sont des <Button> du design system — un sélecteur de type sur
+   .map-nav entrerait en collision avec leur style (même bug que .transfer-form
+   button, chantier 22.11). */
+.map-nav-history button {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 3px;
@@ -719,12 +721,12 @@
   cursor: pointer;
 }
 
-.map-nav button:hover:not(:disabled) {
+.map-nav-history button:hover:not(:disabled) {
   color: var(--accent);
   border-color: var(--accent);
 }
 
-.map-nav button:disabled {
+.map-nav-history button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -786,6 +788,7 @@
 
 .map-shortcuts {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
 }
 
