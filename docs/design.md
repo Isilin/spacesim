@@ -812,3 +812,199 @@ classes CSS ↔ usages JSX en passe de purge finale). `ResearchView` non touché
 SVG+sidebar dédié à hauteur pleine, hors périmètre design system, aucun bug constaté.
 
 `apps/web/src/styles.css` : 1434 → 1283 lignes.
+
+## Chantier 23 — Outil d'administration (CMS) (planification 28/07/2026)
+
+SpaceSim tourne avec un seul frontend (`apps/web`, le client joueur). Pour un univers persistant,
+jamais réinitialisé, qui va vivre avec de vrais joueurs, il manque un outil pour (1) **administrer
+les joueurs** — comptes, empires, sanctions — et (2) **piloter le contenu du jeu** (bâtiments,
+recherches, châssis, modules, vaisseaux, factions...) sans avoir à coder et redéployer à chaque
+ajustement d'équilibrage. Second frontend `apps/admin`, mêmes packages internes (`ui`, `protocol`,
+`shared`) et même design que `apps/web`, deux volets : administration joueurs et CMS de contenu.
+
+Trois décisions structurantes actées avant ce plan :
+
+1. **Le contenu de jeu bascule en base de données.** Les 9 domaines aujourd'hui codés en dur dans
+   `packages/shared/src/content/*.ts` (buildings, techs, chassis, modules, ships, warships,
+   factions, milestones, presets) migrent en tables Postgres, sur le même principe que l'univers
+   (chantier 18) : la DB fait autorité, le serveur charge le contenu au boot et l'injecte dans la
+   simulation. Les fichiers TS deviennent le jeu de données par défaut (seed + fixtures de test).
+2. **Identité admin = `accounts.role`**, pas de système séparé — réutilise tout l'infra de session
+   existante (`apps/server/src/auth.ts`). Un vrai système rôle/permissions (plusieurs rôles
+   distincts, chacun avec un ensemble d'actions permises), pas un simple booléen `isAdmin`.
+3. **La roadmap complète est conçue maintenant**, mais l'implémentation se fait chantier par
+   chantier, dans des sessions séparées, chacune committée à son achèvement.
+
+**Conséquence assumée de la décision 1** : la demande initiale est d'**étendre** et équilibrer le
+jeu depuis l'admin — pas seulement retoucher des nombres sur du contenu existant, mais aussi créer
+de nouvelles entrées (un nouveau bâtiment, une nouvelle tech...) sans coder tant qu'aucune nouvelle
+mécanique n'est requise. Aujourd'hui chaque id (`BuildingId`, `TechId`...) est un union TypeScript
+fermé, utilisé jusque dans `packages/protocol` (`z.enum(BUILDING_IDS)`) — dès lors que la DB fait
+autorité, ces ids n'ont plus de raison de rester figés à la compilation. Le desserrement se fait
+**une seule fois, en même temps que l'injection** (mêmes points d'appel touchés) plutôt que deux
+fois (valeurs d'abord, création d'id ensuite) : chaque écran CMS de contenu inclut donc un bouton
+« nouveau » dès son sous-chantier, pas dans un chantier séparé ultérieur.
+
+### État actuel (contrainte de départ)
+
+- Aucune notion d'admin/rôle/audit/sanction nulle part dans `apps/server` (recherche exhaustive
+  faite). `accounts` n'a que `id, email, passwordHash, createdAt, lastLoginAt`.
+- Aucun middleware d'auth-guard n'existe : chaque route résout la session à la main
+  (`resolveSession(bearerToken(...))`). Rien à réutiliser tel quel pour protéger `/api/admin` — à
+  construire de zéro.
+- `/dev/*` (`http/routes/dev.ts`) est un précédent **structurel** utile (routes privilégiées,
+  délégation fine route→service) mais **sans aucune autorisation par requête** — la protection est
+  uniquement l'absence d'enregistrement hors dev. À ne pas copier tel quel pour l'admin.
+- Primitives déjà prêtes à réutiliser : `revokeAllSessions(accountId)` et le code de fermeture WS
+  `4001` (`auth.ts`) pour forcer une déconnexion ; `BootstrapService.devEmpireSummaries()` pour un
+  premier survol « tous les empires ».
+- Contenu de jeu : 9 fichiers `packages/shared/src/content/*.ts`, tables `Record<Id,Def>` (ou
+  tableau pour `milestones`/`presets`) codées en dur, réexportées telles quelles par
+  `packages/shared/src/index.ts`. **L'injection de stats n'existe aujourd'hui que pour les
+  warships** (`sim/military/combat.ts` : `resolveBattle`/`fleetPower` prennent un paramètre
+  `defs = WARSHIP_COMBAT_DEFS`) et partiellement pour la capacité des vaisseaux légers
+  (`sim/industry/ships.ts` : callback `capacityOf` par défaut `legacyCapacity`). Partout ailleurs —
+  bâtiments (`sim/industry/colony.ts`), techs/effets (`sim/empire/research.ts`, `techtree.ts`),
+  **châssis/modules (`sim/industry/design.ts`, aucune injection du tout)** — c'est un import
+  statique direct. Étendre le patron à tout le contenu est donc un vrai chantier de refactor
+  (15-20 points d'appel), pas juste un branchement.
+- Les libellés français (nom/description) ne vivent **pas** dans `shared` mais séparément dans
+  `apps/web/src/labels.ts`, keyés par les mêmes ids. Seuls 7 des ~15 tables de labels
+  correspondent aux 9 domaines de contenu à migrer (`BUILDING_LABELS`, `SHIP_LABELS`,
+  `FACTION_LABELS`, `WARSHIP_LABELS`, `CHASSIS_LABELS`, `MODULE_LABELS`, `TECH_LABELS`) — le reste
+  (labels de types fixes du moteur : `RESOURCE_LABELS`, `PLANET_TYPE_LABELS`, `RELATION_BADGES`...)
+  n'est pas concerné et reste dans `apps/web`.
+- `packages/ui` (18 composants, CSS Modules + `data-*`) et `packages/protocol` (aujourd'hui limité
+  aux credentials + `ClientMessage`/`ServerMessage` WS) sont déjà pensés pour ça — les commentaires
+  des chantiers 21/22 anticipent explicitement « le futur client admin ». `pnpm-workspace.yaml`
+  inclut déjà `apps/*`, aucun changement nécessaire pour ajouter `apps/admin`.
+
+### Décisions actées
+
+1. **Contenu → DB**, un tableau par domaine (pas de `content_entries(domain,id,data jsonb)`
+   générique) — cohérent avec le style du schéma existant : champs stables en colonnes typées
+   (comme `contracts`, volontairement « tout scalaire »), structures à clé fermée en JSON texte
+   (comme `colonies.resources`/`fleets.ships` déjà aujourd'hui) pour les sous-objets (`cost`,
+   `slots`, `weapons`...). Nom/description français rejoignent chaque table (pas d'écran de labels
+   séparé).
+2. **Identité admin = `accounts.role`** (`player | moderator | content_editor | admin`), matrice de
+   permissions **codée** (pas éditable en DB — changement rare, niveau développeur), probablement
+   dans `packages/protocol` puisque serveur et futur client admin doivent s'accorder dessus. Chaque
+   action admin est nommée, vérifiée contre le rôle, et les **mutations** sont journalisées dans
+   une table d'audit (les lectures ne le sont pas par défaut, sans quoi le journal serait noyé pour
+   peu de valeur — à confirmer si besoin).
+3. **Édition en live** : un changement de contenu s'applique immédiatement, pas seulement au
+   prochain tick. Node est mono-thread et le tick tourne en synchrone (`runtime/scheduler.ts` +
+   `TickRunner.run`) : un simple remplacement de référence en mémoire ne peut jamais s'entrelacer
+   avec un tick en cours. Seule limite documentée, pas corrigée dans ce chantier :
+   `Empire.effects` (cache recalculé seulement quand une recherche se termine) peut afficher un
+   effet de tech légèrement périmé jusqu'au prochain recalcul — acceptable, pas spéculatif à
+   corriger maintenant.
+4. **Création de nouvelles entrées de contenu (nouveaux ids)** : dans le périmètre de ce chantier
+   dès le sous-chantier de chaque domaine, pas reportée à un chantier séparé.
+
+### Découpage proposé (sous-chantiers 23.1 → 23.12)
+
+Tailles indicatives **S** ≈ ½j · **M** ≈ 1-2j · **L** ≈ 3j+, mêmes conventions que le chantier 7.
+
+**23.1 — Socle : rôle, permissions, audit, garde admin (M).** Colonne `accounts.role` (`text`,
+défaut `"player"`, même convention que `players.kind`/`relations.state` — pas d'enum Postgres
+natif). Table `admin_audit_log` (acteur, action, cible, raison, métadonnées, horodatage).
+`packages/protocol/src/admin.ts` : `ROLE_IDS`, `ADMIN_ACTIONS` (namespacés, `"account.warn"`,
+`"content.buildings.write"`...), `ROLE_PERMISSIONS: Record<RoleId, Set<AdminActionId>>`. Nouveau
+`apps/server/src/http/routes/admin/guard.ts` (`preHandler` Fastify — session via `resolveSession`
+existant + vérif de rôle) et `apps/server/src/admin/audit-service.ts` (écrit en direct via
+`db.insert`, hors `WriteSet` : c'est un chemin humain à basse fréquence, pas le chemin chaud
+tick/commande que le write-behind protège). Premier admin : geste manuel documenté (`UPDATE
+accounts SET role='admin' WHERE email=...`), pas de flux libre-service — trop rare pour mériter
+une mécanique dédiée.
+
+**23.2 — Scaffold `apps/admin` + écran d'audit (M).** Nouvelle app Vite/React, port **5174** (5173
+déjà pris par `apps/web`), miroir de `apps/web` : `package.json` (`@spacesim/admin`, mêmes deps
+`workspace:*` moins `zustand` — pas de push WS côté admin), proxy `/auth`, `/health`,
+`/api/admin`. `useAdminAuth.ts` quasi identique à `apps/web/src/useAuth.ts` (même endpoint
+`/auth/login`). Premier écran réel : journal d'audit (`Table` de `@spacesim/ui`, zéro nouveau
+composant nécessaire). Câblage : `docker-compose.yml` — étendre le service `app` existant (3ᵉ
+process en arrière-plan + port `5174`, pas un service `admin` séparé : le service unique partage
+déjà le même network namespace, ce dont web a besoin pour joindre l'API en `127.0.0.1:3001`) ;
+`.claude/launch.json` +1 entrée ; `package.json` racine + `dev:admin`. `test`/`typecheck`/`lint`/
+`format` déjà repo-wide, rien à changer.
+
+**23.3 — Gestion joueurs : recherche, liste, détail (M).** Jointure applicative `accounts`+
+`players` (pas de FK déclarée — même convention informelle que le reste du schéma) : `GET
+/api/admin/accounts`, `GET /api/admin/accounts/:id` (empire, colonies, flottes, ressources, techs
+— même forme que `BootstrapService.devEmpireSummaries()`, réutilisée/étendue plutôt que
+réinventée). Écrans `AccountsListView`/`AccountDetailView`.
+
+**23.4 — Gestion joueurs : sanctions (M).** Nouvelle table `account_sanctions` (événements —
+`warn|suspend|ban|unban|force_logout`, raison, acteur, expiration nullable) plutôt qu'un champ
+`accounts.status` : le statut courant se calcule à la lecture, pas de deuxième source de vérité
+qui peut diverger. `login()` rejette si sanction active (message explicite — volontairement
+différent du non-distinguo anti-énumération actuel : un compte banni doit savoir pourquoi).
+Déconnexion forcée = `revokeAllSessions` existant. Explicitement **hors périmètre** pour cette
+première passe : ban IP (aucune IP n'est persistée aujourd'hui) et mute de chat (pas de chat dans
+le jeu).
+
+**23.5 — Mécanique de contenu + warships en pilote (M/L).** Warships en premier précisément parce
+que `combat.ts` accepte déjà des `defs` injectés — ça prouve la moitié serveur du mécanisme
+(schéma, chargement au boot, seed, CRUD admin, bascule mémoire) sans inventer les deux choses à la
+fois. Table `content_warships` + table `content_combat_tuning` (ligne unique JSON pour
+`CATEGORY_ADVANTAGE` et les `DIRECTIVES` — une matrice, pas des entités). Nouveau `runtime/content/`
+(parallèle à `runtime/services/`/`repositories/`, mais hors `WriteSet` : le contenu n'est pas une
+entité de tick) : `content-repository.ts`, `content-service.ts` (`ensureSeeded()` idempotent au
+boot — même idiome que `BootstrapService` pour le peuplement PNJ : compter, compléter si vide, sûr
+à chaque boot). `GameRuntime` gagne un champ `content`. `GET/PUT/POST
+/api/admin/content/warships[/:id]`.
+
+**23.6 — Contenu : factions (M).** Première vraie extension du patron d'injection à un domaine qui
+n'en avait aucune trace (`sim/economy/*.ts` importe `FACTIONS` en direct aujourd'hui) — recette
+répétable pour 23.7-23.11.
+
+**23.7 — Contenu : bâtiments (M).** Même recette sur `sim/industry/colony.ts`.
+
+**23.8 — Contenu : vaisseaux civils historiques + constantes de jeu (M).** Table `content_ships` +
+`content_constants` (clé/valeur, ~24 scalaires d'équilibrage réel — `POP_GROWTH_BASE`,
+`RAID_FRACTION`... — **exclut** volontairement les constantes structurelles à fort rayon d'impact
+comme `TICK_MS`/`GALAXY_SPACING`/`MAX_GALAXIES`, qui restent compile-time pour cette première
+passe).
+
+**23.9 — Contenu : arbre de recherche (L).** Domaine graphe (`requires: TechId[]`, parfois
+inter-branches) : éditeur doit valider absence de cycle / prérequis inconnu en réutilisant
+`validateTree` existant (`sim/empire/techtree.ts`) comme garde-fou serveur sur chaque écriture
+admin, pas seulement côté client.
+
+**23.10 — Contenu : châssis + modules + résolveur `design.ts` (L, le plus risqué).**
+`sim/industry/design.ts` (`resolveBlueprint`/`validateBlueprint`) n'a **aucun** précédent
+d'injection — import direct de `CHASSIS`/`MODULES`/`SLOT_TYPES`. Séquencé en dernier des domaines
+de contenu, une fois la recette rodée quatre fois sur des domaines plus simples.
+
+**23.11 — Contenu : presets + jalons (M).** Doit venir après 23.10 : les presets référencent des
+ids châssis/module et sont validés contre leurs contraintes d'emplacement/budget
+(`validateBlueprint` réutilisé tel quel côté éditeur, avec aperçu live des stats résolues).
+
+**23.12 — Extras ops/dashboard (S).** Purement additif : `GET /api/admin/ops/empires` (délègue à
+`devEmpireSummaries()`), `GET /api/admin/ops/health` (`tick`, `lastFlushAt`, `lastFlushError` déjà
+publics sur `Persister`, juste jamais exposés en HTTP), jauge de croissance de l'univers
+(`galaxies.length` vs `MAX_GALAXIES`/`FRONTIER_GALAXIES`).
+
+**Chemin critique** : `23.1 → 23.2 → (23.3 → 23.4)` et `23.1 → 23.5 → 23.6 → 23.7 → 23.8 → 23.9 →
+23.10 → 23.11` sont deux branches largement indépendantes après le socle commun ; `23.12` ne
+dépend que de `23.1`/`23.2` et peut se glisser n'importe quand après. Prochaine action recommandée
+à l'ouverture d'une future session : **23.1** seul (fondation à faible risque, gros levier — rien
+d'autre ne peut démarrer sans elle).
+
+### Décisions à trancher au fil de l'eau (notées, non bloquantes pour ce plan)
+
+- **`apps/admin` : fetch maison ou TanStack Query ?** Aucune dépendance de ce type dans le dépôt
+  aujourd'hui ; pertinent pour un CRUD-heavy admin, mais c'est un ajout de dépendance délibéré à
+  trancher à l'ouverture de 23.2, pas à imposer silencieusement.
+- **Granularité de l'audit des lectures** : seules les mutations sont journalisées par défaut
+  (23.1) — à revoir si un besoin de traçabilité des consultations émerge.
+- **Id-minting, cas par cas** : le desserrement `z.enum(TUPLE)` → `z.string()` + vérif DB se fait
+  domaine par domaine, en même temps que son injection (23.6-23.11) — pas un big-bang sur tout
+  `packages/protocol` d'un coup.
+
+### Vérification du chantier
+
+Chaque sous-chantier futur devra définir son propre DoD au moment de son ouverture (même
+convention que 7c → 7e).
