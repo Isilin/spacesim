@@ -15,5 +15,7 @@ test("navigation profonde vers une URL de carte survit au rechargement", async (
   await page.reload();
 
   await expect(page).toHaveURL(deepUrl);
-  await expect(page.getByRole("heading", { level: 2 })).toBeVisible();
+  // Le nom du système est le titre du <Panel> du panneau latéral (chantier 22.14) — h3,
+  // le niveau que Panel utilise partout dans le design system.
+  await expect(page.getByRole("heading", { level: 3 })).toBeVisible();
 });
