@@ -1,3 +1,5 @@
+import styles from "./stat.module.css";
+
 export interface StatProps {
   label: string;
   value: string | number;
@@ -5,11 +7,10 @@ export interface StatProps {
 }
 
 export function Stat({ label, value, tone = "default" }: StatProps) {
-  const cls = ["ss-stat", tone !== "default" ? `ss-stat--${tone}` : ""].filter(Boolean).join(" ");
   return (
-    <div className={cls}>
-      <span className="ss-stat-label">{label}</span>
-      <span className="ss-stat-value">{value}</span>
+    <div className={styles.stat} data-tone={tone}>
+      <span className={styles.label}>{label}</span>
+      <span className={styles.value}>{value}</span>
     </div>
   );
 }

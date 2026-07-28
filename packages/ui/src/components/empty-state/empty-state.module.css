@@ -1,4 +1,4 @@
-.ss-empty {
+.empty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -8,7 +8,7 @@
   color: var(--dim);
   text-align: center;
 }
-.ss-empty-icon {
+.icon {
   width: 32px;
   height: 32px;
   border: 1px solid var(--border);
@@ -19,6 +19,6 @@
   color: var(--muted);
   font-family: var(--font-display);
 }
-.ss-empty-text {
+.text {
   font-size: var(--fs-sm);
 }

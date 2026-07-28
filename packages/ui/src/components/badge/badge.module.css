@@ -1,4 +1,4 @@
-.ss-badge {
+.badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -11,38 +11,38 @@
   color: var(--muted);
   clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
 }
-.ss-badge--ok {
+.badge[data-variant="ok"] {
   border-color: var(--ok);
   color: var(--ok);
 }
-.ss-badge--ko {
+.badge[data-variant="ko"] {
   border-color: var(--ko);
   color: var(--ko);
 }
-.ss-badge--info {
+.badge[data-variant="info"] {
   border-color: var(--cyan);
   color: var(--cyan);
 }
-.ss-badge--violet {
+.badge[data-variant="violet"] {
   border-color: var(--violet);
   color: var(--violet);
 }
-.ss-badge--amber {
+.badge[data-variant="amber"] {
   border-color: var(--amber);
   color: var(--amber);
 }
-.ss-badge--solid.ss-badge--ok {
+.badge[data-solid="true"][data-variant="ok"] {
   background: var(--ok-bg);
 }
-.ss-badge--solid.ss-badge--ko {
+.badge[data-solid="true"][data-variant="ko"] {
   background: var(--ko-bg);
 }
-.ss-badge--solid.ss-badge--info {
+.badge[data-solid="true"][data-variant="info"] {
   background: var(--cyan-bg);
 }
-.ss-badge--solid.ss-badge--violet {
+.badge[data-solid="true"][data-variant="violet"] {
   background: var(--violet-bg);
 }
-.ss-badge--solid.ss-badge--amber {
+.badge[data-solid="true"][data-variant="amber"] {
   background: var(--amber-bg);
 }

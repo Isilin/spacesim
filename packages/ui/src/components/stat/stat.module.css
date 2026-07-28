@@ -1,4 +1,4 @@
-.ss-stat {
+.stat {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -6,27 +6,27 @@
   padding: 4px 12px;
   border-left: 1px solid var(--border);
 }
-.ss-stat-label {
+.label {
   font-family: var(--font-display);
   font-size: 10px;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--dim);
 }
-.ss-stat-value {
+.value {
   font-family: var(--font-mono);
   font-size: var(--fs-md);
   color: var(--text);
 }
-.ss-stat--ok .ss-stat-value {
+.stat[data-tone="ok"] .value {
   color: var(--ok);
 }
-.ss-stat--violet .ss-stat-value {
+.stat[data-tone="violet"] .value {
   color: var(--violet);
 }
-.ss-stat--amber .ss-stat-value {
+.stat[data-tone="amber"] .value {
   color: var(--amber);
 }
-.ss-stat--cyan .ss-stat-value {
+.stat[data-tone="cyan"] .value {
   color: var(--cyan);
 }

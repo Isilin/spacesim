@@ -4,18 +4,13 @@
  * l'orchestration se fait ici, à l'identique du patron produit par
  * claude.ai/design (voir `.claude-export/styles.css` avant sa suppression). */
 @import "./tokens.css";
-@import "./components/button/button.css";
 @import "./components/forms/forms.css";
-@import "./components/badge/badge.css";
 @import "./components/panel/panel.css";
-@import "./components/section-title/section-title.css";
 @import "./components/list/list.css";
 @import "./components/progress/progress.css";
 @import "./components/tabs/tabs.css";
 @import "./components/table/table.css";
-@import "./components/stat/stat.css";
 @import "./components/toast/toast.css";
-@import "./components/empty-state/empty-state.css";
 @import "./components/modal/modal.css";
 @import "./components/popover/popover.css";
 @import "./components/menu/menu.css";

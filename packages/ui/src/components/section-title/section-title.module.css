@@ -1,4 +1,4 @@
-.ss-section-title {
+.sectionTitle {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -9,7 +9,7 @@
   color: var(--muted);
   margin: 4px 0;
 }
-.ss-section-title::after {
+.sectionTitle::after {
   content: "";
   flex: 1;
   height: 1px;
