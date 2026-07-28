@@ -11,8 +11,8 @@ Monorepo pnpm workspaces, TypeScript partout :
 
 - `packages/shared` — types du modèle de jeu, constantes d'équilibrage, génération d'univers et logique de simulation **pure et déterministe** (testée avec vitest). Aucune dépendance runtime.
 - `packages/protocol` — contrats HTTP/WebSocket et schémas Zod (`ClientMessage`, `ServerMessage`, `EmpireSnapshot`). Dépend de `shared` ; `apps/server` et `apps/web` en dépendent, jamais l'inverse.
-- `packages/ui` — feuille de styles partagée (tokens de couleur, primitives CSS génériques : `.tabs`, `.action-button`, `.chip`, `.field`…), importée une fois par `apps/web`. Pas encore de composants React : à ajouter seulement quand un vrai doublon d'interface (pas juste une classe CSS) apparaît.
-- `apps/server` — Fastify + WebSocket (`/ws`), moteur de ticks, SQLite (better-sqlite3 + drizzle). **Serveur autoritaire** : toute la simulation vit ici, le client n'est qu'un dashboard.
+- `packages/ui` — package React réel (chantier 21, consommé en source directe comme `shared` — pas d'étape de build) : design system HUD (16 composants `ss-`-préfixés — `Button`, `Panel`, `Table`, `Tabs`, `Toast`, `ZoomableSvg`…) + tokens de couleur/typographie. Aucun import de `game-store` ni de `protocol` (le futur client admin en dépendra aussi) ; aucune logique de jeu.
+- `apps/server` — Fastify + WebSocket (`/ws`), moteur de ticks, Postgres (`drizzle-orm/node-postgres` en prod, PGlite WASM embarqué en tests/e2e — même dialecte SQL). **Serveur autoritaire** : toute la simulation vit ici, le client n'est qu'un dashboard.
 - `apps/web` — React + Vite + React Router. Proxy Vite `/ws` → serveur :3001.
 
 Principes :
@@ -36,6 +36,13 @@ Principes :
   comportement dev/tests. Une base d'avant le chantier 18 est matérialisée par un
   rattrapage one-shot idempotent au boot.
 - Temps hybride : tick serveur (5 s, `TICK_MS`) pour la production ; timers réels absolus (timestamps en DB) pour constructions/trajets/recherche, résolus par le tick qui les dépasse. Catch-up hors-ligne borné (`MAX_CATCHUP_TICKS`).
+- **Persistance en write-behind** (chantier 20) : la sim et les commandes WS restent 100 %
+  synchrones sur la RAM (qui fait autorité) ; les repositories écrivent dans un `WriteSet`
+  (`runtime/persistence/write-set.ts`, upserts keyés `(table, pk)` + deletes) qu'un
+  `Persister` (`runtime/persistence/persister.ts`) flushe en transaction, sérialisé par une
+  chaîne de promesses. `notify()` part avant la fin du flush — un crash perd au pire le
+  travail depuis le dernier flush (une commande ou un lot de ticks), jamais la cohérence de
+  la DB. `lastFlushAt`/`lastFlushError` exposés pour la supervision.
 - Toute règle de simulation = fonction pure dans `shared`, appelée par le serveur. Les constantes d'équilibrage vivent dans `shared` (fichiers `constants.ts` / `content/`).
 - **Logistique en deux stocks** (chantier 12) : chaque colonie a un stock **au sol**
   (`resources`, produit/consommé par les bâtiments) et un stock **en orbite**
@@ -64,12 +71,15 @@ La séparation des responsabilités est stricte :
 - `packages/protocol` porte les contrats HTTP/WebSocket et leurs schémas Zod. Il dépend de
   `shared` ; les applications en dépendent, jamais l'inverse.
 - `apps/server` est un serveur Fastify découpé par frontière : adaptateurs HTTP/WS
-  (`src/routes/`), six services applicatifs par domaine (`runtime/services/` — industrie,
-  logistique, exploration, flottes, diplomatie, bootstrap), un `GameRuntime` pour l'état mutable,
-  des projections en lecture seule, un `TickRunner` explicite pour l'ordre d'un tick, et les
-  repositories Drizzle. `GameEngine` reste une façade de compatibilité, composée au boot à
-  partir de ces pièces — pas une couche à supprimer, le point d'entrée stable du moteur. Ne pas
-  introduire NestJS ou un conteneur DI : la composition explicite au boot suffit.
+  (`src/http/routes/`, `src/ws/dispatch.ts`), neuf services applicatifs par domaine
+  (`runtime/services/` — industrie, logistique, portails, contrats, marché, exploration,
+  flottes, diplomatie, objectifs) + bootstrap + outils de dev, un `GameRuntime` pour l'état
+  mutable, des projections en lecture seule, un `TickRunner` explicite pour l'ordre d'un
+  tick, et les repositories Drizzle (`runtime/repositories/`, un propriétaire par table).
+  `GameEngine` reste une façade de compatibilité, composée au boot (`runtime/composition.ts`
+  → `composeEngine`) à partir de ces pièces — pas une couche à supprimer, le point d'entrée
+  stable du moteur. Ne pas introduire NestJS ou un conteneur DI : la composition explicite au
+  boot suffit.
 - L'API de jeu publique et la future API protégée `/api/admin` utiliseront les mêmes services
   applicatifs (socle admin différé, non commencé). Une route admin ne devra jamais modifier
   Drizzle ni les maps du runtime directement ; les actions administratives seront autorisées par
@@ -81,11 +91,14 @@ La séparation des responsabilités est stricte :
   depuis leur parent ; celles où une dérivation (colonie active, système exploré…) apparaît
   dupliquée passent par un sélecteur (`state/selectors.ts`), consommé directement via
   `useGameStore(selectXxx(...))` plutôt que transitée par une chaîne de props.
-- `packages/ui` héberge pour l'instant une feuille de styles (tokens, primitives CSS génériques
-  identifiées par audit de `styles.css`), sans composant React ni logique de jeu. Les cartes SVG,
-  labels, calculs d'affichage et interactions métier restent dans les features de `apps/web`. Des
-  primitives React n'y entreront que si un vrai doublon d'interface (pas seulement une classe
-  CSS partagée) apparaît. Le futur client admin réutilisera `protocol` et `ui`.
+- `packages/ui` héberge le design system HUD (chantier 21) : composants React génériques
+  (`Button`, `Panel`, `Table`, `Tabs`, `Toast`, `ZoomableSvg`…), tokens et styles, consommés
+  en source directe par `apps/web`. Les cartes SVG (rendu des nœuds), labels, calculs
+  d'affichage et interactions métier propres au jeu restent dans les features de `apps/web` —
+  `ui` ne connaît ni `game-store` ni `protocol`. Le futur client admin réutilisera `protocol`
+  et `ui`. La direction visuelle a été itérée via **DesignSync** (projet claude.ai/design) :
+  l'utilisateur y ajuste des cartes seed, les composants sont ensuite tirés
+  (`list_files`/`get_file`) et implémentés ici, puis repoussés en preview pour revue.
 
 ## Workflow de changement
 
@@ -121,9 +134,11 @@ chaque zone de code assainie, afin de ne pas masquer un chantier de refactorisat
 centaines de corrections non liées.
 
 Les deux serveurs de dev sont aussi déclarés dans `.claude/launch.json` (noms `server` et `web`).
-Supprimer la DB de dev (`apps/server/spacesim.db`) jette **l'univers de dev** — acceptable en
-local uniquement (`loadOrBootstrap` en recrée un au boot). Le futur serveur officiel, lui, ne
-repart jamais de zéro : c'est l'invariant du chantier 18.
+En dev via Docker, l'univers vit dans le volume nommé `pgdata` (service `postgres` du
+compose) : jeter l'univers de dev est un geste explicite, `docker compose down -v`
+(acceptable en local uniquement, `loadOrBootstrap` en recrée un au boot). Le futur serveur
+officiel, lui, ne repart jamais de zéro : c'est l'invariant du chantier 18, et créer son
+univers demande `SPACESIM_BOOTSTRAP=1` explicite (jamais un défaut, chantier 20.4).
 
 ## Environnement Docker (build sans Node natif)
 
@@ -151,6 +166,20 @@ se relance au prochain `up`/`run` (lockfile figé).
 Migrations drizzle-kit (`apps/server/drizzle/`), appliquées automatiquement au boot :
 après un changement de `src/db/schema.ts`, lancer `pnpm --filter @spacesim/server db:generate`
 et committer la migration générée. Ne jamais modifier une migration déjà appliquée.
+
+## Configuration et durcissement prod (chantier 20)
+
+`apps/server/src/config.ts` valide l'environnement avec Zod au premier import (erreurs
+lisibles immédiatement plutôt que des `undefined` silencieux) : `PORT`, `DATABASE_URL`
+(`postgres://…` en prod, sinon `SPACESIM_DB`/chemin PGlite), `NODE_ENV`, `LOG_LEVEL`,
+`CORS_ORIGIN`, `RATE_LIMIT_MAX`, `DEV_ROUTES`, `SPACESIM_BOOTSTRAP`. Les routes `/dev/*` sont
+à double verrou : jamais actives en prod sauf `DEV_ROUTES=1` explicite. `@fastify/rate-limit`
+et `@fastify/cors` sont enregistrés dans `http/app.ts` ; les logs pino masquent l'en-tête
+`authorization`.
+
+Sauvegarde de l'univers officiel : `scripts/backup.sh` (`pg_dump -Fc`, horodaté) — voir
+l'en-tête du script pour l'usage exact (y compris via `docker compose exec postgres` en dev,
+le conteneur `app` n'ayant pas `pg_dump`). Restauration via `pg_restore --clean --if-exists`.
 
 ## Comptes joueurs (chantier 8)
 

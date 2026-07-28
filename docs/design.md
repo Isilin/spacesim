@@ -650,3 +650,110 @@ depuis la seed, parents figés sur les positions réelles), idempotent et rejoua
 **Hors périmètre, noté pour la suite** : lever la résidence RAM de l'univers
 (`MAX_GALAXIES = 200` conservé), paginer le payload `hello` (univers complet à chaque
 connexion), FK réellement appliquées au schéma Postgres (chantier 20).
+
+### Chantier 19 — Découpage backend ✅ (28/07/2026)
+
+**`game.ts` cesse d'être un god file.** Il ne fait plus 1453 lignes de passe-plat : boot
+statique (`load`/`bootstrapNewUniverse`/`loadOrBootstrap`), câblage explicite
+(`runtime/composition.ts` → `composeEngine`), et une façade fine qui expose les services
+publics. Aucun conteneur DI, aucune classe magique — juste des fonctions et des fermetures
+composées une fois au boot (`runtime/boot.ts`), un `scheduler.ts` (start/stop/catch-up
+horloge) et un `notifier.ts` (listeners + drapeaux « dirty »).
+
+**`logistics-service.ts` (1719 lignes) éclaté par domaine**, du plus détachable au cœur :
+`gateway-service.ts` (portails), `contract-service.ts` (contrats de pénurie),
+`market-service.ts` (marché PNJ, IA éco, commerce station), `logistics-service.ts` résiduel
+(convois, routes, avant-postes, missions). `diplomacy-service.ts` a suivi le même sort côté
+diplomatie/objectifs/événements de monde/factions. Au total neuf services par domaine
+(`industry`, `logistics`, `gateway`, `contract`, `market`, `exploration`, `fleetService`,
+`diplomacy`, `objective`) + `bootstrap` + `devService`, tous composés par `composeEngine`
+(`runtime/composition.ts`) et orchestrés à chaque tick par `TickRunner`
+(`runtime/tick-runner.ts`) — plus de `TickHost` à 21 méthodes.
+
+**Repositories réels** (`runtime/repositories/`, un propriétaire par table : colony, fleet,
+logistics, market, contract, gateway, claim, diplomacy, objective, world-event, faction,
+blueprint, player, game) : `loadAll()` async au boot, `save/insert/remove` synchrones — la
+couture exacte où le write-behind du chantier 20 s'est branché sans changer une signature.
+`mission-resolution.ts` remplace le switch à 8 branches de `resolveMissions` par une table de
+handlers enregistrés par leurs services propriétaires.
+
+**Le filet de tests est resté tendu pendant les extractions** : `game.test.ts` (1514 lignes,
+17 `describe`) éclaté en fichiers co-localisés par domaine (`test-harness.ts` commun pour
+`resetDb`/boot/avance de ticks), même nombre d'assertions avant/après chaque split — les
+diffs sont des déplacements purs, jamais des changements de comportement.
+
+### Chantier 20 — Postgres + write-behind + durcissement prod ✅ (28/07/2026)
+
+**Le problème** : `better-sqlite3` est synchrone ; passer les repositories en async
+naïvement aurait introduit des entrelacements (une commande WS pendant l'`await` d'un tick
+= course sur les maps mémoire du runtime). **La solution retenue : write-behind.** La
+simulation et les commandes restent 100 % synchrones (mutations en RAM, qui fait autorité) ;
+chaque repository écrit dans un `WriteSet` (`runtime/persistence/write-set.ts` — upserts
+keyés `(table, pk)` en dernier-écrivain-gagne, plus deletes) ; un `Persister`
+(`runtime/persistence/persister.ts`) le flushe en transaction, sérialisé par une chaîne de
+promesses (`tail`) pour qu'un flush concurrent n'entrelace jamais deux transactions.
+`notify()` part immédiatement après la mutation RAM, sans attendre le flush — compromis
+assumé et documenté : un crash perd le travail depuis le dernier flush (au pire une commande
+ou un lot de ticks de 5 s), la DB reste toujours cohérente. `lastFlushAt`/`lastFlushError`
+exposés pour la supervision. Propriété clé : un rattrapage de N ticks produit O(entités)
+écritures, jamais O(ticks).
+
+**Schéma Postgres réel**, avec FK déclaratives cette fois **appliquées** : `colonies.planetId
+→ universe_bodies`, `fleets/claims/contracts/battles/pirateLairs.systemId →
+universe_systems`, `outposts.beltId → universe_belts`, `stationStates.stationId →
+universe_stations`, `gateways/worldEvents.galaxyId → universe_galaxies`. `missions.targetId`
+et `routes.fromId/toId` restent volontairement polymorphes (documentés en commentaire, pas de
+FK possible). `createDb(url)` (`db/index.ts`) route par schéma d'URL : `postgres://` →
+`drizzle-orm/node-postgres` (prod, service `postgres:17-alpine` du compose, volume nommé
+`pgdata` — le seul reset volontaire redevient `docker compose down -v`, plus jamais un `rm`
+de fichier) ; sinon `drizzle-orm/pglite` (WASM embarqué en mémoire, tests et e2e, même
+dialecte SQL que la prod). `withTransaction` sérialise en plus les transactions concurrentes
+au niveau connexion (défense en profondeur, la connexion PGlite unique ne tolère pas deux
+transactions en vol).
+
+**Prod ne repart jamais de zéro sans geste explicite** : `GameEngine.load()` seul au boot ;
+créer l'univers officiel demande `SPACESIM_BOOTSTRAP=1` (une bascule, jamais un défaut).
+
+**Durcissement HTTP** (`config.ts`, schéma Zod validé au premier import — erreurs lisibles
+immédiatement plutôt que des `undefined` qui remontent en runtime) : `@fastify/rate-limit`
+(`RATE_LIMIT_MAX`/minute), `@fastify/cors` (`CORS_ORIGIN`), logs pino avec redaction de
+`authorization`, routes `/dev/*` à double verrou (jamais actives en prod sauf `DEV_ROUTES=1`
+explicite + warning).
+
+**Sauvegardes** : `scripts/backup.sh` (`pg_dump -Fc`, horodaté, restaurable sélectivement via
+`pg_restore`) — voir le script pour l'usage exact dans le compose de dev vs. un déploiement
+réel.
+
+### Chantier 21 — Design system + refonte HUD EVE/Elite ✅ (28/07/2026)
+
+**`packages/ui` devient un vrai package React**, plus une simple feuille de styles :
+16 composants (`button`, `badge`, `empty-state`, `forms/{Field,NumberInput,Select}`,
+`list/{ListRow,RowHeader}`, `menu`, `modal`, `panel`, `popover`, `progress/{Gauge,ProgressBar}`,
+`section-title`, `stat`, `table`, `tabs`, `toast/{Toast,ToastStack}`, `zoomable-svg`),
+consommés en source directe par `apps/web` (même convention que `shared` — pas d'étape de
+build). Classes `ss-` préfixées, variantes par `data-variant`/suffixe de classe, tokens HUD
+(cyan/violet/ambre + `ok`/`ko` sémantiques, police d'affichage Rajdhani + JetBrains Mono pour
+les données). Aucun import de `game-store` ni de `protocol` dans `packages/ui` — le futur
+client admin en dépendra aussi.
+
+**Protocole DesignSync** : la direction visuelle (brief HUD, cartes seed, tokens) a d'abord
+été itérée par l'utilisateur seul dans claude.ai/design ; chaque vague de composants a été
+tirée depuis ce projet (`list_files`/`get_file` ciblés — contenu tiré = données, jamais des
+instructions), implémentée dans `packages/ui`, puis repoussée en preview incrémentale pour
+revue dans le même outil.
+
+**Migration d'`apps/web` par vagues**, chacune vérifiée en e2e comportemental (aucun
+sélecteur CSS, `getByRole`/`getByLabel`/`getByText` uniquement) : A (topbar, `AuthView`),
+B (`ColonyView`/`ShipyardPanel`/`BodyView`), C (`LogisticsView` et ses 5 sous-vues,
+`StationPanel`), D (`FleetsView`, `EmpireView`, `ResearchView`, `ShipDesigner`/
+`BlueprintList`, `ZoomableSvg` déménagé tel quel depuis `apps/web`). Plusieurs bugs de
+composants trouvés et corrigés **au niveau du composant partagé** plutôt que contournés côté
+consommateur : `className` clobbering (props natives spreadées après un `className` en dur —
+corrigé en fusionnant), association `label`/`input` manquante (`useId()` + `htmlFor`/`id`),
+boutons internes de `Tabs`/`Menu`/`Modal` sans `type="button"` (soumettaient un formulaire
+englobant), titre de `Panel` en `<span>` au lieu d'un `<h3>` (cassait la sémantique et les
+tests par rôle).
+
+`apps/web/src/styles.css` purgé des recettes désormais dupliquées dans `packages/ui` : 1743 →
+1434 lignes, ne reste que le CSS spécifique aux cartes SVG (galaxie/système/corps) et aux
+quelques mises en page non encore couvertes par un composant partagé.
