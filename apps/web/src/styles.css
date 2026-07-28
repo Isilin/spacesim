@@ -269,14 +269,6 @@
   overflow: hidden;
 }
 
-.shortage {
-  color: var(--ko);
-  font-size: 11px;
-  border: 1px solid var(--ko);
-  border-radius: 3px;
-  padding: 1px 5px;
-}
-
 .transfer-form {
   display: flex;
   flex-direction: column;
@@ -288,7 +280,10 @@
   margin-top: 10px;
 }
 
-.transfer-form select,
+/* Sélecteur de type restreint à input (chantier 22.15) : .transfer-form ne contient
+   plus de <select> brut, seul FleetsView y a encore un <input> ("Nom de la flotte").
+   `select` ciblait aussi le <select> interne du composant Select — même bug de
+   collision de spécificité que .transfer-form button (22.11). */
 .transfer-form input {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -297,10 +292,6 @@
   padding: 4px 8px;
   border-radius: 3px;
   margin-left: 8px;
-}
-
-.transfer-amount input {
-  width: 90px;
 }
 
 /* .transfer-form ne stylise plus les boutons par sélecteur de type (chantier 22.11) :
@@ -611,10 +602,6 @@
   padding-left: 8px;
 }
 
-.stat.influence {
-  color: #b48fe0;
-}
-
 .claim-ring {
   fill: none;
   stroke: #b48fe0;
@@ -648,6 +635,9 @@
 }
 
 .auth-brand {
+  color: var(--accent);
+  letter-spacing: 4px;
+  font-weight: bold;
   font-size: 20px;
   text-align: center;
 }
@@ -807,10 +797,6 @@
   gap: 16px;
   flex-wrap: wrap;
   margin-bottom: 12px;
-}
-
-.body-header .action-button {
-  margin-top: 0;
 }
 
 .body-layout {

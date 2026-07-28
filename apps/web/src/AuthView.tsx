@@ -37,7 +37,7 @@ export function AuthView({ auth }: Props) {
   return (
     <div className="auth-screen">
       <form className="auth-panel" onSubmit={submit}>
-        <h1 className="brand auth-brand">SPACESIM</h1>
+        <h1 className="auth-brand">SPACESIM</h1>
         <p className="muted small auth-tagline">
           {mode === "login"
             ? "Reprenez le commandement de votre empire."
