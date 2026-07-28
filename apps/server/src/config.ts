@@ -18,6 +18,8 @@ const EnvSchema = z.object({
   // Chaîne plutôt que boolean : les variables d'env sont toujours des chaînes,
   // `z.coerce.boolean()` traiterait "0" comme vrai (chaîne non vide).
   DEV_ROUTES: z.enum(["0", "1"]).optional(),
+  /** Geste explicite pour créer l'univers officiel EN PRODUCTION (chantier 20.4). */
+  SPACESIM_BOOTSTRAP: z.enum(["0", "1"]).optional(),
 });
 
 function parseEnv() {
@@ -43,6 +45,8 @@ export const config = {
   rateLimitMax: env.RATE_LIMIT_MAX,
   /** Routes `/dev/*` : jamais en prod sauf override explicite (double verrou, chantier 20.5). */
   devRoutes: env.DEV_ROUTES === "1",
+  /** Crée l'univers officiel au prochain boot prod — une bascule, jamais un défaut (chantier 20.4). */
+  bootstrap: env.SPACESIM_BOOTSTRAP === "1",
 } as const;
 
 export type Config = typeof config;

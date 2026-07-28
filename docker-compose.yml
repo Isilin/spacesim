@@ -1,12 +1,15 @@
 # Environnement de dev SpaceSim conteneurisé — aucune install Node sur l'hôte.
 #
-#   docker compose up app            → serveur (3001) + client web (5173)
-#   docker compose run --rm test     → tests unitaires de la simulation
+#   docker compose up app            → Postgres + serveur (3001) + client web (5173)
+#   docker compose run --rm test     → tests unitaires de la simulation (PGlite mémoire)
 #   docker compose run --rm typecheck→ tsc sur les 3 packages
 #   docker compose run --rm e2e      → Playwright (pile serveur+web en base mémoire)
 #
 # Le code est monté depuis l'hôte (hot reload) ; les node_modules vivent dans
 # des volumes nommés pour ne pas mélanger les binaires natifs Linux avec l'hôte.
+# `app` démarre son propre service `postgres` (chantier 20.4, univers persistant
+# dans le volume `pgdata`) ; `test`/`typecheck`/`e2e` n'en ont pas besoin (PGlite
+# WASM embarqué, pas de service externe).
 
 x-base: &base
   build: .
@@ -20,6 +23,23 @@ x-base: &base
     - web_modules:/app/apps/web/node_modules
 
 services:
+  # Postgres de dev (chantier 20.4) : univers persistant d'une session Docker à
+  # l'autre, dans le volume nommé `pgdata` — le seul reset volontaire reste
+  # `docker compose down -v` (jamais un `rm` de fichier comme avec SQLite).
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: spacesim
+      POSTGRES_USER: spacesim
+      POSTGRES_PASSWORD: spacesim
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spacesim -d spacesim"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
   # Serveur de jeu + client web (les deux dans le même conteneur : la proxy
   # Vite pointe vers 127.0.0.1:3001, il faut donc un réseau localhost partagé).
   app:
@@ -28,6 +48,11 @@ services:
       sh -c "pnpm install --frozen-lockfile &&
              (pnpm --filter @spacesim/server dev &
               pnpm --filter @spacesim/web dev --host 0.0.0.0)"
+    environment:
+      DATABASE_URL: postgres://spacesim:spacesim@postgres:5432/spacesim
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "5173:5173"
       - "3001:3001"
@@ -72,3 +97,4 @@ volumes:
   server_modules:
   web_modules:
   playwright_browsers:
+  pgdata:

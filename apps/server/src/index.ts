@@ -8,7 +8,18 @@ import { buildApp } from "./http/app.js";
 // un effet de bord de l'import de `db/index.ts`.
 await runMigrations(config.databaseUrl, db);
 
-const engine = await GameEngine.loadOrBootstrap();
+/**
+ * Boot prod : jamais de bootstrap implicite (chantier 20.4). `load()` lève sur une
+ * base vierge — un serveur officiel mal configuré doit planter, pas repartir de
+ * zéro. `SPACESIM_BOOTSTRAP=1` est le geste conscient, unique dans la vie du
+ * serveur, qui crée l'univers officiel. Dev/tests gardent `loadOrBootstrap()`.
+ */
+const engine =
+  config.nodeEnv === "production"
+    ? config.bootstrap
+      ? await GameEngine.bootstrapNewUniverse()
+      : await GameEngine.load()
+    : await GameEngine.loadOrBootstrap();
 // Population PNJ (chantier 14) : distinct de `load()`, idempotent — jamais doublé
 // au redémarrage, backfillé si absent sur une partie créée avant ce chantier.
 engine.ensureNpcPopulation();
