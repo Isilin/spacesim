@@ -930,6 +930,29 @@ fois (valeurs d'abord, création d'id ensuite) : chaque écran CMS de contenu in
   (`apps/web/ColonyView.tsx`, aperçu de production) — seules `enqueueBuilding`/
   `applyColonyTick` sont effectivement injectées côté serveur. Vérifié au navigateur
   (production de « mine » modifiée et relue immédiatement) et par 8 nouveaux tests.
+- ✅ **23.8** — Contenu : vaisseaux civils historiques + constantes d'équilibrage global, en
+  deux commits. **(a) Vaisseaux civils** : `content_ships` (migration 0006), même recette
+  qu'entrepôts/factions — id-minting complet (`ShipId` est déjà `string` partout, `buildShip`
+  en protocole n'a jamais eu de tuple fermé). `legacyCapacity`/`legacyConvoyStat`/`enqueueShip`
+  (`sim/industry/ships.ts`, `sim/exploration/travel.ts`) gagnent un paramètre de table
+  injectée ; `IndustryService`/`LogisticsService`/`ContractService` l'alimentent depuis
+  `runtime.content.ships`. **(b) Constantes** : `content_constants` (migration 0007),
+  clé/valeur, 26 scalaires réels (`POP_GROWTH_BASE`, `RAID_FRACTION`, `TRANSFER_*`,
+  `PROBE_*`, `ORBITAL_CAP_PER_DOCK`...) — exclut `TICK_MS`/`GALAXY_SPACING`/`MAX_GALAXIES`
+  (structurels) et `COLONY_SHIP_COST`/`NEW_COLONY_RESOURCES`/`NEW_COLONY_ORBITAL`
+  (composites, pas de simples scalaires). `packages/shared/src/balance.ts` introduit
+  `BalanceConstants`/`DEFAULT_BALANCE` : **un seul bundle injecté** (pas 26 paramètres
+  séparés) dans `colony.ts`, `travel.ts`, `fog.ts`, `orbital.ts`, défaut `DEFAULT_BALANCE`.
+  Sept services serveur (industry/fleet/logistics/contract/market/exploration/gateway)
+  l'alimentent via un getter privé `balance` depuis `runtime.content.constants` — c'est le
+  domaine de contenu au plus grand rayon d'impact de la vague (les vaisseaux civils touchent
+  3 fichiers serveur, les constantes 7). Pas d'id-minting sur les constantes (clé fermée sur
+  les champs de `BalanceConstants`, même choix que les bâtiments). `colonyRates`/
+  `colonyShortages` restent hors injection côté serveur (appelées seulement côté client,
+  cf. 23.7) — leur affichage peut légèrement dériver d'une constante éditée en admin tant
+  que ces valeurs ne sont pas poussées par WS, limite documentée plutôt que corrigée dans
+  cette passe. Vérifié au navigateur (édition de `raidFraction`, effective immédiatement)
+  et par 15 nouveaux tests.
 
 ### État actuel (contrainte de départ)
 
