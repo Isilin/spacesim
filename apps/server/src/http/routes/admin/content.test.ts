@@ -13,6 +13,7 @@ beforeEach(async () => {
   await db.delete(schema.contentWarships);
   await db.delete(schema.contentCombatTuning);
   await db.delete(schema.contentFactions);
+  await db.delete(schema.contentBuildings);
 });
 
 const VALID_WARSHIP_BODY = {
@@ -243,6 +244,89 @@ describe("/api/admin/content/factions", () => {
       url: "/api/admin/content/factions/ferride",
       headers: { authorization: `Bearer ${token}` },
       payload: VALID_FACTION_BODY,
+    });
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+const VALID_BUILDING_BODY = {
+  nameFr: "Mine profonde",
+  descriptionFr: "Extraction renforcée.",
+  cost: { ore: 999, energy: 25 },
+  buildMs: 25_000,
+  outputs: { ore: 4 },
+  inputs: {},
+  depositScaled: "ore",
+  jobsPerInstance: 5,
+};
+
+describe("/api/admin/content/buildings", () => {
+  it("un content_editor liste les 12 bâtiments historiques amorcés au boot", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/admin/content/buildings",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().buildings).toHaveLength(12);
+  });
+
+  it("modifie un bâtiment existant — effective immédiatement", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/buildings/mine",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_BUILDING_BODY,
+    });
+    expect(res.statusCode).toBe(200);
+    const updated = res.json().buildings.find((b: { id: string }) => b.id === "mine");
+    expect(updated.cost.ore).toBe(999);
+    expect(updated.outputs.ore).toBe(4);
+  });
+
+  it("un id inconnu de BUILDING_IDS est refusé (400) — pas d'id-minting pour ce domaine", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/buildings/mega_mine",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_BUILDING_BODY,
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("un corps invalide est refusé (400)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/buildings/mine",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_BUILDING_BODY, buildMs: -1 },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("un compte joueur ne peut pas éditer les bâtiments (403)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token } = await registerTestAccount(app, "joueur@exemple.fr");
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/buildings/mine",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_BUILDING_BODY,
     });
     expect(res.statusCode).toBe(403);
   });

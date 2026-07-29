@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-
 import { AccountDetailView } from "./AccountDetailView.js";
 import { AccountsListView } from "./AccountsListView.js";
 import { AuditLogView } from "./AuditLogView.js";
+import { BuildingsView } from "./content/BuildingsView.js";
 import { ContentLayout } from "./content/ContentLayout.js";
 import { FactionsView } from "./content/FactionsView.js";
 import { WarshipsView } from "./content/WarshipsView.js";
@@ -47,6 +48,7 @@ export function App({ auth }: Props) {
             <Route index element={<Navigate to="warships" replace />} />
             <Route path="warships" element={<WarshipsView token={auth.token!} />} />
             <Route path="factions" element={<FactionsView token={auth.token!} />} />
+            <Route path="buildings" element={<BuildingsView token={auth.token!} />} />
           </Route>
           <Route path="/audit" element={<AuditLogView token={auth.token!} />} />
         </Routes>

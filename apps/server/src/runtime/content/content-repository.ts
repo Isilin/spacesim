@@ -1,6 +1,11 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
-import type { ContentCombatTuning, ContentFaction, ContentWarship } from "./content-types.js";
+import type {
+  ContentBuilding,
+  ContentCombatTuning,
+  ContentFaction,
+  ContentWarship,
+} from "./content-types.js";
 
 /** Ligne unique de `content_combat_tuning` — id fixe, jamais une clé de contenu. */
 const TUNING_ROW_ID = "default";
@@ -8,6 +13,7 @@ const TUNING_ROW_ID = "default";
 type WarshipRow = typeof schema.contentWarships.$inferSelect;
 type TuningRow = typeof schema.contentCombatTuning.$inferSelect;
 type FactionRow = typeof schema.contentFactions.$inferSelect;
+type BuildingRow = typeof schema.contentBuildings.$inferSelect;
 
 function warshipFromRow(row: WarshipRow): ContentWarship {
   return {
@@ -81,6 +87,34 @@ function rowFromFaction(f: ContentFaction) {
     descriptionFr: f.descriptionFr,
     produces: JSON.stringify(f.produces),
     consumes: JSON.stringify(f.consumes),
+  };
+}
+
+function buildingFromRow(row: BuildingRow): ContentBuilding {
+  return {
+    id: row.id,
+    nameFr: row.nameFr,
+    descriptionFr: row.descriptionFr,
+    cost: JSON.parse(row.cost),
+    buildMs: row.buildMs,
+    outputs: row.outputs ? JSON.parse(row.outputs) : null,
+    inputs: row.inputs ? JSON.parse(row.inputs) : null,
+    depositScaled: row.depositScaled,
+    jobsPerInstance: row.jobsPerInstance,
+  };
+}
+
+function rowFromBuilding(b: ContentBuilding) {
+  return {
+    id: b.id,
+    nameFr: b.nameFr,
+    descriptionFr: b.descriptionFr,
+    cost: JSON.stringify(b.cost),
+    buildMs: b.buildMs,
+    outputs: b.outputs ? JSON.stringify(b.outputs) : null,
+    inputs: b.inputs ? JSON.stringify(b.inputs) : null,
+    depositScaled: b.depositScaled,
+    jobsPerInstance: b.jobsPerInstance,
   };
 }
 
@@ -169,5 +203,31 @@ export class ContentRepository {
       .insert(schema.contentFactions)
       .values(row)
       .onConflictDoUpdate({ target: schema.contentFactions.id, set: row });
+  }
+
+  async countBuildings(): Promise<number> {
+    const rows = await db.select({ id: schema.contentBuildings.id }).from(schema.contentBuildings);
+    return rows.length;
+  }
+
+  async loadBuildings(): Promise<Record<string, ContentBuilding>> {
+    const rows = await db
+      .select()
+      .from(schema.contentBuildings)
+      .orderBy(schema.contentBuildings.id);
+    return Object.fromEntries(rows.map((row) => [row.id, buildingFromRow(row)]));
+  }
+
+  async insertBuildings(buildings: ContentBuilding[]): Promise<void> {
+    if (buildings.length === 0) return;
+    await db.insert(schema.contentBuildings).values(buildings.map(rowFromBuilding));
+  }
+
+  async saveBuilding(building: ContentBuilding): Promise<void> {
+    const row = rowFromBuilding(building);
+    await db
+      .insert(schema.contentBuildings)
+      .values(row)
+      .onConflictDoUpdate({ target: schema.contentBuildings.id, set: row });
   }
 }

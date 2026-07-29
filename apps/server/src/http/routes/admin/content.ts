@@ -1,9 +1,14 @@
-import { upsertFactionSchema, upsertWarshipSchema } from "@spacesim/protocol";
+import { upsertBuildingSchema, upsertFactionSchema, upsertWarshipSchema } from "@spacesim/protocol";
+import { BUILDING_IDS, type BuildingId } from "@spacesim/shared";
 import type { FastifyInstance } from "fastify";
 import { recordAuditEntry } from "../../../admin/audit-service.js";
 import type { GameEngine } from "../../../game.js";
 import { ContentRepository } from "../../../runtime/content/content-repository.js";
-import type { ContentFaction, ContentWarship } from "../../../runtime/content/content-types.js";
+import type {
+  ContentBuilding,
+  ContentFaction,
+  ContentWarship,
+} from "../../../runtime/content/content-types.js";
 
 const repo = new ContentRepository();
 
@@ -88,6 +93,46 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
         reason: isNew ? "création" : "modification",
       });
       return { factions: Object.values(engine.content.factions) };
+    },
+  );
+
+  // Bâtiments (chantier 23.7) : même recette, sauf l'id — `BUILDING_IDS` reste un tuple
+  // fermé pour cette passe (voir packages/protocol/src/content.ts), la route refuse donc
+  // un id qui n'en fait pas partie plutôt que de créer une entrée inutilisable en jeu.
+  admin.get("/content/buildings", { config: { adminAction: "content.buildings.read" } }, () => ({
+    buildings: Object.values(engine.content.buildings),
+  }));
+
+  admin.put(
+    "/content/buildings/:id",
+    { config: { adminAction: "content.buildings.write" } },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      if (!(BUILDING_IDS as readonly string[]).includes(id)) {
+        return reply.code(400).send({
+          error: "Id de bâtiment inconnu — la création n'est pas prise en charge pour ce domaine",
+        });
+      }
+      const parsed = upsertBuildingSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+      }
+      const building: ContentBuilding = { id: id as BuildingId, ...parsed.data };
+      await repo.saveBuilding(building);
+      await engine.loadContent();
+
+      const actor = request.adminAccount!;
+      await recordAuditEntry({
+        actorAccountId: actor.id,
+        actorEmail: actor.email,
+        action: "content.buildings.write",
+        targetType: "content_building",
+        targetId: id,
+        reason: "modification",
+      });
+      return { buildings: Object.values(engine.content.buildings) };
     },
   );
 }

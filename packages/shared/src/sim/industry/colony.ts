@@ -61,8 +61,9 @@ export function enqueueBuilding(
   buildingId: BuildingId,
   now: number,
   effects: EmpireEffects = NO_EFFECTS,
+  buildings: Record<string, BuildingDef> = BUILDINGS,
 ): EnqueueResult {
-  const def = BUILDINGS[buildingId];
+  const def = buildings[buildingId];
   if (!def) return { ok: false, reason: `Bâtiment inconnu : ${buildingId}` };
   if (!effects.unlockedBuildings.has(buildingId)) {
     return { ok: false, reason: "Technologie requise non recherchée" };
@@ -129,17 +130,23 @@ export function popCap(
   return Math.floor(housing(colony, effects) * (effectiveHabitability(planet, effects) / 100));
 }
 
-export function totalJobs(colony: Colony): number {
+export function totalJobs(
+  colony: Colony,
+  buildings: Record<string, BuildingDef> = BUILDINGS,
+): number {
   let jobs = 0;
   for (const [buildingId, level] of Object.entries(colony.buildings) as [BuildingId, number][]) {
-    jobs += (BUILDINGS[buildingId].jobsPerInstance ?? 0) * (level ?? 0);
+    jobs += (buildings[buildingId]?.jobsPerInstance ?? 0) * (level ?? 0);
   }
   return jobs;
 }
 
 /** Part des emplois pourvus (uniforme sur tous les bâtiments) — 1 si assez de colons. */
-export function workforceEfficiency(colony: Colony): number {
-  const jobs = totalJobs(colony);
+export function workforceEfficiency(
+  colony: Colony,
+  buildings: Record<string, BuildingDef> = BUILDINGS,
+): number {
+  const jobs = totalJobs(colony, buildings);
   if (jobs === 0) return 1;
   return Math.min(1, colony.population / jobs);
 }
@@ -194,14 +201,15 @@ export function applyColonyTick(
   colony: Colony,
   planet: Planet,
   effects: EmpireEffects = NO_EFFECTS,
+  buildings: Record<string, BuildingDef> = BUILDINGS,
 ): Colony {
   const resources = { ...colony.resources };
-  const efficiency = workforceEfficiency(colony);
+  const efficiency = workforceEfficiency(colony, buildings);
 
   for (const [buildingId, level] of Object.entries(colony.buildings) as [BuildingId, number][]) {
     if (!level) continue;
-    const def = BUILDINGS[buildingId];
-    if (!def.outputs && !def.inputs) continue;
+    const def = buildings[buildingId];
+    if (!def || (!def.outputs && !def.inputs)) continue;
     const staffing = def.jobsPerInstance ? efficiency : 1;
     if (staffing <= 0) continue;
 
@@ -256,12 +264,14 @@ export function colonyRates(
   colony: Colony,
   planet: Planet,
   effects: EmpireEffects = NO_EFFECTS,
+  buildings: Record<string, BuildingDef> = BUILDINGS,
 ): Record<ResourceId, number> {
   const rates = emptyResources();
-  const efficiency = workforceEfficiency(colony);
+  const efficiency = workforceEfficiency(colony, buildings);
   for (const [buildingId, level] of Object.entries(colony.buildings) as [BuildingId, number][]) {
     if (!level) continue;
-    const def = BUILDINGS[buildingId];
+    const def = buildings[buildingId];
+    if (!def) continue;
     const staffing = def.jobsPerInstance ? efficiency : 1;
     const outputBoost = (effects.outputMult[buildingId] ?? 1) * effects.outputMultAll;
     for (const [res, rate] of Object.entries(def.inputs ?? {}) as [ResourceId, number][]) {
@@ -285,13 +295,16 @@ export interface Shortage {
 }
 
 /** Bâtiments à l'arrêt faute d'intrants au stock actuel (pour l'UI pénuries). */
-export function colonyShortages(colony: Colony): Shortage[] {
+export function colonyShortages(
+  colony: Colony,
+  buildings: Record<string, BuildingDef> = BUILDINGS,
+): Shortage[] {
   const shortages: Shortage[] = [];
-  const efficiency = workforceEfficiency(colony);
+  const efficiency = workforceEfficiency(colony, buildings);
   for (const [buildingId, level] of Object.entries(colony.buildings) as [BuildingId, number][]) {
     if (!level) continue;
-    const def = BUILDINGS[buildingId];
-    if (!def.inputs) continue;
+    const def = buildings[buildingId];
+    if (!def?.inputs) continue;
     const staffing = def.jobsPerInstance ? efficiency : 1;
     const missing = (Object.entries(def.inputs) as [ResourceId, number][])
       .filter(([res, rate]) => colony.resources[res] < rate * level * staffing)

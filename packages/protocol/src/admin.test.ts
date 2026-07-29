@@ -40,4 +40,9 @@ describe("rôles et permissions admin", () => {
     expect(hasPermission("content_editor", "content.factions.read")).toBe(true);
     expect(hasPermission("content_editor", "content.factions.write")).toBe(true);
   });
+
+  it("content_editor édite aussi les bâtiments (chantier 23.7)", () => {
+    expect(hasPermission("content_editor", "content.buildings.read")).toBe(true);
+    expect(hasPermission("content_editor", "content.buildings.write")).toBe(true);
+  });
 });

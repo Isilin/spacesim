@@ -1,4 +1,6 @@
 import {
+  BUILDING_IDS,
+  BUILDINGS,
   CATEGORY_ADVANTAGE,
   COUNTER_BONUS,
   DIRECTIVE_COUNTER,
@@ -8,10 +10,16 @@ import {
   WARSHIP_CATEGORY,
   WARSHIP_IDS,
   WARSHIPS,
+  type BuildingDef,
   type CombatDef,
 } from "@spacesim/shared";
 import { ContentRepository } from "./content-repository.js";
-import type { ContentBundle, ContentFaction, ContentWarship } from "./content-types.js";
+import type {
+  ContentBuilding,
+  ContentBundle,
+  ContentFaction,
+  ContentWarship,
+} from "./content-types.js";
 
 const repo = new ContentRepository();
 
@@ -95,6 +103,63 @@ function seedFactions(): ContentFaction[] {
 }
 
 /**
+ * Libellés français des bâtiments, dupliqués depuis `apps/web/src/labels.ts`
+ * (`BUILDING_LABELS`) — même raison que `SEED_WARSHIP_LABELS` ci-dessus.
+ */
+const SEED_BUILDING_LABELS: Record<string, { name: string; description: string }> = {
+  mine: { name: "Mine", description: "Extrait le minerai (selon gisement)." },
+  power_plant: { name: "Centrale", description: "Produit de l'énergie (selon gisement)." },
+  farm: { name: "Ferme", description: "Produit de la nourriture (selon gisement)." },
+  habitat: {
+    name: "Habitat",
+    description: "20 logements par niveau (modulés par l'habitabilité).",
+  },
+  storage_depot: { name: "Entrepôt", description: "+1000 de stockage par niveau." },
+  laboratory: {
+    name: "Laboratoire",
+    description: "Produit de la science, consomme de l'énergie.",
+  },
+  smelter: { name: "Fonderie", description: "Minerai + énergie → métaux." },
+  component_factory: {
+    name: "Usine de composants",
+    description: "Métaux + énergie → composants.",
+  },
+  goods_factory: {
+    name: "Usine de biens",
+    description: "Métaux + énergie → biens de consommation.",
+  },
+  shipyard: { name: "Chantier naval", description: "Produit les vaisseaux civils (cargos)." },
+  monument: {
+    name: "Monument",
+    description: "Rayonnement culturel : +0,5 influence par tick.",
+  },
+  orbital_dock: {
+    name: "Dock orbital",
+    description:
+      "Entrepôt en orbite et ascenseur vers le sol. Indispensable : les vaisseaux ne chargent que ce qui est en orbite.",
+  },
+};
+
+/** Bâtiments historiques (`packages/shared`) au format `ContentBuilding`. */
+function seedBuildings(): ContentBuilding[] {
+  return BUILDING_IDS.map((id) => {
+    const def = BUILDINGS[id];
+    const label = SEED_BUILDING_LABELS[id];
+    return {
+      id,
+      nameFr: label?.name ?? id,
+      descriptionFr: label?.description ?? "",
+      cost: def.cost,
+      buildMs: def.buildMs,
+      outputs: def.outputs ?? null,
+      inputs: def.inputs ?? null,
+      depositScaled: def.depositScaled ?? null,
+      jobsPerInstance: def.jobsPerInstance ?? null,
+    };
+  });
+}
+
+/**
  * Amorce le contenu une fois dans la vie d'une base (idempotent, sûr à chaque boot —
  * même idiome que `BootstrapService.ensureNpcPopulation` : compter, compléter si vide).
  * Libellés français repris des tables `SEED_*` ci-dessus ; `apps/web/src/labels.ts` garde
@@ -116,17 +181,21 @@ export async function ensureContentSeeded(): Promise<void> {
   if ((await repo.countFactions()) === 0) {
     await repo.insertFactions(seedFactions());
   }
+  if ((await repo.countBuildings()) === 0) {
+    await repo.insertBuildings(seedBuildings());
+  }
 }
 
 /** Charge tout le contenu depuis la DB — appelé au boot puis après chaque édition admin
  *  (remplacement en bloc de `GameRuntime.content`, jamais de mutation en place). */
 export async function loadContentBundle(): Promise<ContentBundle> {
-  const [warships, combatTuning, factions] = await Promise.all([
+  const [warships, combatTuning, factions, buildings] = await Promise.all([
     repo.loadWarships(),
     repo.loadTuning(),
     repo.loadFactions(),
+    repo.loadBuildings(),
   ]);
-  return { warships, combatTuning, factions };
+  return { warships, combatTuning, factions, buildings };
 }
 
 /** Convertit les vaisseaux de guerre chargés en table de combat (`sim/military/combat.ts`
@@ -145,6 +214,27 @@ export function combatDefsFromWarships(
         fleetDamageBonus: w.fleetDamageBonus ?? 0,
         category: w.category,
       } satisfies CombatDef,
+    ]),
+  );
+}
+
+/** Convertit les bâtiments chargés en table de définitions (`sim/industry/colony.ts`
+ *  `buildings`) — même forme que `BUILDINGS`, sourcée depuis le contenu DB-backed. */
+export function buildingDefsFromContent(
+  buildings: Record<string, ContentBuilding>,
+): Record<string, BuildingDef> {
+  return Object.fromEntries(
+    Object.entries(buildings).map(([id, b]) => [
+      id,
+      {
+        id: id as BuildingDef["id"],
+        cost: b.cost,
+        buildMs: b.buildMs,
+        outputs: b.outputs ?? undefined,
+        inputs: b.inputs ?? undefined,
+        depositScaled: (b.depositScaled ?? undefined) as BuildingDef["depositScaled"],
+        jobsPerInstance: b.jobsPerInstance ?? undefined,
+      } satisfies BuildingDef,
     ]),
   );
 }

@@ -33,6 +33,7 @@ import {
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
+import { buildingDefsFromContent } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { BlueprintRepository } from "../repositories/blueprint-repository.js";
@@ -74,7 +75,14 @@ export class IndustryService {
     if (!colony) return "Colonie inconnue";
     const planet = this.runtime.planetsById.get(colony.planetId);
     if (!planet) return "Planète inconnue";
-    const result = enqueueBuilding(colony, planet, buildingId, Date.now(), empire.effects);
+    const result = enqueueBuilding(
+      colony,
+      planet,
+      buildingId,
+      Date.now(),
+      empire.effects,
+      buildingDefsFromContent(this.runtime.content.buildings),
+    );
     if (!result.ok) return result.reason;
     empire.colonyMap.set(colonyId, result.colony);
     this.persistColony(result.colony);
@@ -474,7 +482,12 @@ export class IndustryService {
       empire.colonyMap.set(
         id,
         applyLift(
-          applyColonyTick(resolveShips(resolveQueue(colony, t), t), planet, effects),
+          applyColonyTick(
+            resolveShips(resolveQueue(colony, t), t),
+            planet,
+            effects,
+            buildingDefsFromContent(this.runtime.content.buildings),
+          ),
           effects,
         ),
       );

@@ -1,7 +1,8 @@
-import { FACTION_IDS, WARSHIP_IDS } from "@spacesim/shared";
+import { BUILDING_IDS, FACTION_IDS, WARSHIP_IDS } from "@spacesim/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db, schema } from "../../db/index.js";
 import {
+  buildingDefsFromContent,
   combatDefsFromWarships,
   ensureContentSeeded,
   loadContentBundle,
@@ -11,6 +12,7 @@ beforeEach(async () => {
   await db.delete(schema.contentWarships);
   await db.delete(schema.contentCombatTuning);
   await db.delete(schema.contentFactions);
+  await db.delete(schema.contentBuildings);
 });
 
 describe("ensureContentSeeded", () => {
@@ -28,6 +30,14 @@ describe("ensureContentSeeded", () => {
     expect(Object.keys(bundle.factions).sort()).toEqual([...FACTION_IDS].sort());
     expect(bundle.factions.ferride?.name).toBe("Consortium Ferride");
     expect(bundle.factions.ferride?.produces.metals).toBeGreaterThan(0);
+  });
+
+  it("peuple les bâtiments depuis packages/shared/src/content/buildings.ts", async () => {
+    await ensureContentSeeded();
+    const bundle = await loadContentBundle();
+    expect(Object.keys(bundle.buildings).sort()).toEqual([...BUILDING_IDS].sort());
+    expect(bundle.buildings.mine?.nameFr).toBe("Mine");
+    expect(bundle.buildings.mine?.depositScaled).toBe("ore");
   });
 
   it("est idempotent : un second appel ne duplique rien", async () => {
@@ -63,6 +73,23 @@ describe("combatDefsFromWarships", () => {
       initiative: bundle.warships.fighter!.initiative,
       fleetDamageBonus: 0,
       category: bundle.warships.fighter!.category,
+    });
+  });
+});
+
+describe("buildingDefsFromContent", () => {
+  it("convertit le contenu chargé au format attendu par sim/industry/colony.ts", async () => {
+    await ensureContentSeeded();
+    const bundle = await loadContentBundle();
+    const defs = buildingDefsFromContent(bundle.buildings);
+    expect(defs.mine).toEqual({
+      id: "mine",
+      cost: bundle.buildings.mine!.cost,
+      buildMs: bundle.buildings.mine!.buildMs,
+      outputs: bundle.buildings.mine!.outputs ?? undefined,
+      inputs: bundle.buildings.mine!.inputs ?? undefined,
+      depositScaled: bundle.buildings.mine!.depositScaled,
+      jobsPerInstance: bundle.buildings.mine!.jobsPerInstance ?? undefined,
     });
   });
 });

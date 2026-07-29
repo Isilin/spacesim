@@ -1,10 +1,11 @@
 import { Tabs } from "@spacesim/ui";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
-/** Un onglet par domaine de contenu — grandit avec 23.7+ (bâtiments, techs...). */
+/** Un onglet par domaine de contenu — grandit avec 23.8+ (vaisseaux civils, techs...). */
 const CONTENT_TABS = [
   { value: "warships", label: "Vaisseaux de guerre" },
   { value: "factions", label: "Factions" },
+  { value: "buildings", label: "Bâtiments" },
 ];
 
 /** Sous-navigation du CMS de contenu (chantier 23.6) — même patron que les onglets

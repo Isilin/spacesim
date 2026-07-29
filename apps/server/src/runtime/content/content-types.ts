@@ -42,10 +42,28 @@ export interface ContentFaction {
   consumes: Record<string, number>;
 }
 
+/**
+ * Bâtiment de colonie (chantier 23.7) — `id` reste un des 12 ids historiques pour cette
+ * passe (`BuildingId` est tissé dans `Colony`/protocole, pas desserré ici) : seules les
+ * valeurs sont éditables.
+ */
+export interface ContentBuilding {
+  id: string;
+  nameFr: string;
+  descriptionFr: string;
+  cost: Record<string, number>;
+  buildMs: number;
+  outputs: Record<string, number> | null;
+  inputs: Record<string, number> | null;
+  depositScaled: string | null;
+  jobsPerInstance: number | null;
+}
+
 /** Contenu chargé en mémoire (`GameRuntime.content`) — remplacé en bloc à chaque édition
  *  admin (édition en live, chantier 23 décision 3), jamais muté en place. */
 export interface ContentBundle {
   warships: Record<string, ContentWarship>;
   combatTuning: ContentCombatTuning;
   factions: Record<string, ContentFaction>;
+  buildings: Record<string, ContentBuilding>;
 }

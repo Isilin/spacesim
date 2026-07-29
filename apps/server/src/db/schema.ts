@@ -544,3 +544,26 @@ export const contentFactions = pgTable("content_factions", {
   /** JSON `Partial<Record<ResourceId, number>>`. */
   consumes: text("consumes").notNull().default("{}"),
 });
+
+/**
+ * Bâtiments de colonie (chantier 23.7). `id` reste néanmoins un des 12 ids historiques
+ * pour cette passe — contrairement aux vaisseaux/factions, `BuildingId` est tissé dans
+ * `Colony.buildings`/`BuildQueueItem`/`EmpireEffects` et le schéma protocole
+ * (`z.enum(BUILDING_IDS)`) : desserrer le tuple ici serait un chantier à part, pas
+ * inclus dans cette passe. Seules les VALEURS sont éditables depuis l'admin.
+ */
+export const contentBuildings = pgTable("content_buildings", {
+  id: text("id").primaryKey(),
+  nameFr: text("name_fr").notNull(),
+  descriptionFr: text("description_fr").notNull().default(""),
+  /** JSON `Partial<Record<ResourceId, number>>`. */
+  cost: text("cost").notNull().default("{}"),
+  buildMs: integer("build_ms").notNull(),
+  /** JSON `Partial<Record<ResourceId, number>>`, null = pas de production. */
+  outputs: text("outputs"),
+  /** JSON `Partial<Record<ResourceId, number>>`, null = pas de consommation. */
+  inputs: text("inputs"),
+  /** Ressource dont la production est multipliée par le gisement de la planète. */
+  depositScaled: text("deposit_scaled"),
+  jobsPerInstance: integer("jobs_per_instance"),
+});

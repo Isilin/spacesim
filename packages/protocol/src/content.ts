@@ -47,3 +47,22 @@ export const upsertFactionSchema = z.object({
   consumes: z.record(z.string(), z.number().nonnegative()),
 });
 export type UpsertFactionInput = z.infer<typeof upsertFactionSchema>;
+
+/**
+ * Bâtiments (chantier 23.7) : à la différence des vaisseaux/factions, l'id **n'est pas**
+ * libre pour cette passe — `BuildingId` reste un tuple fermé (`Colony.buildings`,
+ * `ClientMessageSchema`) tant que ce desserrement n'a pas été traité séparément. La route
+ * refuse un id inconnu de `BUILDING_IDS` (vérifié côté serveur, qui a accès à la liste).
+ */
+export const upsertBuildingSchema = z.object({
+  nameFr: z.string().trim().min(1).max(80),
+  descriptionFr: z.string().trim().max(500).default(""),
+  cost: z.record(z.string(), z.number().nonnegative()),
+  buildMs: z.number().int().positive(),
+  outputs: z.record(z.string(), z.number().nonnegative()).nullable(),
+  inputs: z.record(z.string(), z.number().nonnegative()).nullable(),
+  /** Ressource dont la production est multipliée par le gisement de la planète. */
+  depositScaled: z.string().trim().min(1).nullable(),
+  jobsPerInstance: z.number().int().nonnegative().nullable(),
+});
+export type UpsertBuildingInput = z.infer<typeof upsertBuildingSchema>;

@@ -105,6 +105,14 @@ describe("enqueueBuilding", () => {
     // Pas de niveaux : la deuxième instance coûte pareil.
     expect(buildingCost(BUILDINGS.mine)).toEqual(BUILDINGS.mine.cost);
   });
+
+  it("accepte une table de bâtiments injectée (chantier 23.7) — coûts différents de BUILDINGS", () => {
+    const customBuildings = { ...BUILDINGS, mine: { ...BUILDINGS.mine, cost: { ore: 5 } } };
+    const colony = makeColony({ resources: { ...emptyResources(), ore: 10, energy: 10 } });
+    const result = enqueueBuilding(colony, planet, "mine", 0, undefined, customBuildings);
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.colony.resources.ore).toBe(5);
+  });
 });
 
 describe("resolveQueue", () => {
