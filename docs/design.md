@@ -871,6 +871,19 @@ fois (valeurs d'abord, création d'id ensuite) : chaque écran CMS de contenu in
   touche jamais aux maps du runtime directement. Écrans `AccountsListView`/`AccountDetailView`
   côté `apps/admin`, onglet « Joueurs ». Vérifié au navigateur avec les comptes réels de la base
   de dev : liste, recherche, détail avec colonie et ressources.
+- ✅ **23.4** — Table `account_sanctions` (événements `warn|suspend|ban|unban|force_logout`,
+  raison obligatoire) : statut courant calculé à la lecture depuis le dernier événement
+  ban/suspend/unban, pas de champ `accounts.status` séparé. Portée dans `auth.ts` (pas
+  `admin/`) : « un compte sanctionné ne peut pas se connecter » est une règle d'auth à part
+  entière, `login()` renvoie un message explicite (volontairement différent du non-distinguo
+  anti-énumération existant). `admin/sanctions-service.ts` (écriture, dépendance à sens unique
+  vers `auth.ts` pour `revokeAllSessions`) force la déconnexion sur ban/suspend/force_logout.
+  `POST /api/admin/accounts/:id/sanctions` : garde sur `account.warn` (seuil d'entrée) puis
+  revérification fine par genre contre `SANCTION_ACTIONS` — la matrice de permissions reste la
+  seule source de vérité. Chaque sanction est auditée. UI : badge de statut + modale de
+  sanction + historique sur `AccountDetailView`. Vérifié au navigateur (ban → connexion
+  refusée avec message explicite, unban → à nouveau possible) et par 10 tests serveur (chaque
+  genre, expiration réelle d'une suspension, journalisation d'audit).
 
 ### État actuel (contrainte de départ)
 
