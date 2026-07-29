@@ -1,4 +1,4 @@
-import { emailSchema, passwordSchema } from "@spacesim/protocol";
+import { emailSchema, passwordSchema, type RoleId } from "@spacesim/protocol";
 import { eq, lt } from "drizzle-orm";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { db, schema } from "./db/index.js";
@@ -20,6 +20,8 @@ const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 export interface Account {
   id: string;
   email: string;
+  /** Rôle applicatif (chantier 23.1) — vérifié contre `ROLE_PERMISSIONS` pour `/api/admin/*`. */
+  role: RoleId;
 }
 
 /** Résultat d'une opération d'authentification : succès porteur de session, ou erreur en français. */
@@ -122,7 +124,7 @@ export async function resolveSession(
       .set({ expiresAt: now + SESSION_TTL_MS })
       .where(eq(schema.sessions.token, token));
   }
-  return { id: account.id, email: account.email };
+  return { id: account.id, email: account.email, role: account.role as RoleId };
 }
 
 export async function revokeSession(token: string): Promise<void> {
@@ -138,12 +140,13 @@ export async function purgeExpiredSessions(now = Date.now()): Promise<void> {
 
 export async function findAccountByEmail(
   email: string,
-): Promise<{ id: string; passwordHash: string } | null> {
+): Promise<{ id: string; passwordHash: string; role: RoleId } | null> {
   const rows = await db
     .select()
     .from(schema.accounts)
     .where(eq(schema.accounts.email, normalizeEmail(email)));
-  return rows[0] ? { id: rows[0].id, passwordHash: rows[0].passwordHash } : null;
+  const row = rows[0];
+  return row ? { id: row.id, passwordHash: row.passwordHash, role: row.role as RoleId } : null;
 }
 
 /**
@@ -178,7 +181,7 @@ export async function register(email: string, password: string, ip = "?"): Promi
   });
   clearFailures(ip);
   const { token, expiresAt } = await createSession(id, now);
-  return { ok: true, account: { id, email: normalized }, token, expiresAt };
+  return { ok: true, account: { id, email: normalized, role: "player" }, token, expiresAt };
 }
 
 /**
@@ -212,7 +215,12 @@ export async function login(email: string, password: string, ip = "?"): Promise<
     .where(eq(schema.accounts.id, account.id));
   clearFailures(ip);
   const { token, expiresAt } = await createSession(account.id, now);
-  return { ok: true, account: { id: account.id, email: normalized }, token, expiresAt };
+  return {
+    ok: true,
+    account: { id: account.id, email: normalized, role: account.role },
+    token,
+    expiresAt,
+  };
 }
 
 /** Jeton porté par l'en-tête `Authorization: Bearer <token>`, si présent. */

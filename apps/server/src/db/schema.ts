@@ -139,6 +139,12 @@ export const accounts = pgTable("accounts", {
   passwordHash: text("password_hash").notNull(),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   lastLoginAt: bigint("last_login_at", { mode: "number" }),
+  /**
+   * "player" (défaut) | "moderator" | "content_editor" | "admin" (chantier 23.1) — vérifié
+   * contre `ROLE_PERMISSIONS` (`@spacesim/protocol`) par le garde `/api/admin/*`. Pas d'enum
+   * Postgres natif, même convention que `players.kind`/`relations.state`.
+   */
+  role: text("role").notNull().default("player"),
 });
 
 /** Sessions ouvertes : jeton opaque → compte. TTL glissant, purge au boot. */
@@ -147,6 +153,26 @@ export const sessions = pgTable("sessions", {
   accountId: text("account_id").notNull(),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   expiresAt: bigint("expires_at", { mode: "number" }).notNull(),
+});
+
+/**
+ * Journal d'audit des actions admin (chantier 23.1) : chaque mutation via `/api/admin/*` y
+ * écrit une ligne (lecture seule non journalisée, pour ne pas noyer le journal). Écrit en
+ * direct par `admin/audit-service.ts` — hors `WriteSet`/`Persister`, chemin humain à basse
+ * fréquence, pas le chemin chaud tick/commande que le write-behind protège.
+ */
+export const adminAuditLog = pgTable("admin_audit_log", {
+  id: text("id").primaryKey(),
+  actorAccountId: text("actor_account_id").notNull(),
+  actorEmail: text("actor_email").notNull(),
+  action: text("action").notNull(),
+  /** Type/id de la cible (ex. "account"/"acc-123"), nullable pour une action sans cible unique. */
+  targetType: text("target_type"),
+  targetId: text("target_id"),
+  reason: text("reason"),
+  /** JSON libre : détails additionnels propres à l'action. */
+  metadata: text("metadata"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 
 /**

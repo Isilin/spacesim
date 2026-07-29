@@ -4,6 +4,7 @@ import websocket from "@fastify/websocket";
 import Fastify, { type FastifyInstance } from "fastify";
 import { config } from "../config.js";
 import type { GameEngine } from "../game.js";
+import { registerAdminRoutes } from "./routes/admin/index.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerDevRoutes } from "./routes/dev.js";
 import { registerWsRoutes } from "./routes/ws.js";
@@ -34,6 +35,9 @@ export async function buildApp(
   app.get("/health", () => ({ ok: true, tick: engine.game.tick }));
 
   registerAuthRoutes(app, engine);
+  // Toujours actif, y compris en production — la protection est le rôle du compte (adminGuard),
+  // pas l'environnement (contrairement à /dev/*).
+  registerAdminRoutes(app);
   // Triches de dev : jamais en production.
   if (opts.devRoutes ?? config.nodeEnv !== "production") {
     registerDevRoutes(app, engine);
