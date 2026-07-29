@@ -16,6 +16,9 @@ function authPayload(engine: GameEngine, result: Extract<AuthResult, { ok: true 
     token: result.token,
     expiresAt: result.expiresAt,
     email: result.account.email,
+    // Exposé pour le client admin (chantier 23.2) : vérif de rôle côté UX uniquement, la
+    // vraie frontière reste le garde serveur (`adminGuard`) sur chaque route /api/admin/*.
+    role: result.account.role,
     empire: empire ? { id: empire.id, name: empire.name, color: empire.color } : null,
   };
 }
@@ -64,6 +67,7 @@ export function registerAuthRoutes(app: FastifyInstance, engine: GameEngine): vo
     const empire = engine.empireForAccount(account.id);
     return {
       email: account.email,
+      role: account.role,
       empire: empire ? { id: empire.id, name: empire.name, color: empire.color } : null,
     };
   });

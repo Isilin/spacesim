@@ -1,6 +1,6 @@
 # Environnement de dev SpaceSim conteneurisé — aucune install Node sur l'hôte.
 #
-#   docker compose up app            → Postgres + serveur (3001) + client web (5173)
+#   docker compose up app            → Postgres + serveur (3001) + client web (5173) + admin (5174)
 #   docker compose run --rm test     → tests unitaires de la simulation (PGlite mémoire)
 #   docker compose run --rm typecheck→ tsc sur les 3 packages
 #   docker compose run --rm e2e      → Playwright (pile serveur+web en base mémoire)
@@ -21,6 +21,7 @@ x-base: &base
     - protocol_modules:/app/packages/protocol/node_modules
     - server_modules:/app/apps/server/node_modules
     - web_modules:/app/apps/web/node_modules
+    - admin_modules:/app/apps/admin/node_modules
 
 services:
   # Postgres de dev (chantier 20.4) : univers persistant d'une session Docker à
@@ -40,14 +41,15 @@ services:
       timeout: 3s
       retries: 10
 
-  # Serveur de jeu + client web (les deux dans le même conteneur : la proxy
-  # Vite pointe vers 127.0.0.1:3001, il faut donc un réseau localhost partagé).
+  # Serveur de jeu + client web + client admin (les trois dans le même conteneur : les
+  # proxys Vite pointent vers 127.0.0.1:3001, il faut donc un réseau localhost partagé).
   app:
     <<: *base
     command: >
       sh -c "pnpm install --frozen-lockfile &&
              (pnpm --filter @spacesim/server dev &
-              pnpm --filter @spacesim/web dev --host 0.0.0.0)"
+              pnpm --filter @spacesim/web dev --host 0.0.0.0 &
+              pnpm --filter @spacesim/admin dev --host 0.0.0.0)"
     environment:
       DATABASE_URL: postgres://spacesim:spacesim@postgres:5432/spacesim
     depends_on:
@@ -55,6 +57,7 @@ services:
         condition: service_healthy
     ports:
       - "5173:5173"
+      - "5174:5174"
       - "3001:3001"
 
   # Tests unitaires de la simulation (packages/shared).
@@ -96,5 +99,6 @@ volumes:
   protocol_modules:
   server_modules:
   web_modules:
+  admin_modules:
   playwright_browsers:
   pgdata:

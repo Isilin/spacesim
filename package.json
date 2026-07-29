@@ -6,6 +6,7 @@
   "scripts": {
     "dev:server": "pnpm --filter @spacesim/server dev",
     "dev:web": "pnpm --filter @spacesim/web dev",
+    "dev:admin": "pnpm --filter @spacesim/admin dev",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "biome lint .",

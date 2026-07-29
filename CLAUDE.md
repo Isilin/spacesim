@@ -10,10 +10,11 @@ Design complet et roadmap : [docs/design.md](docs/design.md).
 Monorepo pnpm workspaces, TypeScript partout :
 
 - `packages/shared` — types du modèle de jeu, constantes d'équilibrage, génération d'univers et logique de simulation **pure et déterministe** (testée avec vitest). Aucune dépendance runtime.
-- `packages/protocol` — contrats HTTP/WebSocket et schémas Zod (`ClientMessage`, `ServerMessage`, `EmpireSnapshot`). Dépend de `shared` ; `apps/server` et `apps/web` en dépendent, jamais l'inverse.
-- `packages/ui` — package React réel (chantier 21, consommé en source directe comme `shared` — pas d'étape de build) : design system HUD (18 composants — `Button`, `Link`, `Panel`, `Table`, `Tabs`, `Toast`, `TopBar`, `ZoomableSvg`…) + tokens de couleur/typographie. Chaque composant porte son propre `*.module.css` (CSS Modules, chantier 22) plutôt qu'une feuille globale ; les variantes se pilotent par `data-variant`/`data-*` (toujours émis, jamais omis à la valeur par défaut) plutôt que par suffixe de classe conditionnel. Le motif transverse « cut-frame » (bordures en coin coupé) vit dans `shared/cut-frame.module.css`, consommé via `composes`. Aucun import de `game-store` ni de `protocol` (le futur client admin en dépendra aussi) ; aucune logique de jeu, y compris la navigation — `TopBar`/`Link` restent agnostiques du routeur.
+- `packages/protocol` — contrats HTTP/WebSocket et schémas Zod (`ClientMessage`, `ServerMessage`, `EmpireSnapshot`, `admin.ts` — rôles/permissions/actions admin, chantier 23.1). Dépend de `shared` ; `apps/server`, `apps/web` et `apps/admin` en dépendent, jamais l'inverse.
+- `packages/ui` — package React réel (chantier 21, consommé en source directe comme `shared` — pas d'étape de build) : design system HUD (18 composants — `Button`, `Link`, `Panel`, `Table`, `Tabs`, `Toast`, `TopBar`, `ZoomableSvg`…) + tokens de couleur/typographie. Chaque composant porte son propre `*.module.css` (CSS Modules, chantier 22) plutôt qu'une feuille globale ; les variantes se pilotent par `data-variant`/`data-*` (toujours émis, jamais omis à la valeur par défaut) plutôt que par suffixe de classe conditionnel. Le motif transverse « cut-frame » (bordures en coin coupé) vit dans `shared/cut-frame.module.css`, consommé via `composes`. Aucun import de `game-store` ni de `protocol` (`apps/admin` en dépend aussi) ; aucune logique de jeu, y compris la navigation — `TopBar`/`Link` restent agnostiques du routeur.
 - `apps/server` — Fastify + WebSocket (`/ws`), moteur de ticks, Postgres (`drizzle-orm/node-postgres` en prod, PGlite WASM embarqué en tests/e2e — même dialecte SQL). **Serveur autoritaire** : toute la simulation vit ici, le client n'est qu'un dashboard.
 - `apps/web` — React + Vite + React Router. Proxy Vite `/ws` → serveur :3001.
+- `apps/admin` — client d'administration (chantier 23, React + Vite + React Router, port 5174, sans WebSocket ni `zustand` — état par écran, fetch/mutate sur `/api/admin/*`). Mêmes `packages/ui`/`packages/protocol` que `apps/web`, même design ; aucune dépendance à `game-store`. Auth identique (`/auth/*`, session opaque en `localStorage`, clé distincte `spacesim.admin.session`) — un compte admin est un compte joueur promu par `accounts.role`, jamais un compte séparé.
 
 Principes :
 - **L'univers est stocké en DB** (chantier 18, tables `universe_*`) et la DB fait
@@ -80,10 +81,13 @@ La séparation des responsabilités est stricte :
   → `composeEngine`) à partir de ces pièces — pas une couche à supprimer, le point d'entrée
   stable du moteur. Ne pas introduire NestJS ou un conteneur DI : la composition explicite au
   boot suffit.
-- L'API de jeu publique et la future API protégée `/api/admin` utiliseront les mêmes services
-  applicatifs (socle admin différé, non commencé). Une route admin ne devra jamais modifier
-  Drizzle ni les maps du runtime directement ; les actions administratives seront autorisées par
-  rôle, nommées, auditées et validées.
+- L'API de jeu publique et l'API protégée `/api/admin` utilisent les mêmes services applicatifs.
+  Socle démarré au chantier 23.1 : `accounts.role`, matrice `ROLE_PERMISSIONS` codée
+  (`packages/protocol/src/admin.ts`), garde Fastify `adminGuard`
+  (`apps/server/src/http/routes/admin/guard.ts`, fail-closed si une route omet son
+  `adminAction`) et `admin_audit_log`. Une route admin ne doit jamais modifier Drizzle ni les
+  maps du runtime directement ; les actions administratives sont autorisées par rôle, nommées,
+  et les mutations sont auditées (pas les lectures).
 - `apps/web` est le client joueur : état poussé par WebSocket centralisé dans un store Zustand
   (`state/game-store.ts`), navigation par URL (React Router — 6 onglets plats + carte en routes
   imbriquées `/map/galaxy/:id/system/:id/body/:id`, résolues par `hooks/useMapLevel.ts`). Les
@@ -96,7 +100,7 @@ La séparation des responsabilités est stricte :
   `Toast`, `TopBar`, `ZoomableSvg`…), tokens et styles, consommés en source directe par
   `apps/web`. Les cartes SVG (rendu des nœuds), labels, calculs d'affichage et interactions
   métier propres au jeu restent dans les features de `apps/web` — `ui` ne connaît ni
-  `game-store` ni `protocol`. Le futur client admin réutilisera `protocol` et `ui`. La
+  `game-store` ni `protocol`. `apps/admin` (chantier 23) réutilise `protocol` et `ui`. La
   direction visuelle a été itérée via **DesignSync** (projet claude.ai/design) : l'utilisateur
   y ajuste des cartes seed, les composants sont ensuite tirés (`list_files`/`get_file`) et
   implémentés ici — en camelCase CSS Modules plutôt qu'en classes globales, le seed restant
@@ -125,7 +129,8 @@ les sauvegardes et la sémantique de tick existants.
 ```
 pnpm dev:server    # serveur de jeu (port 3001)
 pnpm dev:web       # client web (port 5173)
-pnpm test          # tests unitaires (shared, protocol, server, web — vitest par paquet)
+pnpm dev:admin     # client admin (port 5174, chantier 23)
+pnpm test          # tests unitaires (shared, protocol, server, web, admin — vitest par paquet)
 pnpm typecheck     # tsc sur shared/protocol/server/web
 pnpm format        # normalise le formatage avec Biome
 pnpm format:check  # vérifie le formatage sans modifier les fichiers
@@ -136,7 +141,8 @@ pnpm lint          # règles Biome adoptées progressivement
 chaque zone de code assainie, afin de ne pas masquer un chantier de refactorisation sous des
 centaines de corrections non liées.
 
-Les deux serveurs de dev sont aussi déclarés dans `.claude/launch.json` (noms `server` et `web`).
+Les trois serveurs de dev sont aussi déclarés dans `.claude/launch.json` (noms `server`, `web` et
+`admin`).
 En dev via Docker, l'univers vit dans le volume nommé `pgdata` (service `postgres` du
 compose) : jeter l'univers de dev est un geste explicite, `docker compose down -v`
 (acceptable en local uniquement, `loadOrBootstrap` en recrée un au boot). Le futur serveur
