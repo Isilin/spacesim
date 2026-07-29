@@ -903,6 +903,18 @@ fois (valeurs d'abord, création d'id ensuite) : chaque écran CMS de contenu in
   `apps/admin` gagne `@spacesim/shared` (`RESOURCES`) — premier usage réel, anticipé au
   23.2. Vérifié au navigateur : édition + création (id inédit) persistées et journalisées
   en live, aucune erreur console.
+- ✅ **23.6** — Contenu : factions marchandes. `content_factions` (migration 0004) —
+  première extension du patron d'injection à un domaine qui n'en avait **aucune trace**
+  avant ce chantier (`FACTIONS`/`FACTION_IDS` importés en dur dans `market-service.ts` et
+  `diplomacy-service.ts`, dont `initFactionStates()` qui seed l'état de chaque faction —
+  tous lisent désormais `runtime.content.factions`). `sim/economy/market.ts` :
+  `marketTick()` ne consommait déjà que `produces`/`consumes` de `FactionDef`, jamais
+  `id`/`name`/`color` — signature réduite à `Pick<FactionDef, "produces"|"consumes">` pour
+  accepter le contenu DB-backed (`id: string` libre) sans desserrer tout `FactionDef`.
+  `GET/PUT /api/admin/content/factions` (même recette). `ContentLayout.tsx` : sous-
+  navigation par onglets pour le CMS de contenu, pilotée par l'URL, extensible pour 23.7+.
+  Vérifié au navigateur (édition persistée et relue immédiatement, aucune erreur console)
+  et par 6 tests serveur.
 
 ### État actuel (contrainte de départ)
 
