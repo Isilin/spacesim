@@ -863,6 +863,14 @@ fois (valeurs d'abord, création d'id ensuite) : chaque écran CMS de contenu in
   sur `apps/web`, vérifié). Câblage : `docker-compose.yml` (3ᵉ process dans `app`, port 5174),
   `.claude/launch.json`, `dev:admin` racine. Vérifié au navigateur : connexion admin → journal
   vide, connexion joueur → message de rôle insuffisant, déconnexion → retour écran de connexion.
+- ✅ **23.3** — `GET /api/admin/accounts` (pagination + recherche par sous-chaîne d'e-mail) et
+  `GET /api/admin/accounts/:id` (détail + résumé d'empire), action `account.view` accordée à
+  `moderator`. `BootstrapService.summarizeEmpire()` extrait de `devEmpireSummaries()` pour être
+  réutilisé par `empireSummaryForAccount(accountId)` — même forme, scopée à un compte.
+  `accounts-query.ts` (`apps/server/src/admin/`) reste sur l'API publique de `GameEngine`, ne
+  touche jamais aux maps du runtime directement. Écrans `AccountsListView`/`AccountDetailView`
+  côté `apps/admin`, onglet « Joueurs ». Vérifié au navigateur avec les comptes réels de la base
+  de dev : liste, recherche, détail avec colonie et ressources.
 
 ### État actuel (contrainte de départ)
 
