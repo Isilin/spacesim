@@ -1,6 +1,12 @@
 import type { RoleId } from "@spacesim/protocol";
 import { eq, ilike, sql } from "drizzle-orm";
-import { activeSessionCount } from "../auth.js";
+import {
+  activeSessionCount,
+  computeSanctionStatus,
+  sanctionHistory,
+  type SanctionEntry,
+  type SanctionStatus,
+} from "../auth.js";
 import { db, schema } from "../db/index.js";
 import type { GameEngine } from "../game.js";
 
@@ -63,6 +69,8 @@ export interface AccountDetail extends AccountSummary {
   /** Même forme que `GameEngine.devEmpireSummaries()`, scopée à un seul empire — null si le
    *  compte n'a pas encore d'empire dans cette partie. */
   empireSummary: unknown | null;
+  sanctionStatus: SanctionStatus;
+  sanctionHistory: SanctionEntry[];
 }
 
 export async function accountDetail(
@@ -72,6 +80,7 @@ export async function accountDetail(
   const rows = await db.select().from(schema.accounts).where(eq(schema.accounts.id, accountId));
   const row = rows[0];
   if (!row) return null;
+  const history = await sanctionHistory(row.id);
   return {
     id: row.id,
     email: row.email,
@@ -81,5 +90,7 @@ export async function accountDetail(
     empire: empireIdentity(engine, row.id),
     activeSessions: await activeSessionCount(row.id),
     empireSummary: engine.empireSummaryForAccount(row.id),
+    sanctionStatus: computeSanctionStatus(history),
+    sanctionHistory: history,
   };
 }

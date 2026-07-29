@@ -10,7 +10,15 @@ export const roleSchema = z.enum(ROLE_IDS);
  * (chantier 23.1). Namespacées par domaine (`account.*`, `content.<domaine>.*`, `audit.*`…) ;
  * la liste grandit avec chaque sous-chantier, jamais en avance sur les routes réellement câblées.
  */
-export const ADMIN_ACTIONS = ["audit.read", "account.view"] as const;
+export const ADMIN_ACTIONS = [
+  "audit.read",
+  "account.view",
+  "account.warn",
+  "account.suspend",
+  "account.ban",
+  "account.unban",
+  "account.force_logout",
+] as const;
 export type AdminActionId = (typeof ADMIN_ACTIONS)[number];
 
 /**
@@ -21,7 +29,14 @@ export type AdminActionId = (typeof ADMIN_ACTIONS)[number];
  */
 export const ROLE_PERMISSIONS: Record<RoleId, ReadonlySet<AdminActionId>> = {
   player: new Set(),
-  moderator: new Set(["account.view"]),
+  moderator: new Set([
+    "account.view",
+    "account.warn",
+    "account.suspend",
+    "account.ban",
+    "account.unban",
+    "account.force_logout",
+  ]),
   content_editor: new Set(),
   admin: new Set(ADMIN_ACTIONS),
 };
@@ -29,3 +44,37 @@ export const ROLE_PERMISSIONS: Record<RoleId, ReadonlySet<AdminActionId>> = {
 export function hasPermission(role: RoleId, action: AdminActionId): boolean {
   return ROLE_PERMISSIONS[role].has(action);
 }
+
+// ── Sanctions (chantier 23.4) ────────────────────────────────────────────────
+
+/** Un événement de sanction ; `warn`/`unban` ne rendent jamais le compte inutilisable. */
+export const SANCTION_KINDS = ["warn", "suspend", "ban", "unban", "force_logout"] as const;
+export type SanctionKind = (typeof SANCTION_KINDS)[number];
+
+/** Corps de `POST /api/admin/accounts/:id/sanctions` — raison toujours obligatoire (audit). */
+export const applySanctionSchema = z
+  .object({
+    kind: z.enum(SANCTION_KINDS),
+    reason: z.string().trim().min(1).max(500),
+    /** Obligatoire pour `suspend` (voir `.refine` ci-dessous), ignoré pour les autres genres. */
+    durationMs: z
+      .number()
+      .int()
+      .positive()
+      .max(365 * 24 * 3600 * 1000)
+      .optional(),
+  })
+  .refine((v) => v.kind !== "suspend" || v.durationMs !== undefined, {
+    message: "durationMs requis pour une suspension",
+    path: ["durationMs"],
+  });
+export type ApplySanctionInput = z.infer<typeof applySanctionSchema>;
+
+/** Action admin correspondant à chaque genre de sanction, pour la vérif de rôle par route. */
+export const SANCTION_ACTIONS: Record<SanctionKind, AdminActionId> = {
+  warn: "account.warn",
+  suspend: "account.suspend",
+  ban: "account.ban",
+  unban: "account.unban",
+  force_logout: "account.force_logout",
+};

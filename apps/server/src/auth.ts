@@ -1,5 +1,5 @@
-import { emailSchema, passwordSchema, type RoleId } from "@spacesim/protocol";
-import { eq, lt } from "drizzle-orm";
+import { emailSchema, passwordSchema, type RoleId, type SanctionKind } from "@spacesim/protocol";
+import { desc, eq, lt } from "drizzle-orm";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { db, schema } from "./db/index.js";
 
@@ -208,6 +208,21 @@ export async function login(email: string, password: string, ip = "?"): Promise<
     recordFailure(ip);
     return invalid;
   }
+  // Identifiants corrects mais compte sanctionné : message explicite (volontairement
+  // différent du non-distinguo anti-énumération ci-dessus — un compte banni doit savoir
+  // pourquoi), ni échec ni session ouverte.
+  const sanction = await accountSanctionStatus(account.id);
+  if (sanction.active) {
+    clearFailures(ip);
+    const until =
+      sanction.kind === "ban"
+        ? ""
+        : ` jusqu'au ${new Date(sanction.expiresAt!).toLocaleString("fr-FR")}`;
+    return {
+      ok: false,
+      error: `Compte ${sanction.kind === "ban" ? "banni" : "suspendu"}${until} : ${sanction.reason}`,
+    };
+  }
   const now = Date.now();
   await db
     .update(schema.accounts)
@@ -242,4 +257,73 @@ export async function activeSessionCount(accountId: string, now = Date.now()): P
     .from(schema.sessions)
     .where(eq(schema.sessions.accountId, accountId));
   return rows.filter((s) => s.expiresAt > now).length;
+}
+
+// ── Sanctions (chantier 23.4) ────────────────────────────────────────────────
+// Portées ici (pas dans admin/) : « un compte sanctionné ne peut pas se connecter » est
+// une règle d'auth à part entière, vérifiée par `login()` ci-dessous. L'écriture (poser une
+// sanction) reste côté admin (`admin/sanctions-service.ts`), qui importe `revokeAllSessions`
+// d'ici — dépendance à sens unique, jamais l'inverse.
+
+export interface SanctionEntry {
+  id: string;
+  accountId: string;
+  kind: SanctionKind;
+  reason: string;
+  actorAccountId: string;
+  actorEmail: string;
+  createdAt: number;
+  expiresAt: number | null;
+}
+
+export interface SanctionStatus {
+  active: boolean;
+  kind: "ban" | "suspend" | null;
+  reason: string | null;
+  expiresAt: number | null;
+}
+
+/** Historique des sanctions d'un compte, plus récentes d'abord. */
+export async function sanctionHistory(accountId: string): Promise<SanctionEntry[]> {
+  const rows = await db
+    .select()
+    .from(schema.accountSanctions)
+    .where(eq(schema.accountSanctions.accountId, accountId))
+    .orderBy(desc(schema.accountSanctions.createdAt));
+  return rows.map((r) => ({ ...r, kind: r.kind as SanctionKind }));
+}
+
+/**
+ * Statut courant, calculé depuis le dernier événement `ban`/`suspend`/`unban` de
+ * l'historique — pas de deuxième source de vérité (type `accounts.status`) qui pourrait
+ * diverger. `warn`/`force_logout` sont journalisés mais ne changent jamais le statut.
+ */
+export function computeSanctionStatus(
+  history: readonly SanctionEntry[],
+  now = Date.now(),
+): SanctionStatus {
+  const statusEvent = history.find(
+    (e) => e.kind === "ban" || e.kind === "suspend" || e.kind === "unban",
+  );
+  if (!statusEvent || statusEvent.kind === "unban") {
+    return { active: false, kind: null, reason: null, expiresAt: null };
+  }
+  if (statusEvent.kind === "ban") {
+    return { active: true, kind: "ban", reason: statusEvent.reason, expiresAt: null };
+  }
+  const active = statusEvent.expiresAt !== null && statusEvent.expiresAt > now;
+  return {
+    active,
+    kind: active ? "suspend" : null,
+    reason: active ? statusEvent.reason : null,
+    expiresAt: statusEvent.expiresAt,
+  };
+}
+
+/** Statut courant d'un compte — chemin utilisé par `login()` ci-dessous et par l'admin. */
+export async function accountSanctionStatus(
+  accountId: string,
+  now = Date.now(),
+): Promise<SanctionStatus> {
+  return computeSanctionStatus(await sanctionHistory(accountId), now);
 }

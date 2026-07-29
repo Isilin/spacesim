@@ -161,6 +161,24 @@ export const sessions = pgTable("sessions", {
  * direct par `admin/audit-service.ts` — hors `WriteSet`/`Persister`, chemin humain à basse
  * fréquence, pas le chemin chaud tick/commande que le write-behind protège.
  */
+/**
+ * Événements de sanction sur un compte (chantier 23.4) : `warn|suspend|ban|unban|
+ * force_logout`. Journal d'événements plutôt qu'un champ `accounts.status` — le statut
+ * courant se calcule à la lecture depuis le dernier événement ban/suspend/unban
+ * (`auth.ts` → `computeSanctionStatus`), pas de deuxième source de vérité qui peut diverger.
+ */
+export const accountSanctions = pgTable("account_sanctions", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  kind: text("kind").notNull(),
+  reason: text("reason").notNull(),
+  actorAccountId: text("actor_account_id").notNull(),
+  actorEmail: text("actor_email").notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  /** Échéance d'une suspension temporaire ; null = permanent (ban) ou sans objet. */
+  expiresAt: bigint("expires_at", { mode: "number" }),
+});
+
 export const adminAuditLog = pgTable("admin_audit_log", {
   id: text("id").primaryKey(),
   actorAccountId: text("actor_account_id").notNull(),
