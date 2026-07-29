@@ -974,6 +974,32 @@ fois (valeurs d'abord, création d'id ensuite) : chaque écran CMS de contenu in
   de `TechEffects` — un formulaire dédié aurait été disproportionné), pas de widget de
   sélection multiple dans `packages/ui`. Vérifié en direct (création par id-minting,
   rejet d'un cycle) et par 10 nouveaux tests.
+- ✅ **23.10** — Contenu : châssis + modules + résolveur `design.ts`. Domaine le plus risqué
+  de la vague, confirmé : `sim/industry/design.ts` (`resolveBlueprint`/`validateBlueprint`)
+  n'avait **aucune** injection avant ce chantier. `content_chassis` (17 colonnes) +
+  `content_modules` (12 colonnes, migration 0009), **id-minting complet** sur les deux —
+  `Blueprint.chassisId`/`modules` sont déjà `string`/`string[]` en protocole
+  (`createBlueprint`/`updateBlueprint` utilisent `idSchema`), aucun tuple à desserrer.
+  `resolveBlueprint`/`validateBlueprint` gagnent deux tables injectées (châssis + modules,
+  défaut `CHASSIS`/`MODULES`) ; `computeEffects` gagne les deux mêmes pour les déblocages
+  de conception, ce qui force `EmpireEffects.unlockedChassis`/`unlockedModules` de
+  `Set<ChassisId>`/`Set<ModuleId>` à `Set<string>` (un id créé en admin doit pouvoir y
+  entrer). `IndustryService` (6 sites : créer/modifier/construire un plan, acheter/vendre
+  un plan au catalogue, vendre un vaisseau) et `FleetService` (défs de combat des plans en
+  bataille) alimentent depuis `runtime.content.chassis`/`modules` via des getters
+  `chassisDefs`/`moduleDefs` ; `BootstrapService.loadPlayers` recalcule `empire.effects`
+  avec les trois tables (techs + châssis + modules) au chargement — la même API
+  `computeEffects` que 23.9, un paramètre de plus. `blueprintLoad`/`dominantSlot` restent
+  **non injectés** (jauges d'UI, appelées seulement côté client), même limite documentée
+  que `techLayout` (23.9). Écrans CMS "Châssis"/"Modules" : emplacements en `NumberInput`
+  par type, `roleBonus`/`effects` en JSON brut (spécialisation et effets riches, pas de
+  formulaire à 10+ champs dédiés). Vérifié en direct (id-minting sur un module, 9 châssis +
+  20 modules historiques listés, aucune erreur console sur les deux apps après boot) et par
+  des tests d'injection dans `design.test.ts`/`content-service.test.ts`/`content.test.ts`.
+  **Fin de la première vague de contenu** (23.5-23.10) : six domaines migrés en DB, la
+  recette est éprouvée sur tous les cas — id libre (23.5/23.6/23.8/23.9/23.10), id fermé
+  (23.7), scalaire simple (23.8b), graphe avec garde-fou serveur (23.9), et deux tables
+  couplées consommées par un même résolveur (23.10).
 
 ### État actuel (contrainte de départ)
 
