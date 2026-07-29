@@ -71,6 +71,13 @@
       "when": 1785334686861,
       "tag": "0009_peaceful_klaw",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785335960386,
+      "tag": "0010_dapper_santa_claus",
+      "breakpoints": true
     }
   ]
 }

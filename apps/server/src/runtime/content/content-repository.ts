@@ -6,7 +6,9 @@ import type {
   ContentCombatTuning,
   ContentConstant,
   ContentFaction,
+  ContentMilestone,
   ContentModule,
+  ContentPreset,
   ContentShip,
   ContentTech,
   ContentWarship,
@@ -24,6 +26,8 @@ type ConstantRow = typeof schema.contentConstants.$inferSelect;
 type TechRow = typeof schema.contentTechs.$inferSelect;
 type ChassisRow = typeof schema.contentChassis.$inferSelect;
 type ModuleRow = typeof schema.contentModules.$inferSelect;
+type PresetRow = typeof schema.contentPresets.$inferSelect;
+type MilestoneRow = typeof schema.contentMilestones.$inferSelect;
 
 function warshipFromRow(row: WarshipRow): ContentWarship {
   return {
@@ -268,6 +272,36 @@ function rowFromModule(m: ContentModule) {
   };
 }
 
+function presetFromRow(row: PresetRow): ContentPreset {
+  return {
+    id: row.id,
+    nameFr: row.nameFr,
+    descriptionFr: row.descriptionFr,
+    chassisId: row.chassisId,
+    modules: JSON.parse(row.modules),
+    starter: row.starter === 1,
+  };
+}
+
+function rowFromPreset(p: ContentPreset) {
+  return {
+    id: p.id,
+    nameFr: p.nameFr,
+    descriptionFr: p.descriptionFr,
+    chassisId: p.chassisId,
+    modules: JSON.stringify(p.modules),
+    starter: p.starter ? 1 : 0,
+  };
+}
+
+function milestoneFromRow(row: MilestoneRow): ContentMilestone {
+  return { id: row.id, metric: row.metric, threshold: row.threshold };
+}
+
+function rowFromMilestone(m: ContentMilestone) {
+  return { id: m.id, metric: m.metric, threshold: m.threshold };
+}
+
 /**
  * Accès DB au contenu de jeu (chantier 23.5+) — une classe par cohérence avec le reste
  * du moteur, mais hors `WriteSet`/`Persister` : chemin admin à basse fréquence, pas le
@@ -499,5 +533,56 @@ export class ContentRepository {
       .insert(schema.contentModules)
       .values(row)
       .onConflictDoUpdate({ target: schema.contentModules.id, set: row });
+  }
+
+  async countPresets(): Promise<number> {
+    const rows = await db.select({ id: schema.contentPresets.id }).from(schema.contentPresets);
+    return rows.length;
+  }
+
+  async loadPresets(): Promise<Record<string, ContentPreset>> {
+    const rows = await db.select().from(schema.contentPresets).orderBy(schema.contentPresets.id);
+    return Object.fromEntries(rows.map((row) => [row.id, presetFromRow(row)]));
+  }
+
+  async insertPresets(presets: ContentPreset[]): Promise<void> {
+    if (presets.length === 0) return;
+    await db.insert(schema.contentPresets).values(presets.map(rowFromPreset));
+  }
+
+  async savePreset(preset: ContentPreset): Promise<void> {
+    const row = rowFromPreset(preset);
+    await db
+      .insert(schema.contentPresets)
+      .values(row)
+      .onConflictDoUpdate({ target: schema.contentPresets.id, set: row });
+  }
+
+  async countMilestones(): Promise<number> {
+    const rows = await db
+      .select({ id: schema.contentMilestones.id })
+      .from(schema.contentMilestones);
+    return rows.length;
+  }
+
+  async loadMilestones(): Promise<Record<string, ContentMilestone>> {
+    const rows = await db
+      .select()
+      .from(schema.contentMilestones)
+      .orderBy(schema.contentMilestones.id);
+    return Object.fromEntries(rows.map((row) => [row.id, milestoneFromRow(row)]));
+  }
+
+  async insertMilestones(milestones: ContentMilestone[]): Promise<void> {
+    if (milestones.length === 0) return;
+    await db.insert(schema.contentMilestones).values(milestones.map(rowFromMilestone));
+  }
+
+  async saveMilestone(milestone: ContentMilestone): Promise<void> {
+    const row = rowFromMilestone(milestone);
+    await db
+      .insert(schema.contentMilestones)
+      .values(row)
+      .onConflictDoUpdate({ target: schema.contentMilestones.id, set: row });
   }
 }

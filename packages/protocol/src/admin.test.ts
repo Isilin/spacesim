@@ -67,4 +67,11 @@ describe("rôles et permissions admin", () => {
     expect(hasPermission("content_editor", "content.modules.read")).toBe(true);
     expect(hasPermission("content_editor", "content.modules.write")).toBe(true);
   });
+
+  it("content_editor édite aussi presets et jalons (chantier 23.11)", () => {
+    expect(hasPermission("content_editor", "content.presets.read")).toBe(true);
+    expect(hasPermission("content_editor", "content.presets.write")).toBe(true);
+    expect(hasPermission("content_editor", "content.milestones.read")).toBe(true);
+    expect(hasPermission("content_editor", "content.milestones.write")).toBe(true);
+  });
 });

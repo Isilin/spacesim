@@ -237,3 +237,27 @@ export const upsertModuleSchema = z.object({
   effects: moduleEffectsSchema,
 });
 export type UpsertModuleInput = z.infer<typeof upsertModuleSchema>;
+
+/**
+ * Presets + jalons (chantier 23.11) — dernier domaine de contenu, dépend de 23.10 :
+ * un preset n'est qu'un couple châssis/modules, déjà résolu par les tables injectables.
+ * Id libre pour les deux (même recette qu'ailleurs) ; `metric` reste un enum fermé côté
+ * jalons — voir `apps/server/src/db/schema.ts` `contentMilestones`.
+ */
+export const upsertPresetSchema = z.object({
+  nameFr: z.string().trim().min(1).max(80),
+  descriptionFr: z.string().trim().max(500).default(""),
+  chassisId: z.string().trim().min(1),
+  modules: z.array(z.string()),
+  starter: z.boolean(),
+});
+export type UpsertPresetInput = z.infer<typeof upsertPresetSchema>;
+
+export const MILESTONE_METRICS = ["population", "colonies", "explored", "techs"] as const;
+export const milestoneMetricSchema = z.enum(MILESTONE_METRICS);
+
+export const upsertMilestoneSchema = z.object({
+  metric: milestoneMetricSchema,
+  threshold: z.number().positive(),
+});
+export type UpsertMilestoneInput = z.infer<typeof upsertMilestoneSchema>;

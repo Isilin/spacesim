@@ -3,8 +3,11 @@ import {
   CHASSIS_IDS,
   DEFAULT_BALANCE,
   FACTION_IDS,
+  MILESTONES,
   MODULE_IDS,
+  PRESETS,
   SHIP_IDS,
+  STARTER_PRESET_IDS,
   TECH_IDS,
   WARSHIP_IDS,
 } from "@spacesim/shared";
@@ -32,6 +35,8 @@ beforeEach(async () => {
   await db.delete(schema.contentTechs);
   await db.delete(schema.contentChassis);
   await db.delete(schema.contentModules);
+  await db.delete(schema.contentPresets);
+  await db.delete(schema.contentMilestones);
 });
 
 describe("ensureContentSeeded", () => {
@@ -90,6 +95,19 @@ describe("ensureContentSeeded", () => {
     expect(Object.keys(bundle.modules).sort()).toEqual([...MODULE_IDS].sort());
     expect(bundle.chassis.scout_frame?.nameFr).toBe("Éclaireur");
     expect(bundle.modules.laser_pulse?.slot).toBe("weapon");
+  });
+
+  it("peuple presets et jalons depuis packages/shared/src/content/presets.ts et milestones.ts", async () => {
+    await ensureContentSeeded();
+    const bundle = await loadContentBundle();
+    expect(Object.keys(bundle.presets).sort()).toEqual(PRESETS.map((p) => p.id).sort());
+    expect(Object.keys(bundle.milestones).sort()).toEqual(MILESTONES.map((m) => m.id).sort());
+    expect(bundle.presets.interceptor?.nameFr).toBe("Intercepteur");
+    // `starter` reprend STARTER_PRESET_IDS.
+    for (const p of Object.values(bundle.presets)) {
+      expect(p.starter).toBe((STARTER_PRESET_IDS as readonly string[]).includes(p.id));
+    }
+    expect(bundle.milestones["pop-25"]?.metric).toBe("population");
   });
 
   it("est idempotent : un second appel ne duplique rien", async () => {

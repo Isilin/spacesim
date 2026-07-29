@@ -663,3 +663,31 @@ export const contentModules = pgTable("content_modules", {
   /** JSON `ModuleEffects`. */
   effects: text("effects").notNull().default("{}"),
 });
+
+/**
+ * Plans pré-conçus (chantier 23.11) — `id` libre (id-minting) : dépend de 23.10
+ * (`chassisId`/`modules` sont résolus par `resolveBlueprint`/`validateBlueprint`, déjà
+ * injectables). `starter` remplace `STARTER_PRESET_IDS` (liste statique) — un booléen par
+ * ligne plutôt qu'une deuxième source de vérité.
+ */
+export const contentPresets = pgTable("content_presets", {
+  id: text("id").primaryKey(),
+  nameFr: text("name_fr").notNull(),
+  descriptionFr: text("description_fr").notNull().default(""),
+  chassisId: text("chassis_id").notNull(),
+  /** JSON `string[]`. */
+  modules: text("modules").notNull().default("[]"),
+  /** 0/1 — même convention que `gateways.active`/`routes.paused`, pas de type booléen natif. */
+  starter: integer("starter").notNull().default(0),
+});
+
+/**
+ * Jalons sandbox (chantier 23.11) — `id` libre, mais `metric` reste un des 4 enums
+ * calculés côté client (`apps/web/EmpireView.tsx` `METRIC_LABELS`) : inventer une 5e
+ * métrique n'aurait aucune valeur correspondante à afficher.
+ */
+export const contentMilestones = pgTable("content_milestones", {
+  id: text("id").primaryKey(),
+  metric: text("metric").notNull(),
+  threshold: doublePrecision("threshold").notNull(),
+});

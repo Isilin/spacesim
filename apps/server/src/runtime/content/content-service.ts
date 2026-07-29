@@ -10,10 +10,13 @@ import {
   DIRECTIVES,
   FACTION_IDS,
   FACTIONS,
+  MILESTONES,
   MODULES,
   MODULE_IDS,
+  PRESETS,
   SHIP_IDS,
   SHIPS,
+  STARTER_PRESET_IDS,
   TECH_IDS,
   TECHS,
   WARSHIP_CATEGORY,
@@ -34,7 +37,9 @@ import type {
   ContentChassis,
   ContentConstant,
   ContentFaction,
+  ContentMilestone,
   ContentModule,
+  ContentPreset,
   ContentShip,
   ContentTech,
   ContentWarship,
@@ -554,6 +559,25 @@ function seedModules(): ContentModule[] {
   });
 }
 
+/** Plans pré-conçus (`packages/shared`) au format `ContentPreset` — `starter` reprend
+ *  `STARTER_PRESET_IDS`. Pas de libellés français séparés : `PresetDef.name` est déjà en
+ *  français, `descriptionFr` part vide (aucune source existante à dupliquer). */
+function seedPresets(): ContentPreset[] {
+  return PRESETS.map((p) => ({
+    id: p.id,
+    nameFr: p.name,
+    descriptionFr: "",
+    chassisId: p.chassisId,
+    modules: [...p.modules],
+    starter: (STARTER_PRESET_IDS as readonly string[]).includes(p.id),
+  }));
+}
+
+/** Jalons sandbox (`packages/shared`) au format `ContentMilestone`. */
+function seedMilestones(): ContentMilestone[] {
+  return MILESTONES.map((m) => ({ id: m.id, metric: m.metric, threshold: m.threshold }));
+}
+
 /**
  * Amorce le contenu une fois dans la vie d'une base (idempotent, sûr à chaque boot —
  * même idiome que `BootstrapService.ensureNpcPopulation` : compter, compléter si vide).
@@ -594,23 +618,42 @@ export async function ensureContentSeeded(): Promise<void> {
   if ((await repo.countModules()) === 0) {
     await repo.insertModules(seedModules());
   }
+  if ((await repo.countPresets()) === 0) {
+    await repo.insertPresets(seedPresets());
+  }
+  if ((await repo.countMilestones()) === 0) {
+    await repo.insertMilestones(seedMilestones());
+  }
 }
 
 /** Charge tout le contenu depuis la DB — appelé au boot puis après chaque édition admin
  *  (remplacement en bloc de `GameRuntime.content`, jamais de mutation en place). */
 export async function loadContentBundle(): Promise<ContentBundle> {
-  const [warships, combatTuning, factions, buildings, ships, constants, techs, chassis, modules] =
-    await Promise.all([
-      repo.loadWarships(),
-      repo.loadTuning(),
-      repo.loadFactions(),
-      repo.loadBuildings(),
-      repo.loadShips(),
-      repo.loadConstants(),
-      repo.loadTechs(),
-      repo.loadChassis(),
-      repo.loadModules(),
-    ]);
+  const [
+    warships,
+    combatTuning,
+    factions,
+    buildings,
+    ships,
+    constants,
+    techs,
+    chassis,
+    modules,
+    presets,
+    milestones,
+  ] = await Promise.all([
+    repo.loadWarships(),
+    repo.loadTuning(),
+    repo.loadFactions(),
+    repo.loadBuildings(),
+    repo.loadShips(),
+    repo.loadConstants(),
+    repo.loadTechs(),
+    repo.loadChassis(),
+    repo.loadModules(),
+    repo.loadPresets(),
+    repo.loadMilestones(),
+  ]);
   return {
     warships,
     combatTuning,
@@ -621,6 +664,8 @@ export async function loadContentBundle(): Promise<ContentBundle> {
     techs,
     chassis,
     modules,
+    presets,
+    milestones,
   };
 }
 

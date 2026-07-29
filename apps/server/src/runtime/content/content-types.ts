@@ -151,6 +151,30 @@ export interface ContentModule {
   effects: ModuleEffects;
 }
 
+/**
+ * Plan pré-conçu (chantier 23.11) — `id: string` libre (id-minting), dépend de 23.10
+ * (`chassisId`/`modules` résolus par les tables châssis/modules déjà injectables).
+ * `starter` remplace `STARTER_PRESET_IDS`.
+ */
+export interface ContentPreset {
+  id: string;
+  nameFr: string;
+  descriptionFr: string;
+  chassisId: string;
+  modules: string[];
+  starter: boolean;
+}
+
+/**
+ * Jalon sandbox (chantier 23.11) — `id: string` libre, mais `metric` reste un des 4
+ * enums calculés côté client (voir `db/schema.ts`).
+ */
+export interface ContentMilestone {
+  id: string;
+  metric: string;
+  threshold: number;
+}
+
 /** Contenu chargé en mémoire (`GameRuntime.content`) — remplacé en bloc à chaque édition
  *  admin (édition en live, chantier 23 décision 3), jamais muté en place. */
 export interface ContentBundle {
@@ -163,4 +187,6 @@ export interface ContentBundle {
   techs: Record<string, ContentTech>;
   chassis: Record<string, ContentChassis>;
   modules: Record<string, ContentModule>;
+  presets: Record<string, ContentPreset>;
+  milestones: Record<string, ContentMilestone>;
 }

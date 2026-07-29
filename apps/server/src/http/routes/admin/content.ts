@@ -3,7 +3,9 @@ import {
   upsertChassisSchema,
   upsertConstantSchema,
   upsertFactionSchema,
+  upsertMilestoneSchema,
   upsertModuleSchema,
+  upsertPresetSchema,
   upsertShipSchema,
   upsertTechSchema,
   upsertWarshipSchema,
@@ -19,7 +21,9 @@ import type {
   ContentChassis,
   ContentConstant,
   ContentFaction,
+  ContentMilestone,
   ContentModule,
+  ContentPreset,
   ContentShip,
   ContentTech,
   ContentWarship,
@@ -333,6 +337,76 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
         reason: isNew ? "création" : "modification",
       });
       return { modules: Object.values(engine.content.modules) };
+    },
+  );
+
+  // Presets (chantier 23.11) : id libre, un preset n'est qu'un couple châssis/modules déjà
+  // validé par les tables injectables de 23.10 — pas de garde-fou dédié à rejouer ici.
+  admin.get("/content/presets", { config: { adminAction: "content.presets.read" } }, () => ({
+    presets: Object.values(engine.content.presets),
+  }));
+
+  admin.put(
+    "/content/presets/:id",
+    { config: { adminAction: "content.presets.write" } },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const parsed = upsertPresetSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+      }
+      const isNew = !(id in engine.content.presets);
+      const preset: ContentPreset = { id, ...parsed.data };
+      await repo.savePreset(preset);
+      await engine.loadContent();
+
+      const actor = request.adminAccount!;
+      await recordAuditEntry({
+        actorAccountId: actor.id,
+        actorEmail: actor.email,
+        action: "content.presets.write",
+        targetType: "content_preset",
+        targetId: id,
+        reason: isNew ? "création" : "modification",
+      });
+      return { presets: Object.values(engine.content.presets) };
+    },
+  );
+
+  // Jalons (chantier 23.11) : id libre, mais `metric` reste un enum fermé (voir
+  // packages/protocol/src/content.ts) — dernier domaine de la première vague de contenu.
+  admin.get("/content/milestones", { config: { adminAction: "content.milestones.read" } }, () => ({
+    milestones: Object.values(engine.content.milestones),
+  }));
+
+  admin.put(
+    "/content/milestones/:id",
+    { config: { adminAction: "content.milestones.write" } },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const parsed = upsertMilestoneSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+      }
+      const isNew = !(id in engine.content.milestones);
+      const milestone: ContentMilestone = { id, ...parsed.data };
+      await repo.saveMilestone(milestone);
+      await engine.loadContent();
+
+      const actor = request.adminAccount!;
+      await recordAuditEntry({
+        actorAccountId: actor.id,
+        actorEmail: actor.email,
+        action: "content.milestones.write",
+        targetType: "content_milestone",
+        targetId: id,
+        reason: isNew ? "création" : "modification",
+      });
+      return { milestones: Object.values(engine.content.milestones) };
     },
   );
 }

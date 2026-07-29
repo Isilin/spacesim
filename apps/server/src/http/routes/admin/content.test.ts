@@ -19,6 +19,8 @@ beforeEach(async () => {
   await db.delete(schema.contentTechs);
   await db.delete(schema.contentChassis);
   await db.delete(schema.contentModules);
+  await db.delete(schema.contentPresets);
+  await db.delete(schema.contentMilestones);
 });
 
 const VALID_WARSHIP_BODY = {
@@ -774,6 +776,161 @@ describe("/api/admin/content/modules", () => {
       url: "/api/admin/content/modules/laser_pulse",
       headers: { authorization: `Bearer ${token}` },
       payload: VALID_MODULE_BODY,
+    });
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+const VALID_PRESET_BODY = {
+  nameFr: "Corvette d'assaut",
+  descriptionFr: "Un nouveau plan créé depuis l'admin.",
+  chassisId: "scout_frame",
+  modules: ["laser_pulse", "armor_plating"],
+  starter: false,
+};
+
+describe("/api/admin/content/presets", () => {
+  it("un content_editor liste les 8 plans historiques amorcés au boot", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/admin/content/presets",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().presets).toHaveLength(8);
+  });
+
+  it("modifie un preset existant — effective immédiatement", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/presets/interceptor",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_PRESET_BODY, nameFr: "Intercepteur amélioré", starter: true },
+    });
+    expect(res.statusCode).toBe(200);
+    const updated = res.json().presets.find((p: { id: string }) => p.id === "interceptor");
+    expect(updated.nameFr).toBe("Intercepteur amélioré");
+    expect(updated.starter).toBe(true);
+  });
+
+  it("un id inconnu crée un preset neuf (id-minting)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/presets/assault_corvette",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_PRESET_BODY,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().presets).toHaveLength(9);
+  });
+
+  it("un corps invalide est refusé (400)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/presets/interceptor",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_PRESET_BODY, chassisId: "" },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("un compte joueur ne peut pas éditer les presets (403)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token } = await registerTestAccount(app, "joueur@exemple.fr");
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/presets/interceptor",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_PRESET_BODY,
+    });
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+const VALID_MILESTONE_BODY = { metric: "population", threshold: 5000 };
+
+describe("/api/admin/content/milestones", () => {
+  it("un content_editor liste les 13 jalons historiques amorcés au boot", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/admin/content/milestones",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().milestones).toHaveLength(13);
+  });
+
+  it("modifie un jalon existant — effective immédiatement", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/milestones/pop-25",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { metric: "population", threshold: 50 },
+    });
+    expect(res.statusCode).toBe(200);
+    const updated = res.json().milestones.find((m: { id: string }) => m.id === "pop-25");
+    expect(updated.threshold).toBe(50);
+  });
+
+  it("un id inconnu crée un jalon neuf (id-minting)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/milestones/pop-5000",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_MILESTONE_BODY,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().milestones).toHaveLength(14);
+  });
+
+  it("une métrique inconnue est refusée (400) — enum fermé", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/milestones/pop-25",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { metric: "not_a_real_metric", threshold: 10 },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("un compte joueur ne peut pas éditer les jalons (403)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token } = await registerTestAccount(app, "joueur@exemple.fr");
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/milestones/pop-25",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_MILESTONE_BODY,
     });
     expect(res.statusCode).toBe(403);
   });

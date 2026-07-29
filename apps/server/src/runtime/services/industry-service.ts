@@ -2,7 +2,6 @@ import {
   BLUEPRINT_BUY_MARKUP,
   BLUEPRINT_SELL_FRACTION,
   CLAIM_PRODUCTION_BONUS,
-  STARTER_PRESET_IDS,
   applyColonyTick,
   applyLift,
   canResearch,
@@ -14,7 +13,6 @@ import {
   gatewayLinks,
   idleShips,
   jumpDistanceInUniverse,
-  presetById,
   researchPath,
   resolveBlueprint,
   resolveQueue,
@@ -158,13 +156,12 @@ export class IndustryService {
   /** Amorce un empire sans plan avec les designs de départ (presets constructibles). */
   seedStarterBlueprints(empire: Empire): void {
     if (empire.blueprintMap.size > 0) return;
-    for (const presetId of STARTER_PRESET_IDS) {
-      const preset = presetById(presetId);
-      if (!preset) continue;
+    for (const preset of Object.values(this.runtime.content.presets)) {
+      if (!preset.starter) continue;
       const bp: Blueprint = {
         id: randomUUID(),
         ownerId: empire.id,
-        name: preset.name,
+        name: preset.nameFr,
         chassisId: preset.chassisId,
         modules: [...preset.modules],
         createdAt: Date.now(),
@@ -322,7 +319,7 @@ export class IndustryService {
     if (!station) return "Station inconnue";
     if (!empire.explored.has(station.systemId)) return "Station non découverte";
     if (this.jumpsToStation(colony, stationId) < 0) return "Station inaccessible";
-    const preset = presetById(presetId);
+    const preset = this.runtime.content.presets[presetId];
     if (!preset) return "Plan inconnu au catalogue";
 
     const price = Math.round(
@@ -334,7 +331,7 @@ export class IndustryService {
     const bp: Blueprint = {
       id: randomUUID(),
       ownerId: empire.id,
-      name: preset.name,
+      name: preset.nameFr,
       chassisId: preset.chassisId,
       modules: [...preset.modules],
       createdAt: Date.now(),
