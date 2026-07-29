@@ -567,3 +567,21 @@ export const contentBuildings = pgTable("content_buildings", {
   depositScaled: text("deposit_scaled"),
   jobsPerInstance: integer("jobs_per_instance"),
 });
+
+/**
+ * Vaisseaux civils historiques (chantier 23.8) — même recette que les vaisseaux de
+ * guerre : `id` libre (id-minting), `ShipId` est déjà `string` partout (aucun tuple
+ * fermé à desserrer, contrairement aux bâtiments).
+ */
+export const contentShips = pgTable("content_ships", {
+  id: text("id").primaryKey(),
+  nameFr: text("name_fr").notNull(),
+  descriptionFr: text("description_fr").notNull().default(""),
+  capacity: doublePrecision("capacity").notNull(),
+  /** JSON `Partial<Record<ResourceId, number>>`. */
+  cost: text("cost").notNull().default("{}"),
+  buildMs: integer("build_ms").notNull(),
+  requiresTech: text("requires_tech"),
+  speedMult: doublePrecision("speed_mult").notNull(),
+  fuelPerJump: doublePrecision("fuel_per_jump").notNull(),
+});

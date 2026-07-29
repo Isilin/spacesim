@@ -43,6 +43,13 @@
       "when": 1785310326604,
       "tag": "0005_shiny_randall",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785311671946,
+      "tag": "0006_crazy_glorian",
+      "breakpoints": true
     }
   ]
 }

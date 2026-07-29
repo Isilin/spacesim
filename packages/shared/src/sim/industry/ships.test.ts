@@ -65,6 +65,14 @@ describe("enqueueShip / resolveShips", () => {
     expect(enqueueShip(colony, "cargo_large", 0, ["orbital_logistics"]).ok).toBe(true);
   });
 
+  it("accepte une table de vaisseaux injectée (chantier 23.8) — coûts différents de SHIPS", () => {
+    const customShips = { ...SHIPS, cargo_small: { ...SHIPS.cargo_small, cost: { metals: 5 } } };
+    const colony = makeColony({ resources: { ...emptyResources(), metals: 10 } });
+    const r = enqueueShip(colony, "cargo_small", 0, [], undefined, customShips);
+    if (!r.ok) throw new Error(r.reason);
+    expect(r.colony.resources.metals).toBe(5);
+  });
+
   it("libère les vaisseaux revenus de convoi", () => {
     const colony = makeColony({
       ships: { cargo_small: 2 },

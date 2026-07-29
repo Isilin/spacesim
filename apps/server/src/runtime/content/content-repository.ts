@@ -4,6 +4,7 @@ import type {
   ContentBuilding,
   ContentCombatTuning,
   ContentFaction,
+  ContentShip,
   ContentWarship,
 } from "./content-types.js";
 
@@ -14,6 +15,7 @@ type WarshipRow = typeof schema.contentWarships.$inferSelect;
 type TuningRow = typeof schema.contentCombatTuning.$inferSelect;
 type FactionRow = typeof schema.contentFactions.$inferSelect;
 type BuildingRow = typeof schema.contentBuildings.$inferSelect;
+type ShipRow = typeof schema.contentShips.$inferSelect;
 
 function warshipFromRow(row: WarshipRow): ContentWarship {
   return {
@@ -115,6 +117,34 @@ function rowFromBuilding(b: ContentBuilding) {
     inputs: b.inputs ? JSON.stringify(b.inputs) : null,
     depositScaled: b.depositScaled,
     jobsPerInstance: b.jobsPerInstance,
+  };
+}
+
+function shipFromRow(row: ShipRow): ContentShip {
+  return {
+    id: row.id,
+    nameFr: row.nameFr,
+    descriptionFr: row.descriptionFr,
+    capacity: row.capacity,
+    cost: JSON.parse(row.cost),
+    buildMs: row.buildMs,
+    requiresTech: row.requiresTech,
+    speedMult: row.speedMult,
+    fuelPerJump: row.fuelPerJump,
+  };
+}
+
+function rowFromShip(s: ContentShip) {
+  return {
+    id: s.id,
+    nameFr: s.nameFr,
+    descriptionFr: s.descriptionFr,
+    capacity: s.capacity,
+    cost: JSON.stringify(s.cost),
+    buildMs: s.buildMs,
+    requiresTech: s.requiresTech,
+    speedMult: s.speedMult,
+    fuelPerJump: s.fuelPerJump,
   };
 }
 
@@ -229,5 +259,28 @@ export class ContentRepository {
       .insert(schema.contentBuildings)
       .values(row)
       .onConflictDoUpdate({ target: schema.contentBuildings.id, set: row });
+  }
+
+  async countShips(): Promise<number> {
+    const rows = await db.select({ id: schema.contentShips.id }).from(schema.contentShips);
+    return rows.length;
+  }
+
+  async loadShips(): Promise<Record<string, ContentShip>> {
+    const rows = await db.select().from(schema.contentShips).orderBy(schema.contentShips.id);
+    return Object.fromEntries(rows.map((row) => [row.id, shipFromRow(row)]));
+  }
+
+  async insertShips(ships: ContentShip[]): Promise<void> {
+    if (ships.length === 0) return;
+    await db.insert(schema.contentShips).values(ships.map(rowFromShip));
+  }
+
+  async saveShip(ship: ContentShip): Promise<void> {
+    const row = rowFromShip(ship);
+    await db
+      .insert(schema.contentShips)
+      .values(row)
+      .onConflictDoUpdate({ target: schema.contentShips.id, set: row });
   }
 }

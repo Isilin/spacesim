@@ -66,3 +66,21 @@ export const upsertBuildingSchema = z.object({
   jobsPerInstance: z.number().int().nonnegative().nullable(),
 });
 export type UpsertBuildingInput = z.infer<typeof upsertBuildingSchema>;
+
+/**
+ * Vaisseaux civils historiques (chantier 23.8) : id libre, même recette que les
+ * vaisseaux de guerre — `ShipId` est déjà `string` partout (`buildShip` en protocole
+ * n'a jamais eu de tuple fermé), aucun desserrement requis.
+ */
+export const upsertShipSchema = z.object({
+  nameFr: z.string().trim().min(1).max(80),
+  descriptionFr: z.string().trim().max(500).default(""),
+  capacity: z.number().nonnegative(),
+  cost: z.record(z.string(), z.number().nonnegative()),
+  buildMs: z.number().int().positive(),
+  /** null = aucune tech requise. */
+  requiresTech: z.string().trim().min(1).nullable(),
+  speedMult: z.number().positive(),
+  fuelPerJump: z.number().nonnegative(),
+});
+export type UpsertShipInput = z.infer<typeof upsertShipSchema>;

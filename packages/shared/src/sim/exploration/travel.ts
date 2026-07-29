@@ -6,7 +6,7 @@ import {
   TRANSFER_CREDITS_PER_JUMP,
   TRANSFER_MS_PER_JUMP,
 } from "../../constants.js";
-import { SHIPS, type LegacyShipId } from "../../content/ships.js";
+import { SHIPS, type ShipDef } from "../../content/ships.js";
 import type { Galaxy, Universe } from "../../model/universe.js";
 import { findGalaxyOfSystem } from "../../universe.js";
 
@@ -106,8 +106,8 @@ export interface ConvoyStat {
 }
 
 /** Provider par défaut : stats des classes civiles historiques (chantier 13 : plans → override). */
-export function legacyConvoyStat(id: string): ConvoyStat {
-  const def = SHIPS[id as LegacyShipId];
+export function legacyConvoyStat(id: string, ships: Record<string, ShipDef> = SHIPS): ConvoyStat {
+  const def = ships[id];
   return {
     speedMult: def?.speedMult ?? 1,
     fuelPerJump: def?.fuelPerJump ?? 0,

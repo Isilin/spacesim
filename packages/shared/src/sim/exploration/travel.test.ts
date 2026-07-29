@@ -9,6 +9,7 @@ import {
   convoyFuel,
   jumpDistance,
   jumpDistanceInUniverse,
+  legacyConvoyStat,
   transferCostCredits,
   transferDurationMs,
 } from "./travel.js";
@@ -123,5 +124,13 @@ describe("convois (chantier 12)", () => {
     expect(SHIPS.hauler.capacity).toBeGreaterThan(SHIPS.cargo_large.capacity);
     expect(SHIPS.courier.speedMult).toBeLessThan(SHIPS.cargo_small.speedMult);
     expect(SHIPS.hauler.fuelPerJump).toBeGreaterThan(SHIPS.courier.fuelPerJump);
+  });
+
+  it("accepte une table de vaisseaux injectée (chantier 23.8) — id inconnu de SHIPS", () => {
+    const customShips = { ...SHIPS, freshly_minted: { ...SHIPS.hauler, capacity: 9999 } };
+    expect(legacyConvoyStat("freshly_minted", customShips).capacity).toBe(9999);
+    expect(convoyCapacity({ freshly_minted: 1 }, (id) => legacyConvoyStat(id, customShips))).toBe(
+      9999,
+    );
   });
 });

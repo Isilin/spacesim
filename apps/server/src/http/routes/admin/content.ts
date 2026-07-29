@@ -1,4 +1,9 @@
-import { upsertBuildingSchema, upsertFactionSchema, upsertWarshipSchema } from "@spacesim/protocol";
+import {
+  upsertBuildingSchema,
+  upsertFactionSchema,
+  upsertShipSchema,
+  upsertWarshipSchema,
+} from "@spacesim/protocol";
 import { BUILDING_IDS, type BuildingId } from "@spacesim/shared";
 import type { FastifyInstance } from "fastify";
 import { recordAuditEntry } from "../../../admin/audit-service.js";
@@ -7,6 +12,7 @@ import { ContentRepository } from "../../../runtime/content/content-repository.j
 import type {
   ContentBuilding,
   ContentFaction,
+  ContentShip,
   ContentWarship,
 } from "../../../runtime/content/content-types.js";
 
@@ -133,6 +139,41 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
         reason: "modification",
       });
       return { buildings: Object.values(engine.content.buildings) };
+    },
+  );
+
+  // Vaisseaux civils historiques (chantier 23.8) : même recette que les vaisseaux de
+  // guerre/factions (id libre, id-minting).
+  admin.get("/content/ships", { config: { adminAction: "content.ships.read" } }, () => ({
+    ships: Object.values(engine.content.ships),
+  }));
+
+  admin.put(
+    "/content/ships/:id",
+    { config: { adminAction: "content.ships.write" } },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const parsed = upsertShipSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+      }
+      const isNew = !(id in engine.content.ships);
+      const ship: ContentShip = { id, ...parsed.data };
+      await repo.saveShip(ship);
+      await engine.loadContent();
+
+      const actor = request.adminAccount!;
+      await recordAuditEntry({
+        actorAccountId: actor.id,
+        actorEmail: actor.email,
+        action: "content.ships.write",
+        targetType: "content_ship",
+        targetId: id,
+        reason: isNew ? "création" : "modification",
+      });
+      return { ships: Object.values(engine.content.ships) };
     },
   );
 }

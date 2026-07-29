@@ -59,6 +59,23 @@ export interface ContentBuilding {
   jobsPerInstance: number | null;
 }
 
+/**
+ * Vaisseau civil historique (chantier 23.8) — `id: string` libre, même raison que
+ * `ContentWarship` (`ShipId` est déjà `string` partout, aucun tuple à desserrer).
+ */
+export interface ContentShip {
+  id: string;
+  nameFr: string;
+  descriptionFr: string;
+  capacity: number;
+  cost: Record<string, number>;
+  buildMs: number;
+  /** null = aucune tech requise. */
+  requiresTech: string | null;
+  speedMult: number;
+  fuelPerJump: number;
+}
+
 /** Contenu chargé en mémoire (`GameRuntime.content`) — remplacé en bloc à chaque édition
  *  admin (édition en live, chantier 23 décision 3), jamais muté en place. */
 export interface ContentBundle {
@@ -66,4 +83,5 @@ export interface ContentBundle {
   combatTuning: ContentCombatTuning;
   factions: Record<string, ContentFaction>;
   buildings: Record<string, ContentBuilding>;
+  ships: Record<string, ContentShip>;
 }

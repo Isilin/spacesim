@@ -1,9 +1,4 @@
-import {
-  MAX_SHIP_QUEUE_LENGTH,
-  SHIPS,
-  type LegacyShipId,
-  type ShipDef,
-} from "../../content/ships.js";
+import { MAX_SHIP_QUEUE_LENGTH, SHIPS, type ShipDef } from "../../content/ships.js";
 import type { TechId } from "../../content/techs.js";
 import { type Colony, type ShipId } from "../../model/industry.js";
 import type { ResourceId } from "../../model/resources.js";
@@ -13,8 +8,8 @@ import { canAfford } from "./colony.js";
 import type { ShipStats } from "./design.js";
 
 /** Soute d'un id de vaisseau selon les classes historiques (défaut des providers). */
-export function legacyCapacity(id: string): number {
-  return SHIPS[id as LegacyShipId]?.capacity ?? 0;
+export function legacyCapacity(id: string, ships: Record<string, ShipDef> = SHIPS): number {
+  return ships[id]?.capacity ?? 0;
 }
 
 /**
@@ -82,8 +77,9 @@ export function enqueueShip(
   now: number,
   researched: readonly TechId[],
   effects: EmpireEffects = NO_EFFECTS,
+  ships: Record<string, ShipDef> = SHIPS,
 ): ShipEnqueueResult {
-  const def = SHIPS[shipId as LegacyShipId] as ShipDef | undefined;
+  const def = ships[shipId];
   if (!def) return { ok: false, reason: `Vaisseau inconnu : ${shipId}` };
   if (def.requiresTech && !researched.includes(def.requiresTech)) {
     return { ok: false, reason: "Technologie requise non recherchée" };

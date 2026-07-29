@@ -2,7 +2,6 @@ import {
   BLUEPRINT_BUY_MARKUP,
   BLUEPRINT_SELL_FRACTION,
   CLAIM_PRODUCTION_BONUS,
-  SHIPS,
   STARTER_PRESET_IDS,
   TECHS,
   applyColonyTick,
@@ -26,14 +25,13 @@ import {
   type BuildingId,
   type Colony,
   type Fleet,
-  type LegacyShipId,
   type ResourceId,
   type ShipId,
   type TechId,
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
-import { buildingDefsFromContent } from "../content/content-service.js";
+import { buildingDefsFromContent, shipDefsFromContent } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { BlueprintRepository } from "../repositories/blueprint-repository.js";
@@ -99,6 +97,7 @@ export class IndustryService {
       Date.now(),
       empire.researched as TechId[],
       empire.effects,
+      shipDefsFromContent(this.runtime.content.ships),
     );
     if (!result.ok) return result.reason;
     empire.colonyMap.set(colonyId, result.colony);
@@ -343,7 +342,7 @@ export class IndustryService {
     const idle = idleShips(colony, [...empire.routeMap.values()]);
     if ((idle[shipId] ?? 0) < count) return "Vaisseaux indisponibles (occupés ou insuffisants)";
 
-    const legacyDef = SHIPS[shipId as LegacyShipId];
+    const legacyDef = shipDefsFromContent(this.runtime.content.ships)[shipId];
     const bp = empire.blueprintMap.get(shipId);
     const cost = legacyDef?.cost ?? (bp ? resolveBlueprint(bp).cost : null);
     if (!cost) return "Vaisseau inconnu";

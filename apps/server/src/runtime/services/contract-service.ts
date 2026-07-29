@@ -8,18 +8,21 @@ import {
   isContractExpired,
   jumpDistanceInUniverse,
   gatewayLinks,
+  legacyConvoyStat,
   MARKET_RESOURCES,
   MAX_OPEN_CONTRACTS_PER_EMPIRE,
   takeFromOrbit,
   transferDurationMs,
   type Colony,
   type Contract,
+  type ConvoyStat,
   type Mission,
   type ResourceId,
   type ShipId,
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
+import { shipDefsFromContent } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { ContractRepository } from "../repositories/contract-repository.js";
@@ -55,6 +58,12 @@ export class ContractService {
     ) => void,
   ) {
     this.repo = new ContractRepository(runtime.clock.id, runtime.writeSet);
+  }
+
+  /** Classes civiles (DB-backed, chantier 23.8) — voir `LogisticsService.statsOf`. */
+  private get statsOf(): (id: string) => ConvoyStat {
+    const defs = shipDefsFromContent(this.runtime.content.ships);
+    return (id) => legacyConvoyStat(id, defs);
   }
 
   private get portalLinks(): [string, string][] {
@@ -173,9 +182,11 @@ export class ContractService {
     if (qty > reserved.capacity)
       return `Cargaison trop lourde pour ce convoi (soute : ${reserved.capacity})`;
 
-    const duration = convoyDurationMs(jumps, reserved.ships) * speed;
+    const duration = convoyDurationMs(jumps, reserved.ships, this.statsOf) * speed;
     const fee = convoyFees(jumps, portals);
-    const fuel = Math.ceil(convoyFuel(jumps, reserved.ships, qty) * empire.effects.fuelMult);
+    const fuel = Math.ceil(
+      convoyFuel(jumps, reserved.ships, qty, this.statsOf) * empire.effects.fuelMult,
+    );
     const resources = { ...reserved.colony.resources };
     if (resources.credits < fee) return `Crédits insuffisants (frais : ${fee})`;
     const fueled = takeFromOrbit(reserved.colony, { energy: fuel });

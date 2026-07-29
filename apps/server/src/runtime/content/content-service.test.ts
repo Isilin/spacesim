@@ -1,4 +1,4 @@
-import { BUILDING_IDS, FACTION_IDS, WARSHIP_IDS } from "@spacesim/shared";
+import { BUILDING_IDS, FACTION_IDS, SHIP_IDS, WARSHIP_IDS } from "@spacesim/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db, schema } from "../../db/index.js";
 import {
@@ -6,6 +6,7 @@ import {
   combatDefsFromWarships,
   ensureContentSeeded,
   loadContentBundle,
+  shipDefsFromContent,
 } from "./content-service.js";
 
 beforeEach(async () => {
@@ -13,6 +14,7 @@ beforeEach(async () => {
   await db.delete(schema.contentCombatTuning);
   await db.delete(schema.contentFactions);
   await db.delete(schema.contentBuildings);
+  await db.delete(schema.contentShips);
 });
 
 describe("ensureContentSeeded", () => {
@@ -38,6 +40,14 @@ describe("ensureContentSeeded", () => {
     expect(Object.keys(bundle.buildings).sort()).toEqual([...BUILDING_IDS].sort());
     expect(bundle.buildings.mine?.nameFr).toBe("Mine");
     expect(bundle.buildings.mine?.depositScaled).toBe("ore");
+  });
+
+  it("peuple les vaisseaux civils depuis packages/shared/src/content/ships.ts", async () => {
+    await ensureContentSeeded();
+    const bundle = await loadContentBundle();
+    expect(Object.keys(bundle.ships).sort()).toEqual([...SHIP_IDS].sort());
+    expect(bundle.ships.cargo_small?.nameFr).toBe("Cargo léger");
+    expect(bundle.ships.hauler?.requiresTech).toBe("space_elevator");
   });
 
   it("est idempotent : un second appel ne duplique rien", async () => {
@@ -90,6 +100,23 @@ describe("buildingDefsFromContent", () => {
       inputs: bundle.buildings.mine!.inputs ?? undefined,
       depositScaled: bundle.buildings.mine!.depositScaled,
       jobsPerInstance: bundle.buildings.mine!.jobsPerInstance ?? undefined,
+    });
+  });
+});
+
+describe("shipDefsFromContent", () => {
+  it("convertit le contenu chargé au format attendu par sim/industry/ships.ts", async () => {
+    await ensureContentSeeded();
+    const bundle = await loadContentBundle();
+    const defs = shipDefsFromContent(bundle.ships);
+    expect(defs.cargo_small).toEqual({
+      id: "cargo_small",
+      capacity: bundle.ships.cargo_small!.capacity,
+      cost: bundle.ships.cargo_small!.cost,
+      buildMs: bundle.ships.cargo_small!.buildMs,
+      requiresTech: undefined,
+      speedMult: bundle.ships.cargo_small!.speedMult,
+      fuelPerJump: bundle.ships.cargo_small!.fuelPerJump,
     });
   });
 });

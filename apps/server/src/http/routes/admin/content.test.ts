@@ -14,6 +14,7 @@ beforeEach(async () => {
   await db.delete(schema.contentCombatTuning);
   await db.delete(schema.contentFactions);
   await db.delete(schema.contentBuildings);
+  await db.delete(schema.contentShips);
 });
 
 const VALID_WARSHIP_BODY = {
@@ -327,6 +328,89 @@ describe("/api/admin/content/buildings", () => {
       url: "/api/admin/content/buildings/mine",
       headers: { authorization: `Bearer ${token}` },
       payload: VALID_BUILDING_BODY,
+    });
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+const VALID_SHIP_BODY = {
+  nameFr: "Cargo blindé",
+  descriptionFr: "Un nouveau cargo créé depuis l'admin.",
+  capacity: 450,
+  cost: { metals: 140, components: 35 },
+  buildMs: 90_000,
+  requiresTech: "orbital_logistics",
+  speedMult: 0.9,
+  fuelPerJump: 18,
+};
+
+describe("/api/admin/content/ships", () => {
+  it("un content_editor liste les 4 classes civiles historiques amorcées au boot", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/admin/content/ships",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().ships).toHaveLength(4);
+  });
+
+  it("modifie un vaisseau existant — effective immédiatement", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/ships/cargo_small",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_SHIP_BODY, capacity: 9999, requiresTech: null },
+    });
+    expect(res.statusCode).toBe(200);
+    const updated = res.json().ships.find((s: { id: string }) => s.id === "cargo_small");
+    expect(updated.capacity).toBe(9999);
+  });
+
+  it("un id inconnu crée un vaisseau neuf (id-minting)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/ships/bulk_freighter",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_SHIP_BODY,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().ships).toHaveLength(5);
+  });
+
+  it("un corps invalide est refusé (400)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/ships/cargo_small",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_SHIP_BODY, speedMult: -1 },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("un compte joueur ne peut pas éditer les vaisseaux civils (403)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token } = await registerTestAccount(app, "joueur@exemple.fr");
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/ships/cargo_small",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_SHIP_BODY,
     });
     expect(res.statusCode).toBe(403);
   });

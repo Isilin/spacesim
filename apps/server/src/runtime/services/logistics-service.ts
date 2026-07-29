@@ -15,6 +15,7 @@ import {
   idleShips,
   jumpDistanceInUniverse,
   legacyCapacity,
+  legacyConvoyStat,
   MARKET_RESOURCES,
   NEW_COLONY_ORBITAL,
   NEW_COLONY_POPULATION,
@@ -26,14 +27,13 @@ import {
   contractPayout,
   RESOURCES,
   routeCargoQuantity,
-  SHIPS,
   takeFromOrbit,
   transferCostCredits,
   transferDurationMs,
   type Colony,
   type Contract,
+  type ConvoyStat,
   type Gateway,
-  type LegacyShipId,
   type LiftRule,
   type MarketResource,
   type MiningOutpost,
@@ -41,11 +41,13 @@ import {
   type ResourceId,
   type Route,
   type RouteRule,
+  type ShipDef,
   type ShipId,
   type Transfer,
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
+import { shipDefsFromContent } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { LogisticsRepository } from "../repositories/logistics-repository.js";
@@ -92,6 +94,21 @@ export class LogisticsService {
     return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
   }
 
+  /** Classes civiles (DB-backed, chantier 23.8) — remplace `SHIPS` dans tout ce service. */
+  private get shipDefs(): Record<string, ShipDef> {
+    return shipDefsFromContent(this.runtime.content.ships);
+  }
+
+  private get capacityOf(): (id: string) => number {
+    const defs = this.shipDefs;
+    return (id) => legacyCapacity(id, defs);
+  }
+
+  private get statsOf(): (id: string) => ConvoyStat {
+    const defs = this.shipDefs;
+    return (id) => legacyConvoyStat(id, defs);
+  }
+
   /**
    * Réserve le plus gros cargo disponible de la colonie jusqu'à `busyUntil`.
    * Retourne null si aucun vaisseau libre. Public : injecté dans Gateway/Contract/Market.
@@ -102,12 +119,12 @@ export class LogisticsService {
     busyUntil: number,
   ): { colony: Colony; shipId: ShipId; capacity: number } | null {
     const idle = idleShips(colony, [...empire.routeMap.values()]);
-    const shipId = pickShip(idle);
+    const shipId = pickShip(idle, this.capacityOf);
     if (!shipId) return null;
     return {
       colony: { ...colony, shipsBusy: [...colony.shipsBusy, { shipId, freeAt: busyUntil }] },
       shipId,
-      capacity: legacyCapacity(shipId),
+      capacity: this.capacityOf(shipId),
     };
   }
 
@@ -122,11 +139,12 @@ export class LogisticsService {
     busyUntil: number,
   ): { colony: Colony; ships: Partial<Record<ShipId, number>>; capacity: number } | null {
     const idle = idleShips(colony, [...empire.routeMap.values()]);
+    const defs = this.shipDefs;
     const wanted: Partial<Record<ShipId, number>> = {};
     for (const [shipId, raw] of Object.entries(ships) as [ShipId, number][]) {
       const count = Math.floor(Number(raw));
       if (!Number.isFinite(count) || count <= 0) continue;
-      if (!SHIPS[shipId as LegacyShipId]) return null;
+      if (!defs[shipId]) return null;
       if ((idle[shipId] ?? 0) < count) return null;
       wanted[shipId] = count;
     }
@@ -139,7 +157,7 @@ export class LogisticsService {
     return {
       colony: { ...colony, shipsBusy: busy },
       ships: wanted,
-      capacity: convoyCapacity(wanted),
+      capacity: convoyCapacity(wanted, this.statsOf),
     };
   }
 
@@ -223,7 +241,7 @@ export class LogisticsService {
           empire,
           loaded,
           convoy,
-          now + 2 * convoyDurationMs(jumps, convoy) * speed,
+          now + 2 * convoyDurationMs(jumps, convoy, this.statsOf) * speed,
         )
       : (() => {
           const one = this.reserveShip(empire, loaded, now + 2 * transferDurationMs(jumps) * speed);
@@ -236,9 +254,11 @@ export class LogisticsService {
       return `Cargaison trop lourde pour ce convoi (soute : ${reserved.capacity})`;
     }
 
-    const duration = convoyDurationMs(jumps, reserved.ships) * speed;
+    const duration = convoyDurationMs(jumps, reserved.ships, this.statsOf) * speed;
     const cost = convoyFees(jumps, portals);
-    const fuel = Math.ceil(convoyFuel(jumps, reserved.ships, total) * empire.effects.fuelMult);
+    const fuel = Math.ceil(
+      convoyFuel(jumps, reserved.ships, total, this.statsOf) * empire.effects.fuelMult,
+    );
     const resources = { ...reserved.colony.resources };
     if (resources.credits < cost) return `Crédits insuffisants (frais : ${cost})`;
     // Le carburant se soutire en orbite : un convoi ne fait pas le plein au sol.
@@ -416,10 +436,11 @@ export class LogisticsService {
     const requested: Partial<Record<ShipId, number>> = {};
     let anyShip = false;
     const idle = idleShips(owner, [...empire.routeMap.values()]);
+    const shipDefs = this.shipDefs;
     for (const [shipId, raw] of Object.entries(ships) as [ShipId, number][]) {
       const count = Math.floor(Number(raw));
       if (!Number.isFinite(count) || count <= 0) continue;
-      if (!SHIPS[shipId as LegacyShipId]) return `Vaisseau inconnu : ${shipId}`;
+      if (!shipDefs[shipId]) return `Vaisseau inconnu : ${shipId}`;
       if ((idle[shipId] ?? 0) < count) return `Vaisseaux indisponibles : ${shipId}`;
       requested[shipId] = count;
       anyShip = true;
@@ -534,7 +555,7 @@ export class LogisticsService {
         current.rule,
         sourceStock,
         destStock,
-        fleetCapacity(current.ships),
+        fleetCapacity(current.ships, this.capacityOf),
       );
       if (qty <= 0) continue;
       const fee = transferCostCredits(jumps);

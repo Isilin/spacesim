@@ -7,17 +7,21 @@ import {
   DIRECTIVES,
   FACTION_IDS,
   FACTIONS,
+  SHIP_IDS,
+  SHIPS,
   WARSHIP_CATEGORY,
   WARSHIP_IDS,
   WARSHIPS,
   type BuildingDef,
   type CombatDef,
+  type ShipDef,
 } from "@spacesim/shared";
 import { ContentRepository } from "./content-repository.js";
 import type {
   ContentBuilding,
   ContentBundle,
   ContentFaction,
+  ContentShip,
   ContentWarship,
 } from "./content-types.js";
 
@@ -160,6 +164,42 @@ function seedBuildings(): ContentBuilding[] {
 }
 
 /**
+ * Libellés français des classes civiles historiques, dupliqués depuis `apps/web/src/labels.ts`
+ * (`SHIP_LABELS`) — même raison que `SEED_WARSHIP_LABELS` ci-dessus.
+ */
+const SEED_SHIP_LABELS: Record<string, { name: string; description: string }> = {
+  cargo_small: { name: "Cargo léger", description: "Soute de 200. Le mulet de l'espace." },
+  cargo_large: {
+    name: "Cargo lourd",
+    description: "Soute de 600. Requiert la logistique orbitale.",
+  },
+  hauler: {
+    name: "Transporteur",
+    description: "Soute de 1800, lent et gourmand. Requiert l'ascenseur spatial.",
+  },
+  courier: { name: "Courrier", description: "Soute de 80, très rapide. Idéal pour les urgences." },
+};
+
+/** Vaisseaux civils historiques (`packages/shared`) au format `ContentShip`. */
+function seedShips(): ContentShip[] {
+  return SHIP_IDS.map((id) => {
+    const def = SHIPS[id];
+    const label = SEED_SHIP_LABELS[id];
+    return {
+      id,
+      nameFr: label?.name ?? id,
+      descriptionFr: label?.description ?? "",
+      capacity: def.capacity,
+      cost: def.cost,
+      buildMs: def.buildMs,
+      requiresTech: def.requiresTech ?? null,
+      speedMult: def.speedMult,
+      fuelPerJump: def.fuelPerJump,
+    };
+  });
+}
+
+/**
  * Amorce le contenu une fois dans la vie d'une base (idempotent, sûr à chaque boot —
  * même idiome que `BootstrapService.ensureNpcPopulation` : compter, compléter si vide).
  * Libellés français repris des tables `SEED_*` ci-dessus ; `apps/web/src/labels.ts` garde
@@ -184,18 +224,22 @@ export async function ensureContentSeeded(): Promise<void> {
   if ((await repo.countBuildings()) === 0) {
     await repo.insertBuildings(seedBuildings());
   }
+  if ((await repo.countShips()) === 0) {
+    await repo.insertShips(seedShips());
+  }
 }
 
 /** Charge tout le contenu depuis la DB — appelé au boot puis après chaque édition admin
  *  (remplacement en bloc de `GameRuntime.content`, jamais de mutation en place). */
 export async function loadContentBundle(): Promise<ContentBundle> {
-  const [warships, combatTuning, factions, buildings] = await Promise.all([
+  const [warships, combatTuning, factions, buildings, ships] = await Promise.all([
     repo.loadWarships(),
     repo.loadTuning(),
     repo.loadFactions(),
     repo.loadBuildings(),
+    repo.loadShips(),
   ]);
-  return { warships, combatTuning, factions, buildings };
+  return { warships, combatTuning, factions, buildings, ships };
 }
 
 /** Convertit les vaisseaux de guerre chargés en table de combat (`sim/military/combat.ts`
@@ -235,6 +279,26 @@ export function buildingDefsFromContent(
         depositScaled: (b.depositScaled ?? undefined) as BuildingDef["depositScaled"],
         jobsPerInstance: b.jobsPerInstance ?? undefined,
       } satisfies BuildingDef,
+    ]),
+  );
+}
+
+/** Convertit les vaisseaux civils chargés en table de définitions (`sim/industry/ships.ts`
+ *  `legacyCapacity`/`enqueueShip`, `sim/exploration/travel.ts` `legacyConvoyStat`) — même
+ *  forme que `SHIPS`, sourcée depuis le contenu DB-backed. */
+export function shipDefsFromContent(ships: Record<string, ContentShip>): Record<string, ShipDef> {
+  return Object.fromEntries(
+    Object.entries(ships).map(([id, s]) => [
+      id,
+      {
+        id: id as ShipDef["id"],
+        capacity: s.capacity,
+        cost: s.cost,
+        buildMs: s.buildMs,
+        requiresTech: s.requiresTech ?? undefined,
+        speedMult: s.speedMult,
+        fuelPerJump: s.fuelPerJump,
+      } satisfies ShipDef,
     ]),
   );
 }
