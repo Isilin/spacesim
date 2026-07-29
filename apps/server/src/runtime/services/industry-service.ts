@@ -21,6 +21,7 @@ import {
   resolveQueue,
   resolveShips,
   validateBlueprint,
+  type BalanceConstants,
   type Blueprint,
   type BuildingId,
   type Colony,
@@ -31,7 +32,11 @@ import {
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
-import { buildingDefsFromContent, shipDefsFromContent } from "../content/content-service.js";
+import {
+  balanceFromContent,
+  buildingDefsFromContent,
+  shipDefsFromContent,
+} from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { BlueprintRepository } from "../repositories/blueprint-repository.js";
@@ -66,6 +71,11 @@ export class IndustryService {
     return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
   }
 
+  /** Scalaires d'équilibrage (DB-backed, chantier 23.8). */
+  private get balance(): BalanceConstants {
+    return balanceFromContent(this.runtime.content.constants);
+  }
+
   // ── Bâtiments & chantier civil ───────────────────────────────────────────
 
   build(empire: Empire, colonyId: string, buildingId: BuildingId): string | null {
@@ -80,6 +90,7 @@ export class IndustryService {
       Date.now(),
       empire.effects,
       buildingDefsFromContent(this.runtime.content.buildings),
+      this.balance,
     );
     if (!result.ok) return result.reason;
     empire.colonyMap.set(colonyId, result.colony);
@@ -478,6 +489,7 @@ export class IndustryService {
           }
         : empire.effects;
       // L'ascenseur tourne après la production : ce qui vient d'être produit peut monter.
+      const balance = this.balance;
       empire.colonyMap.set(
         id,
         applyLift(
@@ -486,8 +498,10 @@ export class IndustryService {
             planet,
             effects,
             buildingDefsFromContent(this.runtime.content.buildings),
+            balance,
           ),
           effects,
+          balance,
         ),
       );
     }

@@ -10,15 +10,16 @@ import {
   influencePerTick,
   jumpDistanceInUniverse,
   gatewayLinks,
-  PROBE_COST_CREDITS,
   probeDurationMs,
   COLONY_SHIP_COST,
+  type BalanceConstants,
   type Colony,
   type GalaxyOccupancy,
   type Mission,
   type ResourceId,
 } from "@spacesim/shared";
 import type { Empire } from "../../empire.js";
+import { balanceFromContent } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { ClaimRepository } from "../repositories/claim-repository.js";
@@ -58,6 +59,11 @@ export class ExplorationService {
     return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
   }
 
+  /** Scalaires d'équilibrage (DB-backed, chantier 23.8). */
+  private get balance(): BalanceConstants {
+    return balanceFromContent(this.runtime.content.constants);
+  }
+
   /** Action joueur : envoyer une sonde révéler un système. */
   probe(empire: Empire, colonyId: string, systemId: string): string | null {
     const colony = empire.colonyMap.get(colonyId);
@@ -72,7 +78,8 @@ export class ExplorationService {
     }
     const fromPlanet = this.runtime.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const cost = Math.round(PROBE_COST_CREDITS * empire.effects.probeCostMult);
+    const balance = this.balance;
+    const cost = Math.round(balance.probeCostCredits * empire.effects.probeCostMult);
     if (colony.resources.credits < cost) {
       return `Crédits insuffisants (coût : ${cost})`;
     }
@@ -92,7 +99,7 @@ export class ExplorationService {
       "probe",
       colonyId,
       systemId,
-      probeDurationMs(jumps) * empire.effects.probeSpeedMult,
+      probeDurationMs(jumps, balance) * empire.effects.probeSpeedMult,
     );
     this.notify();
     return null;
@@ -149,7 +156,7 @@ export class ExplorationService {
       "colonize",
       colonyId,
       planetId,
-      colonyShipDurationMs(jumps) * empire.effects.colonyShipSpeedMult,
+      colonyShipDurationMs(jumps, this.balance) * empire.effects.colonyShipSpeedMult,
     );
     this.notify();
     return null;

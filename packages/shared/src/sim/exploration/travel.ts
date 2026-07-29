@@ -1,11 +1,4 @@
-import {
-  FUEL_PER_MASS_JUMP,
-  GATEWAY_TOLL_CREDITS,
-  TRANSFER_BASE_CREDITS,
-  TRANSFER_BASE_MS,
-  TRANSFER_CREDITS_PER_JUMP,
-  TRANSFER_MS_PER_JUMP,
-} from "../../constants.js";
+import { DEFAULT_BALANCE, type BalanceConstants } from "../../balance.js";
 import { SHIPS, type ShipDef } from "../../content/ships.js";
 import type { Galaxy, Universe } from "../../model/universe.js";
 import { findGalaxyOfSystem } from "../../universe.js";
@@ -85,12 +78,18 @@ export function jumpDistanceInUniverse(
   return -1;
 }
 
-export function transferDurationMs(jumps: number): number {
-  return TRANSFER_BASE_MS + jumps * TRANSFER_MS_PER_JUMP;
+export function transferDurationMs(
+  jumps: number,
+  balance: BalanceConstants = DEFAULT_BALANCE,
+): number {
+  return balance.transferBaseMs + jumps * balance.transferMsPerJump;
 }
 
-export function transferCostCredits(jumps: number): number {
-  return TRANSFER_BASE_CREDITS + jumps * TRANSFER_CREDITS_PER_JUMP;
+export function transferCostCredits(
+  jumps: number,
+  balance: BalanceConstants = DEFAULT_BALANCE,
+): number {
+  return balance.transferBaseCredits + jumps * balance.transferCreditsPerJump;
 }
 
 // ── Convois (chantier 12) : le vaisseau employé compte enfin ──────────────────
@@ -127,10 +126,11 @@ export function convoyDurationMs(
   jumps: number,
   ships: ConvoyShips = {},
   statsOf: (id: string) => ConvoyStat = legacyConvoyStat,
+  balance: BalanceConstants = DEFAULT_BALANCE,
 ): number {
   const entries = convoyEntries(ships);
   const slowest = entries.reduce((max, [id]) => Math.max(max, statsOf(id).speedMult), 0);
-  return transferDurationMs(jumps) * (slowest || 1);
+  return transferDurationMs(jumps, balance) * (slowest || 1);
 }
 
 /**
@@ -143,12 +143,13 @@ export function convoyFuel(
   ships: ConvoyShips,
   cargoMass = 0,
   statsOf: (id: string) => ConvoyStat = legacyConvoyStat,
+  balance: BalanceConstants = DEFAULT_BALANCE,
 ): number {
   const perShip = convoyEntries(ships).reduce(
     (sum, [id, count]) => sum + statsOf(id).fuelPerJump * count,
     0,
   );
-  const massPart = cargoMass * FUEL_PER_MASS_JUMP;
+  const massPart = cargoMass * balance.fuelPerMassJump;
   return Math.ceil((perShip + massPart) * Math.max(1, jumps));
 }
 
@@ -156,8 +157,12 @@ export function convoyFuel(
  * Frais d'un convoi : frais de base par saut + péage par portail emprunté. Traverser
  * une galaxie n'est pas gratuit, sinon les anneaux lointains n'auraient pas de prix.
  */
-export function convoyFees(jumps: number, portalsCrossed = 0): number {
-  return transferCostCredits(jumps) + portalsCrossed * GATEWAY_TOLL_CREDITS;
+export function convoyFees(
+  jumps: number,
+  portalsCrossed = 0,
+  balance: BalanceConstants = DEFAULT_BALANCE,
+): number {
+  return transferCostCredits(jumps, balance) + portalsCrossed * balance.gatewayTollCredits;
 }
 
 /** Capacité totale d'un convoi. */

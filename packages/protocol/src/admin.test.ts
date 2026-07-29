@@ -50,4 +50,9 @@ describe("rôles et permissions admin", () => {
     expect(hasPermission("content_editor", "content.ships.read")).toBe(true);
     expect(hasPermission("content_editor", "content.ships.write")).toBe(true);
   });
+
+  it("content_editor édite aussi les constantes d'équilibrage (chantier 23.8)", () => {
+    expect(hasPermission("content_editor", "content.constants.read")).toBe(true);
+    expect(hasPermission("content_editor", "content.constants.write")).toBe(true);
+  });
 });

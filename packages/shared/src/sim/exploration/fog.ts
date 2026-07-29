@@ -1,9 +1,4 @@
-import {
-  COLONY_SHIP_BASE_MS,
-  COLONY_SHIP_MS_PER_JUMP,
-  PROBE_BASE_MS,
-  PROBE_MS_PER_JUMP,
-} from "../../constants.js";
+import { DEFAULT_BALANCE, type BalanceConstants } from "../../balance.js";
 import type { Universe } from "../../model/universe.js";
 
 /**
@@ -27,10 +22,16 @@ export function redactUniverse(
   };
 }
 
-export function probeDurationMs(jumps: number): number {
-  return PROBE_BASE_MS + jumps * PROBE_MS_PER_JUMP;
+export function probeDurationMs(
+  jumps: number,
+  balance: BalanceConstants = DEFAULT_BALANCE,
+): number {
+  return balance.probeBaseMs + jumps * balance.probeMsPerJump;
 }
 
-export function colonyShipDurationMs(jumps: number): number {
-  return COLONY_SHIP_BASE_MS + jumps * COLONY_SHIP_MS_PER_JUMP;
+export function colonyShipDurationMs(
+  jumps: number,
+  balance: BalanceConstants = DEFAULT_BALANCE,
+): number {
+  return balance.colonyShipBaseMs + jumps * balance.colonyShipMsPerJump;
 }

@@ -84,3 +84,14 @@ export const upsertShipSchema = z.object({
   fuelPerJump: z.number().nonnegative(),
 });
 export type UpsertShipInput = z.infer<typeof upsertShipSchema>;
+
+/**
+ * Scalaires d'équilibrage (chantier 23.8) : comme les bâtiments, la clé **n'est pas**
+ * libre — elle doit être un des champs de `BalanceConstants`
+ * (`packages/shared/src/balance.ts`), vérifié côté serveur qui seul connaît la liste.
+ */
+export const upsertConstantSchema = z.object({
+  value: z.number(),
+  descriptionFr: z.string().trim().max(300).default(""),
+});
+export type UpsertConstantInput = z.infer<typeof upsertConstantSchema>;

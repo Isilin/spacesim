@@ -104,6 +104,7 @@ export {
   LIFT_PER_DOCK,
   LIFT_ENERGY_PER_UNIT,
 } from "./constants.js";
+export { DEFAULT_BALANCE, type BalanceConstants } from "./balance.js";
 export { hashSeed, mulberry32, createRng, randInt, pick, pickWeighted, type Rng } from "./rng.js";
 export {
   GENERATOR_VERSION,

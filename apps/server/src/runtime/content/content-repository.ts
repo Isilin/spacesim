@@ -3,6 +3,7 @@ import { db, schema } from "../../db/index.js";
 import type {
   ContentBuilding,
   ContentCombatTuning,
+  ContentConstant,
   ContentFaction,
   ContentShip,
   ContentWarship,
@@ -16,6 +17,7 @@ type TuningRow = typeof schema.contentCombatTuning.$inferSelect;
 type FactionRow = typeof schema.contentFactions.$inferSelect;
 type BuildingRow = typeof schema.contentBuildings.$inferSelect;
 type ShipRow = typeof schema.contentShips.$inferSelect;
+type ConstantRow = typeof schema.contentConstants.$inferSelect;
 
 function warshipFromRow(row: WarshipRow): ContentWarship {
   return {
@@ -146,6 +148,14 @@ function rowFromShip(s: ContentShip) {
     speedMult: s.speedMult,
     fuelPerJump: s.fuelPerJump,
   };
+}
+
+function constantFromRow(row: ConstantRow): ContentConstant {
+  return { key: row.key, value: row.value, descriptionFr: row.descriptionFr };
+}
+
+function rowFromConstant(c: ContentConstant) {
+  return { key: c.key, value: c.value, descriptionFr: c.descriptionFr };
 }
 
 /**
@@ -282,5 +292,33 @@ export class ContentRepository {
       .insert(schema.contentShips)
       .values(row)
       .onConflictDoUpdate({ target: schema.contentShips.id, set: row });
+  }
+
+  async countConstants(): Promise<number> {
+    const rows = await db
+      .select({ key: schema.contentConstants.key })
+      .from(schema.contentConstants);
+    return rows.length;
+  }
+
+  async loadConstants(): Promise<Record<string, ContentConstant>> {
+    const rows = await db
+      .select()
+      .from(schema.contentConstants)
+      .orderBy(schema.contentConstants.key);
+    return Object.fromEntries(rows.map((row) => [row.key, constantFromRow(row)]));
+  }
+
+  async insertConstants(constants: ContentConstant[]): Promise<void> {
+    if (constants.length === 0) return;
+    await db.insert(schema.contentConstants).values(constants.map(rowFromConstant));
+  }
+
+  async saveConstant(constant: ContentConstant): Promise<void> {
+    const row = rowFromConstant(constant);
+    await db
+      .insert(schema.contentConstants)
+      .values(row)
+      .onConflictDoUpdate({ target: schema.contentConstants.key, set: row });
   }
 }

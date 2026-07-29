@@ -50,6 +50,13 @@
       "when": 1785311671946,
       "tag": "0006_crazy_glorian",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785331645182,
+      "tag": "0007_careless_joystick",
+      "breakpoints": true
     }
   ]
 }

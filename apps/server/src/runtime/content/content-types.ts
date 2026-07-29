@@ -76,6 +76,17 @@ export interface ContentShip {
   fuelPerJump: number;
 }
 
+/**
+ * Scalaire d'équilibrage (chantier 23.8) — `key` est un des champs de `BalanceConstants`
+ * (`packages/shared/src/balance.ts`), pas un id libre : voir `content_constants` dans
+ * `db/schema.ts`.
+ */
+export interface ContentConstant {
+  key: string;
+  value: number;
+  descriptionFr: string;
+}
+
 /** Contenu chargé en mémoire (`GameRuntime.content`) — remplacé en bloc à chaque édition
  *  admin (édition en live, chantier 23 décision 3), jamais muté en place. */
 export interface ContentBundle {
@@ -84,4 +95,5 @@ export interface ContentBundle {
   factions: Record<string, ContentFaction>;
   buildings: Record<string, ContentBuilding>;
   ships: Record<string, ContentShip>;
+  constants: Record<string, ContentConstant>;
 }

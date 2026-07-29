@@ -18,7 +18,6 @@ import {
   legacyConvoyStat,
   MARKET_RESOURCES,
   NEW_COLONY_ORBITAL,
-  NEW_COLONY_POPULATION,
   NEW_COLONY_RESOURCES,
   OUTPOST_COST,
   OUTPOST_UPKEEP_CREDITS,
@@ -30,6 +29,7 @@ import {
   takeFromOrbit,
   transferCostCredits,
   transferDurationMs,
+  type BalanceConstants,
   type Colony,
   type Contract,
   type ConvoyStat,
@@ -47,7 +47,7 @@ import {
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
-import { shipDefsFromContent } from "../content/content-service.js";
+import { balanceFromContent, shipDefsFromContent } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { LogisticsRepository } from "../repositories/logistics-repository.js";
@@ -107,6 +107,11 @@ export class LogisticsService {
   private get statsOf(): (id: string) => ConvoyStat {
     const defs = this.shipDefs;
     return (id) => legacyConvoyStat(id, defs);
+  }
+
+  /** Scalaires d'équilibrage (DB-backed, chantier 23.8). */
+  private get balance(): BalanceConstants {
+    return balanceFromContent(this.runtime.content.constants);
   }
 
   /**
@@ -236,15 +241,20 @@ export class LogisticsService {
     const total = Object.values(cargo).reduce((s, n) => s + n, 0);
     // Convoi explicite (chantier 12) ou repli sur le plus gros cargo disponible.
     const speed = empire.effects.transferSpeedMult;
+    const balance = this.balance;
     const reserved = convoy
       ? this.reserveConvoy(
           empire,
           loaded,
           convoy,
-          now + 2 * convoyDurationMs(jumps, convoy, this.statsOf) * speed,
+          now + 2 * convoyDurationMs(jumps, convoy, this.statsOf, balance) * speed,
         )
       : (() => {
-          const one = this.reserveShip(empire, loaded, now + 2 * transferDurationMs(jumps) * speed);
+          const one = this.reserveShip(
+            empire,
+            loaded,
+            now + 2 * transferDurationMs(jumps, balance) * speed,
+          );
           return one
             ? { colony: one.colony, ships: { [one.shipId]: 1 }, capacity: one.capacity }
             : null;
@@ -254,10 +264,10 @@ export class LogisticsService {
       return `Cargaison trop lourde pour ce convoi (soute : ${reserved.capacity})`;
     }
 
-    const duration = convoyDurationMs(jumps, reserved.ships, this.statsOf) * speed;
-    const cost = convoyFees(jumps, portals);
+    const duration = convoyDurationMs(jumps, reserved.ships, this.statsOf, balance) * speed;
+    const cost = convoyFees(jumps, portals, balance);
     const fuel = Math.ceil(
-      convoyFuel(jumps, reserved.ships, total, this.statsOf) * empire.effects.fuelMult,
+      convoyFuel(jumps, reserved.ships, total, this.statsOf, balance) * empire.effects.fuelMult,
     );
     const resources = { ...reserved.colony.resources };
     if (resources.credits < cost) return `Crédits insuffisants (frais : ${cost})`;
@@ -336,7 +346,7 @@ export class LogisticsService {
       "build_outpost",
       colonyId,
       beltId,
-      transferDurationMs(jumps) * empire.effects.transferSpeedMult,
+      transferDurationMs(jumps, this.balance) * empire.effects.transferSpeedMult,
     );
     this.notify();
     return null;
@@ -558,7 +568,7 @@ export class LogisticsService {
         fleetCapacity(current.ships, this.capacityOf),
       );
       if (qty <= 0) continue;
-      const fee = transferCostCredits(jumps);
+      const fee = transferCostCredits(jumps, this.balance);
       if (owner.resources.credits < fee) continue;
 
       // Frais payés par le propriétaire, cargaison retirée à la source.
@@ -578,7 +588,7 @@ export class LogisticsService {
       }
       this.persistColony(empire.colonyMap.get(owner.id)!);
 
-      const duration = transferDurationMs(jumps) * empire.effects.transferSpeedMult;
+      const duration = transferDurationMs(jumps, this.balance) * empire.effects.transferSpeedMult;
       const next: Route = {
         ...current,
         activeCycle: {
@@ -601,7 +611,7 @@ export class LogisticsService {
       // Livraison en orbite : l'ascenseur de la destination fera descendre au sol.
       empire.colonyMap.set(
         to.id,
-        deliverToOrbit(to, { [route.resource]: carrying }, empire.effects),
+        deliverToOrbit(to, { [route.resource]: carrying }, empire.effects, this.balance),
       );
       this.persistColony(empire.colonyMap.get(to.id)!);
     } else {
@@ -693,7 +703,7 @@ export class LogisticsService {
               liftRules: {},
               buildings: { habitat: 1, orbital_dock: 1 },
               queue: [],
-              population: NEW_COLONY_POPULATION,
+              population: this.balance.newColonyPopulation,
               satisfaction: 60,
               // Le vaisseau colonial est démantelé en navette cargo.
               ships: { cargo_small: 1 },
@@ -788,7 +798,12 @@ export class LogisticsService {
           if (contract && issuerEmpire && mission.cargo) {
             const destColony = issuerEmpire.colonyMap.get(contract.colonyId);
             if (destColony) {
-              const delivered = deliverToOrbit(destColony, mission.cargo, issuerEmpire.effects);
+              const delivered = deliverToOrbit(
+                destColony,
+                mission.cargo,
+                issuerEmpire.effects,
+                this.balance,
+              );
               issuerEmpire.colonyMap.set(destColony.id, delivered);
               this.persistColony(delivered);
             }
@@ -835,7 +850,12 @@ export class LogisticsService {
           const colony = empire.colonyMap.get(mission.fromColonyId);
           if (colony) {
             // L'achat revient en orbite ; seuls les crédits atterrissent directement.
-            const delivered = deliverToOrbit(colony, mission.cargo ?? {}, empire.effects);
+            const delivered = deliverToOrbit(
+              colony,
+              mission.cargo ?? {},
+              empire.effects,
+              this.balance,
+            );
             empire.colonyMap.set(colony.id, {
               ...delivered,
               resources: {
@@ -860,7 +880,10 @@ export class LogisticsService {
       const to = empire.colonyMap.get(transfer.toColonyId);
       if (to) {
         // Le convoi débarque EN ORBITE ; l'ascenseur redescendra selon les règles locales.
-        empire.colonyMap.set(to.id, deliverToOrbit(to, transfer.resources, empire.effects));
+        empire.colonyMap.set(
+          to.id,
+          deliverToOrbit(to, transfer.resources, empire.effects, this.balance),
+        );
       }
       empire.transferMap.delete(id);
       this.repo.removeTransfer(id);

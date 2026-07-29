@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_BALANCE } from "../../balance.js";
 import { LIFT_ENERGY_PER_UNIT, LIFT_PER_DOCK, ORBITAL_CAP_PER_DOCK } from "../../constants.js";
 import type { Colony } from "../../model/industry.js";
 import type { ResourceId } from "../../model/resources.js";
@@ -145,5 +146,14 @@ describe("chargement et livraison", () => {
       Record<ResourceId, number>
     >);
     expect(orbitalUsed(full)).toBe(ORBITAL_CAP_PER_DOCK);
+  });
+});
+
+describe("scalaires d'équilibrage injectés (chantier 23.8)", () => {
+  it("orbitalCap/liftThroughput suivent un bundle de constantes différent des défauts", () => {
+    const c = colony({ buildings: { orbital_dock: 1 } });
+    const customBalance = { ...DEFAULT_BALANCE, orbitalCapPerDock: 9999, liftPerDock: 42 };
+    expect(orbitalCap(c, undefined, customBalance)).toBe(9999);
+    expect(liftThroughput(c, undefined, customBalance)).toBe(42);
   });
 });

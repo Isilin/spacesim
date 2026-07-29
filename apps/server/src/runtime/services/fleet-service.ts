@@ -10,13 +10,13 @@ import {
   pirateComposition,
   pirateDirectives,
   randInt,
-  RAID_FRACTION,
   resolveBattle,
   resolveBlueprint,
   RESOURCES,
   storageCap,
   transferDurationMs,
   WORLD_EVENT_PIRATE_MULT,
+  type BalanceConstants,
   type CombatDef,
   type Colony,
   type Fleet,
@@ -28,7 +28,7 @@ import {
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
-import { combatDefsFromWarships } from "../content/content-service.js";
+import { balanceFromContent, combatDefsFromWarships } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { FleetRepository } from "../repositories/fleet-repository.js";
@@ -64,6 +64,11 @@ export class FleetService {
 
   private get portalLinks(): [string, string][] {
     return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
+  }
+
+  /** Scalaires d'équilibrage (DB-backed, chantier 23.8). */
+  private get balance(): BalanceConstants {
+    return balanceFromContent(this.runtime.content.constants);
   }
 
   /** Localise une flotte parmi tous les empires (cible PvP). */
@@ -199,7 +204,7 @@ export class FleetService {
       movement: {
         toSystemId,
         departedAt: now,
-        arrivesAt: now + transferDurationMs(jumps) * empire.effects.transferSpeedMult,
+        arrivesAt: now + transferDurationMs(jumps, this.balance) * empire.effects.transferSpeedMult,
       },
     };
     empire.fleetMap.set(fleetId, next);
@@ -374,10 +379,11 @@ export class FleetService {
     // Raid : pillage d'une fraction des ressources, crédité à la colonie de rattachement.
     const home = empire.colonyMap.get(fleet.homeColonyId);
     const victim = target.empire.colonyMap.get(targetColonyId)!;
+    const balance = this.balance;
     const stolen: Partial<Record<ResourceId, number>> = {};
     const victimResources = { ...victim.resources };
     for (const res of RESOURCES) {
-      const take = Math.floor(victimResources[res] * RAID_FRACTION);
+      const take = Math.floor(victimResources[res] * balance.raidFraction);
       if (take <= 0) continue;
       stolen[res] = take;
       victimResources[res] -= take;
@@ -389,7 +395,7 @@ export class FleetService {
       for (const [res, amount] of Object.entries(stolen) as [ResourceId, number][]) {
         homeResources[res] = Math.min(
           homeResources[res] + amount,
-          storageCap(home, res, empire.effects),
+          storageCap(home, res, empire.effects, balance),
         );
       }
       empire.colonyMap.set(home.id, { ...home, resources: homeResources });

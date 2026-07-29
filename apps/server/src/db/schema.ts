@@ -585,3 +585,16 @@ export const contentShips = pgTable("content_ships", {
   speedMult: doublePrecision("speed_mult").notNull(),
   fuelPerJump: doublePrecision("fuel_per_jump").notNull(),
 });
+
+/**
+ * Scalaires d'équilibrage réel (chantier 23.8), clé/valeur — `key` est un des 26 champs
+ * de `BalanceConstants` (`packages/shared/src/balance.ts`), pas un id libre : la route
+ * admin refuse une clé inconnue (même choix que `content_buildings`). Exclut
+ * volontairement les constantes structurelles (`TICK_MS`...) et composites
+ * (`COLONY_SHIP_COST`...), voir `docs/design.md` chantier 23.8.
+ */
+export const contentConstants = pgTable("content_constants", {
+  key: text("key").primaryKey(),
+  value: doublePrecision("value").notNull(),
+  descriptionFr: text("description_fr").notNull().default(""),
+});

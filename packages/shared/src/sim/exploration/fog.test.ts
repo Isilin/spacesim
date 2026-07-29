@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_BALANCE } from "../../balance.js";
 import { allSystems, generateUniverse } from "../../universe.js";
-import { redactUniverse } from "./fog.js";
+import { colonyShipDurationMs, probeDurationMs, redactUniverse } from "./fog.js";
 
 describe("redactUniverse", () => {
   it("masque corps et ceintures des systèmes non explorés, garde nom et position", () => {
@@ -20,5 +21,14 @@ describe("redactUniverse", () => {
     }
     // L'original n'est pas muté.
     expect(allSystems(universe).filter((s) => s.planets.length > 0).length).toBeGreaterThan(1);
+  });
+});
+
+describe("durées injectées (chantier 23.8)", () => {
+  it("probeDurationMs/colonyShipDurationMs suivent un bundle de constantes différent des défauts", () => {
+    const customBalance = { ...DEFAULT_BALANCE, probeBaseMs: 1, colonyShipBaseMs: 2 };
+    expect(probeDurationMs(0, customBalance)).toBe(1);
+    expect(colonyShipDurationMs(0, customBalance)).toBe(2);
+    expect(probeDurationMs(0)).toBe(DEFAULT_BALANCE.probeBaseMs);
   });
 });

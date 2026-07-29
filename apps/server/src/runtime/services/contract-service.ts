@@ -13,6 +13,7 @@ import {
   MAX_OPEN_CONTRACTS_PER_EMPIRE,
   takeFromOrbit,
   transferDurationMs,
+  type BalanceConstants,
   type Colony,
   type Contract,
   type ConvoyStat,
@@ -22,7 +23,7 @@ import {
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
-import { shipDefsFromContent } from "../content/content-service.js";
+import { balanceFromContent, shipDefsFromContent } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { ContractRepository } from "../repositories/contract-repository.js";
@@ -68,6 +69,11 @@ export class ContractService {
 
   private get portalLinks(): [string, string][] {
     return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
+  }
+
+  /** Scalaires d'équilibrage (DB-backed, chantier 23.8). */
+  private get balance(): BalanceConstants {
+    return balanceFromContent(this.runtime.content.constants);
   }
 
   /**
@@ -176,16 +182,21 @@ export class ContractService {
     if (!loaded) return `Stock orbital insuffisant : ${contract.resource}`;
 
     const speed = empire.effects.transferSpeedMult;
-    const one = this.reserveShip(empire, loaded, now + 2 * transferDurationMs(jumps) * speed);
+    const balance = this.balance;
+    const one = this.reserveShip(
+      empire,
+      loaded,
+      now + 2 * transferDurationMs(jumps, balance) * speed,
+    );
     if (!one) return "Convoi indisponible : vaisseaux manquants";
     const reserved = { colony: one.colony, ships: { [one.shipId]: 1 }, capacity: one.capacity };
     if (qty > reserved.capacity)
       return `Cargaison trop lourde pour ce convoi (soute : ${reserved.capacity})`;
 
-    const duration = convoyDurationMs(jumps, reserved.ships, this.statsOf) * speed;
-    const fee = convoyFees(jumps, portals);
+    const duration = convoyDurationMs(jumps, reserved.ships, this.statsOf, balance) * speed;
+    const fee = convoyFees(jumps, portals, balance);
     const fuel = Math.ceil(
-      convoyFuel(jumps, reserved.ships, qty, this.statsOf) * empire.effects.fuelMult,
+      convoyFuel(jumps, reserved.ships, qty, this.statsOf, balance) * empire.effects.fuelMult,
     );
     const resources = { ...reserved.colony.resources };
     if (resources.credits < fee) return `Crédits insuffisants (frais : ${fee})`;

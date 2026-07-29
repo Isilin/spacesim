@@ -15,6 +15,7 @@ beforeEach(async () => {
   await db.delete(schema.contentFactions);
   await db.delete(schema.contentBuildings);
   await db.delete(schema.contentShips);
+  await db.delete(schema.contentConstants);
 });
 
 const VALID_WARSHIP_BODY = {
@@ -411,6 +412,77 @@ describe("/api/admin/content/ships", () => {
       url: "/api/admin/content/ships/cargo_small",
       headers: { authorization: `Bearer ${token}` },
       payload: VALID_SHIP_BODY,
+    });
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+describe("/api/admin/content/constants", () => {
+  it("un content_editor liste les 26 scalaires d'équilibrage amorcés au boot", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/admin/content/constants",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().constants).toHaveLength(26);
+  });
+
+  it("modifie une constante existante — effective immédiatement", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/constants/raidFraction",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { value: 0.9, descriptionFr: "Fraction pillée, modifiée pour test." },
+    });
+    expect(res.statusCode).toBe(200);
+    const updated = res.json().constants.find((c: { key: string }) => c.key === "raidFraction");
+    expect(updated.value).toBe(0.9);
+  });
+
+  it("une clé inconnue de BalanceConstants est refusée (400) — pas d'id-minting pour ce domaine", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/constants/notARealConstant",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { value: 1, descriptionFr: "" },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("un corps invalide est refusé (400)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/constants/raidFraction",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { value: "pas un nombre" },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("un compte joueur ne peut pas éditer les constantes (403)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token } = await registerTestAccount(app, "joueur@exemple.fr");
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/constants/raidFraction",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { value: 0.5, descriptionFr: "" },
     });
     expect(res.statusCode).toBe(403);
   });

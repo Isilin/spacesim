@@ -7,6 +7,7 @@ const CONTENT_TABS = [
   { value: "factions", label: "Factions" },
   { value: "buildings", label: "Bâtiments" },
   { value: "ships", label: "Vaisseaux civils" },
+  { value: "constants", label: "Constantes" },
 ];
 
 /** Sous-navigation du CMS de contenu (chantier 23.6) — même patron que les onglets

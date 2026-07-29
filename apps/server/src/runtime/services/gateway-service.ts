@@ -6,6 +6,7 @@ import {
   jumpDistanceInUniverse,
   transferCostCredits,
   transferDurationMs,
+  type BalanceConstants,
   type Colony,
   type Gateway,
   type Mission,
@@ -13,6 +14,7 @@ import {
   type ShipId,
 } from "@spacesim/shared";
 import type { Empire } from "../../empire.js";
+import { balanceFromContent } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { GatewayRepository } from "../repositories/gateway-repository.js";
@@ -50,6 +52,11 @@ export class GatewayService {
 
   private get portalLinks(): [string, string][] {
     return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
+  }
+
+  /** Scalaires d'équilibrage (DB-backed, chantier 23.8). */
+  private get balance(): BalanceConstants {
+    return balanceFromContent(this.runtime.content.constants);
   }
 
   /** Action joueur : livrer des ressources au chantier d'un portail. */
@@ -97,7 +104,8 @@ export class GatewayService {
       this.portalLinks,
     );
     if (jumps < 0) return "Galaxie voisine encore inaccessible";
-    const fee = transferCostCredits(jumps);
+    const balance = this.balance;
+    const fee = transferCostCredits(jumps, balance);
 
     const resources = { ...colony.resources };
     if (resources.credits < fee + (cargo.credits ?? 0)) {
@@ -107,7 +115,7 @@ export class GatewayService {
       if (resources[res] < amount) return `Stock insuffisant : ${res}`;
     }
 
-    const duration = transferDurationMs(jumps) * empire.effects.transferSpeedMult;
+    const duration = transferDurationMs(jumps, balance) * empire.effects.transferSpeedMult;
     const reserved = this.reserveShip(empire, colony, Date.now() + 2 * duration);
     if (!reserved) return "Aucun cargo disponible";
     const physical = Object.entries(cargo)

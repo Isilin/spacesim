@@ -1,16 +1,18 @@
 import {
   upsertBuildingSchema,
+  upsertConstantSchema,
   upsertFactionSchema,
   upsertShipSchema,
   upsertWarshipSchema,
 } from "@spacesim/protocol";
-import { BUILDING_IDS, type BuildingId } from "@spacesim/shared";
+import { BUILDING_IDS, DEFAULT_BALANCE, type BuildingId } from "@spacesim/shared";
 import type { FastifyInstance } from "fastify";
 import { recordAuditEntry } from "../../../admin/audit-service.js";
 import type { GameEngine } from "../../../game.js";
 import { ContentRepository } from "../../../runtime/content/content-repository.js";
 import type {
   ContentBuilding,
+  ContentConstant,
   ContentFaction,
   ContentShip,
   ContentWarship,
@@ -174,6 +176,46 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
         reason: isNew ? "création" : "modification",
       });
       return { ships: Object.values(engine.content.ships) };
+    },
+  );
+
+  // Constantes d'équilibrage (chantier 23.8) : même recette que les bâtiments — la clé
+  // doit être un des champs de BalanceConstants, pas un id libre (pas d'id-minting).
+  admin.get("/content/constants", { config: { adminAction: "content.constants.read" } }, () => ({
+    constants: Object.values(engine.content.constants),
+  }));
+
+  admin.put(
+    "/content/constants/:key",
+    { config: { adminAction: "content.constants.write" } },
+    async (request, reply) => {
+      const { key } = request.params as { key: string };
+      if (!(key in DEFAULT_BALANCE)) {
+        return reply.code(400).send({
+          error:
+            "Clé de constante inconnue — la création n'est pas prise en charge pour ce domaine",
+        });
+      }
+      const parsed = upsertConstantSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+      }
+      const constant: ContentConstant = { key, ...parsed.data };
+      await repo.saveConstant(constant);
+      await engine.loadContent();
+
+      const actor = request.adminAccount!;
+      await recordAuditEntry({
+        actorAccountId: actor.id,
+        actorEmail: actor.email,
+        action: "content.constants.write",
+        targetType: "content_constant",
+        targetId: key,
+        reason: "modification",
+      });
+      return { constants: Object.values(engine.content.constants) };
     },
   );
 }

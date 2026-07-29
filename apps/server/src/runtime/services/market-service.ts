@@ -26,6 +26,7 @@ import {
   transferCostCredits,
   transferDurationMs,
   worldEventPriceBonus,
+  type BalanceConstants,
   type Colony,
   type Contract,
   type FactionState,
@@ -39,6 +40,7 @@ import {
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
+import { balanceFromContent } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { MarketRepository } from "../repositories/market-repository.js";
@@ -89,6 +91,11 @@ export class MarketService {
 
   private get portalLinks(): [string, string][] {
     return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
+  }
+
+  /** Scalaires d'équilibrage (DB-backed, chantier 23.8). */
+  private get balance(): BalanceConstants {
+    return balanceFromContent(this.runtime.content.constants);
   }
 
   /**
@@ -179,7 +186,8 @@ export class MarketService {
       this.portalLinks,
     );
     if (jumps < 0) return "Station inaccessible";
-    const fee = transferCostCredits(jumps);
+    const balance = this.balance;
+    const fee = transferCostCredits(jumps, balance);
 
     // Comme un convoi : la marchandise vendue part de l'orbite, pas du sol.
     const loaded = takeFromOrbit(colony, cargo);
@@ -192,7 +200,7 @@ export class MarketService {
     const resources = { ...loaded.resources };
     if (resources.credits < fee) return `Crédits insuffisants (frais : ${fee})`;
 
-    const duration = transferDurationMs(jumps) * empire.effects.transferSpeedMult;
+    const duration = transferDurationMs(jumps, balance) * empire.effects.transferSpeedMult;
     const reserved = this.reserveShip(empire, loaded, Date.now() + 2 * duration);
     if (!reserved) return "Aucun cargo disponible";
     const total = Object.values(cargo).reduce((s, n) => s + n, 0);
@@ -237,13 +245,14 @@ export class MarketService {
       this.portalLinks,
     );
     if (jumps < 0) return "Station inaccessible";
-    const fee = transferCostCredits(jumps);
+    const balance = this.balance;
+    const fee = transferCostCredits(jumps, balance);
 
     if (colony.resources.credits < budget + fee) {
       return `Crédits insuffisants (budget ${budget} + frais ${fee})`;
     }
 
-    const duration = transferDurationMs(jumps) * empire.effects.transferSpeedMult;
+    const duration = transferDurationMs(jumps, balance) * empire.effects.transferSpeedMult;
     const reserved = this.reserveShip(empire, colony, Date.now() + 2 * duration);
     if (!reserved) return "Aucun cargo disponible";
 

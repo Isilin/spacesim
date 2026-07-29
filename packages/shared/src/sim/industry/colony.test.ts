@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_BALANCE } from "../../balance.js";
 import { BASE_STORAGE, MAX_QUEUE_LENGTH } from "../../constants.js";
 import { BUILDINGS } from "../../content/buildings.js";
 import type { Colony } from "../../model/industry.js";
@@ -112,6 +113,18 @@ describe("enqueueBuilding", () => {
     const result = enqueueBuilding(colony, planet, "mine", 0, undefined, customBuildings);
     if (!result.ok) throw new Error(result.reason);
     expect(result.colony.resources.ore).toBe(5);
+  });
+
+  it("accepte un bundle de constantes injecté (chantier 23.8) — MAX_QUEUE_LENGTH surchargé", () => {
+    const customBalance = { ...DEFAULT_BALANCE, maxQueueLength: 1 };
+    let colony = makeColony({ resources: { ...emptyResources(), ore: 100000, energy: 100000 } });
+    const r1 = enqueueBuilding(colony, planet, "mine", 0, undefined, undefined, customBalance);
+    if (!r1.ok) throw new Error(r1.reason);
+    colony = r1.colony;
+    // File pleine dès 1 avec la constante surchargée, alors que MAX_QUEUE_LENGTH réel est 3.
+    expect(enqueueBuilding(colony, planet, "mine", 0, undefined, undefined, customBalance).ok).toBe(
+      false,
+    );
   });
 });
 

@@ -1,7 +1,14 @@
-import { BUILDING_IDS, FACTION_IDS, SHIP_IDS, WARSHIP_IDS } from "@spacesim/shared";
+import {
+  BUILDING_IDS,
+  DEFAULT_BALANCE,
+  FACTION_IDS,
+  SHIP_IDS,
+  WARSHIP_IDS,
+} from "@spacesim/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db, schema } from "../../db/index.js";
 import {
+  balanceFromContent,
   buildingDefsFromContent,
   combatDefsFromWarships,
   ensureContentSeeded,
@@ -15,6 +22,7 @@ beforeEach(async () => {
   await db.delete(schema.contentFactions);
   await db.delete(schema.contentBuildings);
   await db.delete(schema.contentShips);
+  await db.delete(schema.contentConstants);
 });
 
 describe("ensureContentSeeded", () => {
@@ -48,6 +56,14 @@ describe("ensureContentSeeded", () => {
     expect(Object.keys(bundle.ships).sort()).toEqual([...SHIP_IDS].sort());
     expect(bundle.ships.cargo_small?.nameFr).toBe("Cargo léger");
     expect(bundle.ships.hauler?.requiresTech).toBe("space_elevator");
+  });
+
+  it("peuple les constantes depuis packages/shared/src/balance.ts", async () => {
+    await ensureContentSeeded();
+    const bundle = await loadContentBundle();
+    expect(Object.keys(bundle.constants).sort()).toEqual(Object.keys(DEFAULT_BALANCE).sort());
+    expect(bundle.constants.raidFraction?.value).toBe(DEFAULT_BALANCE.raidFraction);
+    expect(bundle.constants.raidFraction?.descriptionFr).toBeTruthy();
   });
 
   it("est idempotent : un second appel ne duplique rien", async () => {
@@ -118,5 +134,25 @@ describe("shipDefsFromContent", () => {
       speedMult: bundle.ships.cargo_small!.speedMult,
       fuelPerJump: bundle.ships.cargo_small!.fuelPerJump,
     });
+  });
+});
+
+describe("balanceFromContent", () => {
+  it("reconstruit un BalanceConstants identique aux défauts juste après le seed", async () => {
+    await ensureContentSeeded();
+    const bundle = await loadContentBundle();
+    expect(balanceFromContent(bundle.constants)).toEqual(DEFAULT_BALANCE);
+  });
+
+  it("reflète une édition admin d'un champ, sans toucher aux autres", async () => {
+    await ensureContentSeeded();
+    const bundle = await loadContentBundle();
+    const edited = {
+      ...bundle.constants,
+      raidFraction: { ...bundle.constants.raidFraction!, value: 0.9 },
+    };
+    const balance = balanceFromContent(edited);
+    expect(balance.raidFraction).toBe(0.9);
+    expect(balance.popGrowthBase).toBe(DEFAULT_BALANCE.popGrowthBase);
   });
 });

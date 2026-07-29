@@ -3,6 +3,7 @@ import {
   BUILDINGS,
   CATEGORY_ADVANTAGE,
   COUNTER_BONUS,
+  DEFAULT_BALANCE,
   DIRECTIVE_COUNTER,
   DIRECTIVES,
   FACTION_IDS,
@@ -12,6 +13,7 @@ import {
   WARSHIP_CATEGORY,
   WARSHIP_IDS,
   WARSHIPS,
+  type BalanceConstants,
   type BuildingDef,
   type CombatDef,
   type ShipDef,
@@ -20,6 +22,7 @@ import { ContentRepository } from "./content-repository.js";
 import type {
   ContentBuilding,
   ContentBundle,
+  ContentConstant,
   ContentFaction,
   ContentShip,
   ContentWarship,
@@ -200,6 +203,49 @@ function seedShips(): ContentShip[] {
 }
 
 /**
+ * Descriptions françaises des scalaires d'équilibrage (chantier 23.8) — clés = champs de
+ * `BalanceConstants`. Pas de `SEED_*_LABELS` équivalent côté `apps/web/src/labels.ts` :
+ * ces valeurs n'ont jamais eu de représentation joueur, seulement des commentaires TS.
+ */
+const SEED_CONSTANT_LABELS: Record<keyof BalanceConstants, string> = {
+  baseStorage: "Capacité de stockage de base, par ressource plafonnée.",
+  storagePerDepot: "Stockage additionnel par niveau d'entrepôt.",
+  maxQueueLength: "Taille max de la file de construction d'une colonie.",
+  noDepositModifier: "Modificateur de production quand la planète n'a pas de gisement.",
+  foodPerColonist: "Nourriture consommée par colon et par tick.",
+  housingPerHabitat: "Logements fournis par niveau d'habitat.",
+  creditsPerColonist: "Impôt en crédits par colon et par tick, à satisfaction pleine.",
+  popGrowthBase: "Taux de croissance de population de base par tick.",
+  satisfactionGrowthThreshold: "Seuil de satisfaction en-dessous duquel la population décline.",
+  goodsPerColonist: "Biens de consommation désirés par colon et par tick.",
+  raidFraction: "Fraction des ressources pillées lors d'un raid PvP réussi.",
+  transferBaseMs: "Durée de base d'un convoi (barème abstrait sans vaisseau précisé).",
+  transferMsPerJump: "Durée additionnelle par saut pour un convoi.",
+  transferBaseCredits: "Frais de base d'un convoi.",
+  transferCreditsPerJump: "Frais additionnels par saut pour un convoi.",
+  fuelPerMassJump: "Carburant lié à la masse transportée, par unité et par saut.",
+  gatewayTollCredits: "Péage prélevé à chaque portail inter-galactique emprunté.",
+  probeCostCredits: "Coût en crédits d'une sonde d'exploration.",
+  probeBaseMs: "Durée de base d'une sonde d'exploration.",
+  probeMsPerJump: "Durée additionnelle par saut pour une sonde.",
+  colonyShipBaseMs: "Durée de base d'un trajet de vaisseau colonial.",
+  colonyShipMsPerJump: "Durée additionnelle par saut pour un vaisseau colonial.",
+  newColonyPopulation: "Population de départ d'une colonie fondée par vaisseau colonial.",
+  orbitalCapPerDock: "Capacité de stockage orbital par niveau de dock.",
+  liftPerDock: "Débit de l'ascenseur orbital par niveau de dock et par tick.",
+  liftEnergyPerUnit: "Énergie consommée au sol par unité hissée en orbite.",
+};
+
+/** Scalaires d'équilibrage (`packages/shared/src/balance.ts`) au format `ContentConstant`. */
+function seedConstants(): ContentConstant[] {
+  return (Object.keys(DEFAULT_BALANCE) as (keyof BalanceConstants)[]).map((key) => ({
+    key,
+    value: DEFAULT_BALANCE[key],
+    descriptionFr: SEED_CONSTANT_LABELS[key],
+  }));
+}
+
+/**
  * Amorce le contenu une fois dans la vie d'une base (idempotent, sûr à chaque boot —
  * même idiome que `BootstrapService.ensureNpcPopulation` : compter, compléter si vide).
  * Libellés français repris des tables `SEED_*` ci-dessus ; `apps/web/src/labels.ts` garde
@@ -227,19 +273,23 @@ export async function ensureContentSeeded(): Promise<void> {
   if ((await repo.countShips()) === 0) {
     await repo.insertShips(seedShips());
   }
+  if ((await repo.countConstants()) === 0) {
+    await repo.insertConstants(seedConstants());
+  }
 }
 
 /** Charge tout le contenu depuis la DB — appelé au boot puis après chaque édition admin
  *  (remplacement en bloc de `GameRuntime.content`, jamais de mutation en place). */
 export async function loadContentBundle(): Promise<ContentBundle> {
-  const [warships, combatTuning, factions, buildings, ships] = await Promise.all([
+  const [warships, combatTuning, factions, buildings, ships, constants] = await Promise.all([
     repo.loadWarships(),
     repo.loadTuning(),
     repo.loadFactions(),
     repo.loadBuildings(),
     repo.loadShips(),
+    repo.loadConstants(),
   ]);
-  return { warships, combatTuning, factions, buildings, ships };
+  return { warships, combatTuning, factions, buildings, ships, constants };
 }
 
 /** Convertit les vaisseaux de guerre chargés en table de combat (`sim/military/combat.ts`
@@ -301,6 +351,17 @@ export function shipDefsFromContent(ships: Record<string, ContentShip>): Record<
       } satisfies ShipDef,
     ]),
   );
+}
+
+/** Convertit les constantes chargées en `BalanceConstants` (défaut `DEFAULT_BALANCE` par
+ *  champ manquant — ne devrait arriver qu'avant le premier `ensureContentSeeded()`). */
+export function balanceFromContent(constants: Record<string, ContentConstant>): BalanceConstants {
+  const result = { ...DEFAULT_BALANCE };
+  for (const key of Object.keys(DEFAULT_BALANCE) as (keyof BalanceConstants)[]) {
+    const value = constants[key]?.value;
+    if (value !== undefined) result[key] = value;
+  }
+  return result;
 }
 
 export { ContentRepository };
