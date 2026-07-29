@@ -953,6 +953,27 @@ fois (valeurs d'abord, création d'id ensuite) : chaque écran CMS de contenu in
   que ces valeurs ne sont pas poussées par WS, limite documentée plutôt que corrigée dans
   cette passe. Vérifié au navigateur (édition de `raidFraction`, effective immédiatement)
   et par 15 nouveaux tests.
+- ✅ **23.9** — Contenu : arbre de recherche. `content_techs` (migration 0008), **id-minting
+  complet** — `Empire.researched`/`researchQueue` sont déjà `string[]` et `techId` en
+  protocole (`z.object({ type: "research", techId: idSchema })`) est déjà un string libre,
+  aucun tuple fermé à desserrer (contrairement à `BuildingId`, chantier 23.7). Premier
+  domaine structuré en **graphe** : `canResearch`/`researchPath`
+  (`sim/empire/techtree.ts`/`research.ts`) et `computeEffects` gagnent une table de techs
+  injectée (défaut `TECHS`) ; `IndustryService`/`BootstrapService` l'alimentent depuis
+  `runtime.content.techs`. `validateTree()` (déjà utilisé en CI pour l'intégrité du contenu
+  statique) est réutilisé **tel quel** comme garde-fou serveur : chaque `PUT
+  .../techs/:id` construit la table candidate (édition fusionnée dans
+  `engine.content.techs`) et rejette (400) tout cycle ou prérequis inconnu avant
+  persistance — vérifié au navigateur (une tentative de cycle direct est bloquée avec le
+  message exact du garde-fou). `techDepth`/`techLayout`/`descendants`/`pathCost`/
+  `pathDurationMs`/`missingPrereqs` restent **non injectés** : appelés uniquement côté
+  client (`apps/web/ResearchView.tsx`) contre la table statique, même limite documentée
+  que `colonyRates`/`colonyShortages` (23.7) — seuls `canResearch`/`researchPath`/
+  `computeEffects` sont réellement sur le chemin serveur. Écran CMS "Recherche" :
+  prérequis en liste d'ids séparés par virgules, effets en JSON brut (25 champs optionnels
+  de `TechEffects` — un formulaire dédié aurait été disproportionné), pas de widget de
+  sélection multiple dans `packages/ui`. Vérifié en direct (création par id-minting,
+  rejet d'un cycle) et par 10 nouveaux tests.
 
 ### État actuel (contrainte de départ)
 
