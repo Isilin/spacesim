@@ -7,10 +7,10 @@ import {
   type GalaxyOccupancy,
   type Planet,
   type ResourceId,
-  type TechId,
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import { Empire } from "../../empire.js";
+import { techDefsFromContent } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { ClaimRepository } from "../repositories/claim-repository.js";
@@ -109,7 +109,10 @@ export class BootstrapService {
       empire.factionRep = p.factionRep;
       empire.explored = new Set(p.explored);
       empire.claimedSystemIds = await this.claimRepo.systemIdsOwnedBy(p.id);
-      empire.effects = computeEffects(empire.researched as TechId[]);
+      empire.effects = computeEffects(
+        empire.researched,
+        techDefsFromContent(this.runtime.content.techs),
+      );
       this.runtime.empires.set(empire.id, empire);
     }
     this.runtime.defaultEmpire = this.runtime.empires.values().next().value!;

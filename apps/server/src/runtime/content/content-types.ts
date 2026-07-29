@@ -1,4 +1,4 @@
-import type { CombatCategory, CombatDirective, CombatPhase } from "@spacesim/shared";
+import type { CombatCategory, CombatDirective, CombatPhase, TechEffects } from "@spacesim/shared";
 
 /**
  * Contenu de jeu chargé depuis la DB (chantier 23.5+) — un domaine à la fois, en
@@ -87,6 +87,21 @@ export interface ContentConstant {
   descriptionFr: string;
 }
 
+/**
+ * Tech de l'arbre de recherche (chantier 23.9) — `id: string` libre (id-minting, même
+ * raison que `ContentWarship`/`ContentShip`).
+ */
+export interface ContentTech {
+  id: string;
+  nameFr: string;
+  descriptionFr: string;
+  branch: string;
+  cost: number;
+  durationMs: number;
+  requires: string[];
+  effects: TechEffects;
+}
+
 /** Contenu chargé en mémoire (`GameRuntime.content`) — remplacé en bloc à chaque édition
  *  admin (édition en live, chantier 23 décision 3), jamais muté en place. */
 export interface ContentBundle {
@@ -96,4 +111,5 @@ export interface ContentBundle {
   buildings: Record<string, ContentBuilding>;
   ships: Record<string, ContentShip>;
   constants: Record<string, ContentConstant>;
+  techs: Record<string, ContentTech>;
 }

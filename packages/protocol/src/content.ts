@@ -95,3 +95,52 @@ export const upsertConstantSchema = z.object({
   descriptionFr: z.string().trim().max(300).default(""),
 });
 export type UpsertConstantInput = z.infer<typeof upsertConstantSchema>;
+
+/**
+ * Arbre de recherche (chantier 23.9) : id libre (id-minting), même recette que les
+ * vaisseaux/factions — `Empire.researched`/`researchQueue` sont déjà `string[]`, aucun
+ * tuple fermé à desserrer. `effects` reprend un à un les champs de `TechEffects`
+ * (`packages/shared/src/content/techs.ts`) ; `unlockBuildings` reste une liste de chaînes
+ * non validée contre `BUILDING_IDS` ici (une faute de frappe ne débloquerait simplement
+ * rien de reconnu, sans casser l'écriture).
+ */
+const techEffectsSchema = z.object({
+  unlockBuildings: z.array(z.string()).optional(),
+  outputMult: z.record(z.string(), z.number().positive()).optional(),
+  outputMultAll: z.number().positive().optional(),
+  housingMult: z.number().positive().optional(),
+  habitabilityBonus: z.number().optional(),
+  queueBonus: z.number().optional(),
+  probeSpeedMult: z.number().positive().optional(),
+  probeCostMult: z.number().positive().optional(),
+  colonyShipSpeedMult: z.number().positive().optional(),
+  transferSpeedMult: z.number().positive().optional(),
+  satisfactionBonus: z.number().optional(),
+  popGrowthMult: z.number().positive().optional(),
+  goodsNeedMult: z.number().positive().optional(),
+  creditsMult: z.number().positive().optional(),
+  foodNeedMult: z.number().positive().optional(),
+  storageMult: z.number().positive().optional(),
+  buildSpeedMult: z.number().positive().optional(),
+  shipBuildSpeedMult: z.number().positive().optional(),
+  outpostYieldMult: z.number().positive().optional(),
+  influenceMult: z.number().positive().optional(),
+  liftCapacityMult: z.number().positive().optional(),
+  liftThroughputMult: z.number().positive().optional(),
+  fuelMult: z.number().positive().optional(),
+  tradeMargin: z.number().optional(),
+});
+
+export const TECH_BRANCHES = ["industry", "colonization", "society", "military"] as const;
+export const techBranchSchema = z.enum(TECH_BRANCHES);
+
+export const upsertTechSchema = z.object({
+  nameFr: z.string().trim().min(1).max(80),
+  descriptionFr: z.string().trim().max(500).default(""),
+  branch: techBranchSchema,
+  cost: z.number().positive(),
+  durationMs: z.number().int().positive(),
+  requires: z.array(z.string()),
+  effects: techEffectsSchema,
+});
+export type UpsertTechInput = z.infer<typeof upsertTechSchema>;

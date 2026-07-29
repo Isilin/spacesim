@@ -16,6 +16,7 @@ beforeEach(async () => {
   await db.delete(schema.contentBuildings);
   await db.delete(schema.contentShips);
   await db.delete(schema.contentConstants);
+  await db.delete(schema.contentTechs);
 });
 
 const VALID_WARSHIP_BODY = {
@@ -483,6 +484,117 @@ describe("/api/admin/content/constants", () => {
       url: "/api/admin/content/constants/raidFraction",
       headers: { authorization: `Bearer ${token}` },
       payload: { value: 0.5, descriptionFr: "" },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+const VALID_TECH_BODY = {
+  nameFr: "Extraction profonde",
+  descriptionFr: "Une nouvelle tech créée depuis l'admin.",
+  branch: "industry",
+  cost: 200,
+  durationMs: 180_000,
+  requires: ["metallurgy"],
+  effects: { outputMult: { mine: 1.5 } },
+};
+
+describe("/api/admin/content/techs", () => {
+  it("un content_editor liste les 40 techs historiques amorcées au boot", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/admin/content/techs",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().techs).toHaveLength(40);
+  });
+
+  it("modifie une tech existante — effective immédiatement", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/techs/metallurgy",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_TECH_BODY, requires: [] },
+    });
+    expect(res.statusCode).toBe(200);
+    const updated = res.json().techs.find((t: { id: string }) => t.id === "metallurgy");
+    expect(updated.cost).toBe(200);
+  });
+
+  it("un id inconnu crée une tech neuve (id-minting)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/techs/deep_mining",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_TECH_BODY,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().techs).toHaveLength(41);
+  });
+
+  it("un prérequis inconnu est refusé (400) — validateTree rejoué côté serveur", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/techs/deep_mining",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_TECH_BODY, requires: ["not_a_real_tech"] },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("un cycle de prérequis est refusé (400)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    // metallurgy exige déjà industrial_chains : cycle direct.
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/techs/metallurgy",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_TECH_BODY, requires: ["industrial_chains"] },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("un corps invalide est refusé (400)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/techs/metallurgy",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_TECH_BODY, cost: -10 },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("un compte joueur ne peut pas éditer l'arbre de recherche (403)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token } = await registerTestAccount(app, "joueur@exemple.fr");
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/techs/metallurgy",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_TECH_BODY,
     });
     expect(res.statusCode).toBe(403);
   });

@@ -8,6 +8,7 @@ import { ContentLayout } from "./content/ContentLayout.js";
 import { ConstantsView } from "./content/ConstantsView.js";
 import { FactionsView } from "./content/FactionsView.js";
 import { ShipsView } from "./content/ShipsView.js";
+import { TechsView } from "./content/TechsView.js";
 import { WarshipsView } from "./content/WarshipsView.js";
 import type { AdminAuth } from "./useAdminAuth.js";
 
@@ -53,6 +54,7 @@ export function App({ auth }: Props) {
             <Route path="buildings" element={<BuildingsView token={auth.token!} />} />
             <Route path="ships" element={<ShipsView token={auth.token!} />} />
             <Route path="constants" element={<ConstantsView token={auth.token!} />} />
+            <Route path="techs" element={<TechsView token={auth.token!} />} />
           </Route>
           <Route path="/audit" element={<AuditLogView token={auth.token!} />} />
         </Routes>

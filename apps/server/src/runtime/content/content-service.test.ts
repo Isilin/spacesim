@@ -3,6 +3,7 @@ import {
   DEFAULT_BALANCE,
   FACTION_IDS,
   SHIP_IDS,
+  TECH_IDS,
   WARSHIP_IDS,
 } from "@spacesim/shared";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -14,6 +15,7 @@ import {
   ensureContentSeeded,
   loadContentBundle,
   shipDefsFromContent,
+  techDefsFromContent,
 } from "./content-service.js";
 
 beforeEach(async () => {
@@ -23,6 +25,7 @@ beforeEach(async () => {
   await db.delete(schema.contentBuildings);
   await db.delete(schema.contentShips);
   await db.delete(schema.contentConstants);
+  await db.delete(schema.contentTechs);
 });
 
 describe("ensureContentSeeded", () => {
@@ -64,6 +67,14 @@ describe("ensureContentSeeded", () => {
     expect(Object.keys(bundle.constants).sort()).toEqual(Object.keys(DEFAULT_BALANCE).sort());
     expect(bundle.constants.raidFraction?.value).toBe(DEFAULT_BALANCE.raidFraction);
     expect(bundle.constants.raidFraction?.descriptionFr).toBeTruthy();
+  });
+
+  it("peuple l'arbre de recherche depuis packages/shared/src/content/techs.ts", async () => {
+    await ensureContentSeeded();
+    const bundle = await loadContentBundle();
+    expect(Object.keys(bundle.techs).sort()).toEqual([...TECH_IDS].sort());
+    expect(bundle.techs.metallurgy?.nameFr).toBe("Métallurgie");
+    expect(bundle.techs.industrial_chains?.requires).toEqual(["metallurgy"]);
   });
 
   it("est idempotent : un second appel ne duplique rien", async () => {
@@ -133,6 +144,22 @@ describe("shipDefsFromContent", () => {
       requiresTech: undefined,
       speedMult: bundle.ships.cargo_small!.speedMult,
       fuelPerJump: bundle.ships.cargo_small!.fuelPerJump,
+    });
+  });
+});
+
+describe("techDefsFromContent", () => {
+  it("convertit le contenu chargé au format attendu par sim/empire/research.ts", async () => {
+    await ensureContentSeeded();
+    const bundle = await loadContentBundle();
+    const defs = techDefsFromContent(bundle.techs);
+    expect(defs.metallurgy).toEqual({
+      id: "metallurgy",
+      branch: "industry",
+      cost: bundle.techs.metallurgy!.cost,
+      durationMs: bundle.techs.metallurgy!.durationMs,
+      requires: [],
+      effects: bundle.techs.metallurgy!.effects,
     });
   });
 });

@@ -16,6 +16,21 @@ describe("intégrité de l'arbre", () => {
     expect(validateTree()).toEqual([]);
   });
 
+  it("accepte une table de techs injectée (chantier 23.9) — détecte cycle et prérequis inconnu", () => {
+    const withUnknownPrereq = {
+      ...TECHS,
+      metallurgy: { ...TECHS.metallurgy, requires: ["ghost"] },
+    };
+    expect(validateTree(withUnknownPrereq).length).toBeGreaterThan(0);
+
+    const withCycle = {
+      ...TECHS,
+      metallurgy: { ...TECHS.metallurgy, requires: ["industrial_chains"] },
+    };
+    const problems = validateTree(withCycle);
+    expect(problems.some((p) => p.includes("cycle"))).toBe(true);
+  });
+
   it("chaque branche a au moins une racine, sinon rien n'est atteignable", () => {
     const branches = new Set(TECH_IDS.map((id) => TECHS[id].branch));
     for (const branch of branches) {
@@ -102,6 +117,22 @@ describe("researchPath", () => {
     expect(pathDurationMs(path)).toBe(path.reduce((s, id) => s + TECHS[id].durationMs, 0));
     // Une chaîne coûte forcément plus que sa dernière tech seule.
     expect(pathCost(path)).toBeGreaterThan(TECHS.fusion_power.cost);
+  });
+
+  it("accepte une table de techs injectée (chantier 23.9) — id inconnu de TECHS", () => {
+    const customTechs: Record<string, (typeof TECHS)[TechId]> = {
+      ...TECHS,
+      freshly_minted: {
+        id: "freshly_minted" as TechId,
+        branch: "industry",
+        cost: 10,
+        durationMs: 1000,
+        requires: ["metallurgy"],
+        effects: {},
+      },
+    };
+    const path = researchPath("freshly_minted", [], customTechs);
+    expect(path).toEqual(["metallurgy", "freshly_minted"]);
   });
 });
 

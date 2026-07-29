@@ -598,3 +598,21 @@ export const contentConstants = pgTable("content_constants", {
   value: doublePrecision("value").notNull(),
   descriptionFr: text("description_fr").notNull().default(""),
 });
+
+/**
+ * Arbre de recherche (chantier 23.9) — `id` libre (id-minting, comme les vaisseaux) :
+ * `Empire.researched`/`researchQueue` sont déjà `string[]` (pas `TechId[]`), aucun tuple
+ * fermé à desserrer côté modèle/protocole (`techId: idSchema` en protocole, string libre).
+ */
+export const contentTechs = pgTable("content_techs", {
+  id: text("id").primaryKey(),
+  nameFr: text("name_fr").notNull(),
+  descriptionFr: text("description_fr").notNull().default(""),
+  branch: text("branch").notNull(),
+  cost: doublePrecision("cost").notNull(),
+  durationMs: integer("duration_ms").notNull(),
+  /** JSON `string[]`. */
+  requires: text("requires").notNull().default("[]"),
+  /** JSON `TechEffects`. */
+  effects: text("effects").notNull().default("{}"),
+});

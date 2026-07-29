@@ -1,4 +1,10 @@
-import { TECH_IDS, TECHS, type TechBranch, type TechId } from "../../content/techs.js";
+import {
+  TECH_IDS,
+  TECHS,
+  type TechBranch,
+  type TechDef,
+  type TechId,
+} from "../../content/techs.js";
 
 /** Position d'une tech dans l'arbre affiché. */
 export interface TechPosition {
@@ -59,17 +65,22 @@ export function missingPrereqs(id: TechId, researched: readonly TechId[]): TechI
 /**
  * Chaîne complète à rechercher pour atteindre `target`, prérequis d'abord.
  * Vide si la tech est déjà acquise. C'est ce qui permet de cliquer une tech
- * verrouillée et de planifier tout ce qui y mène.
+ * verrouillée et de planifier tout ce qui y mène. `techs` injecté (chantier 23.9,
+ * DB-backed) : défaut la table statique.
  */
-export function researchPath(target: TechId, researched: readonly TechId[]): TechId[] {
-  const done = new Set<TechId>(researched);
-  const path: TechId[] = [];
-  const seen = new Set<TechId>();
+export function researchPath(
+  target: string,
+  researched: readonly string[],
+  techs: Record<string, TechDef> = TECHS,
+): string[] {
+  const done = new Set<string>(researched);
+  const path: string[] = [];
+  const seen = new Set<string>();
 
-  const visit = (id: TechId) => {
+  const visit = (id: string) => {
     if (done.has(id) || seen.has(id)) return;
     seen.add(id);
-    const tech = TECHS[id];
+    const tech = techs[id];
     if (!tech) return;
     for (const req of tech.requires) visit(req);
     path.push(id);
@@ -101,27 +112,32 @@ export function descendants(id: TechId): TechId[] {
 /**
  * Contrôle d'intégrité du contenu : prérequis inconnus et cycles. Testé en CI —
  * une faute de frappe dans `requires` casserait silencieusement la progression.
+ * `techs` injecté (chantier 23.9, DB-backed) : défaut la table statique. Réutilisé
+ * comme garde-fou **serveur** sur chaque écriture admin (pas seulement en CI) —
+ * une table candidate invalide (cycle, prérequis inconnu) est rejetée avant d'être
+ * persistée.
  */
-export function validateTree(): string[] {
+export function validateTree(techs: Record<string, TechDef> = TECHS): string[] {
   const problems: string[] = [];
-  for (const id of TECH_IDS) {
-    for (const req of TECHS[id].requires) {
-      if (!TECHS[req]) problems.push(`${id} exige une tech inconnue : ${req}`);
+  const ids = Object.keys(techs);
+  for (const id of ids) {
+    for (const req of techs[id]!.requires) {
+      if (!techs[req]) problems.push(`${id} exige une tech inconnue : ${req}`);
     }
   }
 
   // Détection de cycle par parcours en profondeur avec pile d'exploration.
-  const state = new Map<TechId, "visiting" | "done">();
-  const visit = (id: TechId, stack: TechId[]) => {
+  const state = new Map<string, "visiting" | "done">();
+  const visit = (id: string, stack: string[]) => {
     if (state.get(id) === "done") return;
     if (state.get(id) === "visiting") {
       problems.push(`cycle de prérequis : ${[...stack, id].join(" → ")}`);
       return;
     }
     state.set(id, "visiting");
-    for (const req of TECHS[id]?.requires ?? []) visit(req, [...stack, id]);
+    for (const req of techs[id]?.requires ?? []) visit(req, [...stack, id]);
     state.set(id, "done");
   };
-  for (const id of TECH_IDS) visit(id, []);
+  for (const id of ids) visit(id, []);
   return problems;
 }

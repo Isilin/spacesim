@@ -3,18 +3,21 @@ import {
   upsertConstantSchema,
   upsertFactionSchema,
   upsertShipSchema,
+  upsertTechSchema,
   upsertWarshipSchema,
 } from "@spacesim/protocol";
-import { BUILDING_IDS, DEFAULT_BALANCE, type BuildingId } from "@spacesim/shared";
+import { BUILDING_IDS, DEFAULT_BALANCE, validateTree, type BuildingId } from "@spacesim/shared";
 import type { FastifyInstance } from "fastify";
 import { recordAuditEntry } from "../../../admin/audit-service.js";
 import type { GameEngine } from "../../../game.js";
 import { ContentRepository } from "../../../runtime/content/content-repository.js";
+import { techDefsFromContent } from "../../../runtime/content/content-service.js";
 import type {
   ContentBuilding,
   ContentConstant,
   ContentFaction,
   ContentShip,
+  ContentTech,
   ContentWarship,
 } from "../../../runtime/content/content-types.js";
 
@@ -216,6 +219,47 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
         reason: "modification",
       });
       return { constants: Object.values(engine.content.constants) };
+    },
+  );
+
+  // Arbre de recherche (chantier 23.9) : id libre (id-minting), mais chaque écriture
+  // rejoue `validateTree` sur la table candidate (prérequis inconnus, cycles) — le même
+  // garde-fou que le contrôle d'intégrité en CI, appliqué ici à l'admin en direct.
+  admin.get("/content/techs", { config: { adminAction: "content.techs.read" } }, () => ({
+    techs: Object.values(engine.content.techs),
+  }));
+
+  admin.put(
+    "/content/techs/:id",
+    { config: { adminAction: "content.techs.write" } },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const parsed = upsertTechSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+      }
+      const isNew = !(id in engine.content.techs);
+      const tech: ContentTech = { id, ...parsed.data };
+      const candidate = { ...engine.content.techs, [id]: tech };
+      const problems = validateTree(techDefsFromContent(candidate));
+      if (problems.length > 0) {
+        return reply.code(400).send({ error: problems[0] });
+      }
+      await repo.saveTech(tech);
+      await engine.loadContent();
+
+      const actor = request.adminAccount!;
+      await recordAuditEntry({
+        actorAccountId: actor.id,
+        actorEmail: actor.email,
+        action: "content.techs.write",
+        targetType: "content_tech",
+        targetId: id,
+        reason: isNew ? "création" : "modification",
+      });
+      return { techs: Object.values(engine.content.techs) };
     },
   );
 }

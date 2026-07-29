@@ -10,6 +10,8 @@ import {
   FACTIONS,
   SHIP_IDS,
   SHIPS,
+  TECH_IDS,
+  TECHS,
   WARSHIP_CATEGORY,
   WARSHIP_IDS,
   WARSHIPS,
@@ -17,6 +19,7 @@ import {
   type BuildingDef,
   type CombatDef,
   type ShipDef,
+  type TechDef,
 } from "@spacesim/shared";
 import { ContentRepository } from "./content-repository.js";
 import type {
@@ -25,6 +28,7 @@ import type {
   ContentConstant,
   ContentFaction,
   ContentShip,
+  ContentTech,
   ContentWarship,
 } from "./content-types.js";
 
@@ -246,6 +250,196 @@ function seedConstants(): ContentConstant[] {
 }
 
 /**
+ * Libellés français des techs, dupliqués depuis `apps/web/src/labels.ts` (`TECH_LABELS`)
+ * — même raison que `SEED_WARSHIP_LABELS` ci-dessus.
+ */
+const SEED_TECH_LABELS: Record<string, { name: string; description: string }> = {
+  metallurgy: {
+    name: "Métallurgie",
+    description: "Les premiers hauts-fourneaux orbitaux. Débloque la fonderie.",
+  },
+  industrial_chains: {
+    name: "Chaînes industrielles",
+    description:
+      "Standardisation des lignes d'assemblage. Débloque usines de composants et de biens.",
+  },
+  advanced_mining: {
+    name: "Extraction avancée",
+    description: "Foreuses à plasma auto-répliquantes. Production des mines +25 %.",
+  },
+  fusion_power: {
+    name: "Fusion contrôlée",
+    description: "Le deutérium des océans alimente les réacteurs. Centrales +30 %.",
+  },
+  automation: {
+    name: "Automatisation",
+    description: "Les machines ne dorment jamais. Toute production +10 %.",
+  },
+  orbital_logistics: {
+    name: "Logistique orbitale",
+    description: "Docks en orbite basse. Débloque le dock orbital, convois 30 % plus rapides.",
+  },
+  space_elevator: {
+    name: "Ascenseur spatial",
+    description:
+      "Un ruban jusqu'à l'orbite. Débit +80 %, capacité +40 %, carburant des convois −20 %. Débloque le transporteur.",
+  },
+  astro_cartography: {
+    name: "Cartographie stellaire",
+    description: "Interféromètres longue portée. Sondes 40 % plus rapides.",
+  },
+  autonomous_probes: {
+    name: "Sondes autonomes",
+    description: "Essaims auto-assemblés à bas coût. Coût des sondes −60 %.",
+  },
+  colonial_engineering: {
+    name: "Génie colonial",
+    description: "Coques modulaires à déploiement rapide. Vaisseaux coloniaux 30 % plus rapides.",
+  },
+  habitat_engineering: {
+    name: "Habitats étendus",
+    description: "Dômes pressurisés de nouvelle génération. Logements +25 %.",
+  },
+  light_terraforming: {
+    name: "Terraformation légère",
+    description: "Régulation atmosphérique locale. Habitabilité effective +10.",
+  },
+  orbital_construction: {
+    name: "Construction orbitale",
+    description: "Chantiers en apesanteur. +1 emplacement dans la file de construction.",
+  },
+  gateway_engineering: {
+    name: "Ingénierie des portails",
+    description:
+      "Dompter les ancrages stables détectés en bord de galaxie. Débloque les chantiers de portail inter-galactique.",
+  },
+  civic_planning: {
+    name: "Urbanisme",
+    description: "Des villes pensées pour vivre, pas survivre. Satisfaction +5.",
+  },
+  education_networks: {
+    name: "Réseaux éducatifs",
+    description: "Le savoir circule plus vite que la lumière locale. Laboratoires +25 %.",
+  },
+  colonial_medicine: {
+    name: "Médecine coloniale",
+    description: "Cliniques adaptées aux biosphères hostiles. Croissance démographique +30 %.",
+  },
+  cultural_media: {
+    name: "Médias culturels",
+    description: "Le divertissement voyage en ansible. Besoin en biens −30 %.",
+  },
+  tax_reform: {
+    name: "Réforme fiscale",
+    description: "Une bureaucratie presque indolore. Crédits +30 %.",
+  },
+  governance_ai: {
+    name: "IA de gouvernance",
+    description: "Elle optimise tout, discrètement. Production et croissance +10 %.",
+  },
+  military_doctrine: {
+    name: "Doctrine militaire",
+    description: "Premiers arsenaux de guerre. Débloque chasseurs et frégates.",
+  },
+  fleet_logistics: {
+    name: "Logistique de flotte",
+    description: "Coordination des escadres. Débloque les vaisseaux de soutien.",
+  },
+  capital_ships: {
+    name: "Vaisseaux capitaux",
+    description: "Les chantiers assemblent des croiseurs lourds.",
+  },
+  ore_processing: {
+    name: "Traitement du minerai",
+    description: "Concassage et tri sur site. Mines +15 %, avant-postes +40 %, stockage +25 %.",
+  },
+  modular_construction: {
+    name: "Construction modulaire",
+    description: "Des modules préfabriqués en orbite. Chantiers 25 % plus rapides, navals 20 %.",
+  },
+  heavy_industry: {
+    name: "Industrie lourde",
+    description: "Complexes métallurgiques intégrés. Fonderies +30 %, composants +25 %.",
+  },
+  nanofabrication: {
+    name: "Nanofabrication",
+    description: "L'assemblage atome par atome. Toute production +15 %, chantiers −15 %.",
+  },
+  deep_survey: {
+    name: "Sondage profond",
+    description: "Balises jetables en essaim. Sondes 30 % plus rapides et 30 % moins chères.",
+  },
+  arcology_design: {
+    name: "Arcologies",
+    description: "Des villes-mondes verticales et vivables. Logements +30 %, satisfaction +3.",
+  },
+  deep_terraforming: {
+    name: "Terraformation profonde",
+    description: "Remodeler une biosphère entière. Habitabilité +12, croissance +10 %.",
+  },
+  agro_synthesis: {
+    name: "Agro-synthèse",
+    description: "Protéines cultivées en cuve. Besoin en nourriture −30 %, fermes +20 %.",
+  },
+  civic_archives: {
+    name: "Archives civiques",
+    description: "Une mémoire commune qui fait nation. Influence +40 %.",
+  },
+  trade_charters: {
+    name: "Chartes commerciales",
+    description:
+      "Des couloirs marchands protégés. Crédits +20 %, convois 15 % plus rapides, marge en station +8 %.",
+  },
+  point_defense: {
+    name: "Défense rapprochée",
+    description: "Tourelles à tir rapide. Débloque la corvette d'escorte.",
+  },
+  strike_doctrine: {
+    name: "Doctrine de frappe",
+    description: "Frapper loin, avant d'être vu. Débloque le bombardier de ligne.",
+  },
+  dreadnoughts: {
+    name: "Cuirassés",
+    description: "Des forteresses mobiles qui décident d'une guerre. Débloque le cuirassé.",
+  },
+  plasma_weapons: {
+    name: "Armement plasma",
+    description: "Canons à plasma confiné. Débloque le canon plasma, puissant à toute portée.",
+  },
+  reactive_armor: {
+    name: "Blindage réactif",
+    description: "Plaques auto-réactives absorbant l'impact. Débloque le blindage réactif.",
+  },
+  graviton_thrusters: {
+    name: "Propulsion à graviton",
+    description: "Manipulation locale de la gravité. Débloque le propulseur à graviton.",
+  },
+  xeno_survey: {
+    name: "Prospection xéno",
+    description:
+      "Cartographie des confins inexplorés. Débloque l'éclaireur lointain et la foreuse à noyau.",
+  },
+};
+
+/** Techs historiques (`packages/shared`) au format `ContentTech`. */
+function seedTechs(): ContentTech[] {
+  return TECH_IDS.map((id) => {
+    const def = TECHS[id];
+    const label = SEED_TECH_LABELS[id];
+    return {
+      id,
+      nameFr: label?.name ?? id,
+      descriptionFr: label?.description ?? "",
+      branch: def.branch,
+      cost: def.cost,
+      durationMs: def.durationMs,
+      requires: [...def.requires],
+      effects: def.effects,
+    };
+  });
+}
+
+/**
  * Amorce le contenu une fois dans la vie d'une base (idempotent, sûr à chaque boot —
  * même idiome que `BootstrapService.ensureNpcPopulation` : compter, compléter si vide).
  * Libellés français repris des tables `SEED_*` ci-dessus ; `apps/web/src/labels.ts` garde
@@ -276,20 +470,24 @@ export async function ensureContentSeeded(): Promise<void> {
   if ((await repo.countConstants()) === 0) {
     await repo.insertConstants(seedConstants());
   }
+  if ((await repo.countTechs()) === 0) {
+    await repo.insertTechs(seedTechs());
+  }
 }
 
 /** Charge tout le contenu depuis la DB — appelé au boot puis après chaque édition admin
  *  (remplacement en bloc de `GameRuntime.content`, jamais de mutation en place). */
 export async function loadContentBundle(): Promise<ContentBundle> {
-  const [warships, combatTuning, factions, buildings, ships, constants] = await Promise.all([
+  const [warships, combatTuning, factions, buildings, ships, constants, techs] = await Promise.all([
     repo.loadWarships(),
     repo.loadTuning(),
     repo.loadFactions(),
     repo.loadBuildings(),
     repo.loadShips(),
     repo.loadConstants(),
+    repo.loadTechs(),
   ]);
-  return { warships, combatTuning, factions, buildings, ships, constants };
+  return { warships, combatTuning, factions, buildings, ships, constants, techs };
 }
 
 /** Convertit les vaisseaux de guerre chargés en table de combat (`sim/military/combat.ts`
@@ -362,6 +560,25 @@ export function balanceFromContent(constants: Record<string, ContentConstant>): 
     if (value !== undefined) result[key] = value;
   }
   return result;
+}
+
+/** Convertit les techs chargées en table de définitions (`sim/empire/research.ts`
+ *  `computeEffects`/`canResearch`, `sim/empire/techtree.ts` `researchPath`/`validateTree`)
+ *  — même forme que `TECHS`, sourcée depuis le contenu DB-backed. */
+export function techDefsFromContent(techs: Record<string, ContentTech>): Record<string, TechDef> {
+  return Object.fromEntries(
+    Object.entries(techs).map(([id, t]) => [
+      id,
+      {
+        id: id as TechDef["id"],
+        branch: t.branch as TechDef["branch"],
+        cost: t.cost,
+        durationMs: t.durationMs,
+        requires: t.requires as TechDef["requires"],
+        effects: t.effects,
+      } satisfies TechDef,
+    ]),
+  );
 }
 
 export { ContentRepository };

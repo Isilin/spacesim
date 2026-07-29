@@ -6,6 +6,7 @@ import type {
   ContentConstant,
   ContentFaction,
   ContentShip,
+  ContentTech,
   ContentWarship,
 } from "./content-types.js";
 
@@ -18,6 +19,7 @@ type FactionRow = typeof schema.contentFactions.$inferSelect;
 type BuildingRow = typeof schema.contentBuildings.$inferSelect;
 type ShipRow = typeof schema.contentShips.$inferSelect;
 type ConstantRow = typeof schema.contentConstants.$inferSelect;
+type TechRow = typeof schema.contentTechs.$inferSelect;
 
 function warshipFromRow(row: WarshipRow): ContentWarship {
   return {
@@ -156,6 +158,32 @@ function constantFromRow(row: ConstantRow): ContentConstant {
 
 function rowFromConstant(c: ContentConstant) {
   return { key: c.key, value: c.value, descriptionFr: c.descriptionFr };
+}
+
+function techFromRow(row: TechRow): ContentTech {
+  return {
+    id: row.id,
+    nameFr: row.nameFr,
+    descriptionFr: row.descriptionFr,
+    branch: row.branch,
+    cost: row.cost,
+    durationMs: row.durationMs,
+    requires: JSON.parse(row.requires),
+    effects: JSON.parse(row.effects),
+  };
+}
+
+function rowFromTech(t: ContentTech) {
+  return {
+    id: t.id,
+    nameFr: t.nameFr,
+    descriptionFr: t.descriptionFr,
+    branch: t.branch,
+    cost: t.cost,
+    durationMs: t.durationMs,
+    requires: JSON.stringify(t.requires),
+    effects: JSON.stringify(t.effects),
+  };
 }
 
 /**
@@ -320,5 +348,28 @@ export class ContentRepository {
       .insert(schema.contentConstants)
       .values(row)
       .onConflictDoUpdate({ target: schema.contentConstants.key, set: row });
+  }
+
+  async countTechs(): Promise<number> {
+    const rows = await db.select({ id: schema.contentTechs.id }).from(schema.contentTechs);
+    return rows.length;
+  }
+
+  async loadTechs(): Promise<Record<string, ContentTech>> {
+    const rows = await db.select().from(schema.contentTechs).orderBy(schema.contentTechs.id);
+    return Object.fromEntries(rows.map((row) => [row.id, techFromRow(row)]));
+  }
+
+  async insertTechs(techs: ContentTech[]): Promise<void> {
+    if (techs.length === 0) return;
+    await db.insert(schema.contentTechs).values(techs.map(rowFromTech));
+  }
+
+  async saveTech(tech: ContentTech): Promise<void> {
+    const row = rowFromTech(tech);
+    await db
+      .insert(schema.contentTechs)
+      .values(row)
+      .onConflictDoUpdate({ target: schema.contentTechs.id, set: row });
   }
 }

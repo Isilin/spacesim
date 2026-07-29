@@ -55,4 +55,9 @@ describe("rôles et permissions admin", () => {
     expect(hasPermission("content_editor", "content.constants.read")).toBe(true);
     expect(hasPermission("content_editor", "content.constants.write")).toBe(true);
   });
+
+  it("content_editor édite aussi l'arbre de recherche (chantier 23.9)", () => {
+    expect(hasPermission("content_editor", "content.techs.read")).toBe(true);
+    expect(hasPermission("content_editor", "content.techs.write")).toBe(true);
+  });
 });

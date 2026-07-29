@@ -1,4 +1,4 @@
-import { BASE_BUILDINGS, TECHS, type TechId } from "../../content/techs.js";
+import { BASE_BUILDINGS, TECHS, type TechDef } from "../../content/techs.js";
 import { BASE_CHASSIS, CHASSIS, CHASSIS_IDS, type ChassisId } from "../../content/chassis.js";
 import { BASE_MODULES, MODULES, MODULE_IDS, type ModuleId } from "../../content/modules.js";
 import type { BuildingId } from "../../model/industry.js";
@@ -39,7 +39,10 @@ export interface EmpireEffects {
   unlockedModules: Set<ModuleId>;
 }
 
-export function computeEffects(researched: readonly TechId[]): EmpireEffects {
+export function computeEffects(
+  researched: readonly string[],
+  techs: Record<string, TechDef> = TECHS,
+): EmpireEffects {
   const effects: EmpireEffects = {
     unlockedBuildings: new Set(BASE_BUILDINGS),
     outputMult: {},
@@ -69,7 +72,7 @@ export function computeEffects(researched: readonly TechId[]): EmpireEffects {
     unlockedModules: new Set(BASE_MODULES),
   };
   for (const id of researched) {
-    const tech = TECHS[id];
+    const tech = techs[id];
     if (!tech) continue;
     // Déblocages de conception (chantier 13) : source unique = `requiresTech` des défs.
     for (const cid of CHASSIS_IDS) {
@@ -112,8 +115,12 @@ export function computeEffects(researched: readonly TechId[]): EmpireEffects {
 export const NO_EFFECTS: EmpireEffects = computeEffects([]);
 
 /** Une tech est-elle recherchable (prérequis satisfaits, pas déjà connue) ? */
-export function canResearch(techId: TechId, researched: readonly TechId[]): boolean {
-  const tech = TECHS[techId];
+export function canResearch(
+  techId: string,
+  researched: readonly string[],
+  techs: Record<string, TechDef> = TECHS,
+): boolean {
+  const tech = techs[techId];
   if (!tech) return false;
   if (researched.includes(techId)) return false;
   return tech.requires.every((req) => researched.includes(req));

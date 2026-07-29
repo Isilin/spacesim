@@ -75,3 +75,37 @@
   flex-wrap: wrap;
   margin-bottom: 12px;
 }
+
+/* Champ multiligne (chantier 23.9, effets de tech en JSON) — mêmes jetons que
+ * @spacesim/ui `Field`/`Select` (packages/ui/src/components/forms/forms.module.css),
+ * repris ici car ce composant n'expose pas de textarea. */
+.field-textarea-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-textarea-wrap label {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.field-textarea {
+  font: var(--fs-base) var(--font-mono);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 10px;
+  width: 100%;
+  resize: vertical;
+  min-height: 90px;
+}
+
+.field-textarea:focus {
+  border-color: var(--cyan);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--cyan);
+}

@@ -102,4 +102,31 @@ describe("canResearch", () => {
     expect(canResearch("industrial_chains", ["metallurgy"])).toBe(true);
     expect(canResearch("metallurgy", ["metallurgy"])).toBe(false);
   });
+
+  it("accepte une table de techs injectée (chantier 23.9) — id inconnu de TECHS", () => {
+    const customTechs = {
+      ...TECHS,
+      freshly_minted: { ...TECHS.metallurgy, id: "freshly_minted", requires: [] },
+    };
+    expect(canResearch("freshly_minted", [], customTechs)).toBe(true);
+    expect(canResearch("freshly_minted", [])).toBe(false);
+  });
+});
+
+describe("computeEffects — table injectée (chantier 23.9)", () => {
+  it("lit les effets depuis une table de techs différente de TECHS", () => {
+    const customTechs = {
+      ...TECHS,
+      freshly_minted: {
+        ...TECHS.metallurgy,
+        id: "freshly_minted",
+        requires: [],
+        effects: { creditsMult: 2 },
+      },
+    };
+    const effects = computeEffects(["freshly_minted"], customTechs);
+    expect(effects.creditsMult).toBe(2);
+    // Sans la table injectée, cet id n'existe pas et n'a aucun effet.
+    expect(computeEffects(["freshly_minted"]).creditsMult).toBe(1);
+  });
 });

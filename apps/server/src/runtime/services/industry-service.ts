@@ -3,7 +3,6 @@ import {
   BLUEPRINT_SELL_FRACTION,
   CLAIM_PRODUCTION_BONUS,
   STARTER_PRESET_IDS,
-  TECHS,
   applyColonyTick,
   applyLift,
   canResearch,
@@ -28,6 +27,7 @@ import {
   type Fleet,
   type ResourceId,
   type ShipId,
+  type TechDef,
   type TechId,
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
@@ -36,6 +36,7 @@ import {
   balanceFromContent,
   buildingDefsFromContent,
   shipDefsFromContent,
+  techDefsFromContent,
 } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
@@ -74,6 +75,11 @@ export class IndustryService {
   /** Scalaires d'équilibrage (DB-backed, chantier 23.8). */
   private get balance(): BalanceConstants {
     return balanceFromContent(this.runtime.content.constants);
+  }
+
+  /** Arbre de recherche (DB-backed, chantier 23.9) — remplace `TECHS` dans ce service. */
+  private get techDefs(): Record<string, TechDef> {
+    return techDefsFromContent(this.runtime.content.techs);
   }
 
   // ── Bâtiments & chantier civil ───────────────────────────────────────────
@@ -374,9 +380,9 @@ export class IndustryService {
 
   startResearch(empire: Empire, techId: string): string | null {
     if (empire.research) return "Une recherche est déjà en cours";
-    const tech = TECHS[techId as TechId];
+    const tech = this.techDefs[techId];
     if (!tech) return "Technologie inconnue";
-    if (!canResearch(tech.id, empire.researched as TechId[])) {
+    if (!canResearch(tech.id, empire.researched, this.techDefs)) {
       return "Prérequis non satisfaits";
     }
     if (!this.beginResearch(empire, tech.id)) {
@@ -394,8 +400,8 @@ export class IndustryService {
    * Débite la science et démarre une recherche. Retourne false si la science manque —
    * la file (11.4) réessaiera au tick suivant plutôt que d'être vidée.
    */
-  private beginResearch(empire: Empire, techId: TechId, now = Date.now()): boolean {
-    const tech = TECHS[techId];
+  private beginResearch(empire: Empire, techId: string, now = Date.now()): boolean {
+    const tech = this.techDefs[techId]!;
     const colonies = [...empire.colonyMap.values()];
     const totalScience = colonies.reduce((s, c) => s + c.resources.science, 0);
     if (totalScience < tech.cost) return false;
@@ -421,9 +427,9 @@ export class IndustryService {
   }
 
   queueResearch(empire: Empire, techId: string): string | null {
-    const tech = TECHS[techId as TechId];
+    const tech = this.techDefs[techId];
     if (!tech) return "Technologie inconnue";
-    const path = researchPath(tech.id, empire.researched as TechId[]);
+    const path = researchPath(tech.id, empire.researched, this.techDefs);
     if (path.length === 0) return "Technologie déjà acquise";
     // La recherche en cours n'est pas interrompue : elle sort simplement de la file.
     empire.researchQueue = path.filter((id) => id !== empire.research?.techId);
@@ -448,9 +454,9 @@ export class IndustryService {
     if (empire.research || empire.researchQueue.length === 0) return;
     // Les techs déjà acquises entre-temps (autre chemin) sont retirées silencieusement.
     empire.researchQueue = empire.researchQueue.filter((id) => !empire.researched.includes(id));
-    const next = empire.researchQueue[0] as TechId | undefined;
+    const next = empire.researchQueue[0];
     if (!next) return;
-    if (!canResearch(next, empire.researched as TechId[])) return;
+    if (!canResearch(next, empire.researched, this.techDefs)) return;
     if (this.beginResearch(empire, next, now)) {
       empire.researchQueue = empire.researchQueue.slice(1);
     }
@@ -461,7 +467,7 @@ export class IndustryService {
     if (finished) {
       empire.researched = [...empire.researched, finished.techId];
       empire.research = null;
-      empire.effects = computeEffects(empire.researched as TechId[]);
+      empire.effects = computeEffects(empire.researched, this.techDefs);
       this.logger.info(`[game] recherche terminée : ${finished.techId}`);
     }
     // Enchaînement de la file, y compris quand la science manquait au tick précédent.
