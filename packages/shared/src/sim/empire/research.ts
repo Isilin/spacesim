@@ -1,6 +1,6 @@
 import { BASE_BUILDINGS, TECHS, type TechDef } from "../../content/techs.js";
-import { BASE_CHASSIS, CHASSIS, CHASSIS_IDS, type ChassisId } from "../../content/chassis.js";
-import { BASE_MODULES, MODULES, MODULE_IDS, type ModuleId } from "../../content/modules.js";
+import { BASE_CHASSIS, CHASSIS, type ChassisDef } from "../../content/chassis.js";
+import { BASE_MODULES, MODULES, type ModuleDef } from "../../content/modules.js";
 import type { BuildingId } from "../../model/industry.js";
 
 /** Effets d'empire agrégés depuis les techs recherchées. */
@@ -34,14 +34,16 @@ export interface EmpireEffects {
   /** Marge commerciale en station : ventes majorées, achats minorés. */
   tradeMargin: number;
   /** Châssis débloqués pour le concepteur (chantier 13). */
-  unlockedChassis: Set<ChassisId>;
+  unlockedChassis: Set<string>;
   /** Modules débloqués pour le concepteur (chantier 13). */
-  unlockedModules: Set<ModuleId>;
+  unlockedModules: Set<string>;
 }
 
 export function computeEffects(
   researched: readonly string[],
   techs: Record<string, TechDef> = TECHS,
+  chassisTable: Record<string, ChassisDef> = CHASSIS,
+  moduleTable: Record<string, ModuleDef> = MODULES,
 ): EmpireEffects {
   const effects: EmpireEffects = {
     unlockedBuildings: new Set(BASE_BUILDINGS),
@@ -75,11 +77,11 @@ export function computeEffects(
     const tech = techs[id];
     if (!tech) continue;
     // Déblocages de conception (chantier 13) : source unique = `requiresTech` des défs.
-    for (const cid of CHASSIS_IDS) {
-      if (CHASSIS[cid].requiresTech === id) effects.unlockedChassis.add(cid);
+    for (const cid of Object.keys(chassisTable)) {
+      if (chassisTable[cid]!.requiresTech === id) effects.unlockedChassis.add(cid);
     }
-    for (const mid of MODULE_IDS) {
-      if (MODULES[mid].requiresTech === id) effects.unlockedModules.add(mid);
+    for (const mid of Object.keys(moduleTable)) {
+      if (moduleTable[mid]!.requiresTech === id) effects.unlockedModules.add(mid);
     }
     const e = tech.effects;
     for (const b of e.unlockBuildings ?? []) effects.unlockedBuildings.add(b);

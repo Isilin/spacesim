@@ -1,7 +1,9 @@
 import {
   BUILDING_IDS,
+  CHASSIS_IDS,
   DEFAULT_BALANCE,
   FACTION_IDS,
+  MODULE_IDS,
   SHIP_IDS,
   TECH_IDS,
   WARSHIP_IDS,
@@ -11,9 +13,11 @@ import { db, schema } from "../../db/index.js";
 import {
   balanceFromContent,
   buildingDefsFromContent,
+  chassisDefsFromContent,
   combatDefsFromWarships,
   ensureContentSeeded,
   loadContentBundle,
+  moduleDefsFromContent,
   shipDefsFromContent,
   techDefsFromContent,
 } from "./content-service.js";
@@ -26,6 +30,8 @@ beforeEach(async () => {
   await db.delete(schema.contentShips);
   await db.delete(schema.contentConstants);
   await db.delete(schema.contentTechs);
+  await db.delete(schema.contentChassis);
+  await db.delete(schema.contentModules);
 });
 
 describe("ensureContentSeeded", () => {
@@ -75,6 +81,15 @@ describe("ensureContentSeeded", () => {
     expect(Object.keys(bundle.techs).sort()).toEqual([...TECH_IDS].sort());
     expect(bundle.techs.metallurgy?.nameFr).toBe("Métallurgie");
     expect(bundle.techs.industrial_chains?.requires).toEqual(["metallurgy"]);
+  });
+
+  it("peuple châssis et modules depuis packages/shared/src/content/chassis.ts et modules.ts", async () => {
+    await ensureContentSeeded();
+    const bundle = await loadContentBundle();
+    expect(Object.keys(bundle.chassis).sort()).toEqual([...CHASSIS_IDS].sort());
+    expect(Object.keys(bundle.modules).sort()).toEqual([...MODULE_IDS].sort());
+    expect(bundle.chassis.scout_frame?.nameFr).toBe("Éclaireur");
+    expect(bundle.modules.laser_pulse?.slot).toBe("weapon");
   });
 
   it("est idempotent : un second appel ne duplique rien", async () => {
@@ -160,6 +175,45 @@ describe("techDefsFromContent", () => {
       durationMs: bundle.techs.metallurgy!.durationMs,
       requires: [],
       effects: bundle.techs.metallurgy!.effects,
+    });
+  });
+});
+
+describe("chassisDefsFromContent / moduleDefsFromContent", () => {
+  it("convertissent le contenu chargé au format attendu par sim/industry/design.ts", async () => {
+    await ensureContentSeeded();
+    const bundle = await loadContentBundle();
+    const chassisDefs = chassisDefsFromContent(bundle.chassis);
+    expect(chassisDefs.scout_frame).toEqual({
+      id: "scout_frame",
+      kind: bundle.chassis.scout_frame!.kind,
+      domain: bundle.chassis.scout_frame!.domain,
+      hull: bundle.chassis.scout_frame!.hull,
+      baseInitiative: bundle.chassis.scout_frame!.baseInitiative,
+      power: bundle.chassis.scout_frame!.power,
+      tonnage: bundle.chassis.scout_frame!.tonnage,
+      calc: bundle.chassis.scout_frame!.calc,
+      slots: bundle.chassis.scout_frame!.slots,
+      baseSpeedMult: bundle.chassis.scout_frame!.baseSpeedMult,
+      baseFuelPerJump: bundle.chassis.scout_frame!.baseFuelPerJump,
+      roleBonus: undefined,
+      cost: bundle.chassis.scout_frame!.cost,
+      buildMs: bundle.chassis.scout_frame!.buildMs,
+      requiresTech: undefined,
+    });
+
+    const moduleDefs = moduleDefsFromContent(bundle.modules);
+    expect(moduleDefs.laser_pulse).toEqual({
+      id: "laser_pulse",
+      slot: "weapon",
+      role: "weapon",
+      power: bundle.modules.laser_pulse!.power,
+      tonnage: bundle.modules.laser_pulse!.tonnage,
+      calc: bundle.modules.laser_pulse!.calc,
+      cost: bundle.modules.laser_pulse!.cost,
+      buildMs: bundle.modules.laser_pulse!.buildMs,
+      requiresTech: undefined,
+      effects: bundle.modules.laser_pulse!.effects,
     });
   });
 });

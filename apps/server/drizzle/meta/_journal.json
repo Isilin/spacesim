@@ -64,6 +64,13 @@
       "when": 1785333098067,
       "tag": "0008_wealthy_leopardon",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785334686861,
+      "tag": "0009_peaceful_klaw",
+      "breakpoints": true
     }
   ]
 }

@@ -23,8 +23,10 @@ import {
   type BalanceConstants,
   type Blueprint,
   type BuildingId,
+  type ChassisDef,
   type Colony,
   type Fleet,
+  type ModuleDef,
   type ResourceId,
   type ShipId,
   type TechDef,
@@ -35,6 +37,8 @@ import type { Empire } from "../../empire.js";
 import {
   balanceFromContent,
   buildingDefsFromContent,
+  chassisDefsFromContent,
+  moduleDefsFromContent,
   shipDefsFromContent,
   techDefsFromContent,
 } from "../content/content-service.js";
@@ -80,6 +84,20 @@ export class IndustryService {
   /** Arbre de recherche (DB-backed, chantier 23.9) — remplace `TECHS` dans ce service. */
   private get techDefs(): Record<string, TechDef> {
     return techDefsFromContent(this.runtime.content.techs);
+  }
+
+  /** Châssis/modules (DB-backed, chantier 23.10) — remplace `CHASSIS`/`MODULES` ici. */
+  private get chassisDefs(): Record<string, ChassisDef> {
+    return chassisDefsFromContent(this.runtime.content.chassis);
+  }
+
+  private get moduleDefs(): Record<string, ModuleDef> {
+    return moduleDefsFromContent(this.runtime.content.modules);
+  }
+
+  /** Effets d'empire recalculés depuis le contenu DB-backed (techs + châssis + modules). */
+  private empireEffects(researched: readonly string[]): ReturnType<typeof computeEffects> {
+    return computeEffects(researched, this.techDefs, this.chassisDefs, this.moduleDefs);
   }
 
   // ── Bâtiments & chantier civil ───────────────────────────────────────────
@@ -167,7 +185,12 @@ export class IndustryService {
     modules: string[],
   ): string | null {
     if (empire.blueprintMap.size >= MAX_BLUEPRINTS) return "Trop de plans enregistrés";
-    const problems = validateBlueprint({ chassisId, modules }, empire.effects);
+    const problems = validateBlueprint(
+      { chassisId, modules },
+      empire.effects,
+      this.chassisDefs,
+      this.moduleDefs,
+    );
     if (problems.length > 0) return problems[0]!;
     const bp: Blueprint = {
       id: randomUUID(),
@@ -192,7 +215,12 @@ export class IndustryService {
   ): string | null {
     const bp = empire.blueprintMap.get(blueprintId);
     if (!bp) return "Plan inconnu";
-    const problems = validateBlueprint({ chassisId, modules }, empire.effects);
+    const problems = validateBlueprint(
+      { chassisId, modules },
+      empire.effects,
+      this.chassisDefs,
+      this.moduleDefs,
+    );
     if (problems.length > 0) return problems[0]!;
     const next: Blueprint = {
       ...bp,
@@ -222,9 +250,9 @@ export class IndustryService {
   ): string | null {
     const bp = empire.blueprintMap.get(blueprintId);
     if (!bp) return "Plan inconnu";
-    const problems = validateBlueprint(bp, empire.effects);
+    const problems = validateBlueprint(bp, empire.effects, this.chassisDefs, this.moduleDefs);
     if (problems.length > 0) return problems[0]!;
-    const stats = resolveBlueprint(bp);
+    const stats = resolveBlueprint(bp, this.chassisDefs, this.moduleDefs);
 
     if (stats.domain === "colony") {
       const colony = colonyId ? empire.colonyMap.get(colonyId) : undefined;
@@ -297,7 +325,10 @@ export class IndustryService {
     const preset = presetById(presetId);
     if (!preset) return "Plan inconnu au catalogue";
 
-    const price = Math.round(costValue(resolveBlueprint(preset).cost) * BLUEPRINT_BUY_MARKUP);
+    const price = Math.round(
+      costValue(resolveBlueprint(preset, this.chassisDefs, this.moduleDefs).cost) *
+        BLUEPRINT_BUY_MARKUP,
+    );
     if (colony.resources.credits < price) return `Crédits insuffisants (${price})`;
 
     const bp: Blueprint = {
@@ -331,7 +362,10 @@ export class IndustryService {
     const bp = empire.blueprintMap.get(blueprintId);
     if (!bp) return "Plan inconnu";
 
-    const price = Math.round(costValue(resolveBlueprint(bp).cost) * BLUEPRINT_SELL_FRACTION);
+    const price = Math.round(
+      costValue(resolveBlueprint(bp, this.chassisDefs, this.moduleDefs).cost) *
+        BLUEPRINT_SELL_FRACTION,
+    );
     empire.blueprintMap.delete(blueprintId);
     this.blueprintRepo.remove(blueprintId);
     empire.colonyMap.set(colony.id, {
@@ -361,7 +395,8 @@ export class IndustryService {
 
     const legacyDef = shipDefsFromContent(this.runtime.content.ships)[shipId];
     const bp = empire.blueprintMap.get(shipId);
-    const cost = legacyDef?.cost ?? (bp ? resolveBlueprint(bp).cost : null);
+    const cost =
+      legacyDef?.cost ?? (bp ? resolveBlueprint(bp, this.chassisDefs, this.moduleDefs).cost : null);
     if (!cost) return "Vaisseau inconnu";
 
     const price = Math.round(costValue(cost) * BLUEPRINT_SELL_FRACTION) * count;
@@ -467,7 +502,7 @@ export class IndustryService {
     if (finished) {
       empire.researched = [...empire.researched, finished.techId];
       empire.research = null;
-      empire.effects = computeEffects(empire.researched, this.techDefs);
+      empire.effects = this.empireEffects(empire.researched);
       this.logger.info(`[game] recherche terminée : ${finished.techId}`);
     }
     // Enchaînement de la file, y compris quand la science manquait au tick précédent.

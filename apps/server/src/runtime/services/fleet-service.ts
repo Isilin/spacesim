@@ -28,7 +28,12 @@ import {
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
-import { balanceFromContent, combatDefsFromWarships } from "../content/content-service.js";
+import {
+  balanceFromContent,
+  chassisDefsFromContent,
+  combatDefsFromWarships,
+  moduleDefsFromContent,
+} from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { FleetRepository } from "../repositories/fleet-repository.js";
@@ -96,9 +101,11 @@ export class FleetService {
    */
   private combatDefs(...empires: Empire[]): Record<string, CombatDef> {
     const defs = combatDefsFromWarships(this.runtime.content.warships);
+    const chassisDefs = chassisDefsFromContent(this.runtime.content.chassis);
+    const moduleDefs = moduleDefsFromContent(this.runtime.content.modules);
     for (const empire of empires) {
       for (const bp of empire.blueprintMap.values()) {
-        defs[bp.id] = combatDefFromStats(resolveBlueprint(bp));
+        defs[bp.id] = combatDefFromStats(resolveBlueprint(bp, chassisDefs, moduleDefs));
       }
     }
     return defs;

@@ -1,5 +1,11 @@
-import { CHASSIS, type ChassisId, type ShipDomain } from "../../content/chassis.js";
-import { MODULES, SLOT_TYPES, type ModuleId, type SlotType } from "../../content/modules.js";
+import { CHASSIS, type ChassisDef, type ShipDomain } from "../../content/chassis.js";
+import {
+  MODULES,
+  SLOT_TYPES,
+  type ModuleDef,
+  type ModuleId,
+  type SlotType,
+} from "../../content/modules.js";
 import { COMBAT_PHASES, type CombatCategory, type CombatPhase } from "../../content/warships.js";
 import type { Blueprint } from "../../model/industry.js";
 import type { ResourceId } from "../../model/resources.js";
@@ -52,8 +58,12 @@ export function categoryOf(stats: {
  * chaque effet majoré par le `roleBonus` du châssis pour son rôle. Purement déterministe.
  * Les ids inconnus sont ignorés (la validation les signale par ailleurs).
  */
-export function resolveBlueprint(bp: BlueprintShape): ShipStats {
-  const chassis = CHASSIS[bp.chassisId as ChassisId];
+export function resolveBlueprint(
+  bp: BlueprintShape,
+  chassisTable: Record<string, ChassisDef> = CHASSIS,
+  moduleTable: Record<string, ModuleDef> = MODULES,
+): ShipStats {
+  const chassis = chassisTable[bp.chassisId];
   const weapons: Record<CombatPhase, number> = { long: 0, medium: 0, short: 0 };
   if (!chassis) {
     return {
@@ -93,7 +103,7 @@ export function resolveBlueprint(bp: BlueprintShape): ShipStats {
   };
 
   for (const modId of bp.modules) {
-    const mod = MODULES[modId as ModuleId];
+    const mod = moduleTable[modId];
     if (!mod) continue;
     const bonus = chassis.roleBonus?.[mod.role] ?? 1;
     const e = mod.effects;
@@ -126,11 +136,16 @@ export function resolveBlueprint(bp: BlueprintShape): ShipStats {
  * budgets (énergie/tonnage/calcul) non dépassés. Retourne la liste des problèmes
  * (vide = plan constructible). Autoritaire côté serveur.
  */
-export function validateBlueprint(bp: BlueprintShape, effects: EmpireEffects): string[] {
+export function validateBlueprint(
+  bp: BlueprintShape,
+  effects: EmpireEffects,
+  chassisTable: Record<string, ChassisDef> = CHASSIS,
+  moduleTable: Record<string, ModuleDef> = MODULES,
+): string[] {
   const problems: string[] = [];
-  const chassis = CHASSIS[bp.chassisId as ChassisId];
+  const chassis = chassisTable[bp.chassisId];
   if (!chassis) return [`Châssis inconnu : ${bp.chassisId}`];
-  if (!effects.unlockedChassis.has(bp.chassisId as ChassisId)) {
+  if (!effects.unlockedChassis.has(bp.chassisId)) {
     problems.push("Châssis non débloqué");
   }
 
@@ -140,12 +155,12 @@ export function validateBlueprint(bp: BlueprintShape, effects: EmpireEffects): s
   let calc = 0;
 
   for (const modId of bp.modules) {
-    const mod = MODULES[modId as ModuleId];
+    const mod = moduleTable[modId];
     if (!mod) {
       problems.push(`Module inconnu : ${modId}`);
       continue;
     }
-    if (!effects.unlockedModules.has(modId as ModuleId)) {
+    if (!effects.unlockedModules.has(modId)) {
       problems.push(`Module non débloqué : ${modId}`);
     }
     slotUsed[mod.slot] += 1;

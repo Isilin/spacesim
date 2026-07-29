@@ -54,6 +54,24 @@ describe("validateBlueprint", () => {
       ),
     ).toBe(true);
   });
+
+  it("accepte des tables de châssis/modules injectées (chantier 23.10)", () => {
+    const customChassis = {
+      ...CHASSIS,
+      freshly_minted: { ...CHASSIS.scout_frame, id: "freshly_minted" },
+    };
+    // Inconnu de la table statique → "inconnu" ; connu de la table injectée → pas "inconnu"
+    // (juste "non débloqué", NO_EFFECTS n'ayant jamais entendu parler de cet id).
+    expect(
+      validateBlueprint({ chassisId: "freshly_minted", modules: [] }, NO_EFFECTS)[0],
+    ).toContain("inconnu");
+    const problems = validateBlueprint(
+      { chassisId: "freshly_minted", modules: [] },
+      NO_EFFECTS,
+      customChassis,
+    );
+    expect(problems.some((p) => p.includes("inconnu"))).toBe(false);
+  });
 });
 
 describe("resolveBlueprint", () => {
@@ -99,6 +117,26 @@ describe("resolveBlueprint", () => {
     const s = resolveBlueprint({ chassisId: "scout_frame", modules: ["cargo_pod"] });
     expect(s.cost.metals).toBe(CHASSIS.scout_frame.cost.metals! + MODULES.cargo_pod.cost.metals!);
   });
+
+  it("accepte des tables de châssis/modules injectées (chantier 23.10) — id inconnu des tables statiques", () => {
+    const customChassis = {
+      ...CHASSIS,
+      freshly_minted: { ...CHASSIS.scout_frame, id: "freshly_minted", hull: 9999 },
+    };
+    const customModules = {
+      ...MODULES,
+      also_new: { ...MODULES.cargo_pod, id: "also_new", effects: { capacity: 500 } },
+    };
+    const s = resolveBlueprint(
+      { chassisId: "freshly_minted", modules: ["also_new"] },
+      customChassis,
+      customModules,
+    );
+    expect(s.hull).toBe(9999);
+    expect(s.capacity).toBe(500);
+    // Sans les tables injectées, ces ids n'existent pas.
+    expect(resolveBlueprint({ chassisId: "freshly_minted", modules: [] }).hull).toBe(0);
+  });
 });
 
 describe("blueprintLoad", () => {
@@ -123,5 +161,17 @@ describe("déblocage par la recherche", () => {
     expect(e.unlockedChassis.has("battlecruiser")).toBe(true);
     expect(e.unlockedModules.has("railgun")).toBe(true);
     expect(e.unlockedModules.has("deflector_shield")).toBe(true);
+  });
+
+  it("accepte des tables de châssis/modules injectées (chantier 23.10)", () => {
+    const customChassis = {
+      ...CHASSIS,
+      freshly_minted: { ...CHASSIS.scout_frame, id: "freshly_minted", requiresTech: "metallurgy" },
+    };
+    const withTech = computeEffects(["metallurgy"] as TechId[], undefined, customChassis);
+    expect(withTech.unlockedChassis.has("freshly_minted")).toBe(true);
+    expect(computeEffects(["metallurgy"] as TechId[]).unlockedChassis.has("freshly_minted")).toBe(
+      false,
+    );
   });
 });

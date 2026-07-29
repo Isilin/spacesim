@@ -10,7 +10,11 @@ import {
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import { Empire } from "../../empire.js";
-import { techDefsFromContent } from "../content/content-service.js";
+import {
+  chassisDefsFromContent,
+  moduleDefsFromContent,
+  techDefsFromContent,
+} from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { ClaimRepository } from "../repositories/claim-repository.js";
@@ -112,6 +116,8 @@ export class BootstrapService {
       empire.effects = computeEffects(
         empire.researched,
         techDefsFromContent(this.runtime.content.techs),
+        chassisDefsFromContent(this.runtime.content.chassis),
+        moduleDefsFromContent(this.runtime.content.modules),
       );
       this.runtime.empires.set(empire.id, empire);
     }

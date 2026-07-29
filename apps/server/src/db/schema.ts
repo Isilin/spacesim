@@ -616,3 +616,50 @@ export const contentTechs = pgTable("content_techs", {
   /** JSON `TechEffects`. */
   effects: text("effects").notNull().default("{}"),
 });
+
+/**
+ * Châssis de vaisseau (chantier 23.10) — `id` libre (id-minting) : `Blueprint.chassisId`
+ * est déjà `string` (`createBlueprint`/`updateBlueprint` en protocole utilisent
+ * `idSchema`, jamais un tuple fermé). `sim/industry/design.ts`
+ * (`resolveBlueprint`/`validateBlueprint`) n'avait **aucune** injection avant ce chantier.
+ */
+export const contentChassis = pgTable("content_chassis", {
+  id: text("id").primaryKey(),
+  nameFr: text("name_fr").notNull(),
+  descriptionFr: text("description_fr").notNull().default(""),
+  kind: text("kind").notNull(),
+  domain: text("domain").notNull(),
+  hull: doublePrecision("hull").notNull(),
+  baseInitiative: doublePrecision("base_initiative").notNull(),
+  power: doublePrecision("power").notNull(),
+  tonnage: doublePrecision("tonnage").notNull(),
+  calc: doublePrecision("calc").notNull(),
+  /** JSON `Record<SlotType, number>`. */
+  slots: text("slots").notNull().default("{}"),
+  baseSpeedMult: doublePrecision("base_speed_mult").notNull(),
+  baseFuelPerJump: doublePrecision("base_fuel_per_jump").notNull(),
+  /** JSON `Partial<Record<ModuleRole, number>>`, null = pas de spécialisation. */
+  roleBonus: text("role_bonus"),
+  /** JSON `Partial<Record<ResourceId, number>>`. */
+  cost: text("cost").notNull().default("{}"),
+  buildMs: integer("build_ms").notNull(),
+  requiresTech: text("requires_tech"),
+});
+
+/** Modules de vaisseau (chantier 23.10) — `id` libre, même raison que `content_chassis`. */
+export const contentModules = pgTable("content_modules", {
+  id: text("id").primaryKey(),
+  nameFr: text("name_fr").notNull(),
+  descriptionFr: text("description_fr").notNull().default(""),
+  slot: text("slot").notNull(),
+  role: text("role").notNull(),
+  power: doublePrecision("power").notNull(),
+  tonnage: doublePrecision("tonnage").notNull(),
+  calc: doublePrecision("calc").notNull(),
+  /** JSON `Partial<Record<ResourceId, number>>`. */
+  cost: text("cost").notNull().default("{}"),
+  buildMs: integer("build_ms").notNull(),
+  requiresTech: text("requires_tech"),
+  /** JSON `ModuleEffects`. */
+  effects: text("effects").notNull().default("{}"),
+});

@@ -144,3 +144,96 @@ export const upsertTechSchema = z.object({
   effects: techEffectsSchema,
 });
 export type UpsertTechInput = z.infer<typeof upsertTechSchema>;
+
+/**
+ * Châssis + modules (chantier 23.10) : id libre, même recette que les vaisseaux/techs —
+ * `Blueprint.chassisId`/`modules` sont déjà `string`/`string[]` en protocole
+ * (`createBlueprint`/`updateBlueprint` utilisent `idSchema`), aucun tuple à desserrer.
+ * `sim/industry/design.ts` (`resolveBlueprint`/`validateBlueprint`) n'avait aucune
+ * injection avant ce chantier — c'est le domaine le plus risqué de la vague.
+ */
+export const SLOT_TYPES = ["weapon", "defense", "propulsion", "utility"] as const;
+export const slotTypeSchema = z.enum(SLOT_TYPES);
+
+const slotCountsSchema = z.object({
+  weapon: z.number().int().nonnegative(),
+  defense: z.number().int().nonnegative(),
+  propulsion: z.number().int().nonnegative(),
+  utility: z.number().int().nonnegative(),
+});
+
+export const CHASSIS_KINDS = [
+  "generic",
+  "military",
+  "freighter",
+  "miner",
+  "colonizer",
+  "explorer",
+] as const;
+export const chassisKindSchema = z.enum(CHASSIS_KINDS);
+
+export const SHIP_DOMAINS = ["fleet", "colony"] as const;
+export const shipDomainSchema = z.enum(SHIP_DOMAINS);
+
+export const MODULE_ROLES = [
+  "weapon",
+  "defense",
+  "propulsion",
+  "cargo",
+  "mining",
+  "habitat",
+  "support",
+  "sensor",
+] as const;
+export const moduleRoleSchema = z.enum(MODULE_ROLES);
+
+export const upsertChassisSchema = z.object({
+  nameFr: z.string().trim().min(1).max(80),
+  descriptionFr: z.string().trim().max(500).default(""),
+  kind: chassisKindSchema,
+  domain: shipDomainSchema,
+  hull: z.number().positive(),
+  baseInitiative: z.number(),
+  power: z.number().nonnegative(),
+  tonnage: z.number().nonnegative(),
+  calc: z.number().nonnegative(),
+  slots: slotCountsSchema,
+  baseSpeedMult: z.number().positive(),
+  baseFuelPerJump: z.number().nonnegative(),
+  /** null = pas de spécialisation de rôle. */
+  roleBonus: z.record(moduleRoleSchema, z.number().positive()).nullable(),
+  cost: z.record(z.string(), z.number().nonnegative()),
+  buildMs: z.number().int().positive(),
+  /** null = aucune tech requise. */
+  requiresTech: z.string().trim().min(1).nullable(),
+});
+export type UpsertChassisInput = z.infer<typeof upsertChassisSchema>;
+
+const moduleEffectsSchema = z.object({
+  weapons: combatPhaseWeaponsSchema.partial().optional(),
+  shield: z.number().optional(),
+  hullBonus: z.number().optional(),
+  initiative: z.number().optional(),
+  capacity: z.number().optional(),
+  speedMult: z.number().optional(),
+  fuelDelta: z.number().optional(),
+  miningYield: z.number().optional(),
+  colonizer: z.boolean().optional(),
+  fleetDamageBonus: z.number().optional(),
+});
+
+export const upsertModuleSchema = z.object({
+  nameFr: z.string().trim().min(1).max(80),
+  descriptionFr: z.string().trim().max(500).default(""),
+  slot: slotTypeSchema,
+  role: moduleRoleSchema,
+  power: z.number().nonnegative(),
+  tonnage: z.number().nonnegative(),
+  calc: z.number().nonnegative(),
+  cost: z.record(z.string(), z.number().nonnegative()),
+  buildMs: z.number().int().positive(),
+  /** null = aucune tech requise. */
+  requiresTech: z.string().trim().min(1).nullable(),
+  effects: moduleEffectsSchema,
+});
+export type UpsertModuleInput = z.infer<typeof upsertModuleSchema>;

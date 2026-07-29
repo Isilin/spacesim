@@ -17,6 +17,8 @@ beforeEach(async () => {
   await db.delete(schema.contentShips);
   await db.delete(schema.contentConstants);
   await db.delete(schema.contentTechs);
+  await db.delete(schema.contentChassis);
+  await db.delete(schema.contentModules);
 });
 
 const VALID_WARSHIP_BODY = {
@@ -595,6 +597,183 @@ describe("/api/admin/content/techs", () => {
       url: "/api/admin/content/techs/metallurgy",
       headers: { authorization: `Bearer ${token}` },
       payload: VALID_TECH_BODY,
+    });
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+const VALID_CHASSIS_BODY = {
+  nameFr: "Cadre d'assaut",
+  descriptionFr: "Un nouveau châssis créé depuis l'admin.",
+  kind: "military",
+  domain: "fleet",
+  hull: 150,
+  baseInitiative: 16,
+  power: 70,
+  tonnage: 90,
+  calc: 60,
+  slots: { weapon: 2, defense: 2, propulsion: 1, utility: 1 },
+  baseSpeedMult: 1,
+  baseFuelPerJump: 14,
+  roleBonus: { weapon: 1.1 },
+  cost: { metals: 200 },
+  buildMs: 100_000,
+  requiresTech: "military_doctrine",
+};
+
+describe("/api/admin/content/chassis", () => {
+  it("un content_editor liste les 9 châssis historiques amorcés au boot", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/admin/content/chassis",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().chassis).toHaveLength(9);
+  });
+
+  it("modifie un châssis existant — effective immédiatement", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/chassis/scout_frame",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_CHASSIS_BODY, hull: 9999, requiresTech: null },
+    });
+    expect(res.statusCode).toBe(200);
+    const updated = res.json().chassis.find((c: { id: string }) => c.id === "scout_frame");
+    expect(updated.hull).toBe(9999);
+  });
+
+  it("un id inconnu crée un châssis neuf (id-minting)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/chassis/assault_frame",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_CHASSIS_BODY,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().chassis).toHaveLength(10);
+  });
+
+  it("un corps invalide est refusé (400)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/chassis/scout_frame",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_CHASSIS_BODY, hull: -10 },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("un compte joueur ne peut pas éditer les châssis (403)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token } = await registerTestAccount(app, "joueur@exemple.fr");
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/chassis/scout_frame",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_CHASSIS_BODY,
+    });
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+const VALID_MODULE_BODY = {
+  nameFr: "Scanner quantique",
+  descriptionFr: "Un nouveau module créé depuis l'admin.",
+  slot: "utility",
+  role: "sensor",
+  power: 6,
+  tonnage: 4,
+  calc: 8,
+  cost: { metals: 30, components: 10 },
+  buildMs: 9_000,
+  requiresTech: "astro_cartography",
+  effects: { initiative: 6 },
+};
+
+describe("/api/admin/content/modules", () => {
+  it("un content_editor liste les 20 modules historiques amorcés au boot", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/admin/content/modules",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().modules).toHaveLength(20);
+  });
+
+  it("modifie un module existant — effective immédiatement", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/modules/laser_pulse",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_MODULE_BODY, power: 999, requiresTech: null },
+    });
+    expect(res.statusCode).toBe(200);
+    const updated = res.json().modules.find((m: { id: string }) => m.id === "laser_pulse");
+    expect(updated.power).toBe(999);
+  });
+
+  it("un id inconnu crée un module neuf (id-minting)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/modules/quantum_scanner",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_MODULE_BODY,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().modules).toHaveLength(21);
+  });
+
+  it("un corps invalide est refusé (400)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/modules/laser_pulse",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_MODULE_BODY, power: -1 },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("un compte joueur ne peut pas éditer les modules (403)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token } = await registerTestAccount(app, "joueur@exemple.fr");
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/modules/laser_pulse",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_MODULE_BODY,
     });
     expect(res.statusCode).toBe(403);
   });

@@ -2,12 +2,16 @@ import {
   BUILDING_IDS,
   BUILDINGS,
   CATEGORY_ADVANTAGE,
+  CHASSIS,
+  CHASSIS_IDS,
   COUNTER_BONUS,
   DEFAULT_BALANCE,
   DIRECTIVE_COUNTER,
   DIRECTIVES,
   FACTION_IDS,
   FACTIONS,
+  MODULES,
+  MODULE_IDS,
   SHIP_IDS,
   SHIPS,
   TECH_IDS,
@@ -17,7 +21,9 @@ import {
   WARSHIPS,
   type BalanceConstants,
   type BuildingDef,
+  type ChassisDef,
   type CombatDef,
+  type ModuleDef,
   type ShipDef,
   type TechDef,
 } from "@spacesim/shared";
@@ -25,8 +31,10 @@ import { ContentRepository } from "./content-repository.js";
 import type {
   ContentBuilding,
   ContentBundle,
+  ContentChassis,
   ContentConstant,
   ContentFaction,
+  ContentModule,
   ContentShip,
   ContentTech,
   ContentWarship,
@@ -440,6 +448,113 @@ function seedTechs(): ContentTech[] {
 }
 
 /**
+ * Libellés français des châssis, dupliqués depuis `apps/web/src/labels.ts`
+ * (`CHASSIS_LABELS`) — même raison que `SEED_WARSHIP_LABELS` ci-dessus.
+ */
+const SEED_CHASSIS_LABELS: Record<string, { name: string; description: string }> = {
+  scout_frame: { name: "Éclaireur", description: "Coque légère polyvalente, vive et sobre." },
+  standard_hull: { name: "Coque standard", description: "Généraliste équilibrée, deux armes." },
+  warframe: { name: "Cadre de guerre", description: "Militaire : +15 % dégâts, trois armes." },
+  battlecruiser: {
+    name: "Croiseur de bataille",
+    description: "Colossal : +20 % dégâts, +10 % défense, quatre armes.",
+  },
+  light_freighter: { name: "Cargo léger", description: "Civil : +20 % soute, coque nue." },
+  heavy_freighter: {
+    name: "Soutier lourd",
+    description: "Civil : +50 % soute, quatre utilitaires.",
+  },
+  mining_barge: { name: "Barge minière", description: "Extraction : +60 % rendement de minage." },
+  colony_ark: {
+    name: "Arche coloniale",
+    description: "Colonisation : +30 % habitat, gros vaisseau.",
+  },
+  explorer_frame: {
+    name: "Éclaireur lointain",
+    description: "Prospection : +30 % senseurs, +15 % minage, deux propulseurs.",
+  },
+};
+
+/** Châssis historiques (`packages/shared`) au format `ContentChassis`. */
+function seedChassis(): ContentChassis[] {
+  return CHASSIS_IDS.map((id) => {
+    const def = CHASSIS[id];
+    const label = SEED_CHASSIS_LABELS[id];
+    return {
+      id,
+      nameFr: label?.name ?? id,
+      descriptionFr: label?.description ?? "",
+      kind: def.kind,
+      domain: def.domain,
+      hull: def.hull,
+      baseInitiative: def.baseInitiative,
+      power: def.power,
+      tonnage: def.tonnage,
+      calc: def.calc,
+      slots: def.slots,
+      baseSpeedMult: def.baseSpeedMult,
+      baseFuelPerJump: def.baseFuelPerJump,
+      roleBonus: def.roleBonus ?? null,
+      cost: def.cost,
+      buildMs: def.buildMs,
+      requiresTech: def.requiresTech ?? null,
+    };
+  });
+}
+
+/**
+ * Libellés français des modules, dupliqués depuis `apps/web/src/labels.ts`
+ * (`MODULE_LABELS`) — même raison que `SEED_WARSHIP_LABELS` ci-dessus.
+ */
+const SEED_MODULE_LABELS: Record<string, { name: string; description: string }> = {
+  laser_pulse: { name: "Laser à impulsion", description: "Arme de mêlée (court)." },
+  autocannon: { name: "Canon automatique", description: "Arme à moyenne portée." },
+  railgun: { name: "Railgun", description: "Arme longue portée, perforante." },
+  missile_battery: { name: "Batterie de missiles", description: "Frappe très longue portée." },
+  armor_plating: { name: "Blindage", description: "+60 points de coque." },
+  deflector_shield: { name: "Bouclier déflecteur", description: "+30 boucliers." },
+  aegis_shield: { name: "Bouclier Aegis", description: "+70 boucliers." },
+  ion_thruster: { name: "Propulseur ionique", description: "+vitesse, un peu de carburant." },
+  warp_drive: { name: "Distorseur", description: "+vitesse forte, carburant élevé." },
+  ramscoop: { name: "Collecteur Bussard", description: "+vitesse légère, carburant réduit." },
+  cargo_pod: { name: "Module de soute", description: "+150 de capacité." },
+  cargo_hold_xl: { name: "Cale XL", description: "+450 de capacité." },
+  mining_laser: { name: "Laser de minage", description: "+40 rendement d'extraction." },
+  habitat_pod: { name: "Module d'habitat", description: "Rend le vaisseau colonisateur." },
+  fleet_uplink: { name: "Liaison de flotte", description: "+12 % dégâts de flotte (soutien)." },
+  sensor_array: { name: "Réseau de senseurs", description: "+4 initiative." },
+  plasma_cannon: { name: "Canon plasma", description: "Arme puissante à toute portée." },
+  reactive_plating: { name: "Blindage réactif", description: "+120 points de coque." },
+  graviton_engine: {
+    name: "Propulseur à graviton",
+    description: "+vitesse forte, sobre en carburant.",
+  },
+  deep_core_drill: { name: "Foreuse à noyau", description: "+80 rendement d'extraction." },
+};
+
+/** Modules historiques (`packages/shared`) au format `ContentModule`. */
+function seedModules(): ContentModule[] {
+  return MODULE_IDS.map((id) => {
+    const def = MODULES[id];
+    const label = SEED_MODULE_LABELS[id];
+    return {
+      id,
+      nameFr: label?.name ?? id,
+      descriptionFr: label?.description ?? "",
+      slot: def.slot,
+      role: def.role,
+      power: def.power,
+      tonnage: def.tonnage,
+      calc: def.calc,
+      cost: def.cost,
+      buildMs: def.buildMs,
+      requiresTech: def.requiresTech ?? null,
+      effects: def.effects,
+    };
+  });
+}
+
+/**
  * Amorce le contenu une fois dans la vie d'une base (idempotent, sûr à chaque boot —
  * même idiome que `BootstrapService.ensureNpcPopulation` : compter, compléter si vide).
  * Libellés français repris des tables `SEED_*` ci-dessus ; `apps/web/src/labels.ts` garde
@@ -473,21 +588,40 @@ export async function ensureContentSeeded(): Promise<void> {
   if ((await repo.countTechs()) === 0) {
     await repo.insertTechs(seedTechs());
   }
+  if ((await repo.countChassis()) === 0) {
+    await repo.insertChassis(seedChassis());
+  }
+  if ((await repo.countModules()) === 0) {
+    await repo.insertModules(seedModules());
+  }
 }
 
 /** Charge tout le contenu depuis la DB — appelé au boot puis après chaque édition admin
  *  (remplacement en bloc de `GameRuntime.content`, jamais de mutation en place). */
 export async function loadContentBundle(): Promise<ContentBundle> {
-  const [warships, combatTuning, factions, buildings, ships, constants, techs] = await Promise.all([
-    repo.loadWarships(),
-    repo.loadTuning(),
-    repo.loadFactions(),
-    repo.loadBuildings(),
-    repo.loadShips(),
-    repo.loadConstants(),
-    repo.loadTechs(),
-  ]);
-  return { warships, combatTuning, factions, buildings, ships, constants, techs };
+  const [warships, combatTuning, factions, buildings, ships, constants, techs, chassis, modules] =
+    await Promise.all([
+      repo.loadWarships(),
+      repo.loadTuning(),
+      repo.loadFactions(),
+      repo.loadBuildings(),
+      repo.loadShips(),
+      repo.loadConstants(),
+      repo.loadTechs(),
+      repo.loadChassis(),
+      repo.loadModules(),
+    ]);
+  return {
+    warships,
+    combatTuning,
+    factions,
+    buildings,
+    ships,
+    constants,
+    techs,
+    chassis,
+    modules,
+  };
 }
 
 /** Convertit les vaisseaux de guerre chargés en table de combat (`sim/military/combat.ts`
@@ -577,6 +711,61 @@ export function techDefsFromContent(techs: Record<string, ContentTech>): Record<
         requires: t.requires as TechDef["requires"],
         effects: t.effects,
       } satisfies TechDef,
+    ]),
+  );
+}
+
+/** Convertit les châssis chargés en table de définitions (`sim/industry/design.ts`
+ *  `resolveBlueprint`/`validateBlueprint`) — même forme que `CHASSIS`, sourcée depuis
+ *  le contenu DB-backed. */
+export function chassisDefsFromContent(
+  chassis: Record<string, ContentChassis>,
+): Record<string, ChassisDef> {
+  return Object.fromEntries(
+    Object.entries(chassis).map(([id, c]) => [
+      id,
+      {
+        id: id as ChassisDef["id"],
+        kind: c.kind as ChassisDef["kind"],
+        domain: c.domain as ChassisDef["domain"],
+        hull: c.hull,
+        baseInitiative: c.baseInitiative,
+        power: c.power,
+        tonnage: c.tonnage,
+        calc: c.calc,
+        slots: c.slots as ChassisDef["slots"],
+        baseSpeedMult: c.baseSpeedMult,
+        baseFuelPerJump: c.baseFuelPerJump,
+        roleBonus: (c.roleBonus ?? undefined) as ChassisDef["roleBonus"],
+        cost: c.cost,
+        buildMs: c.buildMs,
+        requiresTech: (c.requiresTech ?? undefined) as ChassisDef["requiresTech"],
+      } satisfies ChassisDef,
+    ]),
+  );
+}
+
+/** Convertit les modules chargés en table de définitions (`sim/industry/design.ts`
+ *  `resolveBlueprint`/`validateBlueprint`) — même forme que `MODULES`, sourcée depuis
+ *  le contenu DB-backed. */
+export function moduleDefsFromContent(
+  modules: Record<string, ContentModule>,
+): Record<string, ModuleDef> {
+  return Object.fromEntries(
+    Object.entries(modules).map(([id, m]) => [
+      id,
+      {
+        id: id as ModuleDef["id"],
+        slot: m.slot as ModuleDef["slot"],
+        role: m.role as ModuleDef["role"],
+        power: m.power,
+        tonnage: m.tonnage,
+        calc: m.calc,
+        cost: m.cost,
+        buildMs: m.buildMs,
+        requiresTech: (m.requiresTech ?? undefined) as ModuleDef["requiresTech"],
+        effects: m.effects,
+      } satisfies ModuleDef,
     ]),
   );
 }

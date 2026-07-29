@@ -60,4 +60,11 @@ describe("rôles et permissions admin", () => {
     expect(hasPermission("content_editor", "content.techs.read")).toBe(true);
     expect(hasPermission("content_editor", "content.techs.write")).toBe(true);
   });
+
+  it("content_editor édite aussi châssis et modules (chantier 23.10)", () => {
+    expect(hasPermission("content_editor", "content.chassis.read")).toBe(true);
+    expect(hasPermission("content_editor", "content.chassis.write")).toBe(true);
+    expect(hasPermission("content_editor", "content.modules.read")).toBe(true);
+    expect(hasPermission("content_editor", "content.modules.write")).toBe(true);
+  });
 });

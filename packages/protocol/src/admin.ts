@@ -30,6 +30,10 @@ export const ADMIN_ACTIONS = [
   "content.constants.write",
   "content.techs.read",
   "content.techs.write",
+  "content.chassis.read",
+  "content.chassis.write",
+  "content.modules.read",
+  "content.modules.write",
 ] as const;
 export type AdminActionId = (typeof ADMIN_ACTIONS)[number];
 
@@ -62,6 +66,10 @@ export const ROLE_PERMISSIONS: Record<RoleId, ReadonlySet<AdminActionId>> = {
     "content.constants.write",
     "content.techs.read",
     "content.techs.write",
+    "content.chassis.read",
+    "content.chassis.write",
+    "content.modules.read",
+    "content.modules.write",
   ]),
   admin: new Set(ADMIN_ACTIONS),
 };

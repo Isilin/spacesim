@@ -1,7 +1,9 @@
 import {
   upsertBuildingSchema,
+  upsertChassisSchema,
   upsertConstantSchema,
   upsertFactionSchema,
+  upsertModuleSchema,
   upsertShipSchema,
   upsertTechSchema,
   upsertWarshipSchema,
@@ -14,8 +16,10 @@ import { ContentRepository } from "../../../runtime/content/content-repository.j
 import { techDefsFromContent } from "../../../runtime/content/content-service.js";
 import type {
   ContentBuilding,
+  ContentChassis,
   ContentConstant,
   ContentFaction,
+  ContentModule,
   ContentShip,
   ContentTech,
   ContentWarship,
@@ -260,6 +264,75 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
         reason: isNew ? "création" : "modification",
       });
       return { techs: Object.values(engine.content.techs) };
+    },
+  );
+
+  // Châssis + modules (chantier 23.10) : id libre (id-minting), même recette que les
+  // vaisseaux/techs. Domaine le plus risqué de la vague — `sim/industry/design.ts`
+  // n'avait aucune injection avant ce chantier.
+  admin.get("/content/chassis", { config: { adminAction: "content.chassis.read" } }, () => ({
+    chassis: Object.values(engine.content.chassis),
+  }));
+
+  admin.put(
+    "/content/chassis/:id",
+    { config: { adminAction: "content.chassis.write" } },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const parsed = upsertChassisSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+      }
+      const isNew = !(id in engine.content.chassis);
+      const chassis: ContentChassis = { id, ...parsed.data };
+      await repo.saveChassis(chassis);
+      await engine.loadContent();
+
+      const actor = request.adminAccount!;
+      await recordAuditEntry({
+        actorAccountId: actor.id,
+        actorEmail: actor.email,
+        action: "content.chassis.write",
+        targetType: "content_chassis",
+        targetId: id,
+        reason: isNew ? "création" : "modification",
+      });
+      return { chassis: Object.values(engine.content.chassis) };
+    },
+  );
+
+  admin.get("/content/modules", { config: { adminAction: "content.modules.read" } }, () => ({
+    modules: Object.values(engine.content.modules),
+  }));
+
+  admin.put(
+    "/content/modules/:id",
+    { config: { adminAction: "content.modules.write" } },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const parsed = upsertModuleSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+      }
+      const isNew = !(id in engine.content.modules);
+      const module: ContentModule = { id, ...parsed.data };
+      await repo.saveModule(module);
+      await engine.loadContent();
+
+      const actor = request.adminAccount!;
+      await recordAuditEntry({
+        actorAccountId: actor.id,
+        actorEmail: actor.email,
+        action: "content.modules.write",
+        targetType: "content_module",
+        targetId: id,
+        reason: isNew ? "création" : "modification",
+      });
+      return { modules: Object.values(engine.content.modules) };
     },
   );
 }

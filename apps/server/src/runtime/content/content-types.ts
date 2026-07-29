@@ -1,4 +1,10 @@
-import type { CombatCategory, CombatDirective, CombatPhase, TechEffects } from "@spacesim/shared";
+import type {
+  CombatCategory,
+  CombatDirective,
+  CombatPhase,
+  ModuleEffects,
+  TechEffects,
+} from "@spacesim/shared";
 
 /**
  * Contenu de jeu chargé depuis la DB (chantier 23.5+) — un domaine à la fois, en
@@ -102,6 +108,49 @@ export interface ContentTech {
   effects: TechEffects;
 }
 
+/**
+ * Châssis de vaisseau (chantier 23.10) — `id: string` libre (id-minting).
+ * `sim/industry/design.ts` n'avait aucune injection avant ce chantier.
+ */
+export interface ContentChassis {
+  id: string;
+  nameFr: string;
+  descriptionFr: string;
+  kind: string;
+  domain: string;
+  hull: number;
+  baseInitiative: number;
+  power: number;
+  tonnage: number;
+  calc: number;
+  slots: Record<string, number>;
+  baseSpeedMult: number;
+  baseFuelPerJump: number;
+  /** null = pas de spécialisation de rôle. */
+  roleBonus: Partial<Record<string, number>> | null;
+  cost: Record<string, number>;
+  buildMs: number;
+  /** null = aucune tech requise. */
+  requiresTech: string | null;
+}
+
+/** Module de vaisseau (chantier 23.10) — `id: string` libre, même raison que `ContentChassis`. */
+export interface ContentModule {
+  id: string;
+  nameFr: string;
+  descriptionFr: string;
+  slot: string;
+  role: string;
+  power: number;
+  tonnage: number;
+  calc: number;
+  cost: Record<string, number>;
+  buildMs: number;
+  /** null = aucune tech requise. */
+  requiresTech: string | null;
+  effects: ModuleEffects;
+}
+
 /** Contenu chargé en mémoire (`GameRuntime.content`) — remplacé en bloc à chaque édition
  *  admin (édition en live, chantier 23 décision 3), jamais muté en place. */
 export interface ContentBundle {
@@ -112,4 +161,6 @@ export interface ContentBundle {
   ships: Record<string, ContentShip>;
   constants: Record<string, ContentConstant>;
   techs: Record<string, ContentTech>;
+  chassis: Record<string, ContentChassis>;
+  modules: Record<string, ContentModule>;
 }

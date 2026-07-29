@@ -2,9 +2,11 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 import type {
   ContentBuilding,
+  ContentChassis,
   ContentCombatTuning,
   ContentConstant,
   ContentFaction,
+  ContentModule,
   ContentShip,
   ContentTech,
   ContentWarship,
@@ -20,6 +22,8 @@ type BuildingRow = typeof schema.contentBuildings.$inferSelect;
 type ShipRow = typeof schema.contentShips.$inferSelect;
 type ConstantRow = typeof schema.contentConstants.$inferSelect;
 type TechRow = typeof schema.contentTechs.$inferSelect;
+type ChassisRow = typeof schema.contentChassis.$inferSelect;
+type ModuleRow = typeof schema.contentModules.$inferSelect;
 
 function warshipFromRow(row: WarshipRow): ContentWarship {
   return {
@@ -183,6 +187,84 @@ function rowFromTech(t: ContentTech) {
     durationMs: t.durationMs,
     requires: JSON.stringify(t.requires),
     effects: JSON.stringify(t.effects),
+  };
+}
+
+function chassisFromRow(row: ChassisRow): ContentChassis {
+  return {
+    id: row.id,
+    nameFr: row.nameFr,
+    descriptionFr: row.descriptionFr,
+    kind: row.kind,
+    domain: row.domain,
+    hull: row.hull,
+    baseInitiative: row.baseInitiative,
+    power: row.power,
+    tonnage: row.tonnage,
+    calc: row.calc,
+    slots: JSON.parse(row.slots),
+    baseSpeedMult: row.baseSpeedMult,
+    baseFuelPerJump: row.baseFuelPerJump,
+    roleBonus: row.roleBonus ? JSON.parse(row.roleBonus) : null,
+    cost: JSON.parse(row.cost),
+    buildMs: row.buildMs,
+    requiresTech: row.requiresTech,
+  };
+}
+
+function rowFromChassis(c: ContentChassis) {
+  return {
+    id: c.id,
+    nameFr: c.nameFr,
+    descriptionFr: c.descriptionFr,
+    kind: c.kind,
+    domain: c.domain,
+    hull: c.hull,
+    baseInitiative: c.baseInitiative,
+    power: c.power,
+    tonnage: c.tonnage,
+    calc: c.calc,
+    slots: JSON.stringify(c.slots),
+    baseSpeedMult: c.baseSpeedMult,
+    baseFuelPerJump: c.baseFuelPerJump,
+    roleBonus: c.roleBonus ? JSON.stringify(c.roleBonus) : null,
+    cost: JSON.stringify(c.cost),
+    buildMs: c.buildMs,
+    requiresTech: c.requiresTech,
+  };
+}
+
+function moduleFromRow(row: ModuleRow): ContentModule {
+  return {
+    id: row.id,
+    nameFr: row.nameFr,
+    descriptionFr: row.descriptionFr,
+    slot: row.slot,
+    role: row.role,
+    power: row.power,
+    tonnage: row.tonnage,
+    calc: row.calc,
+    cost: JSON.parse(row.cost),
+    buildMs: row.buildMs,
+    requiresTech: row.requiresTech,
+    effects: JSON.parse(row.effects),
+  };
+}
+
+function rowFromModule(m: ContentModule) {
+  return {
+    id: m.id,
+    nameFr: m.nameFr,
+    descriptionFr: m.descriptionFr,
+    slot: m.slot,
+    role: m.role,
+    power: m.power,
+    tonnage: m.tonnage,
+    calc: m.calc,
+    cost: JSON.stringify(m.cost),
+    buildMs: m.buildMs,
+    requiresTech: m.requiresTech,
+    effects: JSON.stringify(m.effects),
   };
 }
 
@@ -371,5 +453,51 @@ export class ContentRepository {
       .insert(schema.contentTechs)
       .values(row)
       .onConflictDoUpdate({ target: schema.contentTechs.id, set: row });
+  }
+
+  async countChassis(): Promise<number> {
+    const rows = await db.select({ id: schema.contentChassis.id }).from(schema.contentChassis);
+    return rows.length;
+  }
+
+  async loadChassis(): Promise<Record<string, ContentChassis>> {
+    const rows = await db.select().from(schema.contentChassis).orderBy(schema.contentChassis.id);
+    return Object.fromEntries(rows.map((row) => [row.id, chassisFromRow(row)]));
+  }
+
+  async insertChassis(chassis: ContentChassis[]): Promise<void> {
+    if (chassis.length === 0) return;
+    await db.insert(schema.contentChassis).values(chassis.map(rowFromChassis));
+  }
+
+  async saveChassis(chassis: ContentChassis): Promise<void> {
+    const row = rowFromChassis(chassis);
+    await db
+      .insert(schema.contentChassis)
+      .values(row)
+      .onConflictDoUpdate({ target: schema.contentChassis.id, set: row });
+  }
+
+  async countModules(): Promise<number> {
+    const rows = await db.select({ id: schema.contentModules.id }).from(schema.contentModules);
+    return rows.length;
+  }
+
+  async loadModules(): Promise<Record<string, ContentModule>> {
+    const rows = await db.select().from(schema.contentModules).orderBy(schema.contentModules.id);
+    return Object.fromEntries(rows.map((row) => [row.id, moduleFromRow(row)]));
+  }
+
+  async insertModules(modules: ContentModule[]): Promise<void> {
+    if (modules.length === 0) return;
+    await db.insert(schema.contentModules).values(modules.map(rowFromModule));
+  }
+
+  async saveModule(module: ContentModule): Promise<void> {
+    const row = rowFromModule(module);
+    await db
+      .insert(schema.contentModules)
+      .values(row)
+      .onConflictDoUpdate({ target: schema.contentModules.id, set: row });
   }
 }
