@@ -3,6 +3,8 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-
 import { AccountDetailView } from "./AccountDetailView.js";
 import { AccountsListView } from "./AccountsListView.js";
 import { AuditLogView } from "./AuditLogView.js";
+import { ContentLayout } from "./content/ContentLayout.js";
+import { FactionsView } from "./content/FactionsView.js";
 import { WarshipsView } from "./content/WarshipsView.js";
 import type { AdminAuth } from "./useAdminAuth.js";
 
@@ -10,7 +12,7 @@ interface Props {
   auth: AdminAuth;
 }
 
-/** Trois onglets (chantier 23.5) — "content" grandit avec 23.6+ (un domaine à la fois). */
+/** Trois onglets (chantier 23.5) — "content" a sa propre sous-navigation (23.6+). */
 const NAV_ITEMS = [
   { value: "accounts", label: "Joueurs" },
   { value: "content", label: "Contenu" },
@@ -41,8 +43,11 @@ export function App({ auth }: Props) {
           <Route path="/" element={<Navigate to="/accounts" replace />} />
           <Route path="/accounts" element={<AccountsListView token={auth.token!} />} />
           <Route path="/accounts/:id" element={<AccountDetailView token={auth.token!} />} />
-          <Route path="/content" element={<Navigate to="/content/warships" replace />} />
-          <Route path="/content/warships" element={<WarshipsView token={auth.token!} />} />
+          <Route path="/content" element={<ContentLayout />}>
+            <Route index element={<Navigate to="warships" replace />} />
+            <Route path="warships" element={<WarshipsView token={auth.token!} />} />
+            <Route path="factions" element={<FactionsView token={auth.token!} />} />
+          </Route>
           <Route path="/audit" element={<AuditLogView token={auth.token!} />} />
         </Routes>
       </div>

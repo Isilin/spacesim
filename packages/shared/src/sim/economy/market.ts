@@ -102,8 +102,15 @@ export function initialStocks(rng: Rng): Stocks {
 /**
  * Un tick économique : production/consommation du profil de faction,
  * retour lent vers la cible et bruit léger. Déterministe pour un rng donné.
+ * `faction` n'a besoin que de `produces`/`consumes` (pas `id`/`name`/`color`) — signature
+ * volontairement plus étroite que `FactionDef` (chantier 23.6) : le contenu DB-backed
+ * injecté côté serveur porte un `id: string` libre, pas le tuple fermé `FactionId`.
  */
-export function marketTick(stocks: Stocks, faction: FactionDef, rng: Rng): Stocks {
+export function marketTick(
+  stocks: Stocks,
+  faction: Pick<FactionDef, "produces" | "consumes">,
+  rng: Rng,
+): Stocks {
   const next = { ...stocks };
   for (const res of MARKET_RESOURCES) {
     let stock = next[res];

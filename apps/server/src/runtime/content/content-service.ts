@@ -3,13 +3,15 @@ import {
   COUNTER_BONUS,
   DIRECTIVE_COUNTER,
   DIRECTIVES,
+  FACTION_IDS,
+  FACTIONS,
   WARSHIP_CATEGORY,
   WARSHIP_IDS,
   WARSHIPS,
   type CombatDef,
 } from "@spacesim/shared";
 import { ContentRepository } from "./content-repository.js";
-import type { ContentBundle, ContentWarship } from "./content-types.js";
+import type { ContentBundle, ContentFaction, ContentWarship } from "./content-types.js";
 
 const repo = new ContentRepository();
 
@@ -67,11 +69,37 @@ function seedWarships(): ContentWarship[] {
 }
 
 /**
+ * Descriptions étendues des factions, dupliquées depuis `apps/web/src/labels.ts`
+ * (`FACTION_LABELS`) — même raison que `SEED_WARSHIP_LABELS` ci-dessus. `name`/`color`
+ * n'ont pas besoin de ce traitement : `content/factions.ts` les porte déjà en canonique.
+ */
+const SEED_FACTION_DESCRIPTIONS: Record<string, string> = {
+  ferride: "Forges orbitales et chaînes de montage. Vend le métal, paie cher les vivres.",
+  ostara_league: "Les greniers de la galaxie. Vend nourriture et biens, achète l'industrie.",
+  aether_cartel: "Réacteurs, minerai brut et discrétion. Vend l'énergie, achète le raffiné.",
+};
+
+/** Factions historiques (`packages/shared`) au format `ContentFaction`. */
+function seedFactions(): ContentFaction[] {
+  return FACTION_IDS.map((id) => {
+    const def = FACTIONS[id];
+    return {
+      id,
+      name: def.name,
+      color: def.color,
+      descriptionFr: SEED_FACTION_DESCRIPTIONS[id] ?? "",
+      produces: def.produces,
+      consumes: def.consumes,
+    };
+  });
+}
+
+/**
  * Amorce le contenu une fois dans la vie d'une base (idempotent, sûr à chaque boot —
  * même idiome que `BootstrapService.ensureNpcPopulation` : compter, compléter si vide).
- * Libellés français repris de `SEED_WARSHIP_LABELS` ci-dessus ; `apps/web/src/labels.ts`
- * garde son propre `WARSHIP_LABELS` en parallèle tant que ce domaine n'y est pas
- * entièrement migré — un admin peut déjà éditer `nameFr`/`descriptionFr` ici.
+ * Libellés français repris des tables `SEED_*` ci-dessus ; `apps/web/src/labels.ts` garde
+ * ses propres tables en parallèle tant que ces domaines n'y sont pas entièrement migrés —
+ * un admin peut déjà éditer les champs français ici.
  */
 export async function ensureContentSeeded(): Promise<void> {
   if ((await repo.countWarships()) === 0) {
@@ -85,13 +113,20 @@ export async function ensureContentSeeded(): Promise<void> {
       counterBonus: COUNTER_BONUS,
     });
   }
+  if ((await repo.countFactions()) === 0) {
+    await repo.insertFactions(seedFactions());
+  }
 }
 
 /** Charge tout le contenu depuis la DB — appelé au boot puis après chaque édition admin
  *  (remplacement en bloc de `GameRuntime.content`, jamais de mutation en place). */
 export async function loadContentBundle(): Promise<ContentBundle> {
-  const [warships, combatTuning] = await Promise.all([repo.loadWarships(), repo.loadTuning()]);
-  return { warships, combatTuning };
+  const [warships, combatTuning, factions] = await Promise.all([
+    repo.loadWarships(),
+    repo.loadTuning(),
+    repo.loadFactions(),
+  ]);
+  return { warships, combatTuning, factions };
 }
 
 /** Convertit les vaisseaux de guerre chargés en table de combat (`sim/military/combat.ts`

@@ -2,7 +2,6 @@ import {
   createRng,
   decideColonyEconomy,
   embargoBlocks,
-  FACTIONS,
   factionTick,
   gatewayLinks,
   jumpDistanceInUniverse,
@@ -29,7 +28,6 @@ import {
   worldEventPriceBonus,
   type Colony,
   type Contract,
-  type FactionId,
   type FactionState,
   type MarketResource,
   type Mission,
@@ -355,7 +353,8 @@ export class MarketService {
       if (next === state) continue;
       this.runtime.factionStateMap.set(factionId, next);
       this.persistFactionState(next);
-      this.logger.info(`[game] humeur de ${FACTIONS[factionId as FactionId].name} : ${next.mood}`);
+      const name = this.runtime.content.factions[factionId]?.name ?? factionId;
+      this.logger.info(`[game] humeur de ${name} : ${next.mood}`);
       // La pénurie se traduit en demande concrète : un contrat qu'un joueur peut honorer.
       if (next.mood === "shortage") this.factionPostShortageContract(factionId, rng);
     }
@@ -367,7 +366,8 @@ export class MarketService {
    * différence d'un empire — c'est le marché lui-même qui l'honore, standing à la clé.
    */
   factionPostShortageContract(factionId: string, rng: Rng): void {
-    const def = FACTIONS[factionId as FactionId];
+    const def = this.runtime.content.factions[factionId];
+    if (!def) return;
     const consumed = Object.keys(def.consumes) as MarketResource[];
     if (consumed.length === 0) return;
     const alreadyOpen = [...this.runtime.contractMap.values()].some(
@@ -459,7 +459,7 @@ export class MarketService {
     for (const station of this.runtime.stationsById.values()) {
       const stocks = this.runtime.marketMap.get(station.id);
       if (!stocks) continue;
-      const faction = FACTIONS[station.factionId as FactionId];
+      const faction = this.runtime.content.factions[station.factionId];
       if (!faction) continue;
       const rng = createRng(`${this.runtime.clock.seed}-mkt-${station.id}-${tickNumber}`);
       this.runtime.marketMap.set(station.id, marketTick(stocks, faction, rng));

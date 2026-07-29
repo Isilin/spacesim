@@ -1,4 +1,4 @@
-import { WARSHIP_IDS } from "@spacesim/shared";
+import { FACTION_IDS, WARSHIP_IDS } from "@spacesim/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db, schema } from "../../db/index.js";
 import {
@@ -10,6 +10,7 @@ import {
 beforeEach(async () => {
   await db.delete(schema.contentWarships);
   await db.delete(schema.contentCombatTuning);
+  await db.delete(schema.contentFactions);
 });
 
 describe("ensureContentSeeded", () => {
@@ -19,6 +20,14 @@ describe("ensureContentSeeded", () => {
     expect(Object.keys(bundle.warships).sort()).toEqual([...WARSHIP_IDS].sort());
     expect(bundle.warships.fighter?.nameFr).toBe("Chasseur");
     expect(bundle.combatTuning.counterBonus).toBeGreaterThan(1);
+  });
+
+  it("peuple les factions depuis packages/shared/src/content/factions.ts", async () => {
+    await ensureContentSeeded();
+    const bundle = await loadContentBundle();
+    expect(Object.keys(bundle.factions).sort()).toEqual([...FACTION_IDS].sort());
+    expect(bundle.factions.ferride?.name).toBe("Consortium Ferride");
+    expect(bundle.factions.ferride?.produces.metals).toBeGreaterThan(0);
   });
 
   it("est idempotent : un second appel ne duplique rien", async () => {

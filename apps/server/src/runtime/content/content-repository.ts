@@ -1,12 +1,13 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
-import type { ContentCombatTuning, ContentWarship } from "./content-types.js";
+import type { ContentCombatTuning, ContentFaction, ContentWarship } from "./content-types.js";
 
 /** Ligne unique de `content_combat_tuning` — id fixe, jamais une clé de contenu. */
 const TUNING_ROW_ID = "default";
 
 type WarshipRow = typeof schema.contentWarships.$inferSelect;
 type TuningRow = typeof schema.contentCombatTuning.$inferSelect;
+type FactionRow = typeof schema.contentFactions.$inferSelect;
 
 function warshipFromRow(row: WarshipRow): ContentWarship {
   return {
@@ -58,6 +59,28 @@ function rowFromTuning(t: ContentCombatTuning) {
     directives: JSON.stringify(t.directives),
     directiveCounter: JSON.stringify(t.directiveCounter),
     counterBonus: t.counterBonus,
+  };
+}
+
+function factionFromRow(row: FactionRow): ContentFaction {
+  return {
+    id: row.id,
+    name: row.name,
+    color: row.color,
+    descriptionFr: row.descriptionFr,
+    produces: JSON.parse(row.produces),
+    consumes: JSON.parse(row.consumes),
+  };
+}
+
+function rowFromFaction(f: ContentFaction) {
+  return {
+    id: f.id,
+    name: f.name,
+    color: f.color,
+    descriptionFr: f.descriptionFr,
+    produces: JSON.stringify(f.produces),
+    consumes: JSON.stringify(f.consumes),
   };
 }
 
@@ -123,5 +146,28 @@ export class ContentRepository {
       .insert(schema.contentCombatTuning)
       .values(row)
       .onConflictDoUpdate({ target: schema.contentCombatTuning.id, set: row });
+  }
+
+  async countFactions(): Promise<number> {
+    const rows = await db.select({ id: schema.contentFactions.id }).from(schema.contentFactions);
+    return rows.length;
+  }
+
+  async loadFactions(): Promise<Record<string, ContentFaction>> {
+    const rows = await db.select().from(schema.contentFactions).orderBy(schema.contentFactions.id);
+    return Object.fromEntries(rows.map((row) => [row.id, factionFromRow(row)]));
+  }
+
+  async insertFactions(factions: ContentFaction[]): Promise<void> {
+    if (factions.length === 0) return;
+    await db.insert(schema.contentFactions).values(factions.map(rowFromFaction));
+  }
+
+  async saveFaction(faction: ContentFaction): Promise<void> {
+    const row = rowFromFaction(faction);
+    await db
+      .insert(schema.contentFactions)
+      .values(row)
+      .onConflictDoUpdate({ target: schema.contentFactions.id, set: row });
   }
 }

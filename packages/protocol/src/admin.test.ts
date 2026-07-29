@@ -35,4 +35,9 @@ describe("rôles et permissions admin", () => {
     expect(hasPermission("content_editor", "account.view")).toBe(false);
     expect(hasPermission("content_editor", "audit.read")).toBe(false);
   });
+
+  it("content_editor édite aussi les factions (chantier 23.6)", () => {
+    expect(hasPermission("content_editor", "content.factions.read")).toBe(true);
+    expect(hasPermission("content_editor", "content.factions.write")).toBe(true);
+  });
 });

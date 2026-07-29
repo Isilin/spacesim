@@ -530,3 +530,17 @@ export const contentCombatTuning = pgTable("content_combat_tuning", {
   directiveCounter: text("directive_counter").notNull(),
   counterBonus: doublePrecision("counter_bonus").notNull(),
 });
+
+/** Factions marchandes PNJ (chantier 23.6) — première extension du patron d'injection à
+ *  un domaine qui n'en avait aucune trace avant ce chantier. */
+export const contentFactions = pgTable("content_factions", {
+  id: text("id").primaryKey(),
+  /** Nom canonique — déjà partagé côté serveur avant ce chantier (émetteur de contrat). */
+  name: text("name").notNull(),
+  color: text("color").notNull(),
+  descriptionFr: text("description_fr").notNull().default(""),
+  /** JSON `Partial<Record<ResourceId, number>>`. */
+  produces: text("produces").notNull().default("{}"),
+  /** JSON `Partial<Record<ResourceId, number>>`. */
+  consumes: text("consumes").notNull().default("{}"),
+});

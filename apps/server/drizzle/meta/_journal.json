@@ -29,6 +29,13 @@
       "when": 1785307848397,
       "tag": "0003_silly_leper_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785309294981,
+      "tag": "0004_curved_anthem",
+      "breakpoints": true
     }
   ]
 }

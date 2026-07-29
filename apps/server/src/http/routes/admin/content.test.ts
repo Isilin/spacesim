@@ -12,6 +12,7 @@ beforeEach(async () => {
   // nettoyage, une édition d'un test précédent survivrait aux suivants dans ce fichier.
   await db.delete(schema.contentWarships);
   await db.delete(schema.contentCombatTuning);
+  await db.delete(schema.contentFactions);
 });
 
 const VALID_WARSHIP_BODY = {
@@ -163,5 +164,86 @@ describe("/api/admin/content/warships", () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().counterBonus).toBeGreaterThan(1);
+  });
+});
+
+const VALID_FACTION_BODY = {
+  name: "Syndicat Hélion",
+  color: "#3388ff",
+  descriptionFr: "Une nouvelle faction créée depuis l'admin.",
+  produces: { energy: 40 },
+  consumes: { metals: 20 },
+};
+
+describe("/api/admin/content/factions", () => {
+  it("un content_editor liste les 3 factions historiques amorcées au boot", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/admin/content/factions",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().factions).toHaveLength(3);
+  });
+
+  it("modifie une faction existante — effective immédiatement", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/factions/ferride",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_FACTION_BODY, name: "Consortium Ferride" },
+    });
+    expect(res.statusCode).toBe(200);
+    const updated = res.json().factions.find((f: { id: string }) => f.id === "ferride");
+    expect(updated.color).toBe("#3388ff");
+    expect(updated.produces.energy).toBe(40);
+  });
+
+  it("un id inconnu crée une faction neuve (id-minting)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/factions/helion_syndicate",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_FACTION_BODY,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().factions).toHaveLength(4);
+  });
+
+  it("une couleur mal formée est refusée (400)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/factions/ferride",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_FACTION_BODY, color: "bleu" },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("un compte joueur ne peut pas éditer les factions (403)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token } = await registerTestAccount(app, "joueur@exemple.fr");
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/factions/ferride",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_FACTION_BODY,
+    });
+    expect(res.statusCode).toBe(403);
   });
 });

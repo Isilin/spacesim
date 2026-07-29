@@ -3,8 +3,6 @@ import {
   createRng,
   DECLARE_WAR_INFLUENCE_COST,
   declareWarReason,
-  FACTION_IDS,
-  FACTIONS,
   fleetPower,
   makePeaceReason,
   npcAcceptsProposal,
@@ -13,7 +11,6 @@ import {
   rollWorldEvent,
   WAR_COOLDOWN_MS,
   WORLD_EVENT_DURATION_MS,
-  type FactionId,
   type FactionState,
   type FleetComposition,
   type ProposalKind,
@@ -263,7 +260,8 @@ export class DiplomacyService {
     if (!kind) return;
 
     if (kind === "faction_boom") {
-      const factionId = FACTION_IDS[Math.floor(rng() * FACTION_IDS.length)]!;
+      const ids = this.factionIds();
+      const factionId = ids[Math.floor(rng() * ids.length)]!;
       const alreadyActive = [...this.runtime.worldEventMap.values()].some(
         (e) => e.kind === "faction_boom" && e.factionId === factionId,
       );
@@ -274,7 +272,8 @@ export class DiplomacyService {
       this.insertWorldEvent(event);
       // Effet immédiat : force le boom, comme une pénurie de faction poste aussitôt un contrat.
       this.setFactionMood(factionId, "boom", expiresAt);
-      this.logger.info(`[game] essor de faction : ${FACTIONS[factionId as FactionId].name}`);
+      const name = this.runtime.content.factions[factionId]?.name ?? factionId;
+      this.logger.info(`[game] essor de faction : ${name}`);
       this.notify();
       return;
     }
@@ -300,9 +299,14 @@ export class DiplomacyService {
 
   // ─────────────────────────── Factions (chantier 15) ───────────────────────────
 
+  /** Ids des factions actuellement chargées (contenu DB-backed, chantier 23.6). */
+  private factionIds(): string[] {
+    return Object.keys(this.runtime.content.factions);
+  }
+
   /** Dote chaque faction d'un état (chantier 15). Idempotent : rejoué sans jamais dédoubler. */
   initFactionStates(): void {
-    for (const factionId of FACTION_IDS) {
+    for (const factionId of this.factionIds()) {
       if (this.runtime.factionStateMap.has(factionId)) continue;
       const state: FactionState = { factionId, mood: "neutral", moodUntil: null };
       this.runtime.factionStateMap.set(factionId, state);
@@ -363,7 +367,7 @@ export class DiplomacyService {
     const now = Date.now();
     const expiresAt = now + durationMs;
     if (kind === "faction_boom") {
-      const factionId = target || FACTION_IDS[0]!;
+      const factionId = target || this.factionIds()[0]!;
       if (!this.runtime.factionStateMap.has(factionId)) return null;
       const event: WorldEvent = { id: randomUUID(), kind, factionId, createdAt: now, expiresAt };
       this.runtime.worldEventMap.set(event.id, event);

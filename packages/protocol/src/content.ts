@@ -32,3 +32,18 @@ export const upsertWarshipSchema = z.object({
   fleetDamageBonus: z.number().nonnegative().nullable(),
 });
 export type UpsertWarshipInput = z.infer<typeof upsertWarshipSchema>;
+
+/** Couleur hex à 6 chiffres — cartes/badges/contrats attendent ce format exact. */
+const hexColorSchema = z
+  .string()
+  .trim()
+  .regex(/^#[0-9a-fA-F]{6}$/, "Couleur hexadécimale attendue, ex. #ff8c42");
+
+export const upsertFactionSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  color: hexColorSchema,
+  descriptionFr: z.string().trim().max(500).default(""),
+  produces: z.record(z.string(), z.number().nonnegative()),
+  consumes: z.record(z.string(), z.number().nonnegative()),
+});
+export type UpsertFactionInput = z.infer<typeof upsertFactionSchema>;

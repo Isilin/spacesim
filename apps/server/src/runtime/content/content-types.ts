@@ -32,9 +32,20 @@ export interface ContentCombatTuning {
   counterBonus: number;
 }
 
+/** Faction marchande PNJ (chantier 23.6). */
+export interface ContentFaction {
+  id: string;
+  name: string;
+  color: string;
+  descriptionFr: string;
+  produces: Record<string, number>;
+  consumes: Record<string, number>;
+}
+
 /** Contenu chargé en mémoire (`GameRuntime.content`) — remplacé en bloc à chaque édition
  *  admin (édition en live, chantier 23 décision 3), jamais muté en place. */
 export interface ContentBundle {
   warships: Record<string, ContentWarship>;
   combatTuning: ContentCombatTuning;
+  factions: Record<string, ContentFaction>;
 }
