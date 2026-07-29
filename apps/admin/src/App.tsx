@@ -14,16 +14,19 @@ import { PresetsView } from "./content/PresetsView.js";
 import { ShipsView } from "./content/ShipsView.js";
 import { TechsView } from "./content/TechsView.js";
 import { WarshipsView } from "./content/WarshipsView.js";
+import { OpsView } from "./OpsView.js";
 import type { AdminAuth } from "./useAdminAuth.js";
 
 interface Props {
   auth: AdminAuth;
 }
 
-/** Trois onglets (chantier 23.5) — "content" a sa propre sous-navigation (23.6+). */
+/** Quatre onglets — "content" a sa propre sous-navigation (23.6+). "ops" (23.12) reste
+ *  visible pour tous les rôles, comme "audit" : c'est la route qui refuse (403), pas le nav. */
 const NAV_ITEMS = [
   { value: "accounts", label: "Joueurs" },
   { value: "content", label: "Contenu" },
+  { value: "ops", label: "Ops" },
   { value: "audit", label: "Journal d'audit" },
 ];
 
@@ -64,6 +67,7 @@ export function App({ auth }: Props) {
             <Route path="presets" element={<PresetsView token={auth.token!} />} />
             <Route path="milestones" element={<MilestonesView token={auth.token!} />} />
           </Route>
+          <Route path="/ops" element={<OpsView token={auth.token!} />} />
           <Route path="/audit" element={<AuditLogView token={auth.token!} />} />
         </Routes>
       </div>

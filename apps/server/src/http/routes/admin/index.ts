@@ -94,6 +94,16 @@ export function registerAdminRoutes(app: FastifyInstance, engine: GameEngine): v
       );
 
       registerContentRoutes(admin, engine);
+
+      // Tableau de bord ops (chantier 23.12) : additif, réservé à "admin" — pas de mutation,
+      // donc pas d'audit. `/ops/empires` délègue à `devEmpireSummaries()` (déjà utilisé par
+      // `/dev/empires`, même forme) ; `/ops/health` expose tick/flush/croissance de l'univers,
+      // jusqu'ici visibles seulement dans les logs.
+      admin.get("/ops/empires", { config: { adminAction: "ops.read" } }, () => ({
+        empires: engine.devEmpireSummaries(),
+      }));
+
+      admin.get("/ops/health", { config: { adminAction: "ops.read" } }, () => engine.opsHealth());
     },
     { prefix: "/api/admin" },
   );

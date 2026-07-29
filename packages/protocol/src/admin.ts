@@ -38,6 +38,7 @@ export const ADMIN_ACTIONS = [
   "content.presets.write",
   "content.milestones.read",
   "content.milestones.write",
+  "ops.read",
 ] as const;
 export type AdminActionId = (typeof ADMIN_ACTIONS)[number];
 

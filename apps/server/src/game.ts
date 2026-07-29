@@ -1,9 +1,11 @@
 import {
   FACTION_MOOD_DURATION_MS,
+  FRONTIER_GALAXIES,
   generateGalaxyAt,
   generateUniverse,
   INITIAL_GALAXIES,
   MAX_CATCHUP_TICKS,
+  MAX_GALAXIES,
   WORLD_EVENT_DURATION_MS,
   TICK_MS,
   type AsteroidBelt,
@@ -591,5 +593,31 @@ export class GameEngine {
    */
   flush(): Promise<void> {
     return this.persister.flush();
+  }
+
+  /**
+   * Santé du moteur pour le tableau de bord admin (chantier 23.12) : `tick`/`lastTickAt`
+   * (horloge), `lastFlushAt`/`lastFlushError` (déjà publics sur `Persister`, jamais
+   * exposés en HTTP avant ce chantier), et la jauge de croissance de l'univers
+   * (`galaxyCount` vs `MAX_GALAXIES`/`FRONTIER_GALAXIES`).
+   */
+  opsHealth(): {
+    tick: number;
+    lastTickAt: number;
+    lastFlushAt: number | null;
+    lastFlushError: string | null;
+    galaxyCount: number;
+    maxGalaxies: number;
+    frontierGalaxies: number;
+  } {
+    return {
+      tick: this.runtime.clock.tick,
+      lastTickAt: this.runtime.clock.lastTickAt,
+      lastFlushAt: this.persister.lastFlushAt,
+      lastFlushError: this.persister.lastFlushError,
+      galaxyCount: this.runtime.clock.galaxyCount,
+      maxGalaxies: MAX_GALAXIES,
+      frontierGalaxies: FRONTIER_GALAXIES,
+    };
   }
 }

@@ -74,4 +74,11 @@ describe("rôles et permissions admin", () => {
     expect(hasPermission("content_editor", "content.milestones.read")).toBe(true);
     expect(hasPermission("content_editor", "content.milestones.write")).toBe(true);
   });
+
+  it("seul admin voit le tableau de bord ops (chantier 23.12)", () => {
+    expect(hasPermission("admin", "ops.read")).toBe(true);
+    expect(hasPermission("moderator", "ops.read")).toBe(false);
+    expect(hasPermission("content_editor", "ops.read")).toBe(false);
+    expect(hasPermission("player", "ops.read")).toBe(false);
+  });
 });
