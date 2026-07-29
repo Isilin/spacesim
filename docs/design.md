@@ -915,6 +915,21 @@ fois (valeurs d'abord, création d'id ensuite) : chaque écran CMS de contenu in
   navigation par onglets pour le CMS de contenu, pilotée par l'URL, extensible pour 23.7+.
   Vérifié au navigateur (édition persistée et relue immédiatement, aucune erreur console)
   et par 6 tests serveur.
+- ✅ **23.7** — Contenu : bâtiments de colonie. `content_buildings` (migration 0005) — mais
+  **pas d'id-minting** sur ce domaine, à la différence de 23.5/23.6 : `BuildingId` est
+  tissé dans `Colony.buildings`/`BuildQueueItem`/`EmpireEffects` et dans
+  `packages/protocol/src/game.ts` (`z.enum(BUILDING_IDS)` sur l'action `build`) —
+  desserrer ce tuple serait un chantier à part, explicitement pas inclus dans cette passe.
+  `PUT .../buildings/:id` refuse un id absent de `BUILDING_IDS` (400) plutôt que de créer
+  une entrée inutilisable en jeu ; seules les valeurs des 12 bâtiments historiques sont
+  éditables. `sim/industry/colony.ts` : `BUILDINGS` était utilisé en dur dans 6 fonctions
+  (`enqueueBuilding`, `totalJobs`, `workforceEfficiency`, `applyColonyTick`, `colonyRates`,
+  `colonyShortages`) — chacune gagne un paramètre `buildings: Record<string, BuildingDef>
+  = BUILDINGS` (type élargi, `BuildingId` lui-même inchangé). `colonyRates`/
+  `colonyShortages` ne sont en réalité appelées que côté client
+  (`apps/web/ColonyView.tsx`, aperçu de production) — seules `enqueueBuilding`/
+  `applyColonyTick` sont effectivement injectées côté serveur. Vérifié au navigateur
+  (production de « mine » modifiée et relue immédiatement) et par 8 nouveaux tests.
 
 ### État actuel (contrainte de départ)
 
