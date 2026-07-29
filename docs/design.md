@@ -845,6 +845,16 @@ autorité, ces ids n'ont plus de raison de rester figés à la compilation. Le d
 fois (valeurs d'abord, création d'id ensuite) : chaque écran CMS de contenu inclut donc un bouton
 « nouveau » dès son sous-chantier, pas dans un chantier séparé ultérieur.
 
+**Avancement (28/07/2026)** :
+- ✅ **23.1** — `accounts.role` (défaut `"player"`, migration 0001) + table `admin_audit_log`.
+  `packages/protocol/src/admin.ts` : `ROLE_IDS`/`ADMIN_ACTIONS`/`ROLE_PERMISSIONS` (matrice codée,
+  sans résolveur de hiérarchie — `admin` reçoit tout). Garde Fastify `adminGuard`
+  (`http/routes/admin/guard.ts`, `preHandler` scopé au plugin `/api/admin`, fail-closed si une
+  route omet `config.adminAction`) : 401 sans session valide, 403 hors permission. Route de fumée
+  `GET /api/admin/audit`, toujours active (contrairement à `/dev/*`, la protection est le rôle, pas
+  `NODE_ENV`). Premier admin : geste manuel (`UPDATE accounts SET role='admin' WHERE email=...`),
+  pas de flux libre-service.
+
 ### État actuel (contrainte de départ)
 
 - Aucune notion d'admin/rôle/audit/sanction nulle part dans `apps/server` (recherche exhaustive
