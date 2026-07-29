@@ -18,6 +18,8 @@ export const ADMIN_ACTIONS = [
   "account.ban",
   "account.unban",
   "account.force_logout",
+  "content.warships.read",
+  "content.warships.write",
 ] as const;
 export type AdminActionId = (typeof ADMIN_ACTIONS)[number];
 
@@ -37,7 +39,7 @@ export const ROLE_PERMISSIONS: Record<RoleId, ReadonlySet<AdminActionId>> = {
     "account.unban",
     "account.force_logout",
   ]),
-  content_editor: new Set(),
+  content_editor: new Set(["content.warships.read", "content.warships.write"]),
   admin: new Set(ADMIN_ACTIONS),
 };
 

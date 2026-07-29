@@ -29,9 +29,10 @@ describe("rôles et permissions admin", () => {
     expect(hasPermission("moderator", "audit.read")).toBe(false);
   });
 
-  it("content_editor n'a encore aucune action câblée", () => {
-    for (const action of ADMIN_ACTIONS) {
-      expect(hasPermission("content_editor", action)).toBe(false);
-    }
+  it("content_editor édite les vaisseaux de guerre (chantier 23.5) mais pas les comptes", () => {
+    expect(hasPermission("content_editor", "content.warships.read")).toBe(true);
+    expect(hasPermission("content_editor", "content.warships.write")).toBe(true);
+    expect(hasPermission("content_editor", "account.view")).toBe(false);
+    expect(hasPermission("content_editor", "audit.read")).toBe(false);
   });
 });

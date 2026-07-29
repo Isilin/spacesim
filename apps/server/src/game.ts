@@ -25,6 +25,8 @@ import type { EmpireSnapshot } from "@spacesim/protocol";
 import { randomUUID } from "node:crypto";
 import { Empire, type Clock } from "./empire.js";
 import { bootEngine } from "./runtime/boot.js";
+import { ensureContentSeeded, loadContentBundle } from "./runtime/content/content-service.js";
+import type { ContentBundle } from "./runtime/content/content-types.js";
 import { composeEngine } from "./runtime/composition.js";
 import { GameRuntime } from "./runtime/game-runtime.js";
 import { consoleLogger, type Logger } from "./runtime/logger.js";
@@ -563,6 +565,22 @@ export class GameEngine {
 
   notify(): void {
     this.notifier.notify();
+  }
+
+  /** Contenu de jeu chargé (chantier 23.5+) — lu par les routes admin, injecté par les
+   *  services (`FleetService`/`DiplomacyService` détiennent déjà `runtime`). */
+  get content(): ContentBundle {
+    return this.runtime.content;
+  }
+
+  /**
+   * (Ré)amorce si nécessaire puis charge tout le contenu depuis la DB dans `runtime.content`
+   * — remplacement en bloc (édition en live, chantier 23 décision 3). Appelé une fois au
+   * boot (`runtime/boot.ts`) puis après chaque écriture admin sur `/api/admin/content/*`.
+   */
+  async loadContent(): Promise<void> {
+    await ensureContentSeeded();
+    this.runtime.content = await loadContentBundle();
   }
 
   /**

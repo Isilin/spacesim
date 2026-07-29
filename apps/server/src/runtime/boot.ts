@@ -2,8 +2,9 @@ import type { GameEngine } from "../game.js";
 
 /**
  * Séquence de (re)chargement d'une partie, dans l'ordre exact observé en production —
- * contrat implicite (chantier 19.10, extrait de `GameEngine.boot()`). Empire par
- * défaut et joueurs d'abord (identité), puis les entités partagées sans fog
+ * contrat implicite (chantier 19.10, extrait de `GameEngine.boot()`). Contenu de jeu
+ * (chantier 23.5+) amorcé/chargé en tout premier, puis empire par
+ * défaut et joueurs (identité), puis les entités partagées sans fog
  * (relations, propositions, objectifs, événements de monde), puis soit la création de
  * la colonie mère (partie neuve) soit le rechargement complet des entités par-empire
  * et partagées (partie existante), enfin les plans de vaisseaux, l'équipement
@@ -16,6 +17,9 @@ import type { GameEngine } from "../game.js";
  * cette fonction prend l'instance déjà construite.
  */
 export async function bootEngine(engine: GameEngine, isNew: boolean): Promise<void> {
+  // Contenu de jeu (chantier 23.5+) : amorcé/chargé avant tout le reste — la production
+  // (buildWarship) et le combat en dépendent dès que la partie tourne.
+  await engine.loadContent();
   await engine.bootstrap.ensureDefaultPlayer();
   await engine.bootstrap.loadPlayers();
   await engine.diplomacy.loadRelations();

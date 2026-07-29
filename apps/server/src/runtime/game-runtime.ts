@@ -16,6 +16,7 @@ import type {
   WorldEvent,
 } from "@spacesim/shared";
 import type { Clock, Empire } from "../empire.js";
+import type { ContentBundle } from "./content/content-types.js";
 import { WriteSet } from "./persistence/write-set.js";
 
 /**
@@ -59,6 +60,11 @@ export class GameRuntime {
   empires = new Map<string, Empire>();
   /** Empire propriétaire par défaut (solo). Posé par `ensureDefaultPlayer`. */
   defaultEmpire!: Empire;
+  /**
+   * Contenu de jeu édité en admin (chantier 23.5+) — posé par `GameEngine.loadContent()`
+   * au boot, remplacé en bloc (jamais muté en place) après chaque édition admin.
+   */
+  content!: ContentBundle;
   /**
    * Tampon d'écritures en attente (chantier 20.2) : partagé par tous les repositories
    * du moteur, flushé en transaction par un `Persister` unique aux frontières

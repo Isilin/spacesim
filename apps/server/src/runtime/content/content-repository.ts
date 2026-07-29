@@ -1,0 +1,127 @@
+import { eq } from "drizzle-orm";
+import { db, schema } from "../../db/index.js";
+import type { ContentCombatTuning, ContentWarship } from "./content-types.js";
+
+/** Ligne unique de `content_combat_tuning` — id fixe, jamais une clé de contenu. */
+const TUNING_ROW_ID = "default";
+
+type WarshipRow = typeof schema.contentWarships.$inferSelect;
+type TuningRow = typeof schema.contentCombatTuning.$inferSelect;
+
+function warshipFromRow(row: WarshipRow): ContentWarship {
+  return {
+    id: row.id,
+    nameFr: row.nameFr,
+    descriptionFr: row.descriptionFr,
+    hull: row.hull,
+    shield: row.shield,
+    weapons: JSON.parse(row.weapons),
+    initiative: row.initiative,
+    category: row.category as ContentWarship["category"],
+    cost: JSON.parse(row.cost),
+    buildMs: row.buildMs,
+    requiresTech: row.requiresTech,
+    fleetDamageBonus: row.fleetDamageBonus,
+  };
+}
+
+function rowFromWarship(w: ContentWarship) {
+  return {
+    id: w.id,
+    nameFr: w.nameFr,
+    descriptionFr: w.descriptionFr,
+    hull: w.hull,
+    shield: w.shield,
+    weapons: JSON.stringify(w.weapons),
+    initiative: w.initiative,
+    category: w.category,
+    cost: JSON.stringify(w.cost),
+    buildMs: w.buildMs,
+    requiresTech: w.requiresTech,
+    fleetDamageBonus: w.fleetDamageBonus,
+  };
+}
+
+function tuningFromRow(row: TuningRow): ContentCombatTuning {
+  return {
+    categoryAdvantage: JSON.parse(row.categoryAdvantage),
+    directives: JSON.parse(row.directives),
+    directiveCounter: JSON.parse(row.directiveCounter),
+    counterBonus: row.counterBonus,
+  };
+}
+
+function rowFromTuning(t: ContentCombatTuning) {
+  return {
+    id: TUNING_ROW_ID,
+    categoryAdvantage: JSON.stringify(t.categoryAdvantage),
+    directives: JSON.stringify(t.directives),
+    directiveCounter: JSON.stringify(t.directiveCounter),
+    counterBonus: t.counterBonus,
+  };
+}
+
+/**
+ * Accès DB au contenu de jeu (chantier 23.5+) — une classe par cohérence avec le reste
+ * du moteur, mais hors `WriteSet`/`Persister` : chemin admin à basse fréquence, pas le
+ * chemin chaud tick/commande que le write-behind protège (même choix que
+ * `admin/audit-service.ts`).
+ */
+export class ContentRepository {
+  async countWarships(): Promise<number> {
+    const rows = await db.select({ id: schema.contentWarships.id }).from(schema.contentWarships);
+    return rows.length;
+  }
+
+  async loadWarships(): Promise<Record<string, ContentWarship>> {
+    // Tri explicite par id : sans lui, l'ordre de restitution n'est pas garanti stable
+    // après un UPDATE (ex. via `onConflictDoUpdate`), ce qui ferait sauter les lignes
+    // dans l'écran admin à chaque édition.
+    const rows = await db.select().from(schema.contentWarships).orderBy(schema.contentWarships.id);
+    return Object.fromEntries(rows.map((row) => [row.id, warshipFromRow(row)]));
+  }
+
+  async insertWarships(warships: ContentWarship[]): Promise<void> {
+    if (warships.length === 0) return;
+    await db.insert(schema.contentWarships).values(warships.map(rowFromWarship));
+  }
+
+  async saveWarship(warship: ContentWarship): Promise<void> {
+    const row = rowFromWarship(warship);
+    await db
+      .insert(schema.contentWarships)
+      .values(row)
+      .onConflictDoUpdate({ target: schema.contentWarships.id, set: row });
+  }
+
+  async hasTuning(): Promise<boolean> {
+    const rows = await db
+      .select({ id: schema.contentCombatTuning.id })
+      .from(schema.contentCombatTuning)
+      .where(eq(schema.contentCombatTuning.id, TUNING_ROW_ID));
+    return rows.length > 0;
+  }
+
+  async loadTuning(): Promise<ContentCombatTuning> {
+    const rows = await db
+      .select()
+      .from(schema.contentCombatTuning)
+      .where(eq(schema.contentCombatTuning.id, TUNING_ROW_ID));
+    const row = rows[0];
+    if (!row)
+      throw new Error("content_combat_tuning non initialisée — ensureSeeded() manquant au boot");
+    return tuningFromRow(row);
+  }
+
+  async insertTuning(tuning: ContentCombatTuning): Promise<void> {
+    await db.insert(schema.contentCombatTuning).values(rowFromTuning(tuning));
+  }
+
+  async saveTuning(tuning: ContentCombatTuning): Promise<void> {
+    const row = rowFromTuning(tuning);
+    await db
+      .insert(schema.contentCombatTuning)
+      .values(row)
+      .onConflictDoUpdate({ target: schema.contentCombatTuning.id, set: row });
+  }
+}

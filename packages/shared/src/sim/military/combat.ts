@@ -10,6 +10,7 @@ import {
   type CombatCategory,
   type CombatDirective,
   type CombatPhase,
+  type DirectiveDef,
 } from "../../content/warships.js";
 import type { ShipStats } from "../industry/design.js";
 
@@ -52,6 +53,25 @@ export const WARSHIP_COMBAT_DEFS: Record<string, CombatDef> = Object.fromEntries
     ];
   }),
 );
+
+/**
+ * Réglages de combat au-delà des stats par vaisseau (chantier 23.5) : triangle de
+ * catégories, directives, contre-triangle. Injectable comme `defs` — défaut : tables
+ * historiques ; le serveur y injecte le contenu édité en admin.
+ */
+export interface CombatTuning {
+  categoryAdvantage: Record<CombatCategory, Partial<Record<CombatCategory, number>>>;
+  directives: Record<CombatDirective, DirectiveDef>;
+  directiveCounter: Record<CombatDirective, CombatDirective | null>;
+  counterBonus: number;
+}
+
+export const DEFAULT_COMBAT_TUNING: CombatTuning = {
+  categoryAdvantage: CATEGORY_ADVANTAGE,
+  directives: DIRECTIVES,
+  directiveCounter: DIRECTIVE_COUNTER,
+  counterBonus: COUNTER_BONUS,
+};
 
 /** Convertit des stats de plan (sim/design) en définition de combat. */
 export function combatDefFromStats(stats: ShipStats): CombatDef {
@@ -136,9 +156,13 @@ function firepower(
 }
 
 /** Multiplicateur de dégâts de la directive attaquante face à la directive adverse. */
-function directiveMultiplier(own: CombatDirective, enemy: CombatDirective): number {
-  const base = DIRECTIVES[own].damageMult;
-  return DIRECTIVE_COUNTER[own] === enemy ? base * COUNTER_BONUS : base;
+function directiveMultiplier(
+  own: CombatDirective,
+  enemy: CombatDirective,
+  tuning: CombatTuning,
+): number {
+  const base = tuning.directives[own].damageMult;
+  return tuning.directiveCounter[own] === enemy ? base * tuning.counterBonus : base;
 }
 
 /**
@@ -154,6 +178,7 @@ function applyDamage(
   focus: boolean,
   attackerMix: FleetComposition,
   defs: Record<string, CombatDef>,
+  tuning: CombatTuning,
 ): void {
   const order = [...targets]
     .filter((s) => s.hull > 0)
@@ -174,7 +199,7 @@ function applyDamage(
       const n = count ?? 0;
       const atkCat = defs[atkId]?.category;
       total += n;
-      weighted += n * (atkCat ? (CATEGORY_ADVANTAGE[atkCat]?.[targetCat] ?? 1) : 1);
+      weighted += n * (atkCat ? (tuning.categoryAdvantage[atkCat]?.[targetCat] ?? 1) : 1);
     }
     return total > 0 ? weighted / total : 1;
   };
@@ -209,6 +234,7 @@ export function resolveBattle(
   attackerDirectives: Directives,
   defenderDirectives: Directives,
   defs: Record<string, CombatDef> = WARSHIP_COMBAT_DEFS,
+  tuning: CombatTuning = DEFAULT_COMBAT_TUNING,
 ): BattleReport {
   const atk = expand(attacker, defs);
   const def = expand(defender, defs);
@@ -222,11 +248,11 @@ export function resolveBattle(
     // Régénération des boucliers (modulée par la directive).
     for (const ship of atk) {
       if (ship.hull > 0)
-        ship.shield = ship.maxShield * DIRECTIVES[attackerDirectives[phase]].shieldMult;
+        ship.shield = ship.maxShield * tuning.directives[attackerDirectives[phase]].shieldMult;
     }
     for (const ship of def) {
       if (ship.hull > 0)
-        ship.shield = ship.maxShield * DIRECTIVES[defenderDirectives[phase]].shieldMult;
+        ship.shield = ship.maxShield * tuning.directives[defenderDirectives[phase]].shieldMult;
     }
 
     const atkDir = attackerDirectives[phase];
@@ -241,26 +267,28 @@ export function resolveBattle(
       if (alive(atk).length === 0 || alive(def).length === 0) break;
       const atkMix = collapse(alive(atk));
       const defMix = collapse(alive(def));
-      const atkDamage = firepower(atk, phase, defs) * directiveMultiplier(atkDir, defDir);
-      const defDamage = firepower(def, phase, defs) * directiveMultiplier(defDir, atkDir);
+      const atkDamage = firepower(atk, phase, defs) * directiveMultiplier(atkDir, defDir, tuning);
+      const defDamage = firepower(def, phase, defs) * directiveMultiplier(defDir, atkDir, tuning);
       atkDamageTotal += atkDamage;
       defDamageTotal += defDamage;
       // Tirs simultanés : on fige les compositions avant d'appliquer.
       applyDamage(
         def,
         atkDamage,
-        DIRECTIVES[defDir].incomingMult,
+        tuning.directives[defDir].incomingMult,
         atkDir === "focus_fire",
         atkMix,
         defs,
+        tuning,
       );
       applyDamage(
         atk,
         defDamage,
-        DIRECTIVES[atkDir].incomingMult,
+        tuning.directives[atkDir].incomingMult,
         defDir === "focus_fire",
         defMix,
         defs,
+        tuning,
       );
     }
 

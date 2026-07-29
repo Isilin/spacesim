@@ -4,6 +4,7 @@ import { accountDetail, listAccounts } from "../../../admin/accounts-query.js";
 import { listAuditEntries, recordAuditEntry } from "../../../admin/audit-service.js";
 import { applySanction } from "../../../admin/sanctions-service.js";
 import type { GameEngine } from "../../../game.js";
+import { registerContentRoutes } from "./content.js";
 import { adminGuard } from "./guard.js";
 
 /**
@@ -91,6 +92,8 @@ export function registerAdminRoutes(app: FastifyInstance, engine: GameEngine): v
           return accountDetail(engine, id);
         },
       );
+
+      registerContentRoutes(admin, engine);
     },
     { prefix: "/api/admin" },
   );

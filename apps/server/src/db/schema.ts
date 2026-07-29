@@ -486,3 +486,47 @@ export const transfers = pgTable("transfers", {
   departedAt: bigint("departed_at", { mode: "number" }).notNull(),
   arrivesAt: bigint("arrives_at", { mode: "number" }).notNull(),
 });
+
+// ── Contenu de jeu édité en admin (chantier 23.5+) ──────────────────────────
+// La DB fait autorité, comme l'univers (chantier 18) : le serveur charge ce contenu au
+// boot (`runtime/content/`) et l'injecte dans la simulation ; `packages/shared/src/
+// content/*.ts` devient le jeu de données par défaut (seed + fixtures de test), plus la
+// source de vérité en prod. `id` en `text` libre (pas de contrainte d'enum) : un nouvel
+// id peut être créé depuis l'admin, la simulation le résout au même titre que les
+// classes historiques (Record<string, …> était déjà la forme de `WARSHIP_COMBAT_DEFS`).
+
+/** Vaisseaux de guerre — domaine pilote de la bascule contenu (déjà injectable côté
+ *  `sim/military/combat.ts` avant ce chantier, contrairement aux autres domaines). */
+export const contentWarships = pgTable("content_warships", {
+  id: text("id").primaryKey(),
+  nameFr: text("name_fr").notNull(),
+  descriptionFr: text("description_fr").notNull().default(""),
+  hull: doublePrecision("hull").notNull(),
+  shield: doublePrecision("shield").notNull(),
+  /** JSON `{long,medium,short}`. */
+  weapons: text("weapons").notNull(),
+  initiative: doublePrecision("initiative").notNull(),
+  /** "skirmisher"|"line"|"capital"|"support" — triangle de forces, voir content_combat_tuning. */
+  category: text("category").notNull(),
+  /** JSON `Partial<Record<ResourceId, number>>`. */
+  cost: text("cost").notNull().default("{}"),
+  buildMs: integer("build_ms").notNull(),
+  requiresTech: text("requires_tech"),
+  fleetDamageBonus: doublePrecision("fleet_damage_bonus"),
+});
+
+/**
+ * Réglages de combat au-delà des stats par vaisseau (triangle de catégories, directives,
+ * contre-triangle) — ligne UNIQUE (id fixe `"default"`), pas des entités : c'est une
+ * matrice de tuning, pas une liste éditable ligne par ligne.
+ */
+export const contentCombatTuning = pgTable("content_combat_tuning", {
+  id: text("id").primaryKey(),
+  /** JSON `Record<CombatCategory, Partial<Record<CombatCategory, number>>>`. */
+  categoryAdvantage: text("category_advantage").notNull(),
+  /** JSON `Record<CombatDirective, DirectiveDef>`. */
+  directives: text("directives").notNull(),
+  /** JSON `Record<CombatDirective, CombatDirective | null>`. */
+  directiveCounter: text("directive_counter").notNull(),
+  counterBonus: doublePrecision("counter_bonus").notNull(),
+});

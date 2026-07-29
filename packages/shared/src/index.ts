@@ -183,6 +183,7 @@ export {
 export {
   ROUNDS_PER_PHASE,
   WARSHIP_COMBAT_DEFS,
+  DEFAULT_COMBAT_TUNING,
   combatDefFromStats,
   resolveBattle,
   fleetPower,
@@ -190,6 +191,7 @@ export {
   type FleetComposition,
   type Directives,
   type CombatDef,
+  type CombatTuning,
   type PhaseReport,
   type BattleReport,
 } from "./sim/military/combat.js";

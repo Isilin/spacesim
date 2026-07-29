@@ -1,6 +1,11 @@
 import type { CombatDirective, CombatPhase } from "../../content/warships.js";
 import { pick, randInt, type Rng } from "../../rng.js";
-import { fleetPower, type FleetComposition } from "./combat.js";
+import {
+  fleetPower,
+  WARSHIP_COMBAT_DEFS,
+  type CombatDef,
+  type FleetComposition,
+} from "./combat.js";
 
 /** Probabilité qu'un repaire pirate apparaisse dans un système éligible, par tick éco. */
 export const PIRATE_SPAWN_CHANCE = 0.04;
@@ -33,6 +38,9 @@ export function pirateComposition(rng: Rng, threat: number): FleetComposition {
 }
 
 /** Butin d'un repaire, proportionnel à sa puissance. */
-export function pirateBounty(composition: FleetComposition): number {
-  return Math.round(fleetPower(composition) * 0.6);
+export function pirateBounty(
+  composition: FleetComposition,
+  defs: Record<string, CombatDef> = WARSHIP_COMBAT_DEFS,
+): number {
+  return Math.round(fleetPower(composition, defs) * 0.6);
 }

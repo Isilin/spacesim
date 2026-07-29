@@ -23,6 +23,7 @@ import {
   type WorldEvent,
   type WorldEventKind,
 } from "@spacesim/shared";
+import { combatDefsFromWarships } from "../content/content-service.js";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
 import type { GameRuntime } from "../game-runtime.js";
@@ -130,9 +131,10 @@ export class DiplomacyService {
 
   /** Puissance de flotte totale d'un empire (somme de toutes ses flottes). */
   private empireFleetPower(empire: Empire): number {
+    const defs = combatDefsFromWarships(this.runtime.content.warships);
     let power = 0;
     for (const fleet of empire.fleetMap.values())
-      power += fleetPower(fleet.ships as FleetComposition);
+      power += fleetPower(fleet.ships as FleetComposition, defs);
     return power;
   }
 

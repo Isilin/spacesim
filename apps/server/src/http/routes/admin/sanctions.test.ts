@@ -114,10 +114,13 @@ describe("/api/admin/accounts/:id/sanctions", () => {
     await setTestRole(accountId, "moderator");
     const { accountId: targetId } = await registerTestAccount(app, "cible@exemple.fr");
 
+    // Marge large (pas 50/100ms) : le boot charge désormais aussi le contenu de jeu
+    // (chantier 23.5, requêtes DB supplémentaires) — une fenêtre trop courte rendait ce
+    // test franchissable par la latence seule, indépendamment de l'expiration réelle.
     const res = await sanction(app, token, targetId, {
       kind: "suspend",
       reason: "chat toxique",
-      durationMs: 50,
+      durationMs: 2000,
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().sanctionStatus.kind).toBe("suspend");
@@ -129,7 +132,7 @@ describe("/api/admin/accounts/:id/sanctions", () => {
     });
     expect(blocked.statusCode).toBe(401);
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 2200));
     const allowed = await app.inject({
       method: "POST",
       url: "/auth/login",

@@ -2,7 +2,6 @@ import {
   combatDefFromStats,
   createRng,
   fleetIsEmpty,
-  fleetPower,
   jumpDistanceInUniverse,
   gatewayLinks,
   PIRATE_SPAWN_CHANCE,
@@ -17,8 +16,6 @@ import {
   RESOURCES,
   storageCap,
   transferDurationMs,
-  WARSHIP_COMBAT_DEFS,
-  WARSHIPS,
   WORLD_EVENT_PIRATE_MULT,
   type CombatDef,
   type Colony,
@@ -27,11 +24,11 @@ import {
   type PirateLair,
   type ResourceId,
   type StoredBattle,
-  type WarshipId,
   type WorldEventKind,
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
+import { combatDefsFromWarships } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { FleetRepository } from "../repositories/fleet-repository.js";
@@ -88,11 +85,12 @@ export class FleetService {
   }
 
   /**
-   * Définitions de combat couvrant les classes historiques (défaut/PNJ) + les plans des
-   * empires impliqués dans la bataille — le combat résout ainsi n'importe quel id présent.
+   * Définitions de combat couvrant le contenu DB-backed (chantier 23.5, défaut/PNJ) + les
+   * plans des empires impliqués dans la bataille — le combat résout ainsi n'importe quel
+   * id présent, y compris un vaisseau créé depuis l'admin.
    */
   private combatDefs(...empires: Empire[]): Record<string, CombatDef> {
-    const defs: Record<string, CombatDef> = { ...WARSHIP_COMBAT_DEFS };
+    const defs = combatDefsFromWarships(this.runtime.content.warships);
     for (const empire of empires) {
       for (const bp of empire.blueprintMap.values()) {
         defs[bp.id] = combatDefFromStats(resolveBlueprint(bp));
@@ -129,12 +127,12 @@ export class FleetService {
     const fleet = empire.fleetMap.get(fleetId);
     if (!fleet) return "Flotte inconnue";
     if (fleet.movement) return "Flotte en déplacement";
-    const def = WARSHIPS[warshipId as WarshipId];
+    const def = this.runtime.content.warships[warshipId];
     if (!def) return "Vaisseau inconnu";
     const home = empire.colonyMap.get(fleet.homeColonyId);
     if (!home) return "Colonie de rattachement inconnue";
     if ((home.buildings.shipyard ?? 0) < 1) return "Chantier naval requis";
-    if (!empire.researched.includes(def.requiresTech)) {
+    if (def.requiresTech && !empire.researched.includes(def.requiresTech)) {
       return "Technologie militaire requise";
     }
     if (fleet.queue.length >= 5) return "File de production pleine";
@@ -226,6 +224,7 @@ export class FleetService {
       fleet.directives as never,
       lair.directives as never,
       this.combatDefs(empire),
+      this.runtime.content.combatTuning,
     );
     this.archiveBattle(fleet.systemId, fleet.name, "Repaire pirate", report);
 
@@ -303,6 +302,7 @@ export class FleetService {
       fleet.directives as never,
       target.fleet.directives as never,
       this.combatDefs(empire, target.empire),
+      this.runtime.content.combatTuning,
     );
     this.archiveBattle(
       fleet.systemId,
@@ -355,6 +355,7 @@ export class FleetService {
         fleet.directives as never,
         defender.directives as never,
         this.combatDefs(empire, target.empire),
+        this.runtime.content.combatTuning,
       );
       this.archiveBattle(systemId, fleet.name, `${target.empire.name} — ${defender.name}`, report);
       this.applyFleetSurvivors(
@@ -501,7 +502,7 @@ export class FleetService {
         systemId,
         ships,
         directives: pirateDirectives(rng),
-        bounty: pirateBounty(ships),
+        bounty: pirateBounty(ships, combatDefsFromWarships(this.runtime.content.warships)),
       };
       this.runtime.lairMap.set(lair.id, lair);
       this.persistLair(lair);
