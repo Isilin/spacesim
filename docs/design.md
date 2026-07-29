@@ -884,6 +884,25 @@ fois (valeurs d'abord, création d'id ensuite) : chaque écran CMS de contenu in
   sanction + historique sur `AccountDetailView`. Vérifié au navigateur (ban → connexion
   refusée avec message explicite, unban → à nouveau possible) et par 10 tests serveur (chaque
   genre, expiration réelle d'une suspension, journalisation d'audit).
+- ✅ **23.5** — Contenu de jeu basculé en DB, vaisseaux de guerre en pilote.
+  `content_warships`/`content_combat_tuning` (migration 0003), `runtime/content/`
+  (repository + service, `ensureContentSeeded()` idempotent au boot — amorce depuis
+  `packages/shared/src/content/warships.ts` une seule fois, n'y touche plus jamais après),
+  `GameRuntime.content`, `GameEngine.loadContent()` — remplacement en bloc après chaque
+  écriture admin. Correction en cours de route : l'injection de stats dans
+  `sim/military/combat.ts` (`resolveBattle`/`fleetPower`) ne couvrait que les stats par
+  vaisseau — `CombatTuning` ajouté pour injecter aussi le triangle de catégories et les
+  directives (jusqu'ici importés en dur). `fleet-service.ts`
+  (`combatDefs`/`buildWarship`)/`diplomacy-service.ts` lisent désormais `runtime.content` ;
+  un vaisseau créé depuis l'admin (id absent de `WARSHIP_IDS`) est immédiatement
+  constructible et combat-ready, **sans changement de schéma protocole** (`warshipId` était
+  déjà `z.string()` libre — pas de desserrement de tuple nécessaire pour ce domaine).
+  `GET/PUT /api/admin/content/warships` (upsert par id, pas de `POST` séparé) +
+  `GET /api/admin/content/combat-tuning` (lecture seule cette passe, édition hors
+  périmètre). Actions `content.warships.read/write`, accordées à `content_editor`.
+  `apps/admin` gagne `@spacesim/shared` (`RESOURCES`) — premier usage réel, anticipé au
+  23.2. Vérifié au navigateur : édition + création (id inédit) persistées et journalisées
+  en live, aucune erreur console.
 
 ### État actuel (contrainte de départ)
 
