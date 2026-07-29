@@ -996,10 +996,29 @@ fois (valeurs d'abord, création d'id ensuite) : chaque écran CMS de contenu in
   formulaire à 10+ champs dédiés). Vérifié en direct (id-minting sur un module, 9 châssis +
   20 modules historiques listés, aucune erreur console sur les deux apps après boot) et par
   des tests d'injection dans `design.test.ts`/`content-service.test.ts`/`content.test.ts`.
-  **Fin de la première vague de contenu** (23.5-23.10) : six domaines migrés en DB, la
-  recette est éprouvée sur tous les cas — id libre (23.5/23.6/23.8/23.9/23.10), id fermé
-  (23.7), scalaire simple (23.8b), graphe avec garde-fou serveur (23.9), et deux tables
-  couplées consommées par un même résolveur (23.10).
+- ✅ **23.11** — Contenu : presets + jalons. Domaine le plus simple de la vague : `PresetDef`/
+  `MilestoneDef` ne sont consommés par **aucune fonction `sim/`** (contrairement à tous les
+  domaines précédents) — un preset n'est qu'un couple châssis/modules déjà résolu par les
+  tables injectables de 23.10, un jalon n'est lu que côté client. `content_presets`
+  (migration 0010, id-minting complet) + `content_milestones` (id-minting sur l'id, mais
+  `metric` reste un enum fermé à 4 valeurs — les seules calculées dans
+  `apps/web/EmpireView.tsx`). `starter` (booléen par ligne) remplace `STARTER_PRESET_IDS`
+  (liste statique parallèle) : `IndustryService.seedStarterBlueprints` itère
+  `runtime.content.presets` filtré sur `starter`, `buyBlueprintFromStation` lit directement
+  `runtime.content.presets[presetId]` au lieu de l'ancien `presetById()` statique — les deux
+  seuls call sites serveur, aucun résolveur `packages/shared` à toucher. Jalons non poussés
+  par WS vers `apps/web` (même limite documentée que `colonyRates`/`techLayout`) : leur
+  affichage reste sur `MILESTONES` statique tant que ce canal n'existe pas. Vérifié en direct
+  (8 presets + 13 jalons historiques listés, id-minting sur un preset, aucune erreur console
+  sur les deux apps après boot).
+
+**Fin de la roadmap complète du chantier 23 CMS de contenu** (23.5-23.11) : huit domaines
+migrés en DB, la recette est éprouvée sur tous les cas rencontrés — id libre
+(23.5/23.6/23.8a/23.9/23.10/23.11), id fermé sur les valeurs (23.7/23.8b), scalaire simple
+(23.8b), graphe avec garde-fou serveur rejouant une validation CI (23.9), deux tables
+couplées consommées par un même résolveur (23.10), et un domaine sans aucun résolveur à
+toucher (23.11). Seul `23.12` (extras ops/dashboard, additif, aucune dépendance restante)
+n'est pas encore fait.
 
 ### État actuel (contrainte de départ)
 
