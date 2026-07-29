@@ -1017,8 +1017,21 @@ migrés en DB, la recette est éprouvée sur tous les cas rencontrés — id lib
 (23.5/23.6/23.8a/23.9/23.10/23.11), id fermé sur les valeurs (23.7/23.8b), scalaire simple
 (23.8b), graphe avec garde-fou serveur rejouant une validation CI (23.9), deux tables
 couplées consommées par un même résolveur (23.10), et un domaine sans aucun résolveur à
-toucher (23.11). Seul `23.12` (extras ops/dashboard, additif, aucune dépendance restante)
-n'est pas encore fait.
+toucher (23.11).
+- ✅ **23.12** — Extras ops/dashboard. Purement additif, comme prévu : `GET
+  /api/admin/ops/health` (`GameEngine.opsHealth()` — `tick`/`lastTickAt` de `Clock`,
+  `lastFlushAt`/`lastFlushError` de `Persister`, publics depuis le chantier 20.2 mais
+  jamais sortis en HTTP avant ce chantier, + jauge de croissance `galaxyCount` vs
+  `MAX_GALAXIES`/`FRONTIER_GALAXIES`) et `GET /api/admin/ops/empires` (délègue tel quel à
+  `devEmpireSummaries()`, déjà utilisé par `/dev/empires` — même forme, pas de nouvelle
+  fonction de résumé). Réservé au rôle `admin` (action `ops.read`, aucune permission
+  accordée à `moderator`/`content_editor` — c'est un tableau de bord opérationnel, pas un
+  outil de contenu ni de modération) ; lecture seule, pas d'entrée d'audit. Écran "Ops"
+  dans `apps/admin` : `Stat`/`Gauge` de `packages/ui` pour la santé, `Table` pour les
+  empires. Vérifié en direct (tick/flush/jauge de croissance affichés, table des 11
+  empires de la partie de dev, aucune erreur console).
+
+**Ferme le chantier 23 (outil d'administration / CMS) dans son intégralité, 23.1 → 23.12.**
 
 ### État actuel (contrainte de départ)
 
