@@ -10,7 +10,7 @@ export const roleSchema = z.enum(ROLE_IDS);
  * (chantier 23.1). Namespacées par domaine (`account.*`, `content.<domaine>.*`, `audit.*`…) ;
  * la liste grandit avec chaque sous-chantier, jamais en avance sur les routes réellement câblées.
  */
-export const ADMIN_ACTIONS = ["audit.read"] as const;
+export const ADMIN_ACTIONS = ["audit.read", "account.view"] as const;
 export type AdminActionId = (typeof ADMIN_ACTIONS)[number];
 
 /**
@@ -21,7 +21,7 @@ export type AdminActionId = (typeof ADMIN_ACTIONS)[number];
  */
 export const ROLE_PERMISSIONS: Record<RoleId, ReadonlySet<AdminActionId>> = {
   player: new Set(),
-  moderator: new Set(),
+  moderator: new Set(["account.view"]),
   content_editor: new Set(),
   admin: new Set(ADMIN_ACTIONS),
 };

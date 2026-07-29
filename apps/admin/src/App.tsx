@@ -1,5 +1,7 @@
 import { Button, TopBar } from "@spacesim/ui";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { AccountDetailView } from "./AccountDetailView.js";
+import { AccountsListView } from "./AccountsListView.js";
 import { AuditLogView } from "./AuditLogView.js";
 import type { AdminAuth } from "./useAdminAuth.js";
 
@@ -7,13 +9,17 @@ interface Props {
   auth: AdminAuth;
 }
 
-/** Un seul onglet pour l'instant (chantier 23.2) — grandit avec 23.3+ (joueurs, contenu). */
-const NAV_ITEMS = [{ value: "audit", label: "Journal d'audit" }];
+/** Deux onglets (chantier 23.3) — grandit avec 23.5+ (contenu). */
+const NAV_ITEMS = [
+  { value: "accounts", label: "Joueurs" },
+  { value: "audit", label: "Journal d'audit" },
+];
 
 export function App({ auth }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
-  const activeTab = location.pathname.slice(1) || "audit";
+  // Premier segment du chemin : `/accounts/:id` reste sur l'onglet "accounts".
+  const activeTab = location.pathname.split("/")[1] || "accounts";
 
   return (
     <div className="layout">
@@ -30,7 +36,9 @@ export function App({ auth }: Props) {
       </TopBar>
       <div className="content">
         <Routes>
-          <Route path="/" element={<Navigate to="/audit" replace />} />
+          <Route path="/" element={<Navigate to="/accounts" replace />} />
+          <Route path="/accounts" element={<AccountsListView token={auth.token!} />} />
+          <Route path="/accounts/:id" element={<AccountDetailView token={auth.token!} />} />
           <Route path="/audit" element={<AuditLogView token={auth.token!} />} />
         </Routes>
       </div>

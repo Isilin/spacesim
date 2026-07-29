@@ -303,7 +303,21 @@ export class BootstrapService {
 
   /** Outil de dev uniquement : résumé par empire (état en mémoire) pour l'observation. */
   devEmpireSummaries(): unknown {
-    return [...this.runtime.empires.values()].map((e) => ({
+    return [...this.runtime.empires.values()].map((e) => this.summarizeEmpire(e));
+  }
+
+  /**
+   * Résumé d'un empire par compte propriétaire (admin, chantier 23.3) — même forme que
+   * `devEmpireSummaries()`, scopée à un seul empire. null si le compte n'a pas encore
+   * d'empire dans cette partie.
+   */
+  empireSummaryForAccount(accountId: string): unknown | null {
+    const empire = this.empireForAccount(accountId);
+    return empire ? this.summarizeEmpire(empire) : null;
+  }
+
+  private summarizeEmpire(e: Empire) {
+    return {
       id: e.id,
       name: e.name,
       color: e.color,
@@ -324,7 +338,7 @@ export class BootstrapService {
         food: Math.round(c.resources.food),
       })),
       fleets: e.fleetMap.size,
-    }));
+    };
   }
 
   /** Outil de dev uniquement : injecte des ressources pour tester sans attendre. */

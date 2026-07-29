@@ -473,6 +473,12 @@ export class GameEngine {
     return this.bootstrap.empireForAccount(accountId);
   }
 
+  /** Résumé d'empire par compte (admin, chantier 23.3) — même forme que `devEmpireSummaries()`,
+   *  scopée à un seul empire. null si le compte n'a pas encore d'empire dans cette partie. */
+  empireSummaryForAccount(accountId: string): unknown | null {
+    return this.bootstrap.empireSummaryForAccount(accountId);
+  }
+
   /**
    * Rattache un empire à un compte fraîchement inscrit. Le premier compte **adopte**
    * l'empire amorcé au boot (sa colonie mère et son brouillard) plutôt que d'en créer un

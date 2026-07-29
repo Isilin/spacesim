@@ -37,7 +37,7 @@ export async function buildApp(
   registerAuthRoutes(app, engine);
   // Toujours actif, y compris en production — la protection est le rôle du compte (adminGuard),
   // pas l'environnement (contrairement à /dev/*).
-  registerAdminRoutes(app);
+  registerAdminRoutes(app, engine);
   // Triches de dev : jamais en production.
   if (opts.devRoutes ?? config.nodeEnv !== "production") {
     registerDevRoutes(app, engine);
