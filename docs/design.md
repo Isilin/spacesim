@@ -854,6 +854,15 @@ fois (valeurs d'abord, création d'id ensuite) : chaque écran CMS de contenu in
   `GET /api/admin/audit`, toujours active (contrairement à `/dev/*`, la protection est le rôle, pas
   `NODE_ENV`). Premier admin : geste manuel (`UPDATE accounts SET role='admin' WHERE email=...`),
   pas de flux libre-service.
+- ✅ **23.2** — `apps/admin` (Vite+React+React Router, port 5174, sans `zustand`) : scaffold
+  miroir d'`apps/web`, `useAdminAuth.ts` (même `/auth/login`, clé `localStorage` distincte
+  `spacesim.admin.session`), écran de connexion, et premier écran réel — le journal d'audit
+  (`Table` de `@spacesim/ui`). Vérif de rôle côté client (message si le compte n'a pas de
+  privilège admin) explicitement UX seulement, la frontière reste `adminGuard` côté serveur.
+  `/auth/login` et `/auth/me` exposent désormais `role` (nécessaire à ce check UX ; sans effet
+  sur `apps/web`, vérifié). Câblage : `docker-compose.yml` (3ᵉ process dans `app`, port 5174),
+  `.claude/launch.json`, `dev:admin` racine. Vérifié au navigateur : connexion admin → journal
+  vide, connexion joueur → message de rôle insuffisant, déconnexion → retour écran de connexion.
 
 ### État actuel (contrainte de départ)
 
