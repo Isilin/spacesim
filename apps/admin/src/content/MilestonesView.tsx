@@ -1,4 +1,7 @@
-import { MILESTONE_METRICS, type UpsertMilestoneInput } from "@spacesim/protocol";
+import {
+  MILESTONE_METRICS,
+  type UpsertMilestoneInput,
+} from "@spacesim/protocol";
 import {
   Button,
   Field,
@@ -38,7 +41,10 @@ function emptyForm(): MilestoneForm {
 }
 
 function formFromMilestone(m: Milestone): MilestoneForm {
-  return { metric: m.metric as UpsertMilestoneInput["metric"], threshold: m.threshold };
+  return {
+    metric: m.metric as UpsertMilestoneInput["metric"],
+    threshold: m.threshold,
+  };
 }
 
 /**
@@ -48,14 +54,18 @@ function formFromMilestone(m: Milestone): MilestoneForm {
 export function MilestonesView({ token }: Props) {
   const [milestones, setMilestones] = useState<Milestone[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
+    null,
+  );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<MilestoneForm>(emptyForm());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const load = () => {
-    fetch("/api/admin/content/milestones", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/admin/content/milestones", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
       .then((body: { milestones?: Milestone[]; error?: string }) => {
         if (body.error) {
@@ -92,11 +102,17 @@ export function MilestonesView({ token }: Props) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(`/api/admin/content/milestones/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form),
-      });
+      const res = await fetch(
+        `/api/admin/content/milestones/${encodeURIComponent(id)}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(form),
+        },
+      );
       const body = await res.json();
       if (!res.ok) {
         setSubmitError(body.error ?? "Erreur serveur");
@@ -113,7 +129,11 @@ export function MilestonesView({ token }: Props) {
 
   const columns: TableColumn<Milestone>[] = [
     { key: "id", label: "Id" },
-    { key: "metric", label: "Mesure", render: (v) => METRIC_LABELS[v as string] ?? (v as string) },
+    {
+      key: "metric",
+      label: "Mesure",
+      render: (v) => METRIC_LABELS[v as string] ?? (v as string),
+    },
     { key: "threshold", label: "Seuil", align: "right" },
     {
       key: "actions",
@@ -127,26 +147,22 @@ export function MilestonesView({ token }: Props) {
   ];
 
   return (
-    <Panel title="Jalons" actions={<Button onClick={openCreate}>Nouveau</Button>}>
+    <Panel
+      title="Jalons"
+      actions={<Button onClick={openCreate}>Nouveau</Button>}
+    >
       {error && <p className="auth-error">{error}</p>}
       {!error && milestones === null && <p className="muted">Chargement…</p>}
       {!error && milestones && <Table columns={columns} rows={milestones} />}
 
       {editing && (
-        <Modal
-          title={editing.isNew ? "Nouveau jalon" : `Modifier « ${editing.id} »`}
-          onClose={() => setEditing(null)}
-          actions={
-            <>
-              <Button variant="ghost" onClick={() => setEditing(null)}>
-                Annuler
-              </Button>
-              <Button disabled={submitting} onClick={() => void submit()}>
-                {submitting ? "…" : "Enregistrer"}
-              </Button>
-            </>
-          }
-        >
+        <Modal onClickOutside={() => setEditing(null)}>
+          <Modal.Header
+            title={
+              editing.isNew ? "Nouveau jalon" : `Modifier « ${editing.id} »`
+            }
+            onClose={() => setEditing(null)}
+          />
           {editing.isNew && (
             <Field
               label="Id (identifiant technique, ex. pop-5000)"
@@ -158,16 +174,32 @@ export function MilestonesView({ token }: Props) {
             label="Mesure"
             value={form.metric}
             onChange={(e) =>
-              setForm({ ...form, metric: e.target.value as UpsertMilestoneInput["metric"] })
+              setForm({
+                ...form,
+                metric: e.target.value as UpsertMilestoneInput["metric"],
+              })
             }
-            options={MILESTONE_METRICS.map((m) => ({ value: m, label: METRIC_LABELS[m] ?? m }))}
+            options={MILESTONE_METRICS.map((m) => ({
+              value: m,
+              label: METRIC_LABELS[m] ?? m,
+            }))}
           />
           <NumberInput
             label="Seuil"
             value={form.threshold}
-            onChange={(e) => setForm({ ...form, threshold: Number(e.target.value) })}
+            onChange={(e) =>
+              setForm({ ...form, threshold: Number(e.target.value) })
+            }
           />
           {submitError && <p className="auth-error">{submitError}</p>}
+          <Modal.Actions>
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Annuler
+            </Button>
+            <Button disabled={submitting} onClick={() => void submit()}>
+              {submitting ? "…" : "Enregistrer"}
+            </Button>
+          </Modal.Actions>
         </Modal>
       )}
     </Panel>

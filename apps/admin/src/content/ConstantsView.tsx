@@ -1,5 +1,13 @@
 import type { UpsertConstantInput } from "@spacesim/protocol";
-import { Button, Field, Modal, NumberInput, Panel, Table, type TableColumn } from "@spacesim/ui";
+import {
+  Button,
+  Field,
+  Modal,
+  NumberInput,
+  Panel,
+  Table,
+  type TableColumn,
+} from "@spacesim/ui";
 import { useEffect, useState } from "react";
 
 interface Constant {
@@ -30,7 +38,9 @@ export function ConstantsView({ token }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const load = () => {
-    fetch("/api/admin/content/constants", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/admin/content/constants", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
       .then((body: { constants?: Constant[]; error?: string }) => {
         if (body.error) {
@@ -55,11 +65,17 @@ export function ConstantsView({ token }: Props) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(`/api/admin/content/constants/${encodeURIComponent(editingKey)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form),
-      });
+      const res = await fetch(
+        `/api/admin/content/constants/${encodeURIComponent(editingKey)}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(form),
+        },
+      );
       const body = await res.json();
       if (!res.ok) {
         setSubmitError(body.error ?? "Erreur serveur");
@@ -97,31 +113,34 @@ export function ConstantsView({ token }: Props) {
       {!error && constants && <Table columns={columns} rows={constants} />}
 
       {editingKey && form && (
-        <Modal
-          title={`Modifier « ${editingKey} »`}
-          onClose={() => setEditingKey(null)}
-          actions={
-            <>
-              <Button variant="ghost" onClick={() => setEditingKey(null)}>
-                Annuler
-              </Button>
-              <Button disabled={submitting} onClick={() => void submit()}>
-                {submitting ? "…" : "Enregistrer"}
-              </Button>
-            </>
-          }
-        >
+        <Modal onClickOutside={() => setEditingKey(null)}>
+          <Modal.Header
+            title={`Modifier « ${editingKey} »`}
+            onClose={() => setEditingKey(null)}
+          />
           <NumberInput
             label="Valeur"
             value={form.value}
-            onChange={(e) => setForm({ ...form, value: Number(e.target.value) })}
+            onChange={(e) =>
+              setForm({ ...form, value: Number(e.target.value) })
+            }
           />
           <Field
             label="Description"
             value={form.descriptionFr}
-            onChange={(e) => setForm({ ...form, descriptionFr: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, descriptionFr: e.target.value })
+            }
           />
           {submitError && <p className="auth-error">{submitError}</p>}
+          <Modal.Actions>
+            <Button variant="ghost" onClick={() => setEditingKey(null)}>
+              Annuler
+            </Button>
+            <Button disabled={submitting} onClick={() => void submit()}>
+              {submitting ? "…" : "Enregistrer"}
+            </Button>
+          </Modal.Actions>
         </Modal>
       )}
     </Panel>

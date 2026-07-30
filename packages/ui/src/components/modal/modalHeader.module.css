@@ -1,0 +1,16 @@
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--cyan);
+}

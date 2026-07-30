@@ -1,4 +1,8 @@
-import { CHASSIS_KINDS, SHIP_DOMAINS, type UpsertChassisInput } from "@spacesim/protocol";
+import {
+  CHASSIS_KINDS,
+  SHIP_DOMAINS,
+  type UpsertChassisInput,
+} from "@spacesim/protocol";
 import { RESOURCES, type ResourceId } from "@spacesim/shared";
 import {
   Button,
@@ -45,7 +49,10 @@ const KIND_LABELS: Record<string, string> = {
   explorer: "Éclaireur",
 };
 
-const DOMAIN_LABELS: Record<string, string> = { fleet: "Flotte", colony: "Colonie" };
+const DOMAIN_LABELS: Record<string, string> = {
+  fleet: "Flotte",
+  colony: "Colonie",
+};
 
 interface ChassisForm {
   nameFr: string;
@@ -125,14 +132,18 @@ function formFromChassis(c: Chassis): ChassisForm {
 export function ChassisView({ token }: Props) {
   const [chassis, setChassis] = useState<Chassis[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
+    null,
+  );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<ChassisForm>(emptyForm());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const load = () => {
-    fetch("/api/admin/content/chassis", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/admin/content/chassis", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
       .then((body: { chassis?: Chassis[]; error?: string }) => {
         if (body.error) {
@@ -201,11 +212,17 @@ export function ChassisView({ token }: Props) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(`/api/admin/content/chassis/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        `/api/admin/content/chassis/${encodeURIComponent(id)}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
       const body = await res.json();
       if (!res.ok) {
         setSubmitError(body.error ?? "Erreur serveur");
@@ -227,8 +244,16 @@ export function ChassisView({ token }: Props) {
   const columns: TableColumn<Chassis>[] = [
     { key: "id", label: "Id" },
     { key: "nameFr", label: "Nom" },
-    { key: "kind", label: "Type", render: (v) => KIND_LABELS[v as string] ?? (v as string) },
-    { key: "domain", label: "Domaine", render: (v) => DOMAIN_LABELS[v as string] ?? (v as string) },
+    {
+      key: "kind",
+      label: "Type",
+      render: (v) => KIND_LABELS[v as string] ?? (v as string),
+    },
+    {
+      key: "domain",
+      label: "Domaine",
+      render: (v) => DOMAIN_LABELS[v as string] ?? (v as string),
+    },
     { key: "hull", label: "Coque", align: "right" },
     {
       key: "slots",
@@ -238,7 +263,11 @@ export function ChassisView({ token }: Props) {
         return `A${s.weapon ?? 0} D${s.defense ?? 0} P${s.propulsion ?? 0} U${s.utility ?? 0}`;
       },
     },
-    { key: "requiresTech", label: "Tech requise", render: (v) => (v as string | null) ?? "—" },
+    {
+      key: "requiresTech",
+      label: "Tech requise",
+      render: (v) => (v as string | null) ?? "—",
+    },
     {
       key: "actions",
       label: "",
@@ -251,26 +280,22 @@ export function ChassisView({ token }: Props) {
   ];
 
   return (
-    <Panel title="Châssis" actions={<Button onClick={openCreate}>Nouveau</Button>}>
+    <Panel
+      title="Châssis"
+      actions={<Button onClick={openCreate}>Nouveau</Button>}
+    >
       {error && <p className="auth-error">{error}</p>}
       {!error && chassis === null && <p className="muted">Chargement…</p>}
       {!error && chassis && <Table columns={columns} rows={chassis} />}
 
       {editing && (
-        <Modal
-          title={editing.isNew ? "Nouveau châssis" : `Modifier « ${editing.id} »`}
-          onClose={() => setEditing(null)}
-          actions={
-            <>
-              <Button variant="ghost" onClick={() => setEditing(null)}>
-                Annuler
-              </Button>
-              <Button disabled={submitting} onClick={() => void submit()}>
-                {submitting ? "…" : "Enregistrer"}
-              </Button>
-            </>
-          }
-        >
+        <Modal onClickOutside={() => setEditing(null)}>
+          <Modal.Header
+            title={
+              editing.isNew ? "Nouveau châssis" : `Modifier « ${editing.id} »`
+            }
+            onClose={() => setEditing(null)}
+          />
           {editing.isNew && (
             <Field
               label="Id (identifiant technique, ex. assault_frame)"
@@ -286,36 +311,54 @@ export function ChassisView({ token }: Props) {
           <Field
             label="Description"
             value={form.descriptionFr}
-            onChange={(e) => setForm({ ...form, descriptionFr: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, descriptionFr: e.target.value })
+            }
           />
           <div className="stat-row">
             <Select
               label="Type"
               value={form.kind}
               onChange={(e) =>
-                setForm({ ...form, kind: e.target.value as UpsertChassisInput["kind"] })
+                setForm({
+                  ...form,
+                  kind: e.target.value as UpsertChassisInput["kind"],
+                })
               }
-              options={CHASSIS_KINDS.map((k) => ({ value: k, label: KIND_LABELS[k] ?? k }))}
+              options={CHASSIS_KINDS.map((k) => ({
+                value: k,
+                label: KIND_LABELS[k] ?? k,
+              }))}
             />
             <Select
               label="Domaine"
               value={form.domain}
               onChange={(e) =>
-                setForm({ ...form, domain: e.target.value as UpsertChassisInput["domain"] })
+                setForm({
+                  ...form,
+                  domain: e.target.value as UpsertChassisInput["domain"],
+                })
               }
-              options={SHIP_DOMAINS.map((d) => ({ value: d, label: DOMAIN_LABELS[d] ?? d }))}
+              options={SHIP_DOMAINS.map((d) => ({
+                value: d,
+                label: DOMAIN_LABELS[d] ?? d,
+              }))}
             />
           </div>
           <div className="stat-row">
             <NumberInput
               label="Coque"
               value={form.hull}
-              onChange={(e) => setForm({ ...form, hull: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, hull: Number(e.target.value) })
+              }
             />
             <NumberInput
               label="Initiative de base"
               value={form.baseInitiative}
-              onChange={(e) => setForm({ ...form, baseInitiative: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, baseInitiative: Number(e.target.value) })
+              }
             />
           </div>
           <p className="muted small">Budgets (énergie / tonnage / calcul)</p>
@@ -323,17 +366,23 @@ export function ChassisView({ token }: Props) {
             <NumberInput
               label="Énergie"
               value={form.power}
-              onChange={(e) => setForm({ ...form, power: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, power: Number(e.target.value) })
+              }
             />
             <NumberInput
               label="Tonnage"
               value={form.tonnage}
-              onChange={(e) => setForm({ ...form, tonnage: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, tonnage: Number(e.target.value) })
+              }
             />
             <NumberInput
               label="Calcul"
               value={form.calc}
-              onChange={(e) => setForm({ ...form, calc: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, calc: Number(e.target.value) })
+              }
             />
           </div>
           <p className="muted small">Emplacements par type</p>
@@ -341,39 +390,53 @@ export function ChassisView({ token }: Props) {
             <NumberInput
               label="Armes"
               value={form.weaponSlots}
-              onChange={(e) => setForm({ ...form, weaponSlots: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, weaponSlots: Number(e.target.value) })
+              }
             />
             <NumberInput
               label="Défenses"
               value={form.defenseSlots}
-              onChange={(e) => setForm({ ...form, defenseSlots: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, defenseSlots: Number(e.target.value) })
+              }
             />
             <NumberInput
               label="Propulsion"
               value={form.propulsionSlots}
-              onChange={(e) => setForm({ ...form, propulsionSlots: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, propulsionSlots: Number(e.target.value) })
+              }
             />
             <NumberInput
               label="Utilitaires"
               value={form.utilitySlots}
-              onChange={(e) => setForm({ ...form, utilitySlots: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, utilitySlots: Number(e.target.value) })
+              }
             />
           </div>
           <div className="stat-row">
             <NumberInput
               label="Vitesse de base (×)"
               value={form.baseSpeedMult}
-              onChange={(e) => setForm({ ...form, baseSpeedMult: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, baseSpeedMult: Number(e.target.value) })
+              }
             />
             <NumberInput
               label="Carburant de base par saut"
               value={form.baseFuelPerJump}
-              onChange={(e) => setForm({ ...form, baseFuelPerJump: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, baseFuelPerJump: Number(e.target.value) })
+              }
             />
             <NumberInput
               label="Temps de fabrication (s)"
               value={form.buildMs / 1000}
-              onChange={(e) => setForm({ ...form, buildMs: Number(e.target.value) * 1000 })}
+              onChange={(e) =>
+                setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
+              }
             />
           </div>
           <Field
@@ -389,7 +452,9 @@ export function ChassisView({ token }: Props) {
               id="chassis-role-bonus"
               className="field-textarea"
               value={form.roleBonusText}
-              onChange={(e) => setForm({ ...form, roleBonusText: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, roleBonusText: e.target.value })
+              }
               spellCheck={false}
             />
           </div>
@@ -405,6 +470,14 @@ export function ChassisView({ token }: Props) {
             ))}
           </div>
           {submitError && <p className="auth-error">{submitError}</p>}
+          <Modal.Actions>
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Annuler
+            </Button>
+            <Button disabled={submitting} onClick={() => void submit()}>
+              {submitting ? "…" : "Enregistrer"}
+            </Button>
+          </Modal.Actions>
         </Modal>
       )}
     </Panel>

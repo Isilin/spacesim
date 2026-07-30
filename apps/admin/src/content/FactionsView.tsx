@@ -27,11 +27,19 @@ interface Props {
 
 function summarize(resources: Record<string, number>): string {
   const entries = Object.entries(resources).filter(([, v]) => v > 0);
-  return entries.length > 0 ? entries.map(([res, v]) => `${res} ${v}`).join(", ") : "—";
+  return entries.length > 0
+    ? entries.map(([res, v]) => `${res} ${v}`).join(", ")
+    : "—";
 }
 
 function emptyForm(): UpsertFactionInput {
-  return { name: "", color: "#4fd8ff", descriptionFr: "", produces: {}, consumes: {} };
+  return {
+    name: "",
+    color: "#4fd8ff",
+    descriptionFr: "",
+    produces: {},
+    consumes: {},
+  };
 }
 
 function formFromFaction(f: Faction): UpsertFactionInput {
@@ -49,14 +57,18 @@ function formFromFaction(f: Faction): UpsertFactionInput {
 export function FactionsView({ token }: Props) {
   const [factions, setFactions] = useState<Faction[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
+    null,
+  );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<UpsertFactionInput>(emptyForm());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const load = () => {
-    fetch("/api/admin/content/factions", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/admin/content/factions", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
       .then((body: { factions?: Faction[]; error?: string }) => {
         if (body.error) {
@@ -93,11 +105,17 @@ export function FactionsView({ token }: Props) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(`/api/admin/content/factions/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form),
-      });
+      const res = await fetch(
+        `/api/admin/content/factions/${encodeURIComponent(id)}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(form),
+        },
+      );
       const body = await res.json();
       if (!res.ok) {
         setSubmitError(body.error ?? "Erreur serveur");
@@ -112,7 +130,11 @@ export function FactionsView({ token }: Props) {
     }
   };
 
-  const setResource = (kind: "produces" | "consumes", resource: ResourceId, value: number) => {
+  const setResource = (
+    kind: "produces" | "consumes",
+    resource: ResourceId,
+    value: number,
+  ) => {
     setForm((f) => ({ ...f, [kind]: { ...f[kind], [resource]: value } }));
   };
 
@@ -123,13 +145,23 @@ export function FactionsView({ token }: Props) {
       label: "Nom",
       render: (v, row) => (
         <>
-          <Badge style={{ background: row.color, marginRight: 6 }}>&nbsp;</Badge>
+          <Badge style={{ background: row.color, marginRight: 6 }}>
+            &nbsp;
+          </Badge>
           {v as string}
         </>
       ),
     },
-    { key: "produces", label: "Produit", render: (v) => summarize(v as Record<string, number>) },
-    { key: "consumes", label: "Consomme", render: (v) => summarize(v as Record<string, number>) },
+    {
+      key: "produces",
+      label: "Produit",
+      render: (v) => summarize(v as Record<string, number>),
+    },
+    {
+      key: "consumes",
+      label: "Consomme",
+      render: (v) => summarize(v as Record<string, number>),
+    },
     {
       key: "actions",
       label: "",
@@ -142,26 +174,22 @@ export function FactionsView({ token }: Props) {
   ];
 
   return (
-    <Panel title="Factions marchandes" actions={<Button onClick={openCreate}>Nouvelle</Button>}>
+    <Panel
+      title="Factions marchandes"
+      actions={<Button onClick={openCreate}>Nouvelle</Button>}
+    >
       {error && <p className="auth-error">{error}</p>}
       {!error && factions === null && <p className="muted">Chargement…</p>}
       {!error && factions && <Table columns={columns} rows={factions} />}
 
       {editing && (
-        <Modal
-          title={editing.isNew ? "Nouvelle faction" : `Modifier « ${editing.id} »`}
-          onClose={() => setEditing(null)}
-          actions={
-            <>
-              <Button variant="ghost" onClick={() => setEditing(null)}>
-                Annuler
-              </Button>
-              <Button disabled={submitting} onClick={() => void submit()}>
-                {submitting ? "…" : "Enregistrer"}
-              </Button>
-            </>
-          }
-        >
+        <Modal onClickOutside={() => setEditing(null)}>
+          <Modal.Header
+            title={
+              editing.isNew ? "Nouvelle faction" : `Modifier « ${editing.id} »`
+            }
+            onClose={() => setEditing(null)}
+          />
           {editing.isNew && (
             <Field
               label="Id (identifiant technique, ex. helion_syndicate)"
@@ -182,7 +210,9 @@ export function FactionsView({ token }: Props) {
           <Field
             label="Description"
             value={form.descriptionFr}
-            onChange={(e) => setForm({ ...form, descriptionFr: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, descriptionFr: e.target.value })
+            }
           />
           <p className="muted small">Production par tick économique</p>
           <div className="stat-row">
@@ -191,7 +221,9 @@ export function FactionsView({ token }: Props) {
                 key={`produces-${res}`}
                 label={res}
                 value={form.produces[res] ?? 0}
-                onChange={(e) => setResource("produces", res, Number(e.target.value))}
+                onChange={(e) =>
+                  setResource("produces", res, Number(e.target.value))
+                }
               />
             ))}
           </div>
@@ -202,11 +234,21 @@ export function FactionsView({ token }: Props) {
                 key={`consumes-${res}`}
                 label={res}
                 value={form.consumes[res] ?? 0}
-                onChange={(e) => setResource("consumes", res, Number(e.target.value))}
+                onChange={(e) =>
+                  setResource("consumes", res, Number(e.target.value))
+                }
               />
             ))}
           </div>
           {submitError && <p className="auth-error">{submitError}</p>}
+          <Modal.Actions>
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Annuler
+            </Button>
+            <Button disabled={submitting} onClick={() => void submit()}>
+              {submitting ? "…" : "Enregistrer"}
+            </Button>
+          </Modal.Actions>
         </Modal>
       )}
     </Panel>

@@ -88,13 +88,19 @@ const SANCTION_LABELS: Record<SanctionKind, string> = {
   force_logout: "Déconnexion forcée",
 };
 
-const SANCTION_KIND_OPTIONS = Object.entries(SANCTION_LABELS).map(([value, label]) => ({
-  value,
-  label,
-}));
+const SANCTION_KIND_OPTIONS = Object.entries(SANCTION_LABELS).map(
+  ([value, label]) => ({
+    value,
+    label,
+  }),
+);
 
 const HISTORY_COLUMNS: TableColumn<SanctionEntry>[] = [
-  { key: "kind", label: "Type", render: (value) => SANCTION_LABELS[value as SanctionKind] },
+  {
+    key: "kind",
+    label: "Type",
+    render: (value) => SANCTION_LABELS[value as SanctionKind],
+  },
   { key: "reason", label: "Raison" },
   { key: "actorEmail", label: "Par" },
   {
@@ -126,7 +132,9 @@ export function AccountDetailView({ token }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const load = () => {
-    fetch(`/api/admin/accounts/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`/api/admin/accounts/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
       .then((body: AccountDetail & { error?: string }) => {
         if (body.error) {
@@ -146,7 +154,10 @@ export function AccountDetailView({ token }: Props) {
     try {
       const res = await fetch(`/api/admin/accounts/${id}/sanctions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           kind,
           reason,
@@ -179,7 +190,9 @@ export function AccountDetailView({ token }: Props) {
             title={account.email}
             actions={
               <>
-                <Badge variant={account.role === "player" ? "neutral" : "violet"}>
+                <Badge
+                  variant={account.role === "player" ? "neutral" : "violet"}
+                >
                   {account.role}
                 </Badge>
                 {statusBadge(account.sanctionStatus)}
@@ -197,7 +210,9 @@ export function AccountDetailView({ token }: Props) {
               <Stat
                 label="Dernière connexion"
                 value={
-                  account.lastLoginAt ? new Date(account.lastLoginAt).toLocaleString("fr-FR") : "—"
+                  account.lastLoginAt
+                    ? new Date(account.lastLoginAt).toLocaleString("fr-FR")
+                    : "—"
                 }
               />
               <Stat
@@ -209,22 +224,42 @@ export function AccountDetailView({ token }: Props) {
           </Panel>
 
           {account.empireSummary ? (
-            <Panel title={`Empire — ${account.empireSummary.name}`} accent="violet">
+            <Panel
+              title={`Empire — ${account.empireSummary.name}`}
+              accent="violet"
+            >
               <div className="stat-row">
-                <Stat label="Influence" value={account.empireSummary.influence} />
-                <Stat label="Techs acquises" value={account.empireSummary.researched} />
-                <Stat label="Systèmes explorés" value={account.empireSummary.exploredCount} />
-                <Stat label="Systèmes revendiqués" value={account.empireSummary.claimed} />
+                <Stat
+                  label="Influence"
+                  value={account.empireSummary.influence}
+                />
+                <Stat
+                  label="Techs acquises"
+                  value={account.empireSummary.researched}
+                />
+                <Stat
+                  label="Systèmes explorés"
+                  value={account.empireSummary.exploredCount}
+                />
+                <Stat
+                  label="Systèmes revendiqués"
+                  value={account.empireSummary.claimed}
+                />
                 <Stat label="Flottes" value={account.empireSummary.fleets} />
               </div>
               {account.empireSummary.colonies.length > 0 ? (
-                <Table columns={COLONY_COLUMNS} rows={account.empireSummary.colonies} />
+                <Table
+                  columns={COLONY_COLUMNS}
+                  rows={account.empireSummary.colonies}
+                />
               ) : (
                 <EmptyState>Aucune colonie.</EmptyState>
               )}
             </Panel>
           ) : (
-            <EmptyState>Ce compte n'a pas encore d'empire dans cette partie.</EmptyState>
+            <EmptyState>
+              Ce compte n'a pas encore d'empire dans cette partie.
+            </EmptyState>
           )}
 
           <Panel title="Historique des sanctions" accent="amber">
@@ -235,25 +270,11 @@ export function AccountDetailView({ token }: Props) {
             )}
           </Panel>
 
-          <Modal
-            open={modalOpen}
-            title={`Sanctionner ${account.email}`}
-            onClose={() => setModalOpen(false)}
-            actions={
-              <>
-                <Button variant="ghost" onClick={() => setModalOpen(false)}>
-                  Annuler
-                </Button>
-                <Button
-                  variant="danger"
-                  disabled={submitting || !reason.trim()}
-                  onClick={() => void submitSanction()}
-                >
-                  {submitting ? "…" : "Confirmer"}
-                </Button>
-              </>
-            }
-          >
+          <Modal open={modalOpen} onClickOutside={() => setModalOpen(false)}>
+            <Modal.Header
+              title={`Sanctionner ${account.email}`}
+              onClose={() => setModalOpen(false)}
+            />
             <Select
               label="Type de sanction"
               options={SANCTION_KIND_OPTIONS}
@@ -276,6 +297,18 @@ export function AccountDetailView({ token }: Props) {
               onChange={(e) => setReason(e.target.value)}
             />
             {submitError && <p className="auth-error">{submitError}</p>}
+            <Modal.Actions>
+              <Button variant="ghost" onClick={() => setModalOpen(false)}>
+                Annuler
+              </Button>
+              <Button
+                variant="danger"
+                disabled={submitting || !reason.trim()}
+                onClick={() => void submitSanction()}
+              >
+                {submitting ? "…" : "Confirmer"}
+              </Button>
+            </Modal.Actions>
           </Modal>
         </>
       )}

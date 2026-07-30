@@ -1,4 +1,7 @@
-import { WARSHIP_CATEGORIES, type UpsertWarshipInput } from "@spacesim/protocol";
+import {
+  WARSHIP_CATEGORIES,
+  type UpsertWarshipInput,
+} from "@spacesim/protocol";
 import { RESOURCES, type ResourceId } from "@spacesim/shared";
 import {
   Button,
@@ -78,14 +81,18 @@ function formFromWarship(w: Warship): UpsertWarshipInput {
 export function WarshipsView({ token }: Props) {
   const [warships, setWarships] = useState<Warship[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
+    null,
+  );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<UpsertWarshipInput>(emptyForm());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const load = () => {
-    fetch("/api/admin/content/warships", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/admin/content/warships", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
       .then((body: { warships?: Warship[]; error?: string }) => {
         if (body.error) {
@@ -122,11 +129,17 @@ export function WarshipsView({ token }: Props) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(`/api/admin/content/warships/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form),
-      });
+      const res = await fetch(
+        `/api/admin/content/warships/${encodeURIComponent(id)}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(form),
+        },
+      );
       const body = await res.json();
       if (!res.ok) {
         setSubmitError(body.error ?? "Erreur serveur");
@@ -162,7 +175,11 @@ export function WarshipsView({ token }: Props) {
       align: "right",
       render: (v) => `${Math.round((v as number) / 1000)} s`,
     },
-    { key: "requiresTech", label: "Tech requise", render: (v) => (v as string | null) ?? "—" },
+    {
+      key: "requiresTech",
+      label: "Tech requise",
+      render: (v) => (v as string | null) ?? "—",
+    },
     {
       key: "actions",
       label: "",
@@ -175,26 +192,24 @@ export function WarshipsView({ token }: Props) {
   ];
 
   return (
-    <Panel title="Vaisseaux de guerre" actions={<Button onClick={openCreate}>Nouveau</Button>}>
+    <Panel
+      title="Vaisseaux de guerre"
+      actions={<Button onClick={openCreate}>Nouveau</Button>}
+    >
       {error && <p className="auth-error">{error}</p>}
       {!error && warships === null && <p className="muted">Chargement…</p>}
       {!error && warships && <Table columns={columns} rows={warships} />}
 
       {editing && (
-        <Modal
-          title={editing.isNew ? "Nouveau vaisseau de guerre" : `Modifier « ${editing.id} »`}
-          onClose={() => setEditing(null)}
-          actions={
-            <>
-              <Button variant="ghost" onClick={() => setEditing(null)}>
-                Annuler
-              </Button>
-              <Button disabled={submitting} onClick={() => void submit()}>
-                {submitting ? "…" : "Enregistrer"}
-              </Button>
-            </>
-          }
-        >
+        <Modal onClickOutside={() => setEditing(null)}>
+          <Modal.Header
+            title={
+              editing.isNew
+                ? "Nouveau vaisseau de guerre"
+                : `Modifier « ${editing.id} »`
+            }
+            onClose={() => setEditing(null)}
+          />
           {editing.isNew && (
             <Field
               label="Id (identifiant technique, ex. plasma_cruiser)"
@@ -210,31 +225,45 @@ export function WarshipsView({ token }: Props) {
           <Field
             label="Description"
             value={form.descriptionFr}
-            onChange={(e) => setForm({ ...form, descriptionFr: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, descriptionFr: e.target.value })
+            }
           />
           <Select
             label="Catégorie"
             value={form.category}
             onChange={(e) =>
-              setForm({ ...form, category: e.target.value as UpsertWarshipInput["category"] })
+              setForm({
+                ...form,
+                category: e.target.value as UpsertWarshipInput["category"],
+              })
             }
-            options={WARSHIP_CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABELS[c] ?? c }))}
+            options={WARSHIP_CATEGORIES.map((c) => ({
+              value: c,
+              label: CATEGORY_LABELS[c] ?? c,
+            }))}
           />
           <div className="stat-row">
             <NumberInput
               label="Coque"
               value={form.hull}
-              onChange={(e) => setForm({ ...form, hull: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, hull: Number(e.target.value) })
+              }
             />
             <NumberInput
               label="Boucliers"
               value={form.shield}
-              onChange={(e) => setForm({ ...form, shield: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, shield: Number(e.target.value) })
+              }
             />
             <NumberInput
               label="Initiative"
               value={form.initiative}
-              onChange={(e) => setForm({ ...form, initiative: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, initiative: Number(e.target.value) })
+              }
             />
           </div>
           <div className="stat-row">
@@ -242,21 +271,30 @@ export function WarshipsView({ token }: Props) {
               label="Armes (longue portée)"
               value={form.weapons.long}
               onChange={(e) =>
-                setForm({ ...form, weapons: { ...form.weapons, long: Number(e.target.value) } })
+                setForm({
+                  ...form,
+                  weapons: { ...form.weapons, long: Number(e.target.value) },
+                })
               }
             />
             <NumberInput
               label="Armes (portée moyenne)"
               value={form.weapons.medium}
               onChange={(e) =>
-                setForm({ ...form, weapons: { ...form.weapons, medium: Number(e.target.value) } })
+                setForm({
+                  ...form,
+                  weapons: { ...form.weapons, medium: Number(e.target.value) },
+                })
               }
             />
             <NumberInput
               label="Armes (courte portée)"
               value={form.weapons.short}
               onChange={(e) =>
-                setForm({ ...form, weapons: { ...form.weapons, short: Number(e.target.value) } })
+                setForm({
+                  ...form,
+                  weapons: { ...form.weapons, short: Number(e.target.value) },
+                })
               }
             />
           </div>
@@ -264,20 +302,27 @@ export function WarshipsView({ token }: Props) {
             <NumberInput
               label="Temps de fabrication (s)"
               value={form.buildMs / 1000}
-              onChange={(e) => setForm({ ...form, buildMs: Number(e.target.value) * 1000 })}
+              onChange={(e) =>
+                setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
+              }
             />
             <NumberInput
               label="Bonus dégâts de flotte"
               value={form.fleetDamageBonus ?? 0}
               onChange={(e) =>
-                setForm({ ...form, fleetDamageBonus: Number(e.target.value) || null })
+                setForm({
+                  ...form,
+                  fleetDamageBonus: Number(e.target.value) || null,
+                })
               }
             />
           </div>
           <Field
             label="Tech requise (id, vide = aucune)"
             value={form.requiresTech ?? ""}
-            onChange={(e) => setForm({ ...form, requiresTech: e.target.value.trim() || null })}
+            onChange={(e) =>
+              setForm({ ...form, requiresTech: e.target.value.trim() || null })
+            }
           />
           <p className="muted small">Coût de construction</p>
           <div className="stat-row">
@@ -291,6 +336,14 @@ export function WarshipsView({ token }: Props) {
             ))}
           </div>
           {submitError && <p className="auth-error">{submitError}</p>}
+          <Modal.Actions>
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Annuler
+            </Button>
+            <Button disabled={submitting} onClick={() => void submit()}>
+              {submitting ? "…" : "Enregistrer"}
+            </Button>
+          </Modal.Actions>
         </Modal>
       )}
     </Panel>

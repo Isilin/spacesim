@@ -77,14 +77,18 @@ function formFromTech(t: Tech): TechForm {
 export function TechsView({ token }: Props) {
   const [techs, setTechs] = useState<Tech[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
+    null,
+  );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<TechForm>(emptyForm());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const load = () => {
-    fetch("/api/admin/content/techs", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/admin/content/techs", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
       .then((body: { techs?: Tech[]; error?: string }) => {
         if (body.error) {
@@ -140,11 +144,17 @@ export function TechsView({ token }: Props) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(`/api/admin/content/techs/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        `/api/admin/content/techs/${encodeURIComponent(id)}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
       const body = await res.json();
       if (!res.ok) {
         setSubmitError(body.error ?? "Erreur serveur");
@@ -177,7 +187,8 @@ export function TechsView({ token }: Props) {
     {
       key: "requires",
       label: "Prérequis",
-      render: (v) => ((v as string[]).length > 0 ? (v as string[]).join(", ") : "—"),
+      render: (v) =>
+        (v as string[]).length > 0 ? (v as string[]).join(", ") : "—",
     },
     {
       key: "actions",
@@ -191,26 +202,22 @@ export function TechsView({ token }: Props) {
   ];
 
   return (
-    <Panel title="Arbre de recherche" actions={<Button onClick={openCreate}>Nouvelle</Button>}>
+    <Panel
+      title="Arbre de recherche"
+      actions={<Button onClick={openCreate}>Nouvelle</Button>}
+    >
       {error && <p className="auth-error">{error}</p>}
       {!error && techs === null && <p className="muted">Chargement…</p>}
       {!error && techs && <Table columns={columns} rows={techs} />}
 
       {editing && (
-        <Modal
-          title={editing.isNew ? "Nouvelle tech" : `Modifier « ${editing.id} »`}
-          onClose={() => setEditing(null)}
-          actions={
-            <>
-              <Button variant="ghost" onClick={() => setEditing(null)}>
-                Annuler
-              </Button>
-              <Button disabled={submitting} onClick={() => void submit()}>
-                {submitting ? "…" : "Enregistrer"}
-              </Button>
-            </>
-          }
-        >
+        <Modal onClickOutside={() => setEditing(null)}>
+          <Modal.Header
+            title={
+              editing.isNew ? "Nouvelle tech" : `Modifier « ${editing.id} »`
+            }
+            onClose={() => setEditing(null)}
+          />
           {editing.isNew && (
             <Field
               label="Id (identifiant technique, ex. deep_mining)"
@@ -226,26 +233,38 @@ export function TechsView({ token }: Props) {
           <Field
             label="Description"
             value={form.descriptionFr}
-            onChange={(e) => setForm({ ...form, descriptionFr: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, descriptionFr: e.target.value })
+            }
           />
           <div className="stat-row">
             <Select
               label="Branche"
               value={form.branch}
               onChange={(e) =>
-                setForm({ ...form, branch: e.target.value as UpsertTechInput["branch"] })
+                setForm({
+                  ...form,
+                  branch: e.target.value as UpsertTechInput["branch"],
+                })
               }
-              options={TECH_BRANCHES.map((b) => ({ value: b, label: BRANCH_LABELS[b] ?? b }))}
+              options={TECH_BRANCHES.map((b) => ({
+                value: b,
+                label: BRANCH_LABELS[b] ?? b,
+              }))}
             />
             <NumberInput
               label="Coût (science)"
               value={form.cost}
-              onChange={(e) => setForm({ ...form, cost: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, cost: Number(e.target.value) })
+              }
             />
             <NumberInput
               label="Durée (s)"
               value={form.durationMs / 1000}
-              onChange={(e) => setForm({ ...form, durationMs: Number(e.target.value) * 1000 })}
+              onChange={(e) =>
+                setForm({ ...form, durationMs: Number(e.target.value) * 1000 })
+              }
             />
           </div>
           <Field
@@ -254,16 +273,28 @@ export function TechsView({ token }: Props) {
             onChange={(e) => setForm({ ...form, requiresText: e.target.value })}
           />
           <div className="field-textarea-wrap">
-            <label htmlFor="tech-effects">Effets (JSON — champs de TechEffects)</label>
+            <label htmlFor="tech-effects">
+              Effets (JSON — champs de TechEffects)
+            </label>
             <textarea
               id="tech-effects"
               className="field-textarea"
               value={form.effectsText}
-              onChange={(e) => setForm({ ...form, effectsText: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, effectsText: e.target.value })
+              }
               spellCheck={false}
             />
           </div>
           {submitError && <p className="auth-error">{submitError}</p>}
+          <Modal.Actions>
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Annuler
+            </Button>
+            <Button disabled={submitting} onClick={() => void submit()}>
+              {submitting ? "…" : "Enregistrer"}
+            </Button>
+          </Modal.Actions>
         </Modal>
       )}
     </Panel>

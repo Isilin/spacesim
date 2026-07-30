@@ -1,4 +1,8 @@
-import { MODULE_ROLES, SLOT_TYPES, type UpsertModuleInput } from "@spacesim/protocol";
+import {
+  MODULE_ROLES,
+  SLOT_TYPES,
+  type UpsertModuleInput,
+} from "@spacesim/protocol";
 import { RESOURCES, type ResourceId } from "@spacesim/shared";
 import {
   Button,
@@ -102,14 +106,18 @@ function formFromModule(m: Module): ModuleForm {
 export function ModulesView({ token }: Props) {
   const [modules, setModules] = useState<Module[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
+    null,
+  );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<ModuleForm>(emptyForm());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const load = () => {
-    fetch("/api/admin/content/modules", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/admin/content/modules", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
       .then((body: { modules?: Module[]; error?: string }) => {
         if (body.error) {
@@ -166,11 +174,17 @@ export function ModulesView({ token }: Props) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(`/api/admin/content/modules/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        `/api/admin/content/modules/${encodeURIComponent(id)}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
       const body = await res.json();
       if (!res.ok) {
         setSubmitError(body.error ?? "Erreur serveur");
@@ -192,9 +206,21 @@ export function ModulesView({ token }: Props) {
   const columns: TableColumn<Module>[] = [
     { key: "id", label: "Id" },
     { key: "nameFr", label: "Nom" },
-    { key: "slot", label: "Emplacement", render: (v) => SLOT_LABELS[v as string] ?? (v as string) },
-    { key: "role", label: "Rôle", render: (v) => ROLE_LABELS[v as string] ?? (v as string) },
-    { key: "requiresTech", label: "Tech requise", render: (v) => (v as string | null) ?? "—" },
+    {
+      key: "slot",
+      label: "Emplacement",
+      render: (v) => SLOT_LABELS[v as string] ?? (v as string),
+    },
+    {
+      key: "role",
+      label: "Rôle",
+      render: (v) => ROLE_LABELS[v as string] ?? (v as string),
+    },
+    {
+      key: "requiresTech",
+      label: "Tech requise",
+      render: (v) => (v as string | null) ?? "—",
+    },
     {
       key: "actions",
       label: "",
@@ -207,26 +233,22 @@ export function ModulesView({ token }: Props) {
   ];
 
   return (
-    <Panel title="Modules" actions={<Button onClick={openCreate}>Nouveau</Button>}>
+    <Panel
+      title="Modules"
+      actions={<Button onClick={openCreate}>Nouveau</Button>}
+    >
       {error && <p className="auth-error">{error}</p>}
       {!error && modules === null && <p className="muted">Chargement…</p>}
       {!error && modules && <Table columns={columns} rows={modules} />}
 
       {editing && (
-        <Modal
-          title={editing.isNew ? "Nouveau module" : `Modifier « ${editing.id} »`}
-          onClose={() => setEditing(null)}
-          actions={
-            <>
-              <Button variant="ghost" onClick={() => setEditing(null)}>
-                Annuler
-              </Button>
-              <Button disabled={submitting} onClick={() => void submit()}>
-                {submitting ? "…" : "Enregistrer"}
-              </Button>
-            </>
-          }
-        >
+        <Modal onClickOutside={() => setEditing(null)}>
+          <Modal.Header
+            title={
+              editing.isNew ? "Nouveau module" : `Modifier « ${editing.id} »`
+            }
+            onClose={() => setEditing(null)}
+          />
           {editing.isNew && (
             <Field
               label="Id (identifiant technique, ex. quantum_scanner)"
@@ -242,24 +264,38 @@ export function ModulesView({ token }: Props) {
           <Field
             label="Description"
             value={form.descriptionFr}
-            onChange={(e) => setForm({ ...form, descriptionFr: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, descriptionFr: e.target.value })
+            }
           />
           <div className="stat-row">
             <Select
               label="Emplacement"
               value={form.slot}
               onChange={(e) =>
-                setForm({ ...form, slot: e.target.value as UpsertModuleInput["slot"] })
+                setForm({
+                  ...form,
+                  slot: e.target.value as UpsertModuleInput["slot"],
+                })
               }
-              options={SLOT_TYPES.map((s) => ({ value: s, label: SLOT_LABELS[s] ?? s }))}
+              options={SLOT_TYPES.map((s) => ({
+                value: s,
+                label: SLOT_LABELS[s] ?? s,
+              }))}
             />
             <Select
               label="Rôle"
               value={form.role}
               onChange={(e) =>
-                setForm({ ...form, role: e.target.value as UpsertModuleInput["role"] })
+                setForm({
+                  ...form,
+                  role: e.target.value as UpsertModuleInput["role"],
+                })
               }
-              options={MODULE_ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] ?? r }))}
+              options={MODULE_ROLES.map((r) => ({
+                value: r,
+                label: ROLE_LABELS[r] ?? r,
+              }))}
             />
           </div>
           <p className="muted small">Budgets consommés</p>
@@ -267,23 +303,31 @@ export function ModulesView({ token }: Props) {
             <NumberInput
               label="Énergie"
               value={form.power}
-              onChange={(e) => setForm({ ...form, power: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, power: Number(e.target.value) })
+              }
             />
             <NumberInput
               label="Tonnage"
               value={form.tonnage}
-              onChange={(e) => setForm({ ...form, tonnage: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, tonnage: Number(e.target.value) })
+              }
             />
             <NumberInput
               label="Calcul"
               value={form.calc}
-              onChange={(e) => setForm({ ...form, calc: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, calc: Number(e.target.value) })
+              }
             />
           </div>
           <NumberInput
             label="Temps de fabrication (s)"
             value={form.buildMs / 1000}
-            onChange={(e) => setForm({ ...form, buildMs: Number(e.target.value) * 1000 })}
+            onChange={(e) =>
+              setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
+            }
           />
           <Field
             label="Tech requise (id, vide = aucune)"
@@ -291,16 +335,22 @@ export function ModulesView({ token }: Props) {
             onChange={(e) => setForm({ ...form, requiresTech: e.target.value })}
           />
           <div className="field-textarea-wrap">
-            <label htmlFor="module-effects">Effets (JSON — champs de ModuleEffects)</label>
+            <label htmlFor="module-effects">
+              Effets (JSON — champs de ModuleEffects)
+            </label>
             <textarea
               id="module-effects"
               className="field-textarea"
               value={form.effectsText}
-              onChange={(e) => setForm({ ...form, effectsText: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, effectsText: e.target.value })
+              }
               spellCheck={false}
             />
           </div>
-          <p className="muted small">Coût de construction (ajouté au châssis)</p>
+          <p className="muted small">
+            Coût de construction (ajouté au châssis)
+          </p>
           <div className="stat-row">
             {RESOURCES.map((res) => (
               <NumberInput
@@ -312,6 +362,14 @@ export function ModulesView({ token }: Props) {
             ))}
           </div>
           {submitError && <p className="auth-error">{submitError}</p>}
+          <Modal.Actions>
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Annuler
+            </Button>
+            <Button disabled={submitting} onClick={() => void submit()}>
+              {submitting ? "…" : "Enregistrer"}
+            </Button>
+          </Modal.Actions>
         </Modal>
       )}
     </Panel>

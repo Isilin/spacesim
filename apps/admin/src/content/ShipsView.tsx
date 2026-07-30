@@ -1,6 +1,14 @@
 import type { UpsertShipInput } from "@spacesim/protocol";
 import { RESOURCES, type ResourceId } from "@spacesim/shared";
-import { Button, Field, Modal, NumberInput, Panel, Table, type TableColumn } from "@spacesim/ui";
+import {
+  Button,
+  Field,
+  Modal,
+  NumberInput,
+  Panel,
+  Table,
+  type TableColumn,
+} from "@spacesim/ui";
 import { useEffect, useState } from "react";
 
 interface Ship {
@@ -52,14 +60,18 @@ function formFromShip(s: Ship): UpsertShipInput {
 export function ShipsView({ token }: Props) {
   const [ships, setShips] = useState<Ship[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
+    null,
+  );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<UpsertShipInput>(emptyForm());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const load = () => {
-    fetch("/api/admin/content/ships", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/admin/content/ships", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
       .then((body: { ships?: Ship[]; error?: string }) => {
         if (body.error) {
@@ -96,11 +108,17 @@ export function ShipsView({ token }: Props) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(`/api/admin/content/ships/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form),
-      });
+      const res = await fetch(
+        `/api/admin/content/ships/${encodeURIComponent(id)}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(form),
+        },
+      );
       const body = await res.json();
       if (!res.ok) {
         setSubmitError(body.error ?? "Erreur serveur");
@@ -131,7 +149,11 @@ export function ShipsView({ token }: Props) {
       align: "right",
       render: (v) => `${Math.round((v as number) / 1000)} s`,
     },
-    { key: "requiresTech", label: "Tech requise", render: (v) => (v as string | null) ?? "—" },
+    {
+      key: "requiresTech",
+      label: "Tech requise",
+      render: (v) => (v as string | null) ?? "—",
+    },
     {
       key: "actions",
       label: "",
@@ -144,26 +166,24 @@ export function ShipsView({ token }: Props) {
   ];
 
   return (
-    <Panel title="Vaisseaux civils" actions={<Button onClick={openCreate}>Nouveau</Button>}>
+    <Panel
+      title="Vaisseaux civils"
+      actions={<Button onClick={openCreate}>Nouveau</Button>}
+    >
       {error && <p className="auth-error">{error}</p>}
       {!error && ships === null && <p className="muted">Chargement…</p>}
       {!error && ships && <Table columns={columns} rows={ships} />}
 
       {editing && (
-        <Modal
-          title={editing.isNew ? "Nouveau vaisseau civil" : `Modifier « ${editing.id} »`}
-          onClose={() => setEditing(null)}
-          actions={
-            <>
-              <Button variant="ghost" onClick={() => setEditing(null)}>
-                Annuler
-              </Button>
-              <Button disabled={submitting} onClick={() => void submit()}>
-                {submitting ? "…" : "Enregistrer"}
-              </Button>
-            </>
-          }
-        >
+        <Modal onClickOutside={() => setEditing(null)}>
+          <Modal.Header
+            title={
+              editing.isNew
+                ? "Nouveau vaisseau civil"
+                : `Modifier « ${editing.id} »`
+            }
+            onClose={() => setEditing(null)}
+          />
           {editing.isNew && (
             <Field
               label="Id (identifiant technique, ex. bulk_freighter)"
@@ -179,34 +199,46 @@ export function ShipsView({ token }: Props) {
           <Field
             label="Description"
             value={form.descriptionFr}
-            onChange={(e) => setForm({ ...form, descriptionFr: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, descriptionFr: e.target.value })
+            }
           />
           <div className="stat-row">
             <NumberInput
               label="Soute"
               value={form.capacity}
-              onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, capacity: Number(e.target.value) })
+              }
             />
             <NumberInput
               label="Vitesse (× base)"
               value={form.speedMult}
-              onChange={(e) => setForm({ ...form, speedMult: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, speedMult: Number(e.target.value) })
+              }
             />
             <NumberInput
               label="Carburant par saut"
               value={form.fuelPerJump}
-              onChange={(e) => setForm({ ...form, fuelPerJump: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({ ...form, fuelPerJump: Number(e.target.value) })
+              }
             />
           </div>
           <NumberInput
             label="Temps de fabrication (s)"
             value={form.buildMs / 1000}
-            onChange={(e) => setForm({ ...form, buildMs: Number(e.target.value) * 1000 })}
+            onChange={(e) =>
+              setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
+            }
           />
           <Field
             label="Tech requise (id, vide = aucune)"
             value={form.requiresTech ?? ""}
-            onChange={(e) => setForm({ ...form, requiresTech: e.target.value.trim() || null })}
+            onChange={(e) =>
+              setForm({ ...form, requiresTech: e.target.value.trim() || null })
+            }
           />
           <p className="muted small">Coût de construction</p>
           <div className="stat-row">
@@ -220,6 +252,14 @@ export function ShipsView({ token }: Props) {
             ))}
           </div>
           {submitError && <p className="auth-error">{submitError}</p>}
+          <Modal.Actions>
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Annuler
+            </Button>
+            <Button disabled={submitting} onClick={() => void submit()}>
+              {submitting ? "…" : "Enregistrer"}
+            </Button>
+          </Modal.Actions>
         </Modal>
       )}
     </Panel>

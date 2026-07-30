@@ -12,44 +12,13 @@
   composes: cutFrame from "../../shared/cut-frame.module.css";
   --cut: var(--cut-lg);
   --frame-border: var(--border-bright);
-  width: min(480px, 90vw);
-  box-shadow: var(--shadow-panel), 0 0 40px -10px color-mix(in oklch, var(--cyan) 25%, transparent);
+  width: min(560px, 90vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-panel), 0 0 40px -10px
+    color-mix(in oklch, var(--cyan) 25%, transparent);
 }
 .modalIn {
   composes: cutIn from "../../shared/cut-frame.module.css";
   padding: 20px;
-}
-.head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border);
-}
-.title {
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--cyan);
-}
-.close {
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: var(--fs-lg);
-  line-height: 1;
-  padding: 0;
-}
-.close:hover {
-  color: var(--text);
-}
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 18px;
 }

@@ -1,5 +1,13 @@
 import type { UpsertPresetInput } from "@spacesim/protocol";
-import { Button, Field, Modal, Panel, Select, Table, type TableColumn } from "@spacesim/ui";
+import {
+  Button,
+  Field,
+  Modal,
+  Panel,
+  Select,
+  Table,
+  type TableColumn,
+} from "@spacesim/ui";
 import { useEffect, useState } from "react";
 
 interface Preset {
@@ -24,7 +32,13 @@ interface PresetForm {
 }
 
 function emptyForm(): PresetForm {
-  return { nameFr: "", descriptionFr: "", chassisId: "", modulesText: "", starter: "no" };
+  return {
+    nameFr: "",
+    descriptionFr: "",
+    chassisId: "",
+    modulesText: "",
+    starter: "no",
+  };
 }
 
 function formFromPreset(p: Preset): PresetForm {
@@ -45,14 +59,18 @@ function formFromPreset(p: Preset): PresetForm {
 export function PresetsView({ token }: Props) {
   const [presets, setPresets] = useState<Preset[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
+    null,
+  );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<PresetForm>(emptyForm());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const load = () => {
-    fetch("/api/admin/content/presets", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/admin/content/presets", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
       .then((body: { presets?: Preset[]; error?: string }) => {
         if (body.error) {
@@ -99,11 +117,17 @@ export function PresetsView({ token }: Props) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(`/api/admin/content/presets/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        `/api/admin/content/presets/${encodeURIComponent(id)}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
       const body = await res.json();
       if (!res.ok) {
         setSubmitError(body.error ?? "Erreur serveur");
@@ -122,8 +146,16 @@ export function PresetsView({ token }: Props) {
     { key: "id", label: "Id" },
     { key: "nameFr", label: "Nom" },
     { key: "chassisId", label: "Châssis" },
-    { key: "modules", label: "Modules", render: (v) => (v as string[]).join(", ") || "—" },
-    { key: "starter", label: "Amorçage", render: (v) => ((v as boolean) ? "Oui" : "—") },
+    {
+      key: "modules",
+      label: "Modules",
+      render: (v) => (v as string[]).join(", ") || "—",
+    },
+    {
+      key: "starter",
+      label: "Amorçage",
+      render: (v) => ((v as boolean) ? "Oui" : "—"),
+    },
     {
       key: "actions",
       label: "",
@@ -136,26 +168,22 @@ export function PresetsView({ token }: Props) {
   ];
 
   return (
-    <Panel title="Plans pré-conçus" actions={<Button onClick={openCreate}>Nouveau</Button>}>
+    <Panel
+      title="Plans pré-conçus"
+      actions={<Button onClick={openCreate}>Nouveau</Button>}
+    >
       {error && <p className="auth-error">{error}</p>}
       {!error && presets === null && <p className="muted">Chargement…</p>}
       {!error && presets && <Table columns={columns} rows={presets} />}
 
       {editing && (
-        <Modal
-          title={editing.isNew ? "Nouveau plan" : `Modifier « ${editing.id} »`}
-          onClose={() => setEditing(null)}
-          actions={
-            <>
-              <Button variant="ghost" onClick={() => setEditing(null)}>
-                Annuler
-              </Button>
-              <Button disabled={submitting} onClick={() => void submit()}>
-                {submitting ? "…" : "Enregistrer"}
-              </Button>
-            </>
-          }
-        >
+        <Modal onClickOutside={() => setEditing(null)}>
+          <Modal.Header
+            title={
+              editing.isNew ? "Nouveau plan" : `Modifier « ${editing.id} »`
+            }
+            onClose={() => setEditing(null)}
+          />
           {editing.isNew && (
             <Field
               label="Id (identifiant technique, ex. corvette_mk1)"
@@ -171,7 +199,9 @@ export function PresetsView({ token }: Props) {
           <Field
             label="Description"
             value={form.descriptionFr}
-            onChange={(e) => setForm({ ...form, descriptionFr: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, descriptionFr: e.target.value })
+            }
           />
           <Field
             label="Id du châssis"
@@ -186,13 +216,23 @@ export function PresetsView({ token }: Props) {
           <Select
             label="Fourni à la création d'un empire"
             value={form.starter}
-            onChange={(e) => setForm({ ...form, starter: e.target.value as "yes" | "no" })}
+            onChange={(e) =>
+              setForm({ ...form, starter: e.target.value as "yes" | "no" })
+            }
             options={[
               { value: "no", label: "Non" },
               { value: "yes", label: "Oui" },
             ]}
           />
           {submitError && <p className="auth-error">{submitError}</p>}
+          <Modal.Actions>
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Annuler
+            </Button>
+            <Button disabled={submitting} onClick={() => void submit()}>
+              {submitting ? "…" : "Enregistrer"}
+            </Button>
+          </Modal.Actions>
         </Modal>
       )}
     </Panel>

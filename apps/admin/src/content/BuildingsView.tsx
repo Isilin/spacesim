@@ -31,7 +31,9 @@ interface Props {
 function summarize(resources: Record<string, number> | null): string {
   if (!resources) return "—";
   const entries = Object.entries(resources).filter(([, v]) => v > 0);
-  return entries.length > 0 ? entries.map(([res, v]) => `${res} ${v}`).join(", ") : "—";
+  return entries.length > 0
+    ? entries.map(([res, v]) => `${res} ${v}`).join(", ")
+    : "—";
 }
 
 function formFromBuilding(b: Building): UpsertBuildingInput {
@@ -63,7 +65,9 @@ export function BuildingsView({ token }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const load = () => {
-    fetch("/api/admin/content/buildings", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/admin/content/buildings", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
       .then((body: { buildings?: Building[]; error?: string }) => {
         if (body.error) {
@@ -88,11 +92,17 @@ export function BuildingsView({ token }: Props) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(`/api/admin/content/buildings/${encodeURIComponent(editingId)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form),
-      });
+      const res = await fetch(
+        `/api/admin/content/buildings/${encodeURIComponent(editingId)}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(form),
+        },
+      );
       const body = await res.json();
       if (!res.ok) {
         setSubmitError(body.error ?? "Erreur serveur");
@@ -108,8 +118,14 @@ export function BuildingsView({ token }: Props) {
     }
   };
 
-  const setResource = (kind: "outputs" | "inputs", resource: ResourceId, value: number) => {
-    setForm((f) => (f ? { ...f, [kind]: { ...f[kind], [resource]: value } } : f));
+  const setResource = (
+    kind: "outputs" | "inputs",
+    resource: ResourceId,
+    value: number,
+  ) => {
+    setForm((f) =>
+      f ? { ...f, [kind]: { ...f[kind], [resource]: value } } : f,
+    );
   };
 
   const columns: TableColumn<Building>[] = [
@@ -121,8 +137,16 @@ export function BuildingsView({ token }: Props) {
       align: "right",
       render: (v) => `${Math.round((v as number) / 1000)} s`,
     },
-    { key: "outputs", label: "Produit", render: (v) => summarize(v as Record<string, number>) },
-    { key: "inputs", label: "Consomme", render: (v) => summarize(v as Record<string, number>) },
+    {
+      key: "outputs",
+      label: "Produit",
+      render: (v) => summarize(v as Record<string, number>),
+    },
+    {
+      key: "inputs",
+      label: "Consomme",
+      render: (v) => summarize(v as Record<string, number>),
+    },
     {
       key: "actions",
       label: "",
@@ -141,20 +165,11 @@ export function BuildingsView({ token }: Props) {
       {!error && buildings && <Table columns={columns} rows={buildings} />}
 
       {editingId && form && (
-        <Modal
-          title={`Modifier « ${editingId} »`}
-          onClose={() => setEditingId(null)}
-          actions={
-            <>
-              <Button variant="ghost" onClick={() => setEditingId(null)}>
-                Annuler
-              </Button>
-              <Button disabled={submitting} onClick={() => void submit()}>
-                {submitting ? "…" : "Enregistrer"}
-              </Button>
-            </>
-          }
-        >
+        <Modal onClickOutside={() => setEditingId(null)}>
+          <Modal.Header
+            title={`Modifier « ${editingId} »`}
+            onClose={() => setEditingId(null)}
+          />
           <Field
             label="Nom"
             value={form.nameFr}
@@ -163,19 +178,26 @@ export function BuildingsView({ token }: Props) {
           <Field
             label="Description"
             value={form.descriptionFr}
-            onChange={(e) => setForm({ ...form, descriptionFr: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, descriptionFr: e.target.value })
+            }
           />
           <div className="stat-row">
             <NumberInput
               label="Temps de fabrication (s)"
               value={form.buildMs / 1000}
-              onChange={(e) => setForm({ ...form, buildMs: Number(e.target.value) * 1000 })}
+              onChange={(e) =>
+                setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
+              }
             />
             <NumberInput
               label="Emplois par instance"
               value={form.jobsPerInstance ?? 0}
               onChange={(e) =>
-                setForm({ ...form, jobsPerInstance: Number(e.target.value) || null })
+                setForm({
+                  ...form,
+                  jobsPerInstance: Number(e.target.value) || null,
+                })
               }
             />
             <Select
@@ -184,7 +206,8 @@ export function BuildingsView({ token }: Props) {
               onChange={(e) =>
                 setForm({
                   ...form,
-                  depositScaled: e.target.value === NO_DEPOSIT ? null : e.target.value,
+                  depositScaled:
+                    e.target.value === NO_DEPOSIT ? null : e.target.value,
                 })
               }
               options={[
@@ -201,7 +224,10 @@ export function BuildingsView({ token }: Props) {
                 label={res}
                 value={form.cost[res] ?? 0}
                 onChange={(e) =>
-                  setForm({ ...form, cost: { ...form.cost, [res]: Number(e.target.value) } })
+                  setForm({
+                    ...form,
+                    cost: { ...form.cost, [res]: Number(e.target.value) },
+                  })
                 }
               />
             ))}
@@ -213,7 +239,9 @@ export function BuildingsView({ token }: Props) {
                 key={`outputs-${res}`}
                 label={res}
                 value={form.outputs?.[res] ?? 0}
-                onChange={(e) => setResource("outputs", res, Number(e.target.value))}
+                onChange={(e) =>
+                  setResource("outputs", res, Number(e.target.value))
+                }
               />
             ))}
           </div>
@@ -224,11 +252,21 @@ export function BuildingsView({ token }: Props) {
                 key={`inputs-${res}`}
                 label={res}
                 value={form.inputs?.[res] ?? 0}
-                onChange={(e) => setResource("inputs", res, Number(e.target.value))}
+                onChange={(e) =>
+                  setResource("inputs", res, Number(e.target.value))
+                }
               />
             ))}
           </div>
           {submitError && <p className="auth-error">{submitError}</p>}
+          <Modal.Actions>
+            <Button variant="ghost" onClick={() => setEditingId(null)}>
+              Annuler
+            </Button>
+            <Button disabled={submitting} onClick={() => void submit()}>
+              {submitting ? "…" : "Enregistrer"}
+            </Button>
+          </Modal.Actions>
         </Modal>
       )}
     </Panel>
