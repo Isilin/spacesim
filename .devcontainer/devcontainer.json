@@ -1,0 +1,18 @@
+{
+  "name": "SpaceSim (app)",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/app",
+  "shutdownAction": "none",
+  "forwardPorts": [3001, 5173, 5174],
+  "portsAttributes": {
+    "3001": { "label": "server" },
+    "5173": { "label": "web" },
+    "5174": { "label": "admin" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["biomejs.biome"]
+    }
+  }
+}

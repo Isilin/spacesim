@@ -172,6 +172,20 @@ ne pas alourdir `app`/`test`/`typecheck` — le binaire du navigateur s'installe
 nommés (binaires natifs Linux isolés de l'hôte). Après un changement de dépendances, l'install
 se relance au prochain `up`/`run` (lockfile figé).
 
+**Édition locale (VS Code)** : sans Node/pnpm sur l'hôte, les `node_modules` n'existent jamais
+sur le disque Windows (volumes nommés) — un VS Code ouvert directement sur le dossier ne peut
+donc résoudre ni les imports `@spacesim/*` ni les dépendances externes. `.devcontainer/devcontainer.json`
+référence le service `app` existant : `Dev Containers: Reopen in Container` (extension
+`ms-vscode-remote.remote-containers`) attache VS Code à ce conteneur, où le serveur TypeScript
+et Biome (`.vscode/extensions.json`) trouvent les vraies dépendances. `shutdownAction: "none"`
+évite que fermer VS Code n'arrête la pile.
+
+Le bind mount hôte Windows → conteneur (Docker Desktop/WSL2) ne fait pas remonter les
+événements fs de façon fiable : `tsx watch` et Vite ne voyaient aucune modification faite
+depuis l'hôte. `CHOKIDAR_USEPOLLING`/`CHOKIDAR_INTERVAL` sur le service `app` (lus directement
+par chokidar, la lib de watch des deux outils) forcent le polling — le hot reload fonctionne
+à nouveau, au prix d'une détection à ~300 ms plutôt qu'instantanée.
+
 Migrations drizzle-kit (`apps/server/drizzle/`), appliquées automatiquement au boot :
 après un changement de `src/db/schema.ts`, lancer `pnpm --filter @spacesim/server db:generate`
 et committer la migration générée. Ne jamais modifier une migration déjà appliquée.

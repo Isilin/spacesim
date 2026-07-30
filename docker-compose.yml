@@ -52,6 +52,13 @@ services:
               pnpm --filter @spacesim/admin dev --host 0.0.0.0)"
     environment:
       DATABASE_URL: postgres://spacesim:spacesim@postgres:5432/spacesim
+      # Bind mount hôte Windows → conteneur Linux : les événements fs natifs ne
+      # remontent pas de façon fiable (Docker Desktop/WSL2). tsx watch et Vite
+      # utilisent chokidar en interne, qui lit ces deux variables pour basculer
+      # en polling — sans ça, aucune modification depuis l'hôte ne déclenche
+      # de hot reload.
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "300"
     depends_on:
       postgres:
         condition: service_healthy
