@@ -21,6 +21,8 @@ beforeEach(async () => {
   await db.delete(schema.contentModules);
   await db.delete(schema.contentPresets);
   await db.delete(schema.contentMilestones);
+  await db.delete(schema.contentZoneTypes);
+  await db.delete(schema.contentInstallations);
 });
 
 const VALID_WARSHIP_BODY = {
@@ -1101,6 +1103,199 @@ describe("/api/admin/content/milestones", () => {
       url: "/api/admin/content/milestones/pop-25",
       headers: { authorization: `Bearer ${token}` },
       payload: VALID_MILESTONE_BODY,
+    });
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+const VALID_ZONE_TYPE_BODY = {
+  nameFr: "Zone logistique",
+  descriptionFr: "Une nouvelle zone créée depuis l'admin.",
+  cost: { metals: 100, components: 40 },
+  buildMs: 50_000,
+  requiresTech: null,
+};
+
+describe("/api/admin/content/zone-types", () => {
+  it("un content_editor liste les 3 types de zone historiques amorcés au boot", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
+    await setTestRole(accountId, "content_editor");
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/admin/content/zone-types",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().zoneTypes).toHaveLength(3);
+  });
+
+  it("modifie un type de zone existant — effective immédiatement", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/zone-types/industrial_zone",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_ZONE_TYPE_BODY, requiresTech: "orbital_engineering" },
+    });
+    expect(res.statusCode).toBe(200);
+    const updated = res
+      .json()
+      .zoneTypes.find((z: { id: string }) => z.id === "industrial_zone");
+    expect(updated.nameFr).toBe("Zone logistique");
+  });
+
+  it("un id inconnu crée un type de zone neuf (id-minting)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/zone-types/logistics_zone",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_ZONE_TYPE_BODY,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().zoneTypes).toHaveLength(4);
+  });
+
+  it("un coût négatif est refusé (400)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/zone-types/industrial_zone",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_ZONE_TYPE_BODY, cost: { metals: -10 } },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("un compte joueur ne peut pas éditer les types de zone (403)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token } = await registerTestAccount(app, "joueur@exemple.fr");
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/zone-types/industrial_zone",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_ZONE_TYPE_BODY,
+    });
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+const VALID_INSTALLATION_BODY = {
+  nameFr: "Antenne relais",
+  descriptionFr: "Une nouvelle installation créée depuis l'admin.",
+  zoneType: "industrial_zone",
+  cost: { metals: 60 },
+  buildMs: 20_000,
+  inputs: null,
+  outputs: { energy: 2 },
+  requiresTech: null,
+};
+
+describe("/api/admin/content/installations", () => {
+  it("un content_editor liste les 6 installations historiques amorcées au boot", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
+    await setTestRole(accountId, "content_editor");
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/admin/content/installations",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().installations).toHaveLength(6);
+  });
+
+  it("modifie une installation existante — effective immédiatement", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/installations/orbital_solar_array",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_INSTALLATION_BODY, requiresTech: "orbital_engineering" },
+    });
+    expect(res.statusCode).toBe(200);
+    const updated = res
+      .json()
+      .installations.find(
+        (i: { id: string }) => i.id === "orbital_solar_array",
+      );
+    expect(updated.nameFr).toBe("Antenne relais");
+  });
+
+  it("un id inconnu crée une installation neuve (id-minting)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/installations/orbital_relay",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_INSTALLATION_BODY,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().installations).toHaveLength(7);
+  });
+
+  it("un coût négatif est refusé (400)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
+    await setTestRole(accountId, "content_editor");
+
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/installations/orbital_solar_array",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ...VALID_INSTALLATION_BODY, cost: { metals: -10 } },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("un compte joueur ne peut pas éditer les installations (403)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token } = await registerTestAccount(app, "joueur@exemple.fr");
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/installations/orbital_solar_array",
+      headers: { authorization: `Bearer ${token}` },
+      payload: VALID_INSTALLATION_BODY,
     });
     expect(res.statusCode).toBe(403);
   });

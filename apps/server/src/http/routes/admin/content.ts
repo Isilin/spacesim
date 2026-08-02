@@ -3,12 +3,14 @@ import {
   upsertChassisSchema,
   upsertConstantSchema,
   upsertFactionSchema,
+  upsertInstallationSchema,
   upsertMilestoneSchema,
   upsertModuleSchema,
   upsertPresetSchema,
   upsertShipSchema,
   upsertTechSchema,
   upsertWarshipSchema,
+  upsertZoneTypeSchema,
 } from "@spacesim/protocol";
 import { BUILDING_IDS, DEFAULT_BALANCE, validateTree, type BuildingId } from "@spacesim/shared";
 import type { FastifyInstance } from "fastify";
@@ -21,12 +23,14 @@ import type {
   ContentChassis,
   ContentConstant,
   ContentFaction,
+  ContentInstallation,
   ContentMilestone,
   ContentModule,
   ContentPreset,
   ContentShip,
   ContentTech,
   ContentWarship,
+  ContentZoneType,
 } from "../../../runtime/content/content-types.js";
 
 const repo = new ContentRepository();
@@ -407,6 +411,80 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
         reason: isNew ? "création" : "modification",
       });
       return { milestones: Object.values(engine.content.milestones) };
+    },
+  );
+
+  // Types de zone de station orbitale (chantier 24.7) : id libre, même recette que
+  // châssis/modules.
+  admin.get("/content/zone-types", { config: { adminAction: "content.zoneTypes.read" } }, () => ({
+    zoneTypes: Object.values(engine.content.zoneTypes),
+  }));
+
+  admin.put(
+    "/content/zone-types/:id",
+    { config: { adminAction: "content.zoneTypes.write" } },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const parsed = upsertZoneTypeSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+      }
+      const isNew = !(id in engine.content.zoneTypes);
+      const zoneType: ContentZoneType = { id, ...parsed.data };
+      await repo.saveZoneType(zoneType);
+      await engine.loadContent();
+
+      const actor = request.adminAccount!;
+      await recordAuditEntry({
+        actorAccountId: actor.id,
+        actorEmail: actor.email,
+        action: "content.zoneTypes.write",
+        targetType: "content_zone_type",
+        targetId: id,
+        reason: isNew ? "création" : "modification",
+      });
+      return { zoneTypes: Object.values(engine.content.zoneTypes) };
+    },
+  );
+
+  // Installations de station orbitale (chantier 24.7) : id libre, `zoneType` référence
+  // un type de zone par son id, non vérifié contre `content.zoneTypes` ici (même choix
+  // que `unlockBuildings` sur les techs — une faute de frappe ne débloquerait simplement
+  // rien de reconnu, sans casser l'écriture).
+  admin.get(
+    "/content/installations",
+    { config: { adminAction: "content.installations.read" } },
+    () => ({ installations: Object.values(engine.content.installations) }),
+  );
+
+  admin.put(
+    "/content/installations/:id",
+    { config: { adminAction: "content.installations.write" } },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const parsed = upsertInstallationSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+      }
+      const isNew = !(id in engine.content.installations);
+      const installation: ContentInstallation = { id, ...parsed.data };
+      await repo.saveInstallation(installation);
+      await engine.loadContent();
+
+      const actor = request.adminAccount!;
+      await recordAuditEntry({
+        actorAccountId: actor.id,
+        actorEmail: actor.email,
+        action: "content.installations.write",
+        targetType: "content_installation",
+        targetId: id,
+        reason: isNew ? "création" : "modification",
+      });
+      return { installations: Object.values(engine.content.installations) };
     },
   );
 }

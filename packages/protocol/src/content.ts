@@ -261,3 +261,32 @@ export const upsertMilestoneSchema = z.object({
   threshold: z.number().positive(),
 });
 export type UpsertMilestoneInput = z.infer<typeof upsertMilestoneSchema>;
+
+/**
+ * Types de zone + installations de station orbitale (chantier 24.7) : même recette que
+ * châssis/modules (id libre, id-minting). `zoneType` référence un type de zone par son
+ * id (comme `chassisId` sur les presets), pas un enum fermé — un type de zone peut
+ * lui-même être créé depuis l'admin.
+ */
+export const upsertZoneTypeSchema = z.object({
+  nameFr: z.string().trim().min(1).max(80),
+  descriptionFr: z.string().trim().max(500).default(""),
+  cost: z.record(z.string(), z.number().nonnegative()),
+  buildMs: z.number().int().positive(),
+  /** null = aucune tech requise. */
+  requiresTech: z.string().trim().min(1).nullable(),
+});
+export type UpsertZoneTypeInput = z.infer<typeof upsertZoneTypeSchema>;
+
+export const upsertInstallationSchema = z.object({
+  nameFr: z.string().trim().min(1).max(80),
+  descriptionFr: z.string().trim().max(500).default(""),
+  zoneType: z.string().trim().min(1),
+  cost: z.record(z.string(), z.number().nonnegative()),
+  buildMs: z.number().int().positive(),
+  inputs: z.record(z.string(), z.number().nonnegative()).nullable(),
+  outputs: z.record(z.string(), z.number().nonnegative()).nullable(),
+  /** null = aucune tech requise. */
+  requiresTech: z.string().trim().min(1).nullable(),
+});
+export type UpsertInstallationInput = z.infer<typeof upsertInstallationSchema>;
