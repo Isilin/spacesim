@@ -12,6 +12,7 @@ import {
   type Mission,
   type Planet,
   type StarSystem,
+  type Station,
   type TechId,
   type Territory,
   type Universe,
@@ -65,6 +66,7 @@ interface MapPageProps {
   game: GameState;
   colony: Colony | null;
   colonies: Colony[];
+  stations: Station[];
   missions: Mission[];
   exploredSystemIds: string[];
   gateways: Gateway[];
@@ -86,6 +88,7 @@ function MapPage({
   game,
   colony,
   colonies,
+  stations,
   missions,
   exploredSystemIds,
   gateways,
@@ -215,6 +218,7 @@ function MapPage({
           <GalaxyMap
             galaxy={viewGalaxy}
             colonies={colonies}
+            stations={stations}
             missions={missions}
             exploredSystemIds={exploredSystemIds}
             claimedSystemIds={game.claimedSystemIds}
@@ -292,6 +296,7 @@ export function App({ auth }: Props) {
     battles,
     foreignFleets,
     foreignColonies,
+    stations,
     leaderboard,
     territories,
     objectives,
@@ -494,6 +499,7 @@ export function App({ auth }: Props) {
                 game={game}
                 colony={colony}
                 colonies={colonies}
+                stations={stations}
                 missions={missions}
                 exploredSystemIds={exploredSystemIds}
                 gateways={gateways}

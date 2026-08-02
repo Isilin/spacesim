@@ -64,13 +64,14 @@ export function BodyView({
   const [searchParams] = useSearchParams();
   const activeColony = useGameStore(selectActiveColony(searchParams.get("colony")));
   const explored = useGameStore(selectExplored(system.id));
-  const { colonies, missions, game, send } = useGameStore();
+  const { colonies, missions, stations, game, send } = useGameStore();
   const parent = body.parentPlanetId
     ? system.planets.find((p) => p.id === body.parentPlanetId)
     : undefined;
   const moons = system.planets.filter((p) => p.parentPlanetId === body.id);
   const physicals = bodyPhysicals(body, parent?.orbitRadius);
   const colony = colonies.find((c) => c.planetId === body.id);
+  const station = stations.find((s) => s.bodyId === body.id);
   const color = BODY_COLORS[body.type] ?? "#8899aa";
 
   const c = SCHEMA / 2;
@@ -97,6 +98,8 @@ export function BodyView({
           missions={missions}
           activeColony={activeColony}
           game={game}
+          effects={effects}
+          stations={stations}
           now={now}
           send={send}
         />
@@ -132,6 +135,9 @@ export function BodyView({
               strokeDasharray={`${Math.min(100, (orbitalUsed(colony) / orbitalCap(colony, effects)) * 100)} 100`}
             />
           )}
+          {/* Anneau de station : rayon distinct de l'anneau de colonie, un corps peut porter
+           *  les deux (chantier 24). */}
+          {station && <circle cx={c} cy={c} r={bodyRadius + 20} className="station-ring" />}
           {moons.map((moon, i) => {
             const angle = moon.orbitAngle;
             const x = c + Math.cos(angle) * moonOrbit(i);

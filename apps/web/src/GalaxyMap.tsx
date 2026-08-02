@@ -5,6 +5,7 @@ import {
   type Galaxy,
   type Mission,
   type StarSystem,
+  type Station,
   type Territory,
 } from "@spacesim/shared";
 import { useMemo } from "react";
@@ -13,6 +14,7 @@ import { ZoomableSvg, type ViewBox } from "@spacesim/ui";
 interface Props {
   galaxy: Galaxy;
   colonies: Colony[];
+  stations: Station[];
   missions: Mission[];
   exploredSystemIds: string[];
   claimedSystemIds: string[];
@@ -26,6 +28,7 @@ interface Props {
 export function GalaxyMap({
   galaxy,
   colonies,
+  stations,
   missions,
   exploredSystemIds,
   claimedSystemIds,
@@ -42,6 +45,9 @@ export function GalaxyMap({
   );
   const colonizedSystems = new Set(
     colonies.map((c) => planetToSystem.get(c.planetId)).filter(Boolean),
+  );
+  const stationSystems = new Set(
+    stations.map((s) => planetToSystem.get(s.bodyId)).filter(Boolean),
   );
 
   const home = useMemo<ViewBox>(() => ({ x: 0, y: 0, width: MAP_WIDTH, height: MAP_HEIGHT }), []);
@@ -81,6 +87,7 @@ export function GalaxyMap({
       {galaxy.systems.map((sys) => {
         const isExplored = explored.has(sys.id);
         const hasColony = colonizedSystems.has(sys.id);
+        const hasStation = stationSystems.has(sys.id);
         return (
           <g
             key={sys.id}
@@ -119,6 +126,7 @@ export function GalaxyMap({
               claimedSystemIds.includes(sys.id) && <circle r={14} className="claim-ring" />
             )}
             {hasColony && <circle r={9} className="colony-ring" />}
+            {hasStation && <circle r={12} className="station-ring" />}
             <circle r={5} className="system-star" />
             {sys.station && isExplored && (
               <rect

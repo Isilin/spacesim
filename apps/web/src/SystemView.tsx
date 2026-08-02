@@ -32,13 +32,14 @@ const PLANET_RADIUS: Record<string, number> = {
 /** Niveau système : étoile au centre, orbites, planètes, lunes, ceintures. */
 export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }: Props) {
   const explored = useGameStore(selectExplored(system.id));
-  const { colonies } = useGameStore();
+  const { colonies, stations } = useGameStore();
   const c = SYSTEM_VIEW_SIZE / 2;
   const home = useMemo<ViewBox>(
     () => ({ x: 0, y: 0, width: SYSTEM_VIEW_SIZE, height: SYSTEM_VIEW_SIZE }),
     [],
   );
   const colonyPlanetIds = new Set(colonies.map((col) => col.planetId));
+  const stationBodyIds = new Set(stations.map((s) => s.bodyId));
   const planets = system.planets.filter((p) => p.kind === "planet");
   const moonsOf = (planetId: string) =>
     system.planets.filter((p) => p.kind === "moon" && p.parentPlanetId === planetId);
@@ -131,6 +132,9 @@ export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }:
                     {colonyPlanetIds.has(moon.id) && (
                       <circle cx={mpos.x} cy={mpos.y} r={6.5} className="colony-ring" />
                     )}
+                    {stationBodyIds.has(moon.id) && (
+                      <circle cx={mpos.x} cy={mpos.y} r={9} className="station-ring" />
+                    )}
                   </g>
                 </g>
               );
@@ -154,6 +158,9 @@ export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }:
               />
               {colonyPlanetIds.has(planet.id) && (
                 <circle cx={pos.x} cy={pos.y} r={radius + 5} className="colony-ring" />
+              )}
+              {stationBodyIds.has(planet.id) && (
+                <circle cx={pos.x} cy={pos.y} r={radius + 9} className="station-ring" />
               )}
               <text x={pos.x} y={pos.y - radius - 8} textAnchor="middle" className="body-label">
                 {planet.name}

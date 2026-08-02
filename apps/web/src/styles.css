@@ -69,6 +69,15 @@
   stroke-width: 1.5;
 }
 
+/* Anneau de station orbitale (chantier 24) : rayon distinct de l'anneau de colonie,
+ * un corps peut porter les deux à la fois. */
+.station-ring {
+  fill: none;
+  stroke: #b48fe0;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+}
+
 .mission-line {
   stroke: var(--accent);
   stroke-width: 1;
@@ -797,6 +806,15 @@
   gap: 16px;
   flex-wrap: wrap;
   margin-bottom: 12px;
+}
+
+/* Colonisation et fondation de station sont deux actions indépendantes sur un même
+ * corps (chantier 24) : empilées plutôt que juxtaposées pour rester lisibles. */
+.body-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
 }
 
 .body-layout {

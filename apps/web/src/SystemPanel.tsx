@@ -34,8 +34,18 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
   const [searchParams] = useSearchParams();
   const activeColony = useGameStore(selectActiveColony(searchParams.get("colony")));
   const explored = useGameStore(selectExplored(system.id));
-  const { colonies, missions, markets, universe, outposts, game, routes, blueprints, send } =
-    useGameStore();
+  const {
+    colonies,
+    missions,
+    markets,
+    universe,
+    outposts,
+    stations,
+    game,
+    routes,
+    blueprints,
+    send,
+  } = useGameStore();
   const probeMission = missions.find((m) => m.kind === "probe" && m.targetId === system.id);
   const probeCost = Math.round(PROBE_COST_CREDITS * effects.probeCostMult);
 
@@ -69,7 +79,6 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
    * (chantier 10). Cliquer la ligne ouvre cette vue.
    */
   const renderBody = (p: (typeof system.planets)[number]) => {
-    const colony = colonies.find((c) => c.planetId === p.id);
     return (
       <li
         key={p.id}
@@ -97,19 +106,17 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
             </span>
           )}
         </div>
-        {colony ? (
-          <p className="small ok">● {colony.name}</p>
-        ) : (
-          <BodyActions
-            body={p}
-            colonies={colonies}
-            missions={missions}
-            activeColony={activeColony}
-            game={game}
-            now={now}
-            send={send}
-          />
-        )}
+        <BodyActions
+          body={p}
+          colonies={colonies}
+          missions={missions}
+          activeColony={activeColony}
+          game={game}
+          effects={effects}
+          stations={stations}
+          now={now}
+          send={send}
+        />
       </li>
     );
   };

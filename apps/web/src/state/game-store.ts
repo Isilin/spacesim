@@ -14,9 +14,11 @@ import type {
   Mission,
   Objective,
   PirateLair,
+  ForeignStation,
   Relation,
   RelationProposal,
   Route,
+  Station,
   StoredBattle,
   Territory,
   TradingPostMarket,
@@ -48,6 +50,8 @@ export interface GameStoreState {
   battles: StoredBattle[];
   foreignFleets: ForeignFleet[];
   foreignColonies: ForeignColony[];
+  stations: Station[];
+  foreignStations: ForeignStation[];
   leaderboard: LeaderboardEntry[];
   territories: Territory[];
   objectives: Objective[];
@@ -104,6 +108,8 @@ function snapshotFields(msg: EmpireSnapshot): SnapshotFields {
     battles: msg.battles,
     foreignFleets: msg.foreignFleets,
     foreignColonies: msg.foreignColonies,
+    stations: msg.stations,
+    foreignStations: msg.foreignStations,
     leaderboard: msg.leaderboard,
     territories: msg.territories,
     objectives: msg.objectives,
@@ -138,6 +144,8 @@ const initialState: SnapshotFields & {
   battles: [],
   foreignFleets: [],
   foreignColonies: [],
+  stations: [],
+  foreignStations: [],
   leaderboard: [],
   territories: [],
   objectives: [],
