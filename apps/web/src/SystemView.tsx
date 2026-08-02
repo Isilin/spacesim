@@ -64,13 +64,13 @@ export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }:
       </text>
 
       {system.station && (
-        <g className="station-marker" transform={`translate(${c + 46}, ${c - 46})`}>
+        <g className="trading-post-marker" transform={`translate(${c + 46}, ${c - 46})`}>
           <rect
             x={-7}
             y={-7}
             width={14}
             height={14}
-            className="station-box"
+            className="trading-post-box"
             transform="rotate(45)"
           />
           <text y={-14} textAnchor="middle" className="body-label">

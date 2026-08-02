@@ -36,8 +36,8 @@ export interface AsteroidBelt {
   deposits: Deposits;
 }
 
-/** Station de commerce PNJ, tenue par une faction. */
-export interface TradeStation {
+/** Comptoir commercial PNJ, tenu par une faction. */
+export interface TradingPost {
   id: string;
   systemId: string;
   factionId: string;
@@ -52,8 +52,13 @@ export interface StarSystem {
   /** Planètes et lunes (les lunes référencent leur parente via parentPlanetId). */
   planets: Planet[];
   belts: AsteroidBelt[];
-  /** Au plus une station de commerce par système. */
-  station?: TradeStation;
+  /**
+   * Au plus un comptoir commercial par système. Le champ garde le nom `station` — le
+   * générateur d'univers produit cette clé littéralement, gelée dans `universe.fixture.json` ;
+   * la renommer forcerait une régénération de fixture + bump de `GENERATOR_VERSION` pour un
+   * changement qui n'affecte ni probabilités ni ids ni tirages RNG. Seul le type a changé.
+   */
+  station?: TradingPost;
 }
 
 export interface Galaxy {

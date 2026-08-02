@@ -116,10 +116,10 @@ export const universeBelts = pgTable("universe_belts", {
   deposits: text("deposits").notNull().default("{}"),
 });
 
-export const universeStations = pgTable("universe_stations", {
+export const universeTradingPosts = pgTable("universe_trading_posts", {
   /** "...-st" */
   id: text("id").primaryKey(),
-  /** Au plus une station par système. */
+  /** Au plus un comptoir par système. */
   systemId: text("system_id")
     .notNull()
     .unique()
@@ -420,7 +420,7 @@ export const outposts = pgTable("outposts", {
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 
-/** `targetId` reste polymorphe (colonie, station, avant-poste selon `kind`) — pas de FK. */
+/** `targetId` reste polymorphe (colonie, comptoir, avant-poste selon `kind`) — pas de FK. */
 export const missions = pgTable("missions", {
   id: text("id").primaryKey(),
   gameId: text("game_id").notNull(),
@@ -441,11 +441,11 @@ export const missions = pgTable("missions", {
   contractId: text("contract_id"),
 });
 
-/** Stocks dynamiques des stations PNJ — les prix en dérivent (sim/market). */
-export const stationStates = pgTable("station_states", {
-  stationId: text("station_id")
+/** Stocks dynamiques des comptoirs PNJ — les prix en dérivent (sim/market). */
+export const tradingPostStates = pgTable("trading_post_states", {
+  tradingPostId: text("trading_post_id")
     .primaryKey()
-    .references(() => universeStations.id),
+    .references(() => universeTradingPosts.id),
   gameId: text("game_id").notNull(),
   stocks: text("stocks").notNull(),
 });

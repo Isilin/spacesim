@@ -19,7 +19,7 @@ import {
   type ResourceId,
   type RelationProposal,
   type Stocks,
-  type TradeStation,
+  type TradingPost,
   type Universe,
   type WorldEventKind,
 } from "@spacesim/shared";
@@ -84,7 +84,7 @@ export class GameEngine {
   readonly gateway: GatewayService;
   /** Contrats de fourniture : publication, acceptation, annulation, expiration. */
   readonly contract: ContractService;
-  /** Marché de station (joueur + PNJ), prix régionaux, réputation/embargo, humeur de faction. */
+  /** Marché de comptoir (joueur + PNJ), prix régionaux, réputation/embargo, humeur de faction. */
   readonly market: MarketService;
   /** Sondes, colonisation, revendications de systèmes, croissance de l'univers (chantier 9). */
   readonly exploration: ExplorationService;
@@ -121,8 +121,8 @@ export class GameEngine {
   private get clock(): Clock {
     return this.runtime.clock;
   }
-  private get stationsById(): Map<string, TradeStation> {
-    return this.runtime.stationsById;
+  private get tradingPostsById(): Map<string, TradingPost> {
+    return this.runtime.tradingPostsById;
   }
   private get beltsById(): Map<string, AsteroidBelt> {
     return this.runtime.beltsById;

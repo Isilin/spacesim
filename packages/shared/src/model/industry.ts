@@ -102,8 +102,8 @@ export interface MiningOutpost {
   oreStock: number;
 }
 
-/** État dynamique d'une station : ses stocks (les prix en dérivent). */
-export interface StationMarket {
-  stationId: string;
+/** État dynamique d'un comptoir : ses stocks (les prix en dérivent). */
+export interface TradingPostMarket {
+  tradingPostId: string;
   stocks: Record<ResourceId, number>;
 }

@@ -3,7 +3,7 @@ import type { ModuleId } from "./modules.js";
 
 /**
  * Plans pré-conçus (chantier 13). Servent de base d'amorçage pour un nouvel empire,
- * de catalogue de référence dans le concepteur, de designs vendus par les stations PNJ
+ * de catalogue de référence dans le concepteur, de designs vendus par les comptoirs PNJ
  * et de flottes pour les PNJ (pirates). Ils prouvent aussi que le langage châssis+modules
  * couvre les rôles historiques (cargo, chasseur, croiseur, cuirassé, minier, colonial).
  */

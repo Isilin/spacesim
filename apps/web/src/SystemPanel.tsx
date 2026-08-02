@@ -13,7 +13,7 @@ import { Button, Panel } from "@spacesim/ui";
 import { BodyActions, COLONY_SHIP_COST_TEXT } from "./BodyActions.js";
 import { formatDuration } from "./format.js";
 import { PLANET_TYPE_LABELS, RESOURCE_LABELS } from "./labels.js";
-import { StationPanel } from "./StationPanel.js";
+import { TradingPostPanel } from "./TradingPostPanel.js";
 import { useGameStore } from "./state/game-store.js";
 import { selectActiveColony, selectExplored } from "./state/selectors.js";
 
@@ -127,7 +127,7 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
           {planets.length} planètes
           {moonCount > 0 ? `, ${moonCount} lunes` : ""}
           {system.belts.length > 0 ? `, ${system.belts.length} ceintures` : ""}
-          {system.station ? ", 1 station" : ""}
+          {system.station ? ", 1 comptoir" : ""}
         </p>
         {claimed ? (
           <p className="small claim-badge">
@@ -207,9 +207,9 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
         )}
       </Panel>
       {system.station && (
-        <StationPanel
-          station={system.station}
-          market={markets.find((m) => m.stationId === system.station!.id)}
+        <TradingPostPanel
+          tradingPost={system.station}
+          market={markets.find((m) => m.tradingPostId === system.station!.id)}
           activeColony={activeColony}
           missions={missions}
           universe={universe}

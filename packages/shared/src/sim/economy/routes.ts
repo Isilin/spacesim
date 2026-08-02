@@ -2,7 +2,7 @@ import type { RouteRule } from "../../model/transport.js";
 
 /**
  * Quantité à charger pour un cycle de route, 0 = pas de départ.
- * `destStock` n'a de sens que pour une destination colonie (station : passer 0).
+ * `destStock` n'a de sens que pour une destination colonie (comptoir : passer 0).
  */
 export function routeCargoQuantity(
   rule: RouteRule,

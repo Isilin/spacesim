@@ -37,12 +37,12 @@ export function dispatchClientMessage(
     case "setLiftRule":
       return engine.logistics.setLiftRule(empire, msg.colonyId, msg.resource, msg.rule);
     case "sell":
-      return engine.market.sellToStation(empire, msg.colonyId, msg.stationId, msg.resources);
+      return engine.market.sellToTradingPost(empire, msg.colonyId, msg.tradingPostId, msg.resources);
     case "buy":
-      return engine.market.buyFromStation(
+      return engine.market.buyFromTradingPost(
         empire,
         msg.colonyId,
-        msg.stationId,
+        msg.tradingPostId,
         msg.resource,
         msg.budget,
       );
@@ -62,17 +62,17 @@ export function dispatchClientMessage(
       return engine.industry.deleteBlueprint(empire, msg.blueprintId);
     case "buildBlueprint":
       return engine.industry.buildBlueprint(empire, msg.blueprintId, msg.colonyId, msg.fleetId);
-    case "buyBlueprintFromStation":
-      return engine.industry.buyBlueprintFromStation(
+    case "buyBlueprintFromTradingPost":
+      return engine.industry.buyBlueprintFromTradingPost(
         empire,
         msg.colonyId,
-        msg.stationId,
+        msg.tradingPostId,
         msg.presetId,
       );
     case "sellBlueprint":
-      return engine.industry.sellBlueprint(empire, msg.colonyId, msg.stationId, msg.blueprintId);
+      return engine.industry.sellBlueprint(empire, msg.colonyId, msg.tradingPostId, msg.blueprintId);
     case "sellShip":
-      return engine.industry.sellShip(empire, msg.colonyId, msg.stationId, msg.shipId, msg.count);
+      return engine.industry.sellShip(empire, msg.colonyId, msg.tradingPostId, msg.shipId, msg.count);
     case "buildOutpost":
       return engine.logistics.buildOutpost(empire, msg.colonyId, msg.beltId);
     case "createRoute":

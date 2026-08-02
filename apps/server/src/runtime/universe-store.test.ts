@@ -14,7 +14,7 @@ const SEED = "store-seed";
 
 const UNIVERSE_TABLES = [
   schema.universeLinks,
-  schema.universeStations,
+  schema.universeTradingPosts,
   schema.universeBelts,
   schema.universeBodies,
   schema.universeSystems,

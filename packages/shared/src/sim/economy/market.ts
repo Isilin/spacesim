@@ -2,7 +2,7 @@ import type { FactionDef } from "../../content/factions.js";
 import type { Rng } from "../../rng.js";
 import type { ResourceId } from "../../model/resources.js";
 
-/** Ressources échangeables en station (la science et les crédits restent hors marché). */
+/** Ressources échangeables en comptoir (la science et les crédits restent hors marché). */
 export const MARKET_RESOURCES = ["ore", "energy", "food", "metals", "goods", "components"] as const;
 
 export type MarketResource = (typeof MARKET_RESOURCES)[number];
@@ -17,7 +17,7 @@ export const BASE_PRICES: Record<MarketResource, number> = {
   components: 12,
 };
 
-/** Stock cible d'une station par ressource : au-dessus le prix baisse, en-dessous il monte. */
+/** Stock cible d'un comptoir par ressource : au-dessus le prix baisse, en-dessous il monte. */
 export const TARGET_STOCK = 800;
 
 /** Bornes du multiplicateur de prix. */
@@ -36,18 +36,18 @@ const DRIFT_RATE = 0.015;
 export type Stocks = Record<ResourceId, number>;
 
 /**
- * Contexte régional d'une station (chantier 12). Sans lui, toutes les stations de
+ * Contexte régional d'un comptoir (chantier 12). Sans lui, tous les comptoirs de
  * l'univers appliquaient le même barème et le commerce se réduisait à vendre au
  * comptoir le plus proche.
  */
 export interface PriceContext {
-  stationId: string;
+  tradingPostId: string;
   /** Index de la galaxie : l'éloignement renchérit le manufacturé, brade le brut. */
   galaxyIndex: number;
   factionId?: string;
 }
 
-/** Amplitude du biais propre à une station (± cette fraction). */
+/** Amplitude du biais propre à un comptoir (± cette fraction). */
 const LOCAL_SPREAD = 0.18;
 
 /** Effet de l'éloignement, par rang de galaxie, plafonné. */
@@ -57,7 +57,7 @@ const DISTANCE_CAP = 0.55;
 /** Ressources « brutes » : abondantes aux confins, donc bradées là-bas. */
 const RAW: readonly MarketResource[] = ["ore", "energy", "food"];
 
-/** Hachage court et stable d'une chaîne — sert aux biais déterministes par station. */
+/** Hachage court et stable d'une chaîne — sert aux biais déterministes par comptoir. */
 function hash(text: string): number {
   let h = 2166136261;
   for (let i = 0; i < text.length; i++) {
@@ -67,12 +67,12 @@ function hash(text: string): number {
 }
 
 /**
- * Multiplicateur régional : biais propre à la station (déterministe) × effet de
+ * Multiplicateur régional : biais propre au comptoir (déterministe) × effet de
  * l'éloignement. Les anneaux lointains paient cher le manufacturé et bradent le brut —
  * c'est ce qui crée l'arbitrage entre galaxies.
  */
 export function regionalMultiplier(resource: MarketResource, ctx: PriceContext): number {
-  const local = 1 + (hash(`${ctx.stationId}:${resource}`) - 0.5) * 2 * LOCAL_SPREAD;
+  const local = 1 + (hash(`${ctx.tradingPostId}:${resource}`) - 0.5) * 2 * LOCAL_SPREAD;
   const distance = Math.min(DISTANCE_CAP, ctx.galaxyIndex * DISTANCE_STEP);
   const direction = RAW.includes(resource) ? -1 : 1;
   return Math.round(local * (1 + direction * distance) * 1000) / 1000;
@@ -81,16 +81,20 @@ export function regionalMultiplier(resource: MarketResource, ctx: PriceContext):
 /**
  * Prix spot : base × rareté locale × contexte régional, borné.
  * Stock bas → cher, plein → bradé. Sans contexte, on retrouve le barème d'avant le
- * chantier 12 (utile aux tests et aux estimations hors station connue).
+ * chantier 12 (utile aux tests et aux estimations hors comptoir connu).
  */
-export function stationPrice(resource: MarketResource, stock: number, ctx?: PriceContext): number {
+export function tradingPostPrice(
+  resource: MarketResource,
+  stock: number,
+  ctx?: PriceContext,
+): number {
   const ratio = TARGET_STOCK / Math.max(stock, 1);
   const mult = Math.min(PRICE_MULT_MAX, Math.max(PRICE_MULT_MIN, ratio ** 0.7));
   const regional = ctx ? regionalMultiplier(resource, ctx) : 1;
   return Math.round(BASE_PRICES[resource] * mult * regional * 100) / 100;
 }
 
-/** Stocks initiaux d'une station : autour de la cible, dispersion seedée. */
+/** Stocks initiaux d'un comptoir : autour de la cible, dispersion seedée. */
 export function initialStocks(rng: Rng): Stocks {
   const stocks = { credits: 0, science: 0 } as Stocks;
   for (const res of MARKET_RESOURCES) {
@@ -135,8 +139,8 @@ export function resolveSale(
     if (!(MARKET_RESOURCES as readonly string[]).includes(res) || amount <= 0) continue;
     const resource = res as MarketResource;
     // Prix moyen entre l'état avant et après livraison : borne le farm sur les gros lots.
-    const before = stationPrice(resource, next[resource], ctx);
-    const after = stationPrice(resource, Math.min(MAX_STOCK, next[resource] + amount), ctx);
+    const before = tradingPostPrice(resource, next[resource], ctx);
+    const after = tradingPostPrice(resource, Math.min(MAX_STOCK, next[resource] + amount), ctx);
     revenue += amount * ((before + after) / 2);
     next[resource] = Math.min(MAX_STOCK, next[resource] + amount);
   }
@@ -150,8 +154,8 @@ function purchaseCost(
   qty: number,
   ctx?: PriceContext,
 ): number {
-  const before = stationPrice(resource, stocks[resource], ctx);
-  const after = stationPrice(resource, Math.max(1, stocks[resource] - qty), ctx);
+  const before = tradingPostPrice(resource, stocks[resource], ctx);
+  const after = tradingPostPrice(resource, Math.max(1, stocks[resource] - qty), ctx);
   return qty * ((before + after) / 2);
 }
 

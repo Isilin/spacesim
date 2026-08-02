@@ -55,7 +55,7 @@ import { LogisticsRepository } from "../repositories/logistics-repository.js";
 /**
  * Logistique : convois manuels, ascenseur orbital, routes automatiques, avant-postes
  * miniers, et la propriété des missions (insertion + résolution). Le commerce en
- * station (joueur/PNJ, prix, réputation) vit dans `MarketService`, les contrats de
+ * comptoir (joueur/PNJ, prix, réputation) vit dans `MarketService`, les contrats de
  * fourniture dans `ContractService`, les portails dans `GatewayService` — tous
  * injectés ici en callbacks étroits pour les missions qui traversent leur domaine
  * (sell/buy/deliver_contract/contribute_gateway).
@@ -73,17 +73,17 @@ export class LogisticsService {
     private readonly empireOfColony: (colonyId: string) => Empire,
     private readonly market: {
       resolveSaleAt: (
-        stationId: string,
+        tradingPostId: string,
         cargo: Partial<Record<ResourceId, number>>,
       ) => { revenue: number } | null;
       resolvePurchaseAt: (
-        stationId: string,
+        tradingPostId: string,
         resource: MarketResource,
         budget: number,
         capacity: number,
       ) => { bought: number; spent: number } | null;
-      stationRepBonus: (empire: Empire, stationId: string) => number;
-      addFactionRep: (empire: Empire, stationId: string, creditsExchanged: number) => void;
+      tradingPostRepBonus: (empire: Empire, tradingPostId: string) => number;
+      addFactionRep: (empire: Empire, tradingPostId: string, creditsExchanged: number) => void;
     },
     private readonly persistGateway: (gateway: Gateway) => void,
   ) {
@@ -387,7 +387,7 @@ export class LogisticsService {
     fromId: string,
     fromKind: "colony" | "outpost",
     toId: string,
-    toKind: "colony" | "station",
+    toKind: "colony" | "tradingPost",
     resource: ResourceId,
     rule: RouteRule,
     ships: Partial<Record<ShipId, number>>,
@@ -415,13 +415,13 @@ export class LogisticsService {
       if (!(RESOURCES as readonly string[]).includes(resource)) return "Ressource inconnue";
       toSystemId = this.runtime.planetsById.get(to.planetId)?.systemId ?? "";
     } else {
-      const station = this.runtime.stationsById.get(toId);
-      if (!station) return "Station inconnue";
-      if (!empire.explored.has(station.systemId)) return "Station non découverte";
+      const comptoir = this.runtime.tradingPostsById.get(toId);
+      if (!comptoir) return "Comptoir inconnu";
+      if (!empire.explored.has(comptoir.systemId)) return "Comptoir non découvert";
       if (!(MARKET_RESOURCES as readonly string[]).includes(resource)) {
-        return "Ressource non échangeable en station";
+        return "Ressource non échangeable en comptoir";
       }
-      toSystemId = station.systemId;
+      toSystemId = comptoir.systemId;
     }
 
     if (
@@ -432,7 +432,7 @@ export class LogisticsService {
 
     // Validation de la règle.
     if (rule.type === "maintain") {
-      if (toKind === "station") return "Règle « maintenir » impossible vers une station";
+      if (toKind === "tradingPost") return "Règle « maintenir » impossible vers un comptoir";
       if (!(rule.minAtDestination > 0) || rule.keepAtSource < 0) return "Règle invalide";
     } else if (rule.type === "fixed") {
       if (!(rule.amount > 0)) return "Règle invalide";
@@ -544,7 +544,7 @@ export class LogisticsService {
         current.toKind === "colony"
           ? this.runtime.planetsById.get(empire.colonyMap.get(current.toId)?.planetId ?? "")
               ?.systemId
-          : this.runtime.stationsById.get(current.toId)?.systemId;
+          : this.runtime.tradingPostsById.get(current.toId)?.systemId;
       if (!toSystemId) continue;
       const jumps = jumpDistanceInUniverse(
         this.runtime.universe,
@@ -603,7 +603,7 @@ export class LogisticsService {
     }
   }
 
-  /** Livre la cargaison d'un cycle : stock colonie ou vente au spot en station. */
+  /** Livre la cargaison d'un cycle : stock colonie ou vente au spot en comptoir. */
   private deliverRouteCargo(empire: Empire, route: Route, carrying: number): void {
     if (route.toKind === "colony") {
       const to = empire.colonyMap.get(route.toId);
@@ -619,7 +619,7 @@ export class LogisticsService {
       const result = this.market.resolveSaleAt(route.toId, { [route.resource]: carrying });
       if (!result || !owner) return;
       const revenue = Math.floor(
-        result.revenue * (1 + this.market.stationRepBonus(empire, route.toId)),
+        result.revenue * (1 + this.market.tradingPostRepBonus(empire, route.toId)),
       );
       this.market.addFactionRep(empire, route.toId, result.revenue);
       const resources = { ...owner.resources, credits: owner.resources.credits + revenue };
@@ -722,7 +722,7 @@ export class LogisticsService {
           if (result && colony) {
             // Bonus de réputation : la faction paie mieux ses partenaires.
             const revenue = Math.floor(
-              result.revenue * (1 + this.market.stationRepBonus(empire, mission.targetId)),
+              result.revenue * (1 + this.market.tradingPostRepBonus(empire, mission.targetId)),
             );
             this.market.addFactionRep(empire, mission.targetId, result.revenue);
             const resources = {
@@ -745,7 +745,7 @@ export class LogisticsService {
             if (result) {
               // Remise de réputation : une part du prix payé est restituée.
               const rebate = Math.floor(
-                result.spent * this.market.stationRepBonus(empire, mission.targetId),
+                result.spent * this.market.tradingPostRepBonus(empire, mission.targetId),
               );
               this.market.addFactionRep(empire, mission.targetId, result.spent);
               // Trajet retour, chargé + reliquat de budget (et remise) à rembourser.

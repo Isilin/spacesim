@@ -1,5 +1,5 @@
 import {
-  allStations,
+  allTradingPosts,
   allSystems,
   BASE_PRICES,
   convoyFees,
@@ -7,10 +7,10 @@ import {
   findGalaxyOfSystem,
   jumpDistanceInUniverse,
   MARKET_RESOURCES,
-  stationPrice,
+  tradingPostPrice,
   type Colony,
   type MarketResource,
-  type StationMarket,
+  type TradingPostMarket,
   type Universe,
 } from "@spacesim/shared";
 import { useMemo, useState } from "react";
@@ -19,7 +19,7 @@ import { RESOURCE_LABELS } from "./labels.js";
 
 interface Props {
   universe: Universe;
-  markets: StationMarket[];
+  markets: TradingPostMarket[];
   colonies: Colony[];
   /** Colonie de référence pour les distances et les marges. */
   activeColony: Colony | null;
@@ -54,20 +54,20 @@ export function MarketsView({
 
   const rows = useMemo(() => {
     const explored = new Set(exploredSystemIds);
-    const marketById = new Map(markets.map((m) => [m.stationId, m]));
-    return allStations(universe)
-      .filter((station) => explored.has(station.systemId) && marketById.has(station.id))
-      .map((station) => {
-        const market = marketById.get(station.id)!;
-        const galaxy = findGalaxyOfSystem(universe, station.systemId);
+    const marketById = new Map(markets.map((m) => [m.tradingPostId, m]));
+    return allTradingPosts(universe)
+      .filter((post) => explored.has(post.systemId) && marketById.has(post.id))
+      .map((post) => {
+        const market = marketById.get(post.id)!;
+        const galaxy = findGalaxyOfSystem(universe, post.systemId);
         const galaxyIndex = universe.galaxies.findIndex((g) => g.id === galaxy?.id);
-        const price = stationPrice(resource, market.stocks[resource], {
-          stationId: station.id,
+        const price = tradingPostPrice(resource, market.stocks[resource], {
+          tradingPostId: post.id,
           galaxyIndex,
-          factionId: station.factionId,
+          factionId: post.factionId,
         });
         const jumps = fromSystem
-          ? jumpDistanceInUniverse(universe, fromSystem, station.systemId, portalLinks)
+          ? jumpDistanceInUniverse(universe, fromSystem, post.systemId, portalLinks)
           : -1;
         const portals =
           galaxyIndex > 0 && fromSystem && !fromSystem.startsWith(`${galaxy?.id}-`) ? 1 : 0;
@@ -76,7 +76,7 @@ export function MarketsView({
         const fees = jumps >= 0 ? convoyFees(jumps, portals) : 0;
         const fuel = jumps >= 0 ? convoyFuel(jumps, REFERENCE_CONVOY, REFERENCE_LOT) : 0;
         return {
-          station,
+          post,
           galaxyName: galaxy?.name ?? "?",
           stock: market.stocks[resource],
           price,
@@ -95,10 +95,9 @@ export function MarketsView({
 
   const columns: TableColumn<MarketRow>[] = [
     {
-      key: "station",
+      key: "post",
       label: "Comptoir",
-      render: (_, row) =>
-        row.station.id === best?.station.id ? `★ ${row.station.name}` : row.station.name,
+      render: (_, row) => (row.post.id === best?.post.id ? `★ ${row.post.name}` : row.post.name),
     },
     { key: "galaxyName", label: "Galaxie" },
     { key: "stock", label: "Stock", align: "right", render: (_, row) => Math.floor(row.stock) },

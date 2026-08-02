@@ -19,7 +19,7 @@ export const WARSHIP = Object.keys(WARSHIPS)[0]!;
 /** Toutes les tables, vidées avant chaque test (FK déclaratives non appliquées en SQLite). */
 export const ALL_TABLES = [
   schema.universeLinks,
-  schema.universeStations,
+  schema.universeTradingPosts,
   schema.universeBelts,
   schema.universeBodies,
   schema.universeSystems,
@@ -42,7 +42,7 @@ export const ALL_TABLES = [
   schema.gateways,
   schema.claims,
   schema.players,
-  schema.stationStates,
+  schema.tradingPostStates,
   schema.games,
 ] as const;
 

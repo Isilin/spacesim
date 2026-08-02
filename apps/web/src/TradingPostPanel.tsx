@@ -13,7 +13,7 @@ import {
   resolveBlueprint,
   resolvePurchase,
   resolveSale,
-  stationPrice,
+  tradingPostPrice,
   transferCostCredits,
   transferDurationMs,
   type Blueprint,
@@ -23,8 +23,8 @@ import {
   type Mission,
   type ResourceId,
   type Route,
-  type StationMarket,
-  type TradeStation,
+  type TradingPostMarket,
+  type TradingPost,
   type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
@@ -42,23 +42,23 @@ import { formatDuration, systemIdOf } from "./format.js";
 import { FACTION_LABELS, RESOURCE_LABELS, repTierName, shipLabel } from "./labels.js";
 
 interface Props {
-  station: TradeStation;
-  market: StationMarket | undefined;
+  tradingPost: TradingPost;
+  market: TradingPostMarket | undefined;
   activeColony: Colony | null;
   missions: Mission[];
   universe: Universe;
   transferSpeedMult: number;
   factionRep: Record<string, number>;
   routes: Route[];
-  /** Plans de vaisseaux de l'empire (chantier 13) : marché de plans en station. */
+  /** Plans de vaisseaux de l'empire (chantier 13) : marché de plans en comptoir. */
   blueprints: Blueprint[];
   portalLinks: [string, string][];
   now: number;
   send: (msg: ClientMessage) => void;
 }
 
-export function StationPanel({
-  station,
+export function TradingPostPanel({
+  tradingPost,
   market,
   activeColony,
   missions,
@@ -74,21 +74,21 @@ export function StationPanel({
   const [sellAmounts, setSellAmounts] = useState<Partial<Record<ResourceId, string>>>({});
   const [buyResource, setBuyResource] = useState<MarketResource>("metals");
   const [buyBudget, setBuyBudget] = useState("");
-  const faction = FACTION_LABELS[station.factionId as FactionId];
+  const faction = FACTION_LABELS[tradingPost.factionId as FactionId];
 
   // Contexte régional (chantier 12) : le comptoir a son propre barème selon son
   // éloignement — c'est ce qui fait qu'un aller-retour peut valoir le carburant.
   const priceContext = {
-    stationId: station.id,
+    tradingPostId: tradingPost.id,
     galaxyIndex: universe.galaxies.findIndex((g) =>
-      g.systems.some((s) => s.id === station.systemId),
+      g.systems.some((s) => s.id === tradingPost.systemId),
     ),
-    factionId: station.factionId,
+    factionId: tradingPost.factionId,
   };
 
   const fromSystem = activeColony ? systemIdOf(universe, activeColony.planetId) : undefined;
   const jumps = fromSystem
-    ? jumpDistanceInUniverse(universe, fromSystem, station.systemId, portalLinks)
+    ? jumpDistanceInUniverse(universe, fromSystem, tradingPost.systemId, portalLinks)
     : -1;
   const fee = jumps >= 0 ? transferCostCredits(jumps) : 0;
   const eta = jumps >= 0 ? transferDurationMs(jumps) * transferSpeedMult : 0;
@@ -96,7 +96,7 @@ export function StationPanel({
   const related = missions.filter(
     (m) =>
       (m.kind === "sell" || m.kind === "buy" || m.kind === "buy_return") &&
-      m.targetId === station.id,
+      m.targetId === tradingPost.id,
   );
 
   const cargo: Partial<Record<ResourceId, number>> = {};
@@ -121,9 +121,9 @@ export function StationPanel({
   const canTrade = activeColony && jumps >= 0;
 
   return (
-    <Panel title={`⬡ ${station.name}`}>
+    <Panel title={`⬡ ${tradingPost.name}`}>
       <p className="muted small">
-        {faction?.name ?? station.factionId} — {faction?.description ?? ""}
+        {faction?.name ?? tradingPost.factionId} — {faction?.description ?? ""}
       </p>
       {jumps >= 0 && (
         <p className="small muted">
@@ -132,7 +132,7 @@ export function StationPanel({
         </p>
       )}
       {(() => {
-        const rep = factionRep[station.factionId] ?? 0;
+        const rep = factionRep[tradingPost.factionId] ?? 0;
         const bonus = repBonus(rep);
         return (
           <p className="small">
@@ -165,11 +165,11 @@ export function StationPanel({
                 align: "right",
                 trend: (res) => {
                   const gap =
-                    stationPrice(res, market.stocks[res], priceContext) / BASE_PRICES[res] - 1;
+                    tradingPostPrice(res, market.stocks[res], priceContext) / BASE_PRICES[res] - 1;
                   return gap > 0.15 ? "up" : gap < -0.15 ? "down" : undefined;
                 },
                 render: (_, res) => {
-                  const price = stationPrice(res, market.stocks[res], priceContext);
+                  const price = tradingPostPrice(res, market.stocks[res], priceContext);
                   const gap = price / BASE_PRICES[res] - 1;
                   return `${price.toFixed(2)} (${gap >= 0 ? "+" : ""}${Math.round(gap * 100)} %)`;
                 },
@@ -232,7 +232,7 @@ export function StationPanel({
                 send({
                   type: "sell",
                   colonyId: activeColony.id,
-                  stationId: station.id,
+                  tradingPostId: tradingPost.id,
                   resources: cargo,
                 });
                 setSellAmounts({});
@@ -274,7 +274,7 @@ export function StationPanel({
                 send({
                   type: "buy",
                   colonyId: activeColony.id,
-                  stationId: station.id,
+                  tradingPostId: tradingPost.id,
                   resource: buyResource,
                   budget,
                 });
@@ -287,7 +287,7 @@ export function StationPanel({
 
           <BlueprintMarket
             activeColony={activeColony}
-            station={station}
+            tradingPost={tradingPost}
             blueprints={blueprints}
             routes={routes}
             send={send}
@@ -299,19 +299,19 @@ export function StationPanel({
 }
 
 /**
- * Marché de plans en station (chantier 13) : acheter un design tout fait au catalogue,
+ * Marché de plans en comptoir (chantier 13) : acheter un design tout fait au catalogue,
  * revendre un plan possédé ou des vaisseaux civils désœuvrés — transaction instantanée
  * (contrairement au commerce de ressources, rien n'est chargé sur un convoi).
  */
 function BlueprintMarket({
   activeColony,
-  station,
+  tradingPost,
   blueprints,
   routes,
   send,
 }: {
   activeColony: Colony;
-  station: TradeStation;
+  tradingPost: TradingPost;
   blueprints: Blueprint[];
   routes: Route[];
   send: (msg: ClientMessage) => void;
@@ -324,7 +324,7 @@ function BlueprintMarket({
       <SectionTitle>Plans de vaisseaux</SectionTitle>
 
       <span className="muted small">
-        Catalogue de la station (marge {Math.round((BLUEPRINT_BUY_MARKUP - 1) * 100)} %)
+        Catalogue du comptoir (marge {Math.round((BLUEPRINT_BUY_MARKUP - 1) * 100)} %)
       </span>
       <ul className="building-list">
         {PRESETS.map((preset) => {
@@ -342,9 +342,9 @@ function BlueprintMarket({
                   title={affordable ? "" : "Crédits insuffisants"}
                   onClick={() =>
                     send({
-                      type: "buyBlueprintFromStation",
+                      type: "buyBlueprintFromTradingPost",
                       colonyId: activeColony.id,
-                      stationId: station.id,
+                      tradingPostId: tradingPost.id,
                       presetId: preset.id,
                     })
                   }
@@ -379,7 +379,7 @@ function BlueprintMarket({
                         send({
                           type: "sellBlueprint",
                           colonyId: activeColony.id,
-                          stationId: station.id,
+                          tradingPostId: tradingPost.id,
                           blueprintId: bp.id,
                         })
                       }
@@ -414,7 +414,7 @@ function BlueprintMarket({
                         send({
                           type: "sellShip",
                           colonyId: activeColony.id,
-                          stationId: station.id,
+                          tradingPostId: tradingPost.id,
                           shipId,
                           count: 1,
                         })

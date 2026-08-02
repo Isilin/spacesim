@@ -9,7 +9,7 @@ export const FACTION_MOOD_DURATION_MS = 1_800_000;
 
 /**
  * Remise additionnelle sur les achats du joueur pendant un boom — vient s'ajouter à la
- * remise de réputation existante (`repBonus`), même mécanique (`stationRepBonus`), pour ne
+ * remise de réputation existante (`repBonus`), même mécanique (`tradingPostRepBonus`), pour ne
  * jamais dépasser le budget réellement payé (juste plus de retour dessus).
  */
 export const FACTION_BOOM_REBATE = 0.15;

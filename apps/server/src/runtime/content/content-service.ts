@@ -401,7 +401,7 @@ const SEED_TECH_LABELS: Record<string, { name: string; description: string }> = 
   trade_charters: {
     name: "Chartes commerciales",
     description:
-      "Des couloirs marchands protégés. Crédits +20 %, convois 15 % plus rapides, marge en station +8 %.",
+      "Des couloirs marchands protégés. Crédits +20 %, convois 15 % plus rapides, marge en comptoir +8 %.",
   },
   point_defense: {
     name: "Défense rapprochée",

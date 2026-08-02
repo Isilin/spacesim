@@ -292,33 +292,33 @@ export class IndustryService {
     return null;
   }
 
-  /** Distance en sauts colonie → station, -1 si inaccessible (aide au marché de plans). */
-  private jumpsToStation(colony: Colony, stationId: string): number {
-    const station = this.runtime.stationsById.get(stationId);
-    if (!station) return -1;
+  /** Distance en sauts colonie → comptoir, -1 si inaccessible (aide au marché de plans). */
+  private jumpsToTradingPost(colony: Colony, tradingPostId: string): number {
+    const comptoir = this.runtime.tradingPostsById.get(tradingPostId);
+    if (!comptoir) return -1;
     const fromPlanet = this.runtime.planetsById.get(colony.planetId);
     if (!fromPlanet) return -1;
     return jumpDistanceInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
-      station.systemId,
+      comptoir.systemId,
       this.portalLinks,
     );
   }
 
-  buyBlueprintFromStation(
+  buyBlueprintFromTradingPost(
     empire: Empire,
     colonyId: string,
-    stationId: string,
+    tradingPostId: string,
     presetId: string,
   ): string | null {
     if (empire.blueprintMap.size >= MAX_BLUEPRINTS) return "Trop de plans enregistrés";
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
-    const station = this.runtime.stationsById.get(stationId);
-    if (!station) return "Station inconnue";
-    if (!empire.explored.has(station.systemId)) return "Station non découverte";
-    if (this.jumpsToStation(colony, stationId) < 0) return "Station inaccessible";
+    const comptoir = this.runtime.tradingPostsById.get(tradingPostId);
+    if (!comptoir) return "Comptoir inconnu";
+    if (!empire.explored.has(comptoir.systemId)) return "Comptoir non découvert";
+    if (this.jumpsToTradingPost(colony, tradingPostId) < 0) return "Comptoir inaccessible";
     const preset = this.runtime.content.presets[presetId];
     if (!preset) return "Plan inconnu au catalogue";
 
@@ -350,12 +350,12 @@ export class IndustryService {
   sellBlueprint(
     empire: Empire,
     colonyId: string,
-    stationId: string,
+    tradingPostId: string,
     blueprintId: string,
   ): string | null {
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
-    if (this.jumpsToStation(colony, stationId) < 0) return "Station inaccessible";
+    if (this.jumpsToTradingPost(colony, tradingPostId) < 0) return "Comptoir inaccessible";
     const bp = empire.blueprintMap.get(blueprintId);
     if (!bp) return "Plan inconnu";
 
@@ -377,13 +377,13 @@ export class IndustryService {
   sellShip(
     empire: Empire,
     colonyId: string,
-    stationId: string,
+    tradingPostId: string,
     shipId: string,
     countRaw: number,
   ): string | null {
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
-    if (this.jumpsToStation(colony, stationId) < 0) return "Station inaccessible";
+    if (this.jumpsToTradingPost(colony, tradingPostId) < 0) return "Comptoir inaccessible";
     const count = Math.floor(Number(countRaw));
     if (!Number.isFinite(count) || count <= 0) return "Quantité invalide";
 

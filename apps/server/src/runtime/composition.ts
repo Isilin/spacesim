@@ -102,12 +102,12 @@ export function composeEngine(
     (empire, systemId) => exploration.markExplored(empire, systemId),
     (colonyId) => bootstrap.empireOfColony(colonyId),
     {
-      resolveSaleAt: (stationId, cargo) => market.resolveSaleAt(stationId, cargo),
-      resolvePurchaseAt: (stationId, resource, budget, capacity) =>
-        market.resolvePurchaseAt(stationId, resource, budget, capacity),
-      stationRepBonus: (empire, stationId) => market.stationRepBonus(empire, stationId),
-      addFactionRep: (empire, stationId, creditsExchanged) =>
-        market.addFactionRep(empire, stationId, creditsExchanged),
+      resolveSaleAt: (tradingPostId, cargo) => market.resolveSaleAt(tradingPostId, cargo),
+      resolvePurchaseAt: (tradingPostId, resource, budget, capacity) =>
+        market.resolvePurchaseAt(tradingPostId, resource, budget, capacity),
+      tradingPostRepBonus: (empire, tradingPostId) => market.tradingPostRepBonus(empire, tradingPostId),
+      addFactionRep: (empire, tradingPostId, creditsExchanged) =>
+        market.addFactionRep(empire, tradingPostId, creditsExchanged),
     },
     (g) => gateway.persistGateway(g),
   );

@@ -90,7 +90,7 @@ export interface TechEffects {
   liftThroughputMult?: number;
   /** Carburant consommé par les convois (< 1 = plus sobre). */
   fuelMult?: number;
-  /** Prix obtenus en station : ventes mieux payées, achats moins chers. */
+  /** Prix obtenus en comptoir : ventes mieux payées, achats moins chers. */
   tradeMargin?: number;
 }
 

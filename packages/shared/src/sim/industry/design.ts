@@ -11,7 +11,7 @@ import type { Blueprint } from "../../model/industry.js";
 import type { ResourceId } from "../../model/resources.js";
 import type { EmpireEffects } from "../empire/research.js";
 
-/** Marché des plans en station (chantier 13) : marge à l'achat, décote à la revente. */
+/** Marché des plans en comptoir (chantier 13) : marge à l'achat, décote à la revente. */
 export const BLUEPRINT_BUY_MARKUP = 1.4;
 export const BLUEPRINT_SELL_FRACTION = 0.5;
 

@@ -4,8 +4,8 @@ import type { ShipStats } from "./design.js";
 
 /**
  * Valeur marchande d'un coût en ressources (chantier 13) : converti en crédits au prix de
- * référence. Sert de base au marché de plans/vaisseaux des stations PNJ — pas de contexte
- * régional ici (contrairement à `stationPrice`, rien n'est stocké physiquement en station).
+ * référence. Sert de base au marché de plans/vaisseaux des comptoirs PNJ — pas de contexte
+ * régional ici (contrairement à `tradingPostPrice`, rien n'est stocké physiquement en comptoir).
  */
 export function costValue(cost: Partial<Record<ResourceId, number>>): number {
   let value = 0;

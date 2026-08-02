@@ -11,7 +11,7 @@ import {
   resolvePurchase,
   resolveSale,
   regionalMultiplier,
-  stationPrice,
+  tradingPostPrice,
   TARGET_STOCK,
   type Stocks,
 } from "./market.js";
@@ -29,19 +29,21 @@ function stocksAt(value: number): Stocks {
   };
 }
 
-describe("stationPrice", () => {
+describe("tradingPostPrice", () => {
   it("vaut le prix de base au stock cible", () => {
-    expect(stationPrice("metals", TARGET_STOCK)).toBe(BASE_PRICES.metals);
+    expect(tradingPostPrice("metals", TARGET_STOCK)).toBe(BASE_PRICES.metals);
   });
 
   it("monte quand le stock baisse, borné", () => {
-    expect(stationPrice("ore", 100)).toBeGreaterThan(BASE_PRICES.ore);
-    expect(stationPrice("ore", 1)).toBe(Math.round(BASE_PRICES.ore * PRICE_MULT_MAX * 100) / 100);
+    expect(tradingPostPrice("ore", 100)).toBeGreaterThan(BASE_PRICES.ore);
+    expect(tradingPostPrice("ore", 1)).toBe(
+      Math.round(BASE_PRICES.ore * PRICE_MULT_MAX * 100) / 100,
+    );
   });
 
   it("baisse quand le stock monte, borné", () => {
-    expect(stationPrice("goods", MAX_STOCK)).toBeLessThan(BASE_PRICES.goods);
-    expect(stationPrice("goods", MAX_STOCK * 100)).toBe(
+    expect(tradingPostPrice("goods", MAX_STOCK)).toBeLessThan(BASE_PRICES.goods);
+    expect(tradingPostPrice("goods", MAX_STOCK * 100)).toBe(
       Math.round(BASE_PRICES.goods * PRICE_MULT_MIN * 100) / 100,
     );
   });
@@ -138,35 +140,37 @@ describe("initialStocks", () => {
 });
 
 describe("prix régionaux (chantier 12)", () => {
-  const ctx = (stationId: string, galaxyIndex: number) => ({ stationId, galaxyIndex });
+  const ctx = (tradingPostId: string, galaxyIndex: number) => ({ tradingPostId, galaxyIndex });
 
   it("sans contexte, le barème d'origine est inchangé", () => {
-    expect(stationPrice("metals", TARGET_STOCK)).toBe(BASE_PRICES.metals);
+    expect(tradingPostPrice("metals", TARGET_STOCK)).toBe(BASE_PRICES.metals);
   });
 
   it("deux comptoirs n'affichent pas le même prix au même stock", () => {
-    const a = stationPrice("metals", TARGET_STOCK, ctx("gal-0-sys-1-st", 0));
-    const b = stationPrice("metals", TARGET_STOCK, ctx("gal-0-sys-7-st", 0));
+    const a = tradingPostPrice("metals", TARGET_STOCK, ctx("gal-0-sys-1-st", 0));
+    const b = tradingPostPrice("metals", TARGET_STOCK, ctx("gal-0-sys-7-st", 0));
     expect(a).not.toBe(b);
   });
 
-  it("est déterministe : même station, même prix", () => {
-    const price = () => stationPrice("goods", 500, ctx("gal-2-sys-3-st", 2));
+  it("est déterministe : même comptoir, même prix", () => {
+    const price = () => tradingPostPrice("goods", 500, ctx("gal-2-sys-3-st", 2));
     expect(price()).toBe(price());
   });
 
   it("les anneaux lointains paient cher le manufacturé et bradent le brut", () => {
     const proche = ctx("comptoir", 0);
     const lointain = ctx("comptoir", 6);
-    expect(stationPrice("components", 800, lointain)).toBeGreaterThan(
-      stationPrice("components", 800, proche),
+    expect(tradingPostPrice("components", 800, lointain)).toBeGreaterThan(
+      tradingPostPrice("components", 800, proche),
     );
-    expect(stationPrice("ore", 800, lointain)).toBeLessThan(stationPrice("ore", 800, proche));
+    expect(tradingPostPrice("ore", 800, lointain)).toBeLessThan(
+      tradingPostPrice("ore", 800, proche),
+    );
   });
 
   it("l'écart entre galaxies est assez net pour justifier un voyage", () => {
-    const proche = stationPrice("components", 800, ctx("comptoir", 0));
-    const lointain = stationPrice("components", 800, ctx("comptoir", 6));
+    const proche = tradingPostPrice("components", 800, ctx("comptoir", 0));
+    const lointain = tradingPostPrice("components", 800, ctx("comptoir", 6));
     expect(lointain / proche).toBeGreaterThan(1.3);
   });
 

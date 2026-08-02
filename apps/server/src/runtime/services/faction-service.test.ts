@@ -31,13 +31,13 @@ describe("GameEngine — état de faction (chantier 15)", () => {
   });
 });
 describe("GameEngine — humeurs de faction (chantier 15)", () => {
-  /** Station de la galaxie d'origine, révélée à l'empire (le brouillard initial ne
+  /** Comptoir de la galaxie d'origine, révélé à l'empire (le brouillard initial ne
    * couvre qu'un système). */
-  const reachableStation = (engine: GameEngine, empire: ReturnType<typeof empireFor>) => {
-    const station = engine.universe.galaxies[0]!.systems.find((s) => s.station)?.station;
-    if (!station) throw new Error("la galaxie d'origine a toujours au moins une station");
-    engine.devArmFleet(empire, station.systemId, {});
-    return station;
+  const reachableTradingPost = (engine: GameEngine, empire: ReturnType<typeof empireFor>) => {
+    const comptoir = engine.universe.galaxies[0]!.systems.find((s) => s.station)?.station;
+    if (!comptoir) throw new Error("la galaxie d'origine a toujours au moins un comptoir");
+    engine.devArmFleet(empire, comptoir.systemId, {});
+    return comptoir;
   };
 
   it("devSetFactionMood force l'humeur ; elle revient à neutre à l'échéance", async () => {
@@ -56,18 +56,18 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
     expect(engine.devSetFactionMood("inconnue", "boom")).toBe(false);
   });
 
-  it("un embargo bloque sellToStation et buyFromStation sous le seuil de standing", async () => {
+  it("un embargo bloque sellToTradingPost et buyFromTradingPost sous le seuil de standing", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = [...empire.colonyMap.values()][0]!;
-    const station = reachableStation(engine, empire);
+    const comptoir = reachableTradingPost(engine, empire);
 
-    expect(engine.devSetFactionMood(station.factionId, "embargo")).toBe(true);
+    expect(engine.devSetFactionMood(comptoir.factionId, "embargo")).toBe(true);
 
-    expect(engine.market.sellToStation(empire, colony.id, station.id, { ore: 10 })).toMatch(
+    expect(engine.market.sellToTradingPost(empire, colony.id, comptoir.id, { ore: 10 })).toMatch(
       /Embargo/,
     );
-    expect(engine.market.buyFromStation(empire, colony.id, station.id, "ore", 10)).toMatch(
+    expect(engine.market.buyFromTradingPost(empire, colony.id, comptoir.id, "ore", 10)).toMatch(
       /Embargo/,
     );
   });
@@ -76,12 +76,12 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = [...empire.colonyMap.values()][0]!;
-    const station = reachableStation(engine, empire);
-    empire.factionRep[station.factionId] = 500; // largement au-dessus du seuil
+    const comptoir = reachableTradingPost(engine, empire);
+    empire.factionRep[comptoir.factionId] = 500; // largement au-dessus du seuil
 
-    expect(engine.devSetFactionMood(station.factionId, "embargo")).toBe(true);
+    expect(engine.devSetFactionMood(comptoir.factionId, "embargo")).toBe(true);
 
-    expect(engine.market.sellToStation(empire, colony.id, station.id, { ore: 10 })).toBeNull();
+    expect(engine.market.sellToTradingPost(empire, colony.id, comptoir.id, { ore: 10 })).toBeNull();
   });
 
   it("les humeurs finissent par bouger au fil des ticks économiques", async () => {

@@ -489,7 +489,7 @@
   margin-left: 18px;
 }
 
-.station-box {
+.trading-post-box {
   fill: none;
   stroke: #e0b64f;
   stroke-width: 1.5;
@@ -1193,9 +1193,60 @@
 }
 
 .hull-shape {
-  fill: color-mix(in srgb, var(--accent) 10%, transparent);
+  /* Le remplissage vient du dégradé SVG posé en ligne (id unique par instance, cf. useId). */
   stroke: var(--accent);
   stroke-width: 2;
+}
+
+.hull-fill-stop-a {
+  stop-color: var(--accent);
+  stop-opacity: 0.26;
+}
+.hull-fill-stop-b {
+  stop-color: var(--accent);
+  stop-opacity: 0.05;
+}
+
+.hull-engine-stop-a {
+  stop-color: var(--slot-propulsion);
+  stop-opacity: 0.85;
+}
+.hull-engine-stop-b {
+  stop-color: var(--slot-propulsion);
+  stop-opacity: 0;
+}
+
+.hull-plate {
+  fill: color-mix(in srgb, var(--accent) 16%, transparent);
+  stroke: var(--accent);
+  stroke-opacity: 0.5;
+  stroke-width: 1;
+}
+
+.hull-nacelle {
+  fill: color-mix(in srgb, var(--text) 12%, var(--panel));
+  stroke: var(--border-bright);
+  stroke-width: 1;
+}
+
+.hull-accent {
+  fill-opacity: 0.55;
+  stroke-width: 1;
+  stroke-opacity: 0.8;
+}
+
+.hull-greeble {
+  fill: var(--panel-2, var(--panel));
+  stroke: var(--border);
+  stroke-width: 0.75;
+  opacity: 0.85;
+}
+
+.hull-detail {
+  fill: none;
+  stroke: var(--accent);
+  stroke-opacity: 0.35;
+  stroke-width: 1;
 }
 
 .hull-diagram.compact .hull-shape {
@@ -1249,6 +1300,12 @@
   stroke: var(--text);
 }
 
+.hull-slot.selected circle {
+  stroke: var(--text);
+  stroke-width: 3;
+  filter: drop-shadow(0 0 4px var(--text));
+}
+
 .hull-slot-label {
   fill: var(--muted);
   font-size: 9px;
@@ -1280,4 +1337,72 @@
   display: flex;
   gap: 16px;
   align-items: flex-start;
+}
+
+.hull-diagram-wrap {
+  position: relative;
+  width: 200px;
+  height: 275px;
+  flex-shrink: 0;
+}
+
+.slot-connector {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.slot-connector line {
+  stroke: var(--text);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
+}
+
+/* ── Cadre de sélection de module (chantier 13.x, style Stellaris) ─────── */
+
+.slot-popover-anchor {
+  position: relative;
+  margin-top: 2px;
+}
+
+.slot-popover-notch {
+  position: absolute;
+  top: -6px;
+  left: var(--notch-left, 20px);
+  width: 10px;
+  height: 10px;
+  background: var(--panel);
+  border-left: 1px solid var(--border-bright, var(--accent));
+  border-top: 1px solid var(--border-bright, var(--accent));
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.slot-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.chip:hover {
+  border-color: var(--accent);
+}
+.chip.add.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
 }

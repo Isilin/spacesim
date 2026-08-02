@@ -17,9 +17,9 @@ import type {
   Relation,
   RelationProposal,
   Route,
-  StationMarket,
   StoredBattle,
   Territory,
+  TradingPostMarket,
   Transfer,
   Universe,
   WorldEvent,
@@ -34,7 +34,7 @@ export interface GameStoreState {
   transfers: Transfer[];
   missions: Mission[];
   exploredSystemIds: string[];
-  markets: StationMarket[];
+  markets: TradingPostMarket[];
   routes: Route[];
   outposts: MiningOutpost[];
   gateways: Gateway[];

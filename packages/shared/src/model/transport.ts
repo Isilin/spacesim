@@ -24,9 +24,9 @@ export interface Route {
   /** Source : colonie ou avant-poste minier (ressource forcée au minerai). */
   fromId: string;
   fromKind: "colony" | "outpost";
-  /** Destination : colonie ou station de commerce. */
+  /** Destination : colonie ou comptoir commercial. */
   toId: string;
-  toKind: "colony" | "station";
+  toKind: "colony" | "tradingPost";
   resource: ResourceId;
   rule: RouteRule;
   /** Vaisseaux réservés à la route (retirés du pool de la colonie propriétaire). Id de vaisseau
@@ -50,8 +50,8 @@ export interface Transfer {
 /**
  * Mission de vaisseau abstrait.
  * probe : cible = système. colonize : cible = planète.
- * sell : cargaison vers une station, créditée au prix spot à l'arrivée.
- * buy : budget crédits vers une station ; buy_return : trajet retour chargé.
+ * sell : cargaison vers un comptoir, créditée au prix spot à l'arrivée.
+ * buy : budget crédits vers un comptoir ; buy_return : trajet retour chargé.
  * deliver_contract : cargaison vers la colonie d'un AUTRE empire (contrat, chantier 14).
  */
 export interface Mission {
@@ -66,7 +66,7 @@ export interface Mission {
     | "contribute_gateway"
     | "deliver_contract";
   fromColonyId: string;
-  /** Id de système (probe), de planète (colonize) ou de station/colonie (commerce). */
+  /** Id de système (probe), de planète (colonize) ou de comptoir/colonie (commerce). */
   targetId: string;
   departedAt: number;
   arrivesAt: number;

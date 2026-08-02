@@ -207,8 +207,8 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
   });
 });
 describe("GameEngine — contrats de faction (chantier 15)", () => {
-  /** Faction d'une station de la galaxie d'origine : garantit que le contrat de pénurie
-   * déclenché cible une station à portée (pas de portail requis pour l'atteindre). */
+  /** Faction d'un comptoir de la galaxie d'origine : garantit que le contrat de pénurie
+   * déclenché cible un comptoir à portée (pas de portail requis pour l'atteindre). */
   const homeGalaxyFactionId = (engine: GameEngine) =>
     engine.universe.galaxies[0]!.systems.find((s) => s.station)!.station!.factionId;
 

@@ -74,12 +74,12 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     chassisId: "scout_frame",
     modules: ["laser_pulse", "armor_plating", "ion_thruster", "cargo_pod"],
   };
-  /** Station de la galaxie d'origine, rendue visible de l'empire (même recette que le test logistique). */
-  const reachableStation = (engine: GameEngine, empire: ReturnType<typeof empireFor>) => {
-    const station = engine.universe.galaxies[0]!.systems.find((s) => s.station)?.station;
-    if (!station) throw new Error("la galaxie d'origine a toujours au moins une station");
-    engine.devArmFleet(empire, station.systemId, {});
-    return station;
+  /** Comptoir de la galaxie d'origine, rendu visible de l'empire (même recette que le test logistique). */
+  const reachableTradingPost = (engine: GameEngine, empire: ReturnType<typeof empireFor>) => {
+    const comptoir = engine.universe.galaxies[0]!.systems.find((s) => s.station)?.station;
+    if (!comptoir) throw new Error("la galaxie d'origine a toujours au moins un comptoir");
+    engine.devArmFleet(empire, comptoir.systemId, {});
+    return comptoir;
   };
 
   it("un empire neuf est amorcé avec les plans de départ", async () => {
@@ -162,17 +162,17 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     expect(e2.snapshotForEmpire(a2).blueprints.map((p) => p.name)).toContain("Persistant");
   });
 
-  describe("marché de plans en station", () => {
+  describe("marché de plans en comptoir", () => {
     it("achète un plan de départ : crédits débités, plan ajouté", async () => {
       const engine = await GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
-      const station = reachableStation(engine, a);
+      const comptoir = reachableTradingPost(engine, a);
       engine.devGrant({ credits: 5000 });
       const colony = snap(engine, a).colonies[0]!;
       const before = snap(engine, a).blueprints.length;
 
       expect(
-        engine.industry.buyBlueprintFromStation(a, colony.id, station.id, "cruiser_mk1"),
+        engine.industry.buyBlueprintFromTradingPost(a, colony.id, comptoir.id, "cruiser_mk1"),
       ).toBeNull();
 
       const after = snap(engine, a);
@@ -183,33 +183,33 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     it("refuse l'achat sans crédits suffisants", async () => {
       const engine = await GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
-      const station = reachableStation(engine, a);
+      const comptoir = reachableTradingPost(engine, a);
       const colony = snap(engine, a).colonies[0]!;
       expect(
-        engine.industry.buyBlueprintFromStation(a, colony.id, station.id, "cruiser_mk1"),
+        engine.industry.buyBlueprintFromTradingPost(a, colony.id, comptoir.id, "cruiser_mk1"),
       ).toMatch(/Crédits insuffisants/);
     });
 
     it("refuse l'achat d'un preset inconnu", async () => {
       const engine = await GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
-      const station = reachableStation(engine, a);
+      const comptoir = reachableTradingPost(engine, a);
       const colony = snap(engine, a).colonies[0]!;
       engine.devGrant({ credits: 5000 });
       expect(
-        engine.industry.buyBlueprintFromStation(a, colony.id, station.id, "n-importe-quoi"),
+        engine.industry.buyBlueprintFromTradingPost(a, colony.id, comptoir.id, "n-importe-quoi"),
       ).toMatch(/inconnu/);
     });
 
     it("revend un plan : crédité, plan retiré", async () => {
       const engine = await GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
-      const station = reachableStation(engine, a);
+      const comptoir = reachableTradingPost(engine, a);
       const colony = snap(engine, a).colonies[0]!;
       const plan = snap(engine, a).blueprints[0]!;
       const creditsBefore = colony.resources.credits;
 
-      expect(engine.industry.sellBlueprint(a, colony.id, station.id, plan.id)).toBeNull();
+      expect(engine.industry.sellBlueprint(a, colony.id, comptoir.id, plan.id)).toBeNull();
 
       const after = snap(engine, a);
       expect(after.blueprints.some((p) => p.id === plan.id)).toBe(false);
@@ -219,12 +219,12 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     it("revend un vaisseau assemblé (classe historique) : décompte le pool, crédite", async () => {
       const engine = await GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
-      const station = reachableStation(engine, a);
+      const comptoir = reachableTradingPost(engine, a);
       const colony = snap(engine, a).colonies[0]!;
       expect(colony.ships.cargo_small).toBe(2); // amorcé à la fondation
       const creditsBefore = colony.resources.credits;
 
-      expect(engine.industry.sellShip(a, colony.id, station.id, "cargo_small", 1)).toBeNull();
+      expect(engine.industry.sellShip(a, colony.id, comptoir.id, "cargo_small", 1)).toBeNull();
 
       const after = snap(engine, a).colonies[0]!;
       expect(after.ships.cargo_small).toBe(1);
@@ -234,9 +234,9 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     it("refuse de vendre plus de vaisseaux que disponibles", async () => {
       const engine = await GameEngine.loadOrBootstrap();
       const a = empireFor(engine, "alice");
-      const station = reachableStation(engine, a);
+      const comptoir = reachableTradingPost(engine, a);
       const colony = snap(engine, a).colonies[0]!;
-      expect(engine.industry.sellShip(a, colony.id, station.id, "cargo_small", 99)).not.toBeNull();
+      expect(engine.industry.sellShip(a, colony.id, comptoir.id, "cargo_small", 99)).not.toBeNull();
     });
   });
 });

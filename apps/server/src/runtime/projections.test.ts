@@ -85,24 +85,24 @@ describe("projections — isolation multi-empire", () => {
     expect(other.planets).toHaveLength(0);
   });
 
-  it("marketsForEmpire ne renvoie que les stations des systèmes explorés", () => {
+  it("marketsForEmpire ne renvoie que les comptoirs des systèmes explorés", () => {
     const { runtime, a, systemA } = twoEmpireFixture();
-    runtime.marketMap.set("station-a", emptyResources());
-    runtime.marketMap.set("station-b", emptyResources());
-    runtime.stationsById.set("station-a", {
-      id: "station-a",
+    runtime.marketMap.set("comptoir-a", emptyResources());
+    runtime.marketMap.set("comptoir-b", emptyResources());
+    runtime.tradingPostsById.set("comptoir-a", {
+      id: "comptoir-a",
       systemId: systemA,
       factionId: "faction",
-      name: "Station A",
+      name: "comptoir A",
     });
-    runtime.stationsById.set("station-b", {
-      id: "station-b",
+    runtime.tradingPostsById.set("comptoir-b", {
+      id: "comptoir-b",
       systemId: "unexplored-system",
       factionId: "faction",
-      name: "Station B",
+      name: "comptoir B",
     });
     const markets = marketsForEmpire(runtime, a);
-    expect(markets.map((m) => m.stationId)).toEqual(["station-a"]);
+    expect(markets.map((m) => m.tradingPostId)).toEqual(["comptoir-a"]);
   });
 
   it("territoriesForEmpire montre ses propres claims même non explorés, jamais ceux d'un tiers non exploré", () => {

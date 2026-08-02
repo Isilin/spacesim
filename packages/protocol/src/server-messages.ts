@@ -16,9 +16,9 @@ import type {
   Relation,
   RelationProposal,
   Route,
-  StationMarket,
   StoredBattle,
   Territory,
+  TradingPostMarket,
   Transfer,
   Universe,
   WorldEvent,
@@ -31,8 +31,8 @@ export interface EmpireSnapshot {
   transfers: Transfer[];
   missions: Mission[];
   exploredSystemIds: string[];
-  /** Marchés des stations situées dans des systèmes explorés. */
-  markets: StationMarket[];
+  /** Marchés des comptoirs situés dans des systèmes explorés. */
+  markets: TradingPostMarket[];
   routes: Route[];
   outposts: MiningOutpost[];
   gateways: Gateway[];

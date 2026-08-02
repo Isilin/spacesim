@@ -15,7 +15,7 @@ import type {
   Planet,
   PlanetType,
   StarSystem,
-  TradeStation,
+  TradingPost,
   Universe,
 } from "./model/universe.js";
 
@@ -28,8 +28,8 @@ import type {
  */
 export const GENERATOR_VERSION = 1;
 
-/** Part des systèmes accueillant une station de commerce PNJ. */
-const STATION_PROBABILITY = 0.35;
+/** Part des systèmes accueillant un comptoir commercial PNJ. */
+const TRADING_POST_PROBABILITY = 0.35;
 
 /** Systèmes de la galaxie d'origine (index 0) : plus vaste, c'est le berceau des empires. */
 const HOME_GALAXY_SYSTEMS = 14;
@@ -411,16 +411,16 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
     const bodies = generateBodies(rng, system, def.depositBonus);
     system.planets = bodies.planets;
     system.belts = bodies.belts;
-    if (rng() < STATION_PROBABILITY) {
-      system.station = makeStation(rng, system);
+    if (rng() < TRADING_POST_PROBABILITY) {
+      system.station = makeTradingPost(rng, system);
     }
     return system;
   });
 
-  // Au moins une station par galaxie : le commerce doit toujours être accessible.
+  // Au moins un comptoir par galaxie : le commerce doit toujours être accessible.
   if (!systems.some((s) => s.station)) {
     const host = systems[Math.floor(rng() * systems.length)]!;
-    host.station = makeStation(rng, host);
+    host.station = makeTradingPost(rng, host);
   }
 
   // Ancrage de portail : le système le plus excentré (bord de galaxie).
@@ -442,7 +442,7 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
   };
 }
 
-function makeStation(rng: Rng, system: Pick<StarSystem, "id" | "name">): TradeStation {
+function makeTradingPost(rng: Rng, system: Pick<StarSystem, "id" | "name">): TradingPost {
   return {
     id: `${system.id}-st`,
     systemId: system.id,
@@ -468,11 +468,11 @@ export function allSystems(universe: Universe): StarSystem[] {
   return universe.galaxies.flatMap((g) => g.systems);
 }
 
-/** Toutes les stations de commerce de l'univers. */
-export function allStations(universe: Universe): TradeStation[] {
+/** Tous les comptoirs commerciaux de l'univers. */
+export function allTradingPosts(universe: Universe): TradingPost[] {
   return allSystems(universe)
     .map((s) => s.station)
-    .filter((st): st is TradeStation => st !== undefined);
+    .filter((st): st is TradingPost => st !== undefined);
 }
 
 /** Tous les corps colonisables (planètes + lunes). */

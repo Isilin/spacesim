@@ -9,7 +9,7 @@ import {
   type Relation,
   type RelationProposal,
   type RelationState,
-  type StationMarket,
+  type TradingPostMarket,
   type Territory,
   type Universe,
 } from "@spacesim/shared";
@@ -28,13 +28,13 @@ export function clientUniverseForEmpire(runtime: GameRuntime, empire: Empire): U
   return redactUniverse(runtime.universe, empire.explored);
 }
 
-/** Marchés des stations situées dans les systèmes explorés par l'empire. */
-export function marketsForEmpire(runtime: GameRuntime, empire: Empire): StationMarket[] {
-  const markets: StationMarket[] = [];
-  for (const [stationId, stocks] of runtime.marketMap) {
-    const station = runtime.stationsById.get(stationId);
-    if (station && empire.explored.has(station.systemId)) {
-      markets.push({ stationId, stocks });
+/** Marchés des comptoirs situées dans les systèmes explorés par l'empire. */
+export function marketsForEmpire(runtime: GameRuntime, empire: Empire): TradingPostMarket[] {
+  const markets: TradingPostMarket[] = [];
+  for (const [tradingPostId, stocks] of runtime.marketMap) {
+    const comptoir = runtime.tradingPostsById.get(tradingPostId);
+    if (comptoir && empire.explored.has(comptoir.systemId)) {
+      markets.push({ tradingPostId, stocks });
     }
   }
   return markets;

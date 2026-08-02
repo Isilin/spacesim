@@ -31,7 +31,7 @@ export interface EmpireEffects {
   liftThroughputMult: number;
   /** Carburant des convois (chantier 12). */
   fuelMult: number;
-  /** Marge commerciale en station : ventes majorées, achats minorés. */
+  /** Marge commerciale en comptoir : ventes majorées, achats minorés. */
   tradeMargin: number;
   /** Châssis débloqués pour le concepteur (chantier 13). */
   unlockedChassis: Set<string>;

@@ -41,11 +41,11 @@ describe("GameEngine — univers extensible (chantier 9)", () => {
     expect(e2.universe.galaxies.slice(0, known.length)).toEqual(known);
     // Les galaxies apparues sont équipées : portail et comptoirs approvisionnés.
     expect(e2.gateways).toHaveLength(6);
-    const stationIds = e2.universe.galaxies
+    const tradingPostIds = e2.universe.galaxies
       .flatMap((g) => g.systems)
       .flatMap((s) => (s.station ? [s.station.id] : []));
-    const stocked = new Set((await db.select().from(schema.stationStates)).map((r) => r.stationId));
-    expect(stationIds.every((id) => stocked.has(id))).toBe(true);
+    const stocked = new Set((await db.select().from(schema.tradingPostStates)).map((r) => r.tradingPostId));
+    expect(tradingPostIds.every((id) => stocked.has(id))).toBe(true);
   });
 
   it("les nouveaux empires naissent voisins, puis débordent en poussant la frontière", async () => {

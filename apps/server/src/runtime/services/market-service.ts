@@ -20,7 +20,7 @@ import {
   repBonus,
   resolvePurchase,
   resolveSale,
-  stationPrice,
+  tradingPostPrice,
   takeFromOrbit,
   TARGET_STOCK,
   transferCostCredits,
@@ -35,7 +35,7 @@ import {
   type PriceContext,
   type ResourceId,
   type Rng,
-  type TradeStation,
+  type TradingPost,
   type WorldEventKind,
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
@@ -46,7 +46,7 @@ import type { Logger } from "../logger.js";
 import { MarketRepository } from "../repositories/market-repository.js";
 
 /**
- * Marché de station (joueur et PNJ) : prix régionaux, commerce joueur en station,
+ * Marché de comptoir (joueur et PNJ) : prix régionaux, commerce joueur en comptoir,
  * réputation/embargo de faction, humeur de faction, et l'IA économique PNJ (vente de
  * surplus, contrats de besoin). `reserveShip`/`insertMission` (Logistics) et
  * `postContract`/`insertContract` (Contract) sont injectés en callbacks — ce service
@@ -99,44 +99,44 @@ export class MarketService {
   }
 
   /**
-   * Contexte de prix d'une station (chantier 12) : son biais propre et l'éloignement de
+   * Contexte de prix d'une comptoir (chantier 12) : son biais propre et l'éloignement de
    * sa galaxie. C'est ce qui fait diverger les prix d'un comptoir à l'autre.
    */
-  priceContextOf(stationId: string): PriceContext | undefined {
-    const station = this.runtime.stationsById.get(stationId);
-    if (!station) return undefined;
+  priceContextOf(tradingPostId: string): PriceContext | undefined {
+    const comptoir = this.runtime.tradingPostsById.get(tradingPostId);
+    if (!comptoir) return undefined;
     return {
-      stationId,
-      galaxyIndex: this.runtime.galaxyIndexOfSystem.get(station.systemId) ?? 0,
-      factionId: station.factionId,
+      tradingPostId,
+      galaxyIndex: this.runtime.galaxyIndexOfSystem.get(comptoir.systemId) ?? 0,
+      factionId: comptoir.factionId,
     };
   }
 
-  /** Réputation gagnée auprès de la faction de la station, au volume de crédits échangé. */
-  addFactionRep(empire: Empire, stationId: string, creditsExchanged: number): void {
-    const station = this.runtime.stationsById.get(stationId);
-    if (!station || creditsExchanged <= 0) return;
+  /** Réputation gagnée auprès de la faction de la comptoir, au volume de crédits échangé. */
+  addFactionRep(empire: Empire, tradingPostId: string, creditsExchanged: number): void {
+    const comptoir = this.runtime.tradingPostsById.get(tradingPostId);
+    if (!comptoir || creditsExchanged <= 0) return;
     const factionRep = { ...empire.factionRep };
-    factionRep[station.factionId] =
-      Math.round(((factionRep[station.factionId] ?? 0) + creditsExchanged * REP_PER_CREDIT) * 10) /
+    factionRep[comptoir.factionId] =
+      Math.round(((factionRep[comptoir.factionId] ?? 0) + creditsExchanged * REP_PER_CREDIT) * 10) /
       10;
     empire.factionRep = factionRep;
   }
 
   /**
-   * Bonus commercial appliqué en station : remise de réputation + marge des chartes
+   * Bonus commercial appliqué en comptoir : remise de réputation + marge des chartes
    * commerciales (chantier 12) + bonus d'humeur de faction (chantier 15, boom) + effet
    * d'un événement de monde régional (chantier 17, crise/ruée). Majore les ventes,
    * réduit les achats.
    */
-  stationRepBonus(empire: Empire, stationId: string): number {
-    const station = this.runtime.stationsById.get(stationId);
-    const rep = station ? repBonus(empire.factionRep[station.factionId] ?? 0) : 0;
-    const mood = station
-      ? (this.runtime.factionStateMap.get(station.factionId)?.mood ?? "neutral")
+  tradingPostRepBonus(empire: Empire, tradingPostId: string): number {
+    const comptoir = this.runtime.tradingPostsById.get(tradingPostId);
+    const rep = comptoir ? repBonus(empire.factionRep[comptoir.factionId] ?? 0) : 0;
+    const mood = comptoir
+      ? (this.runtime.factionStateMap.get(comptoir.factionId)?.mood ?? "neutral")
       : "neutral";
-    const galaxyIndex = station
-      ? this.runtime.galaxyIndexOfSystem.get(station.systemId)
+    const galaxyIndex = comptoir
+      ? this.runtime.galaxyIndexOfSystem.get(comptoir.systemId)
       : undefined;
     const galaxyId =
       galaxyIndex !== undefined ? this.runtime.universe.galaxies[galaxyIndex]?.id : undefined;
@@ -144,27 +144,27 @@ export class MarketService {
     return rep + empire.effects.tradeMargin + moodRebateBonus(mood) + eventBonus;
   }
 
-  /** Un embargo de faction ferme la station aux empires qui n'ont pas encore fait leurs preuves. */
-  stationEmbargoed(empire: Empire, stationId: string): boolean {
-    const station = this.runtime.stationsById.get(stationId);
-    if (!station) return false;
-    const mood = this.runtime.factionStateMap.get(station.factionId)?.mood ?? "neutral";
-    return embargoBlocks(mood, empire.factionRep[station.factionId] ?? 0);
+  /** Un embargo de faction ferme la comptoir aux empires qui n'ont pas encore fait leurs preuves. */
+  tradingPostEmbargoed(empire: Empire, tradingPostId: string): boolean {
+    const comptoir = this.runtime.tradingPostsById.get(tradingPostId);
+    if (!comptoir) return false;
+    const mood = this.runtime.factionStateMap.get(comptoir.factionId)?.mood ?? "neutral";
+    return embargoBlocks(mood, empire.factionRep[comptoir.factionId] ?? 0);
   }
 
-  /** Action joueur : vendre une cargaison à une station (créditée au spot d'arrivée). */
-  sellToStation(
+  /** Action joueur : vendre une cargaison à une comptoir (créditée au spot d'arrivée). */
+  sellToTradingPost(
     empire: Empire,
     colonyId: string,
-    stationId: string,
+    tradingPostId: string,
     wanted: Partial<Record<ResourceId, number>>,
   ): string | null {
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
-    const station = this.runtime.stationsById.get(stationId);
-    if (!station) return "Station inconnue";
-    if (!empire.explored.has(station.systemId)) return "Station non découverte";
-    if (this.stationEmbargoed(empire, stationId)) return "Embargo de faction — commerce refusé";
+    const comptoir = this.runtime.tradingPostsById.get(tradingPostId);
+    if (!comptoir) return "Comptoir inconnu";
+    if (!empire.explored.has(comptoir.systemId)) return "Comptoir non découvert";
+    if (this.tradingPostEmbargoed(empire, tradingPostId)) return "Embargo de faction — commerce refusé";
 
     const cargo: Partial<Record<ResourceId, number>> = {};
     for (const [res, raw] of Object.entries(wanted) as [ResourceId, number][]) {
@@ -182,10 +182,10 @@ export class MarketService {
     const jumps = jumpDistanceInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
-      station.systemId,
+      comptoir.systemId,
       this.portalLinks,
     );
-    if (jumps < 0) return "Station inaccessible";
+    if (jumps < 0) return "Comptoir inaccessible";
     const balance = this.balance;
     const fee = transferCostCredits(jumps, balance);
 
@@ -211,25 +211,25 @@ export class MarketService {
     resources.credits -= fee;
     empire.colonyMap.set(colony.id, { ...reserved.colony, resources });
     this.persistColony(empire.colonyMap.get(colony.id)!);
-    this.insertMission(empire, "sell", colonyId, stationId, duration, { cargo });
+    this.insertMission(empire, "sell", colonyId, tradingPostId, duration, { cargo });
     this.notify();
     return null;
   }
 
   /** Action joueur : acheter au spot (le convoi part avec un budget, revient chargé). */
-  buyFromStation(
+  buyFromTradingPost(
     empire: Empire,
     colonyId: string,
-    stationId: string,
+    tradingPostId: string,
     resource: ResourceId,
     budgetRaw: number,
   ): string | null {
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
-    const station = this.runtime.stationsById.get(stationId);
-    if (!station) return "Station inconnue";
-    if (!empire.explored.has(station.systemId)) return "Station non découverte";
-    if (this.stationEmbargoed(empire, stationId)) return "Embargo de faction — commerce refusé";
+    const comptoir = this.runtime.tradingPostsById.get(tradingPostId);
+    if (!comptoir) return "Comptoir inconnu";
+    if (!empire.explored.has(comptoir.systemId)) return "Comptoir non découvert";
+    if (this.tradingPostEmbargoed(empire, tradingPostId)) return "Embargo de faction — commerce refusé";
     if (!(MARKET_RESOURCES as readonly string[]).includes(resource)) {
       return `Ressource non échangeable : ${resource}`;
     }
@@ -241,10 +241,10 @@ export class MarketService {
     const jumps = jumpDistanceInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
-      station.systemId,
+      comptoir.systemId,
       this.portalLinks,
     );
-    if (jumps < 0) return "Station inaccessible";
+    if (jumps < 0) return "Comptoir inaccessible";
     const balance = this.balance;
     const fee = transferCostCredits(jumps, balance);
 
@@ -260,7 +260,7 @@ export class MarketService {
     empire.colonyMap.set(colony.id, { ...reserved.colony, resources });
     this.persistColony(empire.colonyMap.get(colony.id)!);
     // La capacité du cargo réservé borne l'achat à l'arrivée.
-    this.insertMission(empire, "buy", colonyId, stationId, duration, {
+    this.insertMission(empire, "buy", colonyId, tradingPostId, duration, {
       budget,
       buyResource: resource,
       capacity: reserved.capacity,
@@ -272,21 +272,21 @@ export class MarketService {
   // ─────────────────────────── Économie PNJ (chantier 14) ───────────────────────────
 
   /** Comptoir le plus proche dans la MÊME galaxie (un PNJ ne commerce pas à l'échelle de l'univers). */
-  private nearestStation(systemId: string): TradeStation | null {
+  private nearestTradingPost(systemId: string): TradingPost | null {
     const galaxyIndex = this.runtime.galaxyIndexOfSystem.get(systemId);
-    let best: TradeStation | null = null;
+    let best: TradingPost | null = null;
     let bestJumps = Infinity;
-    for (const station of this.runtime.stationsById.values()) {
-      if (this.runtime.galaxyIndexOfSystem.get(station.systemId) !== galaxyIndex) continue;
+    for (const comptoir of this.runtime.tradingPostsById.values()) {
+      if (this.runtime.galaxyIndexOfSystem.get(comptoir.systemId) !== galaxyIndex) continue;
       const jumps = jumpDistanceInUniverse(
         this.runtime.universe,
         systemId,
-        station.systemId,
+        comptoir.systemId,
         this.portalLinks,
       );
       if (jumps < 0 || jumps >= bestJumps) continue;
       bestJumps = jumps;
-      best = station;
+      best = comptoir;
     }
     return best;
   }
@@ -304,15 +304,15 @@ export class MarketService {
   ): void {
     if (quantity <= 0) return;
     const planet = this.runtime.planetsById.get(colony.planetId);
-    const station = planet ? this.nearestStation(planet.systemId) : null;
-    if (!station) return;
-    const stocks = this.runtime.marketMap.get(station.id);
+    const comptoir = planet ? this.nearestTradingPost(planet.systemId) : null;
+    if (!comptoir) return;
+    const stocks = this.runtime.marketMap.get(comptoir.id);
     if (!stocks) return;
     const loaded = takeFromOrbit(colony, { [resource]: quantity });
     if (!loaded) return;
-    const result = resolveSale(stocks, { [resource]: quantity }, this.priceContextOf(station.id));
-    this.runtime.marketMap.set(station.id, result.stocks);
-    this.persistMarket(station.id);
+    const result = resolveSale(stocks, { [resource]: quantity }, this.priceContextOf(comptoir.id));
+    this.runtime.marketMap.set(comptoir.id, result.stocks);
+    this.persistMarket(comptoir.id);
     const updated: Colony = {
       ...loaded,
       resources: { ...loaded.resources, credits: loaded.resources.credits + result.revenue },
@@ -339,14 +339,14 @@ export class MarketService {
     );
     if (alreadyOpen) return;
     const planet = this.runtime.planetsById.get(colony.planetId);
-    const station = planet ? this.nearestStation(planet.systemId) : null;
-    const stocks = station ? this.runtime.marketMap.get(station.id) : undefined;
+    const comptoir = planet ? this.nearestTradingPost(planet.systemId) : null;
+    const stocks = comptoir ? this.runtime.marketMap.get(comptoir.id) : undefined;
     const price =
       Math.round(
-        stationPrice(
+        tradingPostPrice(
           resource,
           stocks?.[resource] ?? TARGET_STOCK,
-          station ? this.priceContextOf(station.id) : undefined,
+          comptoir ? this.priceContextOf(comptoir.id) : undefined,
         ) *
           NPC_CONTRACT_PRICE_MULT *
           100,
@@ -383,17 +383,17 @@ export class MarketService {
       (c) => c.issuerId === factionId && c.status === "open",
     );
     if (alreadyOpen) return;
-    const station = [...this.runtime.stationsById.values()].find((s) => s.factionId === factionId);
-    if (!station) return;
+    const comptoir = [...this.runtime.tradingPostsById.values()].find((s) => s.factionId === factionId);
+    if (!comptoir) return;
 
     const resource = consumed[Math.floor(rng() * consumed.length)]!;
-    const stocks = this.runtime.marketMap.get(station.id);
+    const stocks = this.runtime.marketMap.get(comptoir.id);
     const price =
       Math.round(
-        stationPrice(
+        tradingPostPrice(
           resource,
           stocks?.[resource] ?? TARGET_STOCK,
-          this.priceContextOf(station.id),
+          this.priceContextOf(comptoir.id),
         ) *
           FACTION_CONTRACT_PRICE_MULT *
           100,
@@ -406,9 +406,9 @@ export class MarketService {
       issuerId: factionId,
       issuerName: def.name,
       issuerColor: def.color,
-      colonyId: station.id,
-      colonyName: station.name,
-      systemId: station.systemId,
+      colonyId: comptoir.id,
+      colonyName: comptoir.name,
+      systemId: comptoir.systemId,
       resource,
       quantity,
       remaining: quantity,
@@ -438,75 +438,75 @@ export class MarketService {
   }
 
   /**
-   * Dote de stocks les stations qui n'en ont pas encore. Appelé à la création d'une
+   * Dote de stocks les comptoirs qui n'en ont pas encore. Appelé à la création d'une
    * partie et après chaque extension de l'univers (les galaxies neuves arrivent avec
    * leurs comptoirs) — d'où l'idempotence.
    */
   initMarkets(): void {
-    for (const station of this.runtime.stationsById.values()) {
-      if (this.runtime.marketMap.has(station.id)) continue;
-      const stocks = initialStocks(createRng(`${this.runtime.clock.seed}-station-${station.id}`));
-      this.runtime.marketMap.set(station.id, stocks);
-      this.repo.insert(station.id, stocks);
+    for (const comptoir of this.runtime.tradingPostsById.values()) {
+      if (this.runtime.marketMap.has(comptoir.id)) continue;
+      const stocks = initialStocks(createRng(`${this.runtime.clock.seed}-comptoir-${comptoir.id}`));
+      this.runtime.marketMap.set(comptoir.id, stocks);
+      this.repo.insert(comptoir.id, stocks);
     }
   }
 
   async loadMarkets(): Promise<void> {
-    for (const { stationId, stocks } of await this.repo.loadAll()) {
-      this.runtime.marketMap.set(stationId, stocks);
+    for (const { tradingPostId, stocks } of await this.repo.loadAll()) {
+      this.runtime.marketMap.set(tradingPostId, stocks);
     }
   }
 
-  persistMarket(stationId: string): void {
-    const stocks = this.runtime.marketMap.get(stationId);
+  persistMarket(tradingPostId: string): void {
+    const stocks = this.runtime.marketMap.get(tradingPostId);
     if (!stocks) return;
-    this.repo.save(stationId, stocks);
+    this.repo.save(tradingPostId, stocks);
   }
 
-  /** Tick économique : les stocks PNJ de chaque station évoluent selon leur faction. */
+  /** Tick économique : les stocks PNJ de chaque comptoir évoluent selon leur faction. */
   economyTick(tickNumber: number): void {
-    for (const station of this.runtime.stationsById.values()) {
-      const stocks = this.runtime.marketMap.get(station.id);
+    for (const comptoir of this.runtime.tradingPostsById.values()) {
+      const stocks = this.runtime.marketMap.get(comptoir.id);
       if (!stocks) continue;
-      const faction = this.runtime.content.factions[station.factionId];
+      const faction = this.runtime.content.factions[comptoir.factionId];
       if (!faction) continue;
-      const rng = createRng(`${this.runtime.clock.seed}-mkt-${station.id}-${tickNumber}`);
-      this.runtime.marketMap.set(station.id, marketTick(stocks, faction, rng));
-      this.persistMarket(station.id);
+      const rng = createRng(`${this.runtime.clock.seed}-mkt-${comptoir.id}-${tickNumber}`);
+      this.runtime.marketMap.set(comptoir.id, marketTick(stocks, faction, rng));
+      this.persistMarket(comptoir.id);
     }
   }
 
   /** Résout un achat au spot (mission "buy") — factorisé pour `resolveMissions` (Logistics). */
   resolvePurchaseAt(
-    stationId: string,
+    tradingPostId: string,
     resource: MarketResource,
     budget: number,
     capacity: number,
   ): { bought: number; spent: number } | null {
-    const stocks = this.runtime.marketMap.get(stationId);
+    const stocks = this.runtime.marketMap.get(tradingPostId);
     if (!stocks) return null;
     const result = resolvePurchase(
       stocks,
       resource,
       budget,
       capacity,
-      this.priceContextOf(stationId),
+      this.priceContextOf(tradingPostId),
     );
-    this.runtime.marketMap.set(stationId, result.stocks);
-    this.persistMarket(stationId);
+    this.runtime.marketMap.set(tradingPostId, result.stocks);
+    this.persistMarket(tradingPostId);
     return { bought: result.bought, spent: result.spent };
   }
 
   /** Résout une vente au marché (missions "sell"/"deliver_contract") — même logique factorisée. */
   resolveSaleAt(
-    stationId: string,
+    tradingPostId: string,
     cargo: Partial<Record<ResourceId, number>>,
   ): { revenue: number } | null {
-    const stocks = this.runtime.marketMap.get(stationId);
+    const stocks = this.runtime.marketMap.get(tradingPostId);
     if (!stocks) return null;
-    const result = resolveSale(stocks, cargo, this.priceContextOf(stationId));
-    this.runtime.marketMap.set(stationId, result.stocks);
-    this.persistMarket(stationId);
+    const result = resolveSale(stocks, cargo, this.priceContextOf(tradingPostId));
+    this.runtime.marketMap.set(tradingPostId, result.stocks);
+    this.persistMarket(tradingPostId);
     return { revenue: result.revenue };
   }
 }

@@ -17,7 +17,7 @@ export const CLAIM_UPKEEP = 0.02;
 /** Bonus de production des colonies situées dans un système revendiqué. */
 export const CLAIM_PRODUCTION_BONUS = 1.15;
 
-/** Réputation gagnée par crédit échangé en station. */
+/** Réputation gagnée par crédit échangé en comptoir. */
 export const REP_PER_CREDIT = 0.1;
 
 /** Paliers de réputation : remise sur les prix (achats −x %, ventes +x %). */

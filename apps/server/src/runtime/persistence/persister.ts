@@ -25,7 +25,7 @@ const PRIMARY_KEYS: Partial<Record<SchemaKey, readonly string[]>> = {
   missions: ["id"],
   routes: ["id"],
   outposts: ["id"],
-  stationStates: ["stationId"],
+  tradingPostStates: ["tradingPostId"],
   gateways: ["galaxyId"],
   claims: ["systemId"],
   fleets: ["id"],
@@ -37,7 +37,7 @@ const PRIMARY_KEYS: Partial<Record<SchemaKey, readonly string[]>> = {
   universeSystems: ["id"],
   universeBodies: ["id"],
   universeBelts: ["id"],
-  universeStations: ["id"],
+  universeTradingPosts: ["id"],
   universeLinks: ["aSystemId", "bSystemId"],
 };
 

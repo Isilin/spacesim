@@ -1,7 +1,7 @@
 import type { ClientMessage } from "@spacesim/protocol";
 import {
   allBelts,
-  allStations,
+  allTradingPosts,
   allSystems,
   fleetCapacity,
   idleShips,
@@ -76,19 +76,21 @@ export function RoutesView({
     ? (colonies.find((c) => c.id === ownerId) ?? colonies[0])
     : colonies.find((c) => c.id === source?.id);
 
-  const stations = allStations(universe).filter((s) => exploredSystemIds.includes(s.systemId));
+  const tradingPosts = allTradingPosts(universe).filter((s) =>
+    exploredSystemIds.includes(s.systemId),
+  );
   const destinations = [
     ...colonies
       .filter((c) => fromOutpost || c.id !== source?.id)
       .map((c) => ({ id: c.id, kind: "colony" as const, label: c.name })),
-    ...stations.map((s) => ({ id: s.id, kind: "station" as const, label: `⬡ ${s.name}` })),
+    ...tradingPosts.map((s) => ({ id: s.id, kind: "tradingPost" as const, label: `⬡ ${s.name}` })),
   ];
   const destination = destinations.find((d) => d.id === toId) ?? destinations[0];
-  const toStation = destination?.kind === "station";
+  const toTradingPost = destination?.kind === "tradingPost";
 
   const availableResources = fromOutpost
     ? (["ore"] as const)
-    : toStation
+    : toTradingPost
       ? MARKET_RESOURCES
       : RESOURCES.filter((r) => r !== "credits" && r !== "science");
   const effectiveResource = (availableResources as readonly string[]).includes(resource)
@@ -227,7 +229,7 @@ export function RoutesView({
             value={ruleType}
             onChange={(e) => setRuleType(e.target.value as RuleType)}
             options={(Object.keys(RULE_LABELS) as RuleType[])
-              .filter((r) => !(toStation && r === "maintain"))
+              .filter((r) => !(toTradingPost && r === "maintain"))
               .map((r) => ({ value: r, label: RULE_LABELS[r] }))}
           />
           {ruleType === "maintain" && (

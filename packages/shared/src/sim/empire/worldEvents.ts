@@ -14,7 +14,7 @@ export const WORLD_EVENT_DURATION_MS = 1_800_000;
 /** Chance qu'un nouvel événement se déclenche à un tick économique donné. */
 export const WORLD_EVENT_TRIGGER_CHANCE = 0.05;
 
-/** economic_crisis / gold_rush : effet sur les prix en station de la galaxie touchée. */
+/** economic_crisis / gold_rush : effet sur les prix en comptoir de la galaxie touchée. */
 export const WORLD_EVENT_PRICE_PENALTY = 0.15;
 export const WORLD_EVENT_PRICE_BONUS = 0.2;
 
@@ -31,7 +31,7 @@ export function rollWorldEvent(rng: Rng): WorldEventKind | null {
   return WORLD_EVENT_KINDS[Math.floor(rng() * WORLD_EVENT_KINDS.length)]!;
 }
 
-/** Bonus/malus de prix en station dû aux événements de monde actifs sur une galaxie. */
+/** Bonus/malus de prix en comptoir dû aux événements de monde actifs sur une galaxie. */
 export function worldEventPriceBonus(kinds: readonly WorldEventKind[]): number {
   let bonus = 0;
   for (const kind of kinds) {

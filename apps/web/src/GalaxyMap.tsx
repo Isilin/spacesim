@@ -126,7 +126,7 @@ export function GalaxyMap({
                 y={-4}
                 width={7}
                 height={7}
-                className="station-box"
+                className="trading-post-box"
                 transform="rotate(45 11.5 -0.5)"
               />
             )}

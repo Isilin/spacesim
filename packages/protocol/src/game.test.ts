@@ -14,7 +14,7 @@ describe("ClientMessageSchema", () => {
         fromId: "colony-1",
         fromKind: "colony",
         toId: "station-1",
-        toKind: "station",
+        toKind: "tradingPost",
         resource: "ore",
         rule: { type: "surplus", keepAtSource: 20 },
         ships: { hauler: 1 },
