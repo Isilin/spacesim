@@ -48,6 +48,10 @@ export const TECH_IDS = [
   "reactive_armor",
   "graviton_thrusters",
   "xeno_survey",
+  // Stations orbitales (chantier 24) : palier de base + deux extensions croisées.
+  "orbital_engineering",
+  "orbital_astrophysics",
+  "orbital_armaments",
 ] as const;
 
 export type TechId = (typeof TECH_IDS)[number];
@@ -121,7 +125,9 @@ export const TECHS: Record<TechId, TechDef> = {
     cost: 80,
     durationMs: 120_000,
     requires: ["metallurgy"],
-    effects: { unlockBuildings: ["component_factory", "goods_factory", "shipyard"] },
+    effects: {
+      unlockBuildings: ["component_factory", "goods_factory", "shipyard"],
+    },
   },
   advanced_mining: {
     id: "advanced_mining",
@@ -169,7 +175,11 @@ export const TECHS: Record<TechId, TechDef> = {
     cost: 200,
     durationMs: 210_000,
     requires: ["advanced_mining"],
-    effects: { outputMult: { mine: 1.15 }, outpostYieldMult: 1.4, storageMult: 1.25 },
+    effects: {
+      outputMult: { mine: 1.15 },
+      outpostYieldMult: 1.4,
+      storageMult: 1.25,
+    },
   },
   modular_construction: {
     id: "modular_construction",
@@ -185,7 +195,10 @@ export const TECHS: Record<TechId, TechDef> = {
     cost: 480,
     durationMs: 420_000,
     requires: ["automation", "fusion_power"],
-    effects: { outputMult: { smelter: 1.3, component_factory: 1.25 }, storageMult: 1.25 },
+    effects: {
+      outputMult: { smelter: 1.3, component_factory: 1.25 },
+      storageMult: 1.25,
+    },
   },
   nanofabrication: {
     id: "nanofabrication",
@@ -437,6 +450,35 @@ export const TECHS: Record<TechId, TechDef> = {
     durationMs: 300_000,
     requires: ["deep_survey"],
     // Débloque le châssis éclaireur lointain et la foreuse à noyau (content/chassis, modules).
+    effects: {},
+  },
+  // ─── Stations orbitales (chantier 24) ───
+  orbital_engineering: {
+    id: "orbital_engineering",
+    branch: "industry",
+    cost: 400,
+    durationMs: 360_000,
+    requires: ["space_elevator"],
+    // Débloque la fondation d'une station orbitale et sa zone industrielle de base
+    // (content/zone-types, sim/industry/station) — EmpireEffects.unlockedZoneTypes.
+    effects: {},
+  },
+  orbital_astrophysics: {
+    id: "orbital_astrophysics",
+    branch: "society",
+    cost: 450,
+    durationMs: 390_000,
+    requires: ["orbital_engineering", "education_networks"],
+    // Débloque la zone scientifique orbitale (content/zone-types).
+    effects: {},
+  },
+  orbital_armaments: {
+    id: "orbital_armaments",
+    branch: "military",
+    cost: 500,
+    durationMs: 420_000,
+    requires: ["orbital_engineering", "capital_ships"],
+    // Débloque la zone militaire orbitale (content/zone-types).
     effects: {},
   },
 };

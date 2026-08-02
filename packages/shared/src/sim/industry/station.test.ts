@@ -1,0 +1,245 @@
+import { describe, expect, it } from "vitest";
+import { INSTALLATIONS } from "../../content/installations.js";
+import { ZONE_TYPES } from "../../content/zone-types.js";
+import type { Station } from "../../model/industry.js";
+import { computeEffects, NO_EFFECTS } from "../empire/research.js";
+import {
+  applyStationTick,
+  canFoundStation,
+  deliverToStation,
+  emptyStationResources,
+  enqueueInstallation,
+  enqueueZone,
+  resolveInstallQueue,
+  resolveZoneQueue,
+  takeFromStation,
+} from "./station.js";
+
+function makeStation(overrides: Partial<Station> = {}): Station {
+  return {
+    id: "station-1",
+    ownerId: "empire-1",
+    bodyId: "gal-0-sys-0-p1",
+    systemId: "gal-0-sys-0",
+    name: "Avant-poste",
+    resources: emptyStationResources(),
+    zones: {},
+    zoneQueue: [],
+    installations: {},
+    installQueue: [],
+    ...overrides,
+  };
+}
+
+const baseEffects = computeEffects(["orbital_engineering"]);
+
+describe("canFoundStation", () => {
+  it("refuse sans aucun type de zone débloqué", () => {
+    expect(canFoundStation(NO_EFFECTS)).toBe(false);
+  });
+
+  it("autorise dès qu'un type de zone est débloqué", () => {
+    expect(canFoundStation(baseEffects)).toBe(true);
+  });
+});
+
+describe("enqueueZone", () => {
+  it("paie le coût et ajoute à la file", () => {
+    const station = makeStation({
+      resources: { ...emptyStationResources(), metals: 500, components: 200 },
+    });
+    const result = enqueueZone(station, "industrial_zone", 1000, baseEffects);
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.station.resources.metals).toBe(
+      500 - ZONE_TYPES.industrial_zone.cost.metals!,
+    );
+    expect(result.station.resources.components).toBe(
+      200 - ZONE_TYPES.industrial_zone.cost.components!,
+    );
+    expect(result.station.zoneQueue).toHaveLength(1);
+    expect(result.station.zoneQueue[0]!.finishesAt).toBe(
+      1000 + ZONE_TYPES.industrial_zone.buildMs,
+    );
+  });
+
+  it("refuse une zone dont la tech n'est pas recherchée", () => {
+    const station = makeStation({
+      resources: { ...emptyStationResources(), metals: 500, components: 200 },
+    });
+    const result = enqueueZone(station, "science_zone", 0, baseEffects);
+    expect(result.ok).toBe(false);
+  });
+
+  it("refuse si ressources insuffisantes", () => {
+    const station = makeStation({
+      resources: { ...emptyStationResources(), metals: 10 },
+    });
+    const result = enqueueZone(station, "industrial_zone", 0, baseEffects);
+    expect(result.ok).toBe(false);
+  });
+
+  it("n'a pas de plafond de nombre de zones — seul le coût limite", () => {
+    let station = makeStation({
+      resources: {
+        ...emptyStationResources(),
+        metals: 100_000,
+        components: 100_000,
+      },
+    });
+    for (let i = 0; i < 10; i++) {
+      const r = enqueueZone(station, "industrial_zone", 0, baseEffects);
+      if (!r.ok) throw new Error(r.reason);
+      station = r.station;
+    }
+    expect(station.zoneQueue).toHaveLength(10);
+  });
+});
+
+describe("resolveZoneQueue", () => {
+  it("convertit les zones terminées en emplacements", () => {
+    const station = makeStation({
+      zoneQueue: [
+        { zoneTypeId: "industrial_zone", startedAt: 0, finishesAt: 1000 },
+      ],
+    });
+    const resolved = resolveZoneQueue(station, 1000);
+    expect(resolved.zones.industrial_zone).toBe(1);
+    expect(resolved.zoneQueue).toHaveLength(0);
+  });
+
+  it("laisse en file ce qui n'est pas encore terminé", () => {
+    const station = makeStation({
+      zoneQueue: [
+        { zoneTypeId: "industrial_zone", startedAt: 0, finishesAt: 2000 },
+      ],
+    });
+    const resolved = resolveZoneQueue(station, 1000);
+    expect(resolved.zones.industrial_zone).toBeUndefined();
+    expect(resolved.zoneQueue).toHaveLength(1);
+  });
+});
+
+describe("enqueueInstallation", () => {
+  const effects = computeEffects(["orbital_engineering"]);
+
+  it("refuse sans emplacement de zone disponible", () => {
+    const station = makeStation({
+      resources: { ...emptyStationResources(), metals: 500 },
+      zones: {},
+    });
+    const result = enqueueInstallation(
+      station,
+      "orbital_solar_array",
+      0,
+      effects,
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it("accepte dans la limite des zones construites", () => {
+    const station = makeStation({
+      resources: { ...emptyStationResources(), metals: 500 },
+      zones: { industrial_zone: 1 },
+    });
+    const result = enqueueInstallation(
+      station,
+      "orbital_solar_array",
+      1000,
+      effects,
+    );
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.station.installQueue).toHaveLength(1);
+    expect(result.station.resources.metals).toBe(
+      500 - INSTALLATIONS.orbital_solar_array.cost.metals!,
+    );
+  });
+
+  it("refuse au-delà du nombre de zones du type visé", () => {
+    let station = makeStation({
+      resources: { ...emptyStationResources(), metals: 100_000 },
+      zones: { industrial_zone: 1 },
+    });
+    const first = enqueueInstallation(
+      station,
+      "orbital_solar_array",
+      0,
+      effects,
+    );
+    if (!first.ok) throw new Error(first.reason);
+    station = first.station;
+    const second = enqueueInstallation(
+      station,
+      "orbital_solar_array",
+      0,
+      effects,
+    );
+    expect(second.ok).toBe(false);
+  });
+});
+
+describe("resolveInstallQueue", () => {
+  it("convertit les installations terminées en instances", () => {
+    const station = makeStation({
+      installQueue: [
+        {
+          installationId: "orbital_solar_array",
+          startedAt: 0,
+          finishesAt: 500,
+        },
+      ],
+    });
+    const resolved = resolveInstallQueue(station, 500);
+    expect(resolved.installations.orbital_solar_array).toBe(1);
+    expect(resolved.installQueue).toHaveLength(0);
+  });
+});
+
+describe("applyStationTick", () => {
+  it("produit sans intrant (panneau solaire)", () => {
+    const station = makeStation({ installations: { orbital_solar_array: 2 } });
+    const next = applyStationTick(station);
+    expect(next.resources.energy).toBe(
+      INSTALLATIONS.orbital_solar_array.outputs!.energy! * 2,
+    );
+  });
+
+  it("consomme les intrants et produit en proportion", () => {
+    const station = makeStation({
+      resources: { ...emptyStationResources(), ore: 100, energy: 100 },
+      installations: { orbital_smelter_module: 1 },
+    });
+    const next = applyStationTick(station);
+    expect(next.resources.ore).toBe(
+      100 - INSTALLATIONS.orbital_smelter_module.inputs!.ore!,
+    );
+    expect(next.resources.metals).toBe(
+      INSTALLATIONS.orbital_smelter_module.outputs!.metals!,
+    );
+  });
+
+  it("tourne à vide si les intrants manquent — la pénurie se propage", () => {
+    const station = makeStation({
+      resources: emptyStationResources(),
+      installations: { orbital_smelter_module: 1 },
+    });
+    const next = applyStationTick(station);
+    expect(next.resources.metals).toBe(0);
+  });
+});
+
+describe("takeFromStation / deliverToStation", () => {
+  it("livre puis prélève une cargaison", () => {
+    const station = makeStation();
+    const delivered = deliverToStation(station, { ore: 50 });
+    expect(delivered.resources.ore).toBe(50);
+    const taken = takeFromStation(delivered, { ore: 30 });
+    expect(taken?.resources.ore).toBe(20);
+  });
+
+  it("refuse de prélever plus que le stock", () => {
+    const station = makeStation({
+      resources: { ...emptyStationResources(), ore: 10 },
+    });
+    expect(takeFromStation(station, { ore: 20 })).toBeNull();
+  });
+});

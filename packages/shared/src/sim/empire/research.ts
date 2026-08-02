@@ -1,6 +1,24 @@
 import { BASE_BUILDINGS, TECHS, type TechDef } from "../../content/techs.js";
-import { BASE_CHASSIS, CHASSIS, type ChassisDef } from "../../content/chassis.js";
-import { BASE_MODULES, MODULES, type ModuleDef } from "../../content/modules.js";
+import {
+  BASE_CHASSIS,
+  CHASSIS,
+  type ChassisDef,
+} from "../../content/chassis.js";
+import {
+  BASE_MODULES,
+  MODULES,
+  type ModuleDef,
+} from "../../content/modules.js";
+import {
+  BASE_INSTALLATIONS,
+  INSTALLATIONS,
+  type InstallationDef,
+} from "../../content/installations.js";
+import {
+  BASE_ZONE_TYPES,
+  ZONE_TYPES,
+  type ZoneTypeDef,
+} from "../../content/zone-types.js";
 import type { BuildingId } from "../../model/industry.js";
 
 /** Effets d'empire agrégés depuis les techs recherchées. */
@@ -37,6 +55,14 @@ export interface EmpireEffects {
   unlockedChassis: Set<string>;
   /** Modules débloqués pour le concepteur (chantier 13). */
   unlockedModules: Set<string>;
+  /**
+   * Types de zone débloqués pour une station orbitale (chantier 24). Vide par défaut
+   * (BASE_ZONE_TYPES) : fonder une station exige d'en avoir débloqué au moins un —
+   * voir `sim/industry/station.ts` (`canFoundStation`).
+   */
+  unlockedZoneTypes: Set<string>;
+  /** Installations débloquées pour une station orbitale (chantier 24). */
+  unlockedInstallations: Set<string>;
 }
 
 export function computeEffects(
@@ -44,6 +70,8 @@ export function computeEffects(
   techs: Record<string, TechDef> = TECHS,
   chassisTable: Record<string, ChassisDef> = CHASSIS,
   moduleTable: Record<string, ModuleDef> = MODULES,
+  zoneTypeTable: Record<string, ZoneTypeDef> = ZONE_TYPES,
+  installationTable: Record<string, InstallationDef> = INSTALLATIONS,
 ): EmpireEffects {
   const effects: EmpireEffects = {
     unlockedBuildings: new Set(BASE_BUILDINGS),
@@ -72,20 +100,36 @@ export function computeEffects(
     tradeMargin: 0,
     unlockedChassis: new Set(BASE_CHASSIS),
     unlockedModules: new Set(BASE_MODULES),
+    unlockedZoneTypes: new Set(BASE_ZONE_TYPES),
+    unlockedInstallations: new Set(BASE_INSTALLATIONS),
   };
   for (const id of researched) {
     const tech = techs[id];
     if (!tech) continue;
     // Déblocages de conception (chantier 13) : source unique = `requiresTech` des défs.
     for (const cid of Object.keys(chassisTable)) {
-      if (chassisTable[cid]!.requiresTech === id) effects.unlockedChassis.add(cid);
+      if (chassisTable[cid]!.requiresTech === id)
+        effects.unlockedChassis.add(cid);
     }
     for (const mid of Object.keys(moduleTable)) {
-      if (moduleTable[mid]!.requiresTech === id) effects.unlockedModules.add(mid);
+      if (moduleTable[mid]!.requiresTech === id)
+        effects.unlockedModules.add(mid);
+    }
+    // Déblocages de station orbitale (chantier 24) : même patron de parcours inverse.
+    for (const zid of Object.keys(zoneTypeTable)) {
+      if (zoneTypeTable[zid]!.requiresTech === id)
+        effects.unlockedZoneTypes.add(zid);
+    }
+    for (const iid of Object.keys(installationTable)) {
+      if (installationTable[iid]!.requiresTech === id)
+        effects.unlockedInstallations.add(iid);
     }
     const e = tech.effects;
     for (const b of e.unlockBuildings ?? []) effects.unlockedBuildings.add(b);
-    for (const [building, mult] of Object.entries(e.outputMult ?? {}) as [BuildingId, number][]) {
+    for (const [building, mult] of Object.entries(e.outputMult ?? {}) as [
+      BuildingId,
+      number,
+    ][]) {
       effects.outputMult[building] = (effects.outputMult[building] ?? 1) * mult;
     }
     effects.outputMultAll *= e.outputMultAll ?? 1;

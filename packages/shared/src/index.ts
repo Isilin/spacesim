@@ -30,6 +30,9 @@ export {
   type Colony,
   type MiningOutpost,
   type TradingPostMarket,
+  type Station,
+  type ZoneQueueItem,
+  type InstallQueueItem,
 } from "./model/industry.js";
 export {
   type LiftRule,
@@ -103,9 +106,20 @@ export {
   ORBITAL_CAP_PER_DOCK,
   LIFT_PER_DOCK,
   LIFT_ENERGY_PER_UNIT,
+  STATION_SHIP_COST,
+  STATION_SHIP_BASE_MS,
+  STATION_SHIP_MS_PER_JUMP,
 } from "./constants.js";
 export { DEFAULT_BALANCE, type BalanceConstants } from "./balance.js";
-export { hashSeed, mulberry32, createRng, randInt, pick, pickWeighted, type Rng } from "./rng.js";
+export {
+  hashSeed,
+  mulberry32,
+  createRng,
+  randInt,
+  pick,
+  pickWeighted,
+  type Rng,
+} from "./rng.js";
 export {
   GENERATOR_VERSION,
   galaxyDefAt,
@@ -128,8 +142,17 @@ export {
   type TechEffects,
   type TechDef,
 } from "./content/techs.js";
-export { MILESTONES, type MilestoneMetric, type MilestoneDef } from "./content/milestones.js";
-export { FACTION_IDS, FACTIONS, type FactionId, type FactionDef } from "./content/factions.js";
+export {
+  MILESTONES,
+  type MilestoneMetric,
+  type MilestoneDef,
+} from "./content/milestones.js";
+export {
+  FACTION_IDS,
+  FACTIONS,
+  type FactionId,
+  type FactionDef,
+} from "./content/factions.js";
 export {
   SHIPS,
   MAX_SHIP_QUEUE_LENGTH,
@@ -181,6 +204,20 @@ export {
   presetById,
   type PresetDef,
 } from "./content/presets.js";
+export {
+  ZONE_TYPE_IDS,
+  ZONE_TYPES,
+  BASE_ZONE_TYPES,
+  type ZoneTypeId,
+  type ZoneTypeDef,
+} from "./content/zone-types.js";
+export {
+  INSTALLATION_IDS,
+  INSTALLATIONS,
+  BASE_INSTALLATIONS,
+  type InstallationId,
+  type InstallationDef,
+} from "./content/installations.js";
 export {
   ROUNDS_PER_PHASE,
   WARSHIP_COMBAT_DEFS,
@@ -344,6 +381,20 @@ export {
   type Shortage,
 } from "./sim/industry/colony.js";
 export {
+  emptyStationResources,
+  canFoundStation,
+  canAffordStation,
+  enqueueZone,
+  resolveZoneQueue,
+  enqueueInstallation,
+  resolveInstallQueue,
+  applyStationTick,
+  takeFromStation,
+  deliverToStation,
+  type EnqueueZoneResult,
+  type EnqueueInstallationResult,
+} from "./sim/industry/station.js";
+export {
   jumpDistance,
   jumpDistanceInUniverse,
   transferDurationMs,
@@ -366,6 +417,7 @@ export {
   redactUniverse,
   probeDurationMs,
   colonyShipDurationMs,
+  stationShipDurationMs,
 } from "./sim/exploration/fog.js";
 export {
   CONTRACT_MIN_DURATION_MS,
@@ -432,4 +484,7 @@ export {
   rollWorldEvent,
   worldEventPriceBonus,
 } from "./sim/empire/worldEvents.js";
-export { galaxyActivity, normalizedActivity } from "./sim/economy/economicZones.js";
+export {
+  galaxyActivity,
+  normalizedActivity,
+} from "./sim/economy/economicZones.js";

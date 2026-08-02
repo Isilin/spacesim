@@ -20,6 +20,8 @@ import {
   PROBE_MS_PER_JUMP,
   RAID_FRACTION,
   SATISFACTION_GROWTH_THRESHOLD,
+  STATION_SHIP_BASE_MS,
+  STATION_SHIP_MS_PER_JUMP,
   STORAGE_PER_DEPOT,
   TRANSFER_BASE_CREDITS,
   TRANSFER_BASE_MS,
@@ -58,6 +60,8 @@ export interface BalanceConstants {
   probeMsPerJump: number;
   colonyShipBaseMs: number;
   colonyShipMsPerJump: number;
+  stationShipBaseMs: number;
+  stationShipMsPerJump: number;
   newColonyPopulation: number;
   orbitalCapPerDock: number;
   liftPerDock: number;
@@ -87,6 +91,8 @@ export const DEFAULT_BALANCE: BalanceConstants = {
   probeMsPerJump: PROBE_MS_PER_JUMP,
   colonyShipBaseMs: COLONY_SHIP_BASE_MS,
   colonyShipMsPerJump: COLONY_SHIP_MS_PER_JUMP,
+  stationShipBaseMs: STATION_SHIP_BASE_MS,
+  stationShipMsPerJump: STATION_SHIP_MS_PER_JUMP,
   newColonyPopulation: NEW_COLONY_POPULATION,
   orbitalCapPerDock: ORBITAL_CAP_PER_DOCK,
   liftPerDock: LIFT_PER_DOCK,

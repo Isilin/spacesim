@@ -21,7 +21,12 @@ export type BuildingId = (typeof BUILDING_IDS)[number];
 /** Classes civiles historiques (chantier 12). Depuis le chantier 13, un vaisseau civil
  * est identifié par l'id de son **plan** — d'où `ShipId = string`. Cette liste reste
  * la référence des classes héritées (presets, UI de transition). */
-export const SHIP_IDS = ["cargo_small", "cargo_large", "hauler", "courier"] as const;
+export const SHIP_IDS = [
+  "cargo_small",
+  "cargo_large",
+  "hauler",
+  "courier",
+] as const;
 
 export type ShipId = string;
 
@@ -90,6 +95,54 @@ export interface Colony {
   shipsBusy: BusyShip[];
   /** File de production du chantier naval. */
   shipQueue: ShipQueueItem[];
+}
+
+/** Une zone en construction sur une station (voir Station.zoneQueue). */
+export interface ZoneQueueItem {
+  zoneTypeId: string;
+  startedAt: number;
+  finishesAt: number;
+}
+
+/** Une installation en construction sur une station (voir Station.installQueue). */
+export interface InstallQueueItem {
+  installationId: string;
+  startedAt: number;
+  finishesAt: number;
+}
+
+/**
+ * Station orbitale (chantier 24) : structure possédée, distincte d'une colonie —
+ * en orbite d'un corps précis, pas sur sa surface (un corps peut porter les deux).
+ * `ownerId` est requis (pas de legacy pré-multi-empire, contrairement à `Colony.ownerId`) —
+ * même choix que `Blueprint.ownerId`.
+ *
+ * Différences volontaires avec `Colony` :
+ * - un seul stock `resources` (déjà en orbite, aucune notion d'ascenseur sol/orbite) ;
+ * - pas de `population`/`satisfaction` : les vaisseaux sont déjà traités comme abstraits/
+ *   équipage hors-champ dans ce jeu, et `MiningOutpost`/`Fleet`/`Blueprint` sont déjà des
+ *   entités possédées sans population — Station rejoint cette catégorie, n'en invente pas
+ *   une nouvelle ;
+ * - `zones`/`installations` en compte par type (comme `Colony.buildings`), pas en liste
+ *   (contrairement à `Blueprint.modules`) : une zone/installation s'accumule une à une via
+ *   une file de construction, elle n'est pas un plan remplacé en bloc. Les ids de types de
+ *   zone/installation restent `string` ici (model/industry est la base, importée par
+ *   content/*) ; le typage fort (ZoneTypeId/InstallationId) et la validation vivent dans
+ *   `sim/industry/station`.
+ */
+export interface Station {
+  id: string;
+  ownerId: string;
+  bodyId: string;
+  systemId: string;
+  name: string;
+  resources: Record<ResourceId, number>;
+  /** Nombre de zones construites par type — chaque zone ajoute un emplacement de son type. */
+  zones: Partial<Record<string, number>>;
+  zoneQueue: ZoneQueueItem[];
+  /** Nombre d'installations construites par type — plafonné par les zones de son type. */
+  installations: Partial<Record<string, number>>;
+  installQueue: InstallQueueItem[];
 }
 
 /** Avant-poste minier robotisé sur une ceinture d'astéroïdes. */

@@ -83,13 +83,21 @@ export const PROBE_BASE_MS = 20_000;
 export const PROBE_MS_PER_JUMP = 30_000;
 
 /** Vaisseau colonial : coût élevé (gaté par la chaîne composants) + trajet. */
-export const COLONY_SHIP_COST = { components: 40, food: 50, credits: 100 } as const;
+export const COLONY_SHIP_COST = {
+  components: 40,
+  food: 50,
+  credits: 100,
+} as const;
 export const COLONY_SHIP_BASE_MS = 60_000;
 export const COLONY_SHIP_MS_PER_JUMP = 90_000;
 
 /** Dotation d'une colonie fondée par vaisseau colonial. */
 export const NEW_COLONY_POPULATION = 10;
-export const NEW_COLONY_RESOURCES = { ore: 100, energy: 50, food: 100 } as const;
+export const NEW_COLONY_RESOURCES = {
+  ore: 100,
+  energy: 50,
+  food: 100,
+} as const;
 /** Soute orbitale léguée par le vaisseau colonial démantelé (chantier 12). */
 export const NEW_COLONY_ORBITAL = { ore: 40 } as const;
 
@@ -102,3 +110,16 @@ export const ORBITAL_CAP_PER_DOCK = 600;
 export const LIFT_PER_DOCK = 15;
 /** Énergie consommée au sol par unité hissée — monter coûte, redescendre est gratuit. */
 export const LIFT_ENERGY_PER_UNIT = 0.04;
+
+/**
+ * Station orbitale (chantier 24) : coût de fondation + trajet, sur le modèle du
+ * vaisseau colonial — pas de coût d'influence (une station ne revendique rien,
+ * contrairement à `colonize`, ça reste le rôle des `claims`).
+ */
+export const STATION_SHIP_COST = {
+  metals: 200,
+  components: 80,
+  credits: 150,
+} as const;
+export const STATION_SHIP_BASE_MS = 60_000;
+export const STATION_SHIP_MS_PER_JUMP = 90_000;

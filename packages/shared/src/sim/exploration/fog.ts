@@ -35,3 +35,10 @@ export function colonyShipDurationMs(
 ): number {
   return balance.colonyShipBaseMs + jumps * balance.colonyShipMsPerJump;
 }
+
+export function stationShipDurationMs(
+  jumps: number,
+  balance: BalanceConstants = DEFAULT_BALANCE,
+): number {
+  return balance.stationShipBaseMs + jumps * balance.stationShipMsPerJump;
+}
