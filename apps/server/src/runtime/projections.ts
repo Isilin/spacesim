@@ -3,6 +3,7 @@ import {
   relationKey,
   type ForeignColony,
   type ForeignFleet,
+  type ForeignStation,
   type LeaderboardEntry,
   type Objective,
   type PirateLair,
@@ -24,12 +25,18 @@ import type { GameRuntime } from "./game-runtime.js";
  */
 
 /** Univers redacté au brouillard de l'empire (planètes masquées hors systèmes explorés). */
-export function clientUniverseForEmpire(runtime: GameRuntime, empire: Empire): Universe {
+export function clientUniverseForEmpire(
+  runtime: GameRuntime,
+  empire: Empire,
+): Universe {
   return redactUniverse(runtime.universe, empire.explored);
 }
 
 /** Marchés des comptoirs situées dans les systèmes explorés par l'empire. */
-export function marketsForEmpire(runtime: GameRuntime, empire: Empire): TradingPostMarket[] {
+export function marketsForEmpire(
+  runtime: GameRuntime,
+  empire: Empire,
+): TradingPostMarket[] {
   const markets: TradingPostMarket[] = [];
   for (const [tradingPostId, stocks] of runtime.marketMap) {
     const comptoir = runtime.tradingPostsById.get(tradingPostId);
@@ -41,34 +48,53 @@ export function marketsForEmpire(runtime: GameRuntime, empire: Empire): TradingP
 }
 
 /** Repaires PNJ visibles dans le brouillard de l'empire. */
-export function pirateLairsForEmpire(runtime: GameRuntime, empire: Empire): PirateLair[] {
-  return [...runtime.lairMap.values()].filter((l) => empire.explored.has(l.systemId));
+export function pirateLairsForEmpire(
+  runtime: GameRuntime,
+  empire: Empire,
+): PirateLair[] {
+  return [...runtime.lairMap.values()].filter((l) =>
+    empire.explored.has(l.systemId),
+  );
 }
 
 /** Relations impliquant l'empire (chantier 16) — jamais celles entre deux tiers. */
-export function relationsForEmpire(runtime: GameRuntime, empire: Empire): Relation[] {
+export function relationsForEmpire(
+  runtime: GameRuntime,
+  empire: Empire,
+): Relation[] {
   return [...runtime.relationMap.values()].filter(
     (r) => r.empireA === empire.id || r.empireB === empire.id,
   );
 }
 
 /** Propositions en attente où l'empire est émetteur ou destinataire (chantier 16). */
-export function proposalsForEmpire(runtime: GameRuntime, empire: Empire): RelationProposal[] {
+export function proposalsForEmpire(
+  runtime: GameRuntime,
+  empire: Empire,
+): RelationProposal[] {
   return [...runtime.proposalMap.values()].filter(
     (p) => p.fromEmpireId === empire.id || p.toEmpireId === empire.id,
   );
 }
 
 /** Objectifs éphémères personnels de l'empire (chantier 17). */
-export function objectivesForEmpire(runtime: GameRuntime, empire: Empire): Objective[] {
-  return [...runtime.objectiveMap.values()].filter((o) => o.empireId === empire.id);
+export function objectivesForEmpire(
+  runtime: GameRuntime,
+  empire: Empire,
+): Objective[] {
+  return [...runtime.objectiveMap.values()].filter(
+    (o) => o.empireId === empire.id,
+  );
 }
 
 /**
  * Systèmes revendiqués visibles d'un empire (chantier 7e) : ses propres claims + ceux
  * des autres empires situés dans son brouillard, colorés par propriétaire.
  */
-export function territoriesForEmpire(runtime: GameRuntime, empire: Empire): Territory[] {
+export function territoriesForEmpire(
+  runtime: GameRuntime,
+  empire: Empire,
+): Territory[] {
   const out: Territory[] = [];
   for (const other of runtime.empires.values()) {
     const own = other.id === empire.id;
@@ -81,19 +107,29 @@ export function territoriesForEmpire(runtime: GameRuntime, empire: Empire): Terr
 }
 
 /** Lecture directe de `relationMap` (neutre par défaut) — pas de règle de jeu ici. */
-function relationStateBetween(runtime: GameRuntime, a: string, b: string): RelationState {
+function relationStateBetween(
+  runtime: GameRuntime,
+  a: string,
+  b: string,
+): RelationState {
   return runtime.relationMap.get(relationKey(a, b))?.state ?? "neutral";
 }
 
 /** Classement public de tous les empires, trié par score composite décroissant. */
-export function leaderboardForEmpire(runtime: GameRuntime, viewer: Empire): LeaderboardEntry[] {
+export function leaderboardForEmpire(
+  runtime: GameRuntime,
+  viewer: Empire,
+): LeaderboardEntry[] {
   const rows: LeaderboardEntry[] = [];
   for (const empire of runtime.empires.values()) {
     const colonies = [...empire.colonyMap.values()];
     const population = colonies.reduce((s, c) => s + c.population, 0);
     const claimed = empire.claimedSystemIds.length;
     const score =
-      colonies.length * 100 + claimed * 40 + Math.floor(population) + empire.influence / 10;
+      colonies.length * 100 +
+      claimed * 40 +
+      Math.floor(population) +
+      empire.influence / 10;
     rows.push({
       id: empire.id,
       name: empire.name,
@@ -104,7 +140,9 @@ export function leaderboardForEmpire(runtime: GameRuntime, viewer: Empire): Lead
       influence: Math.floor(empire.influence),
       score: Math.round(score),
       relation:
-        empire.id === viewer.id ? "neutral" : relationStateBetween(runtime, viewer.id, empire.id),
+        empire.id === viewer.id
+          ? "neutral"
+          : relationStateBetween(runtime, viewer.id, empire.id),
     });
   }
   return rows.sort((a, b) => b.score - a.score);
@@ -117,9 +155,14 @@ export function leaderboardForEmpire(runtime: GameRuntime, viewer: Empire): Lead
 export function foreignPresenceForEmpire(
   runtime: GameRuntime,
   empire: Empire,
-): { foreignFleets: ForeignFleet[]; foreignColonies: ForeignColony[] } {
+): {
+  foreignFleets: ForeignFleet[];
+  foreignColonies: ForeignColony[];
+  foreignStations: ForeignStation[];
+} {
   const foreignFleets: ForeignFleet[] = [];
   const foreignColonies: ForeignColony[] = [];
+  const foreignStations: ForeignStation[] = [];
   for (const other of runtime.empires.values()) {
     if (other.id === empire.id) continue;
     for (const fleet of other.fleetMap.values()) {
@@ -147,19 +190,36 @@ export function foreignPresenceForEmpire(
         planetId: colony.planetId,
       });
     }
+    for (const station of other.stationMap.values()) {
+      if (!empire.explored.has(station.systemId)) continue;
+      foreignStations.push({
+        id: station.id,
+        ownerId: other.id,
+        ownerName: other.name,
+        ownerColor: other.color,
+        name: station.name,
+        systemId: station.systemId,
+        bodyId: station.bodyId,
+      });
+    }
   }
-  return { foreignFleets, foreignColonies };
+  return { foreignFleets, foreignColonies, foreignStations };
 }
 
 /**
  * Compose le snapshot (forme externe WS, `EmpireSnapshot`) d'un empire : ses entités,
  * l'horloge et les PNJ partagés, redactés à son brouillard.
  */
-export function snapshotForEmpire(runtime: GameRuntime, empire: Empire): EmpireSnapshot {
-  const { foreignFleets, foreignColonies } = foreignPresenceForEmpire(runtime, empire);
+export function snapshotForEmpire(
+  runtime: GameRuntime,
+  empire: Empire,
+): EmpireSnapshot {
+  const { foreignFleets, foreignColonies, foreignStations } =
+    foreignPresenceForEmpire(runtime, empire);
   return {
     game: empire.toGameState(runtime.clock),
     colonies: [...empire.colonyMap.values()],
+    stations: [...empire.stationMap.values()],
     transfers: [...empire.transferMap.values()],
     missions: [...empire.missionMap.values()],
     exploredSystemIds: [...empire.explored],
@@ -173,6 +233,7 @@ export function snapshotForEmpire(runtime: GameRuntime, empire: Empire): EmpireS
     battles: runtime.battleLog,
     foreignFleets,
     foreignColonies,
+    foreignStations,
     leaderboard: leaderboardForEmpire(runtime, empire),
     territories: territoriesForEmpire(runtime, empire),
     contracts: [...runtime.contractMap.values()],

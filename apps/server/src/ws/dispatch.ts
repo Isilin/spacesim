@@ -28,6 +28,16 @@ export function dispatchClientMessage(
       return engine.exploration.probe(empire, msg.colonyId, msg.systemId);
     case "colonize":
       return engine.exploration.colonize(empire, msg.colonyId, msg.planetId);
+    case "foundStation":
+      return engine.station.foundStation(empire, msg.colonyId, msg.bodyId);
+    case "buildZone":
+      return engine.station.buildZone(empire, msg.stationId, msg.zoneTypeId);
+    case "buildInstallation":
+      return engine.station.buildInstallation(
+        empire,
+        msg.stationId,
+        msg.installationId,
+      );
     case "research":
       return engine.industry.startResearch(empire, msg.techId);
     case "queueResearch":
@@ -35,9 +45,19 @@ export function dispatchClientMessage(
     case "clearResearchQueue":
       return engine.industry.clearResearchQueue(empire);
     case "setLiftRule":
-      return engine.logistics.setLiftRule(empire, msg.colonyId, msg.resource, msg.rule);
+      return engine.logistics.setLiftRule(
+        empire,
+        msg.colonyId,
+        msg.resource,
+        msg.rule,
+      );
     case "sell":
-      return engine.market.sellToTradingPost(empire, msg.colonyId, msg.tradingPostId, msg.resources);
+      return engine.market.sellToTradingPost(
+        empire,
+        msg.colonyId,
+        msg.tradingPostId,
+        msg.resources,
+      );
     case "buy":
       return engine.market.buyFromTradingPost(
         empire,
@@ -49,7 +69,12 @@ export function dispatchClientMessage(
     case "buildShip":
       return engine.industry.buildShip(empire, msg.colonyId, msg.shipId);
     case "createBlueprint":
-      return engine.industry.createBlueprint(empire, msg.name, msg.chassisId, msg.modules);
+      return engine.industry.createBlueprint(
+        empire,
+        msg.name,
+        msg.chassisId,
+        msg.modules,
+      );
     case "updateBlueprint":
       return engine.industry.updateBlueprint(
         empire,
@@ -61,7 +86,12 @@ export function dispatchClientMessage(
     case "deleteBlueprint":
       return engine.industry.deleteBlueprint(empire, msg.blueprintId);
     case "buildBlueprint":
-      return engine.industry.buildBlueprint(empire, msg.blueprintId, msg.colonyId, msg.fleetId);
+      return engine.industry.buildBlueprint(
+        empire,
+        msg.blueprintId,
+        msg.colonyId,
+        msg.fleetId,
+      );
     case "buyBlueprintFromTradingPost":
       return engine.industry.buyBlueprintFromTradingPost(
         empire,
@@ -70,9 +100,20 @@ export function dispatchClientMessage(
         msg.presetId,
       );
     case "sellBlueprint":
-      return engine.industry.sellBlueprint(empire, msg.colonyId, msg.tradingPostId, msg.blueprintId);
+      return engine.industry.sellBlueprint(
+        empire,
+        msg.colonyId,
+        msg.tradingPostId,
+        msg.blueprintId,
+      );
     case "sellShip":
-      return engine.industry.sellShip(empire, msg.colonyId, msg.tradingPostId, msg.shipId, msg.count);
+      return engine.industry.sellShip(
+        empire,
+        msg.colonyId,
+        msg.tradingPostId,
+        msg.shipId,
+        msg.count,
+      );
     case "buildOutpost":
       return engine.logistics.buildOutpost(empire, msg.colonyId, msg.beltId);
     case "createRoute":
@@ -96,21 +137,42 @@ export function dispatchClientMessage(
     case "unclaimSystem":
       return engine.exploration.unclaimSystem(empire, msg.systemId);
     case "contributeGateway":
-      return engine.gateway.contributeGateway(empire, msg.colonyId, msg.galaxyId, msg.resources);
+      return engine.gateway.contributeGateway(
+        empire,
+        msg.colonyId,
+        msg.galaxyId,
+        msg.resources,
+      );
     case "createFleet":
       return engine.fleetService.createFleet(empire, msg.colonyId, msg.name);
     case "buildWarship":
-      return engine.fleetService.buildWarship(empire, msg.fleetId, msg.warshipId);
+      return engine.fleetService.buildWarship(
+        empire,
+        msg.fleetId,
+        msg.warshipId,
+      );
     case "setFleetDirectives":
-      return engine.fleetService.setFleetDirectives(empire, msg.fleetId, msg.directives);
+      return engine.fleetService.setFleetDirectives(
+        empire,
+        msg.fleetId,
+        msg.directives,
+      );
     case "moveFleet":
       return engine.fleetService.moveFleet(empire, msg.fleetId, msg.toSystemId);
     case "attackLair":
       return engine.fleetService.attackLair(empire, msg.fleetId, msg.lairId);
     case "attackFleet":
-      return engine.fleetService.attackFleet(empire, msg.fleetId, msg.targetFleetId);
+      return engine.fleetService.attackFleet(
+        empire,
+        msg.fleetId,
+        msg.targetFleetId,
+      );
     case "attackColony":
-      return engine.fleetService.attackColony(empire, msg.fleetId, msg.targetColonyId);
+      return engine.fleetService.attackColony(
+        empire,
+        msg.fleetId,
+        msg.targetColonyId,
+      );
     case "declareWar":
       return engine.diplomacy.declareWar(empire, msg.targetEmpireId);
     case "makePeace":
@@ -127,13 +189,26 @@ export function dispatchClientMessage(
         msg.durationMs,
       );
     case "acceptContract":
-      return engine.contract.acceptContract(empire, msg.colonyId, msg.contractId, msg.quantity);
+      return engine.contract.acceptContract(
+        empire,
+        msg.colonyId,
+        msg.contractId,
+        msg.quantity,
+      );
     case "cancelContract":
       return engine.contract.cancelContract(empire, msg.contractId);
     case "proposeRelation":
-      return engine.diplomacy.proposeRelation(empire, msg.targetEmpireId, msg.kind);
+      return engine.diplomacy.proposeRelation(
+        empire,
+        msg.targetEmpireId,
+        msg.kind,
+      );
     case "respondRelation":
-      return engine.diplomacy.respondRelation(empire, msg.proposalId, msg.accept);
+      return engine.diplomacy.respondRelation(
+        empire,
+        msg.proposalId,
+        msg.accept,
+      );
     case "cancelProposal":
       return engine.diplomacy.cancelProposal(empire, msg.proposalId);
     case "breakRelation":

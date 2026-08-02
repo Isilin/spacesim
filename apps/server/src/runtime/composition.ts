@@ -59,6 +59,7 @@ export function composeEngine(
   let exploration: ExplorationService;
   let diplomacy: DiplomacyService;
   let bootstrap: BootstrapService;
+  let station: StationService;
 
   const industry = new IndustryService(runtime, notify, logger, (fleet) =>
     fleetService.persistFleet(fleet),
@@ -147,6 +148,7 @@ export function composeEngine(
         market.addFactionRep(empire, tradingPostId, creditsExchanged),
     },
     (g) => gateway.persistGateway(g),
+    (empire, newStation) => station.insertStation(empire, newStation),
   );
   exploration = new ExplorationService(
     runtime,
@@ -172,7 +174,14 @@ export function composeEngine(
   const objective = new ObjectiveService(runtime, notify, logger, (colony) =>
     industry.persistColony(colony),
   );
-  const station = new StationService(runtime, notify, logger);
+  station = new StationService(
+    runtime,
+    notify,
+    logger,
+    (colony) => industry.persistColony(colony),
+    (empire, kind, fromColonyId, targetId, durationMs) =>
+      logistics.insertMission(empire, kind, fromColonyId, targetId, durationMs),
+  );
   bootstrap = new BootstrapService(
     runtime,
     notify,

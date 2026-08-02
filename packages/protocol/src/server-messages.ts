@@ -6,6 +6,7 @@ import type {
   Fleet,
   ForeignColony,
   ForeignFleet,
+  ForeignStation,
   GameState,
   Gateway,
   LeaderboardEntry,
@@ -16,6 +17,7 @@ import type {
   Relation,
   RelationProposal,
   Route,
+  Station,
   StoredBattle,
   Territory,
   TradingPostMarket,
@@ -28,6 +30,8 @@ import type {
 export interface EmpireSnapshot {
   game: GameState;
   colonies: Colony[];
+  /** Stations orbitales possédées (chantier 24), distinctes des colonies. */
+  stations: Station[];
   transfers: Transfer[];
   missions: Mission[];
   exploredSystemIds: string[];
@@ -44,6 +48,7 @@ export interface EmpireSnapshot {
   /** Entités étrangères visibles dans le brouillard de l'empire (chantier 7d). */
   foreignFleets: ForeignFleet[];
   foreignColonies: ForeignColony[];
+  foreignStations: ForeignStation[];
   /** Classement de tous les empires de la partie (chantier 7e). */
   leaderboard: LeaderboardEntry[];
   /** Systèmes revendiqués visibles, colorés par empire propriétaire (chantier 7e). */

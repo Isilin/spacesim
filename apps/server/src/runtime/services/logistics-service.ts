@@ -43,11 +43,16 @@ import {
   type RouteRule,
   type ShipDef,
   type ShipId,
+  type Station,
   type Transfer,
+  emptyStationResources,
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
-import { balanceFromContent, shipDefsFromContent } from "../content/content-service.js";
+import {
+  balanceFromContent,
+  shipDefsFromContent,
+} from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { LogisticsRepository } from "../repositories/logistics-repository.js";
@@ -83,15 +88,22 @@ export class LogisticsService {
         capacity: number,
       ) => { bought: number; spent: number } | null;
       tradingPostRepBonus: (empire: Empire, tradingPostId: string) => number;
-      addFactionRep: (empire: Empire, tradingPostId: string, creditsExchanged: number) => void;
+      addFactionRep: (
+        empire: Empire,
+        tradingPostId: string,
+        creditsExchanged: number,
+      ) => void;
     },
     private readonly persistGateway: (gateway: Gateway) => void,
+    private readonly insertStation: (empire: Empire, station: Station) => void,
   ) {
     this.repo = new LogisticsRepository(runtime.clock.id, runtime.writeSet);
   }
 
   private get portalLinks(): [string, string][] {
-    return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
+    return gatewayLinks(this.runtime.universe, [
+      ...this.runtime.gatewayMap.values(),
+    ]);
   }
 
   /** Classes civiles (DB-backed, chantier 23.8) — remplace `SHIPS` dans tout ce service. */
@@ -127,7 +139,10 @@ export class LogisticsService {
     const shipId = pickShip(idle, this.capacityOf);
     if (!shipId) return null;
     return {
-      colony: { ...colony, shipsBusy: [...colony.shipsBusy, { shipId, freeAt: busyUntil }] },
+      colony: {
+        ...colony,
+        shipsBusy: [...colony.shipsBusy, { shipId, freeAt: busyUntil }],
+      },
       shipId,
       capacity: this.capacityOf(shipId),
     };
@@ -142,7 +157,11 @@ export class LogisticsService {
     colony: Colony,
     ships: Partial<Record<ShipId, number>>,
     busyUntil: number,
-  ): { colony: Colony; ships: Partial<Record<ShipId, number>>; capacity: number } | null {
+  ): {
+    colony: Colony;
+    ships: Partial<Record<ShipId, number>>;
+    capacity: number;
+  } | null {
     const idle = idleShips(colony, [...empire.routeMap.values()]);
     const defs = this.shipDefs;
     const wanted: Partial<Record<ShipId, number>> = {};
@@ -156,7 +175,10 @@ export class LogisticsService {
     if (Object.keys(wanted).length === 0) return null;
 
     const busy = [...colony.shipsBusy];
-    for (const [shipId, count] of Object.entries(wanted) as [ShipId, number][]) {
+    for (const [shipId, count] of Object.entries(wanted) as [
+      ShipId,
+      number,
+    ][]) {
       for (let i = 0; i < count; i++) busy.push({ shipId, freeAt: busyUntil });
     }
     return {
@@ -181,7 +203,8 @@ export class LogisticsService {
     if (rule === null) {
       delete liftRules[resource];
     } else {
-      if (rule.direction !== "up" && rule.direction !== "down") return "Consigne invalide";
+      if (rule.direction !== "up" && rule.direction !== "down")
+        return "Consigne invalide";
       const keepGround = Math.max(0, Math.floor(Number(rule.keepGround)));
       if (!Number.isFinite(keepGround)) return "Seuil invalide";
       liftRules[resource] = { keepGround, direction: rule.direction };
@@ -210,7 +233,8 @@ export class LogisticsService {
     for (const [res, raw] of Object.entries(wanted) as [ResourceId, number][]) {
       const amount = Math.floor(Number(raw));
       if (!Number.isFinite(amount) || amount <= 0) continue;
-      if (!(RESOURCES as readonly string[]).includes(res)) return `Ressource inconnue : ${res}`;
+      if (!(RESOURCES as readonly string[]).includes(res))
+        return `Ressource inconnue : ${res}`;
       cargo[res] = amount;
     }
     if (Object.keys(cargo).length === 0) return "Cargaison vide";
@@ -247,7 +271,8 @@ export class LogisticsService {
           empire,
           loaded,
           convoy,
-          now + 2 * convoyDurationMs(jumps, convoy, this.statsOf, balance) * speed,
+          now +
+            2 * convoyDurationMs(jumps, convoy, this.statsOf, balance) * speed,
         )
       : (() => {
           const one = this.reserveShip(
@@ -256,7 +281,11 @@ export class LogisticsService {
             now + 2 * transferDurationMs(jumps, balance) * speed,
           );
           return one
-            ? { colony: one.colony, ships: { [one.shipId]: 1 }, capacity: one.capacity }
+            ? {
+                colony: one.colony,
+                ships: { [one.shipId]: 1 },
+                capacity: one.capacity,
+              }
             : null;
         })();
     if (!reserved) return "Convoi indisponible : vaisseaux manquants";
@@ -264,13 +293,16 @@ export class LogisticsService {
       return `Cargaison trop lourde pour ce convoi (soute : ${reserved.capacity})`;
     }
 
-    const duration = convoyDurationMs(jumps, reserved.ships, this.statsOf, balance) * speed;
+    const duration =
+      convoyDurationMs(jumps, reserved.ships, this.statsOf, balance) * speed;
     const cost = convoyFees(jumps, portals, balance);
     const fuel = Math.ceil(
-      convoyFuel(jumps, reserved.ships, total, this.statsOf, balance) * empire.effects.fuelMult,
+      convoyFuel(jumps, reserved.ships, total, this.statsOf, balance) *
+        empire.effects.fuelMult,
     );
     const resources = { ...reserved.colony.resources };
-    if (resources.credits < cost) return `Crédits insuffisants (frais : ${cost})`;
+    if (resources.credits < cost)
+      return `Crédits insuffisants (frais : ${cost})`;
     // Le carburant se soutire en orbite : un convoi ne fait pas le plein au sol.
     const fueled = takeFromOrbit(reserved.colony, { energy: fuel });
     if (!fueled) return `Carburant insuffisant en orbite (${fuel} énergie)`;
@@ -306,7 +338,11 @@ export class LogisticsService {
   }
 
   /** Action joueur : fonder un avant-poste minier sur une ceinture. */
-  buildOutpost(empire: Empire, colonyId: string, beltId: string): string | null {
+  buildOutpost(
+    empire: Empire,
+    colonyId: string,
+    beltId: string,
+  ): string | null {
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
     const belt = this.runtime.beltsById.get(beltId);
@@ -333,10 +369,17 @@ export class LogisticsService {
     if (jumps < 0) return "Ceinture inaccessible";
 
     const resources = { ...colony.resources };
-    for (const [res, amount] of Object.entries(OUTPOST_COST) as [ResourceId, number][]) {
-      if (resources[res] < amount) return `Ressources insuffisantes (${amount} ${res})`;
+    for (const [res, amount] of Object.entries(OUTPOST_COST) as [
+      ResourceId,
+      number,
+    ][]) {
+      if (resources[res] < amount)
+        return `Ressources insuffisantes (${amount} ${res})`;
     }
-    for (const [res, amount] of Object.entries(OUTPOST_COST) as [ResourceId, number][]) {
+    for (const [res, amount] of Object.entries(OUTPOST_COST) as [
+      ResourceId,
+      number,
+    ][]) {
       resources[res] -= amount;
     }
     empire.colonyMap.set(colony.id, { ...colony, resources });
@@ -346,7 +389,8 @@ export class LogisticsService {
       "build_outpost",
       colonyId,
       beltId,
-      transferDurationMs(jumps, this.balance) * empire.effects.transferSpeedMult,
+      transferDurationMs(jumps, this.balance) *
+        empire.effects.transferSpeedMult,
     );
     this.notify();
     return null;
@@ -358,7 +402,8 @@ export class LogisticsService {
       const belt = this.runtime.beltsById.get(outpost.beltId);
       if (!belt) continue;
       const owner = empire.colonyMap.get(outpost.ownerColonyId);
-      const upkeepPaid = !!owner && owner.resources.credits >= OUTPOST_UPKEEP_CREDITS;
+      const upkeepPaid =
+        !!owner && owner.resources.credits >= OUTPOST_UPKEEP_CREDITS;
       if (upkeepPaid && owner) {
         empire.colonyMap.set(owner.id, {
           ...owner,
@@ -399,7 +444,8 @@ export class LogisticsService {
     if (fromKind === "colony") {
       const from = empire.colonyMap.get(fromId);
       if (!from) return "Colonie source inconnue";
-      fromSystemId = this.runtime.planetsById.get(from.planetId)?.systemId ?? "";
+      fromSystemId =
+        this.runtime.planetsById.get(from.planetId)?.systemId ?? "";
     } else {
       const outpost = empire.outpostMap.get(fromId);
       if (!outpost) return "Avant-poste inconnu";
@@ -411,13 +457,16 @@ export class LogisticsService {
     if (toKind === "colony") {
       const to = empire.colonyMap.get(toId);
       if (!to) return "Colonie destination inconnue";
-      if (fromKind === "colony" && to.id === fromId) return "Origine et destination identiques";
-      if (!(RESOURCES as readonly string[]).includes(resource)) return "Ressource inconnue";
+      if (fromKind === "colony" && to.id === fromId)
+        return "Origine et destination identiques";
+      if (!(RESOURCES as readonly string[]).includes(resource))
+        return "Ressource inconnue";
       toSystemId = this.runtime.planetsById.get(to.planetId)?.systemId ?? "";
     } else {
       const comptoir = this.runtime.tradingPostsById.get(toId);
       if (!comptoir) return "Comptoir inconnu";
-      if (!empire.explored.has(comptoir.systemId)) return "Comptoir non découvert";
+      if (!empire.explored.has(comptoir.systemId))
+        return "Comptoir non découvert";
       if (!(MARKET_RESOURCES as readonly string[]).includes(resource)) {
         return "Ressource non échangeable en comptoir";
       }
@@ -425,15 +474,22 @@ export class LogisticsService {
     }
 
     if (
-      jumpDistanceInUniverse(this.runtime.universe, fromSystemId, toSystemId, this.portalLinks) < 0
+      jumpDistanceInUniverse(
+        this.runtime.universe,
+        fromSystemId,
+        toSystemId,
+        this.portalLinks,
+      ) < 0
     ) {
       return "Destination inaccessible";
     }
 
     // Validation de la règle.
     if (rule.type === "maintain") {
-      if (toKind === "tradingPost") return "Règle « maintenir » impossible vers un comptoir";
-      if (!(rule.minAtDestination > 0) || rule.keepAtSource < 0) return "Règle invalide";
+      if (toKind === "tradingPost")
+        return "Règle « maintenir » impossible vers un comptoir";
+      if (!(rule.minAtDestination > 0) || rule.keepAtSource < 0)
+        return "Règle invalide";
     } else if (rule.type === "fixed") {
       if (!(rule.amount > 0)) return "Règle invalide";
     } else if (rule.type === "surplus") {
@@ -451,7 +507,8 @@ export class LogisticsService {
       const count = Math.floor(Number(raw));
       if (!Number.isFinite(count) || count <= 0) continue;
       if (!shipDefs[shipId]) return `Vaisseau inconnu : ${shipId}`;
-      if ((idle[shipId] ?? 0) < count) return `Vaisseaux indisponibles : ${shipId}`;
+      if ((idle[shipId] ?? 0) < count)
+        return `Vaisseaux indisponibles : ${shipId}`;
       requested[shipId] = count;
       anyShip = true;
     }
@@ -477,7 +534,11 @@ export class LogisticsService {
   }
 
   /** Action joueur : suspendre/reprendre une route (le cycle en cours se termine). */
-  setRoutePaused(empire: Empire, routeId: string, paused: boolean): string | null {
+  setRoutePaused(
+    empire: Empire,
+    routeId: string,
+    paused: boolean,
+  ): string | null {
     const route = empire.routeMap.get(routeId);
     if (!route) return "Route inconnue";
     empire.routeMap.set(routeId, { ...route, paused });
@@ -490,7 +551,8 @@ export class LogisticsService {
   deleteRoute(empire: Empire, routeId: string): string | null {
     const route = empire.routeMap.get(routeId);
     if (!route) return "Route inconnue";
-    if (route.activeCycle) return "Cycle en cours : suspendez la route et attendez le retour";
+    if (route.activeCycle)
+      return "Cycle en cours : suspendez la route et attendez le retour";
     empire.routeMap.delete(routeId);
     this.repo.removeRoute(routeId);
     this.notify();
@@ -542,8 +604,9 @@ export class LogisticsService {
 
       const toSystemId =
         current.toKind === "colony"
-          ? this.runtime.planetsById.get(empire.colonyMap.get(current.toId)?.planetId ?? "")
-              ?.systemId
+          ? this.runtime.planetsById.get(
+              empire.colonyMap.get(current.toId)?.planetId ?? "",
+            )?.systemId
           : this.runtime.tradingPostsById.get(current.toId)?.systemId;
       if (!toSystemId) continue;
       const jumps = jumpDistanceInUniverse(
@@ -556,7 +619,9 @@ export class LogisticsService {
 
       // La règle « maintain » vise le stock utile à destination : sol + orbite.
       const destColony =
-        current.toKind === "colony" ? empire.colonyMap.get(current.toId) : undefined;
+        current.toKind === "colony"
+          ? empire.colonyMap.get(current.toId)
+          : undefined;
       const destStock = destColony
         ? (destColony.resources[current.resource] ?? 0) +
           (destColony.orbitalResources[current.resource] ?? 0)
@@ -574,7 +639,10 @@ export class LogisticsService {
       // Frais payés par le propriétaire, cargaison retirée à la source.
       empire.colonyMap.set(owner.id, {
         ...owner,
-        resources: { ...owner.resources, credits: owner.resources.credits - fee },
+        resources: {
+          ...owner.resources,
+          credits: owner.resources.credits - fee,
+        },
       });
       if (current.fromKind === "colony") {
         const from = empire.colonyMap.get(current.fromId)!;
@@ -584,11 +652,16 @@ export class LogisticsService {
         this.persistColony(loaded);
       } else {
         const outpost = empire.outpostMap.get(current.fromId)!;
-        empire.outpostMap.set(outpost.id, { ...outpost, oreStock: outpost.oreStock - qty });
+        empire.outpostMap.set(outpost.id, {
+          ...outpost,
+          oreStock: outpost.oreStock - qty,
+        });
       }
       this.persistColony(empire.colonyMap.get(owner.id)!);
 
-      const duration = transferDurationMs(jumps, this.balance) * empire.effects.transferSpeedMult;
+      const duration =
+        transferDurationMs(jumps, this.balance) *
+        empire.effects.transferSpeedMult;
       const next: Route = {
         ...current,
         activeCycle: {
@@ -604,25 +677,40 @@ export class LogisticsService {
   }
 
   /** Livre la cargaison d'un cycle : stock colonie ou vente au spot en comptoir. */
-  private deliverRouteCargo(empire: Empire, route: Route, carrying: number): void {
+  private deliverRouteCargo(
+    empire: Empire,
+    route: Route,
+    carrying: number,
+  ): void {
     if (route.toKind === "colony") {
       const to = empire.colonyMap.get(route.toId);
       if (!to) return;
       // Livraison en orbite : l'ascenseur de la destination fera descendre au sol.
       empire.colonyMap.set(
         to.id,
-        deliverToOrbit(to, { [route.resource]: carrying }, empire.effects, this.balance),
+        deliverToOrbit(
+          to,
+          { [route.resource]: carrying },
+          empire.effects,
+          this.balance,
+        ),
       );
       this.persistColony(empire.colonyMap.get(to.id)!);
     } else {
       const owner = empire.colonyMap.get(route.ownerColonyId);
-      const result = this.market.resolveSaleAt(route.toId, { [route.resource]: carrying });
+      const result = this.market.resolveSaleAt(route.toId, {
+        [route.resource]: carrying,
+      });
       if (!result || !owner) return;
       const revenue = Math.floor(
-        result.revenue * (1 + this.market.tradingPostRepBonus(empire, route.toId)),
+        result.revenue *
+          (1 + this.market.tradingPostRepBonus(empire, route.toId)),
       );
       this.market.addFactionRep(empire, route.toId, result.revenue);
-      const resources = { ...owner.resources, credits: owner.resources.credits + revenue };
+      const resources = {
+        ...owner.resources,
+        credits: owner.resources.credits + revenue,
+      };
       empire.colonyMap.set(owner.id, { ...owner, resources });
       this.persistColony(empire.colonyMap.get(owner.id)!);
     }
@@ -636,7 +724,10 @@ export class LogisticsService {
 
   async loadOutposts(): Promise<void> {
     for (const outpost of await this.repo.loadOutposts()) {
-      this.empireOfColony(outpost.ownerColonyId).outpostMap.set(outpost.id, outpost);
+      this.empireOfColony(outpost.ownerColonyId).outpostMap.set(
+        outpost.id,
+        outpost,
+      );
     }
   }
 
@@ -657,7 +748,10 @@ export class LogisticsService {
     fromColonyId: string,
     targetId: string,
     durationMs: number,
-    extras: Pick<Mission, "cargo" | "budget" | "buyResource" | "capacity" | "contractId"> = {},
+    extras: Pick<
+      Mission,
+      "cargo" | "budget" | "buyResource" | "capacity" | "contractId"
+    > = {},
     departedAt = Date.now(),
   ): void {
     const mission: Mission = {
@@ -714,6 +808,28 @@ export class LogisticsService {
           }
           break;
         }
+        case "found_station": {
+          const body = this.runtime.planetsById.get(mission.targetId);
+          const alreadyFounded = [...empire.stationMap.values()].some(
+            (s) => s.bodyId === mission.targetId,
+          );
+          if (body && !alreadyFounded) {
+            this.insertStation(empire, {
+              id: randomUUID(),
+              ownerId: empire.id,
+              bodyId: body.id,
+              systemId: body.systemId,
+              name: `Station ${body.name}`,
+              resources: emptyStationResources(),
+              zones: {},
+              zoneQueue: [],
+              installations: {},
+              installQueue: [],
+            });
+            this.logger.info(`[game] station fondée en orbite de ${body.name}`);
+          }
+          break;
+        }
         case "sell": {
           const colony = empire.colonyMap.get(mission.fromColonyId);
           const result = mission.cargo
@@ -722,7 +838,8 @@ export class LogisticsService {
           if (result && colony) {
             // Bonus de réputation : la faction paie mieux ses partenaires.
             const revenue = Math.floor(
-              result.revenue * (1 + this.market.tradingPostRepBonus(empire, mission.targetId)),
+              result.revenue *
+                (1 + this.market.tradingPostRepBonus(empire, mission.targetId)),
             );
             this.market.addFactionRep(empire, mission.targetId, result.revenue);
             const resources = {
@@ -745,7 +862,8 @@ export class LogisticsService {
             if (result) {
               // Remise de réputation : une part du prix payé est restituée.
               const rebate = Math.floor(
-                result.spent * this.market.tradingPostRepBonus(empire, mission.targetId),
+                result.spent *
+                  this.market.tradingPostRepBonus(empire, mission.targetId),
               );
               this.market.addFactionRep(empire, mission.targetId, result.spent);
               // Trajet retour, chargé + reliquat de budget (et remise) à rembourser.
@@ -756,7 +874,10 @@ export class LogisticsService {
                 mission.targetId,
                 mission.arrivesAt - mission.departedAt,
                 {
-                  cargo: result.bought > 0 ? { [mission.buyResource]: result.bought } : {},
+                  cargo:
+                    result.bought > 0
+                      ? { [mission.buyResource]: result.bought }
+                      : {},
                   budget: mission.budget - result.spent + rebate,
                 },
                 mission.arrivesAt,
@@ -770,15 +891,23 @@ export class LogisticsService {
           if (gateway && !gateway.active && mission.cargo) {
             const progress = { ...gateway.progress };
             const cost = gatewayCost(gateway.galaxyId);
-            for (const [res, amount] of Object.entries(mission.cargo) as [ResourceId, number][]) {
+            for (const [res, amount] of Object.entries(mission.cargo) as [
+              ResourceId,
+              number,
+            ][]) {
               const cap = cost[res] ?? 0;
               progress[res] = Math.min(cap, (progress[res] ?? 0) + amount);
             }
             let next: Gateway = { ...gateway, progress };
             if (!next.activatesAt && gatewayCovered(next)) {
               // Coût couvert : le chantier final démarre.
-              next = { ...next, activatesAt: mission.arrivesAt + GATEWAY_BUILD_MS };
-              this.logger.info(`[game] chantier final du portail vers ${next.galaxyId}`);
+              next = {
+                ...next,
+                activatesAt: mission.arrivesAt + GATEWAY_BUILD_MS,
+              };
+              this.logger.info(
+                `[game] chantier final du portail vers ${next.galaxyId}`,
+              );
             }
             this.runtime.gatewayMap.set(gateway.galaxyId, next);
             this.persistGateway(next);
@@ -793,8 +922,13 @@ export class LogisticsService {
           const contract = mission.contractId
             ? this.runtime.contractMap.get(mission.contractId)
             : undefined;
-          const issuerEmpire = contract ? this.runtime.empires.get(contract.issuerId) : undefined;
-          const cargoQty = Object.values(mission.cargo ?? {}).reduce((s, n) => s + (n ?? 0), 0);
+          const issuerEmpire = contract
+            ? this.runtime.empires.get(contract.issuerId)
+            : undefined;
+          const cargoQty = Object.values(mission.cargo ?? {}).reduce(
+            (s, n) => s + (n ?? 0),
+            0,
+          );
           if (contract && issuerEmpire && mission.cargo) {
             const destColony = issuerEmpire.colonyMap.get(contract.colonyId);
             if (destColony) {
@@ -808,7 +942,10 @@ export class LogisticsService {
               this.persistColony(delivered);
             }
           } else if (contract && mission.cargo) {
-            const result = this.market.resolveSaleAt(contract.colonyId, mission.cargo);
+            const result = this.market.resolveSaleAt(
+              contract.colonyId,
+              mission.cargo,
+            );
             if (result) {
               // `resolveSaleAt` ne sert ici qu'à faire bouger le stock/prix du comptoir —
               // sa recette est ignorée : l'accepteur est payé au prix FIXE du contrat.
@@ -822,7 +959,10 @@ export class LogisticsService {
           const payer = empire.colonyMap.get(mission.fromColonyId);
           if (contract && payer) {
             const payout = contractPayout(contract, cargoQty);
-            const resources = { ...payer.resources, credits: payer.resources.credits + payout };
+            const resources = {
+              ...payer.resources,
+              credits: payer.resources.credits + payout,
+            };
             empire.colonyMap.set(payer.id, { ...payer, resources });
             this.persistColony(empire.colonyMap.get(payer.id)!);
           }
@@ -842,7 +982,9 @@ export class LogisticsService {
             };
             empire.outpostMap.set(outpost.id, outpost);
             this.repo.insertOutpost(outpost);
-            this.logger.info(`[game] avant-poste minier fondé sur ${belt.name}`);
+            this.logger.info(
+              `[game] avant-poste minier fondé sur ${belt.name}`,
+            );
           }
           break;
         }
@@ -892,13 +1034,19 @@ export class LogisticsService {
 
   async loadTransfers(): Promise<void> {
     for (const transfer of await this.repo.loadTransfers()) {
-      this.empireOfColony(transfer.fromColonyId).transferMap.set(transfer.id, transfer);
+      this.empireOfColony(transfer.fromColonyId).transferMap.set(
+        transfer.id,
+        transfer,
+      );
     }
   }
 
   async loadMissions(): Promise<void> {
     for (const mission of await this.repo.loadMissions()) {
-      this.empireOfColony(mission.fromColonyId).missionMap.set(mission.id, mission);
+      this.empireOfColony(mission.fromColonyId).missionMap.set(
+        mission.id,
+        mission,
+      );
     }
   }
 
@@ -922,7 +1070,10 @@ export class LogisticsService {
       if (colony.shipsBusy.length === 0) continue;
       empire.colonyMap.set(id, {
         ...colony,
-        shipsBusy: colony.shipsBusy.map((b) => ({ ...b, freeAt: b.freeAt - deltaMs })),
+        shipsBusy: colony.shipsBusy.map((b) => ({
+          ...b,
+          freeAt: b.freeAt - deltaMs,
+        })),
       });
     }
     for (const [id, transfer] of empire.transferMap) {

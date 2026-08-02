@@ -33,7 +33,12 @@ export interface Route {
    * (ShipId, cf. model/industry.ts) — clé `string` ici pour éviter un import croisé. */
   ships: Partial<Record<string, number>>;
   /** Cycle en cours, null = au repos à la source. */
-  activeCycle: { departedAt: number; arrivesAt: number; backAt: number; carrying: number } | null;
+  activeCycle: {
+    departedAt: number;
+    arrivesAt: number;
+    backAt: number;
+    carrying: number;
+  } | null;
   paused: boolean;
 }
 
@@ -49,7 +54,9 @@ export interface Transfer {
 
 /**
  * Mission de vaisseau abstrait.
- * probe : cible = système. colonize : cible = planète.
+ * probe : cible = système. colonize : cible = planète. found_station (chantier 24) :
+ * cible = corps (planète ou lune), fonde une station en orbite plutôt qu'une colonie
+ * en surface.
  * sell : cargaison vers un comptoir, créditée au prix spot à l'arrivée.
  * buy : budget crédits vers un comptoir ; buy_return : trajet retour chargé.
  * deliver_contract : cargaison vers la colonie d'un AUTRE empire (contrat, chantier 14).
@@ -59,6 +66,7 @@ export interface Mission {
   kind:
     | "probe"
     | "colonize"
+    | "found_station"
     | "sell"
     | "buy"
     | "buy_return"
@@ -66,7 +74,8 @@ export interface Mission {
     | "contribute_gateway"
     | "deliver_contract";
   fromColonyId: string;
-  /** Id de système (probe), de planète (colonize) ou de comptoir/colonie (commerce). */
+  /** Id de système (probe), de planète/corps (colonize/found_station) ou de
+   *  comptoir/colonie (commerce). */
   targetId: string;
   departedAt: number;
   arrivesAt: number;

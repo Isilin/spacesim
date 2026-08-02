@@ -70,7 +70,11 @@ export interface Objective {
   status: ObjectiveStatus;
 }
 
-export type WorldEventKind = "economic_crisis" | "gold_rush" | "pirate_surge" | "faction_boom";
+export type WorldEventKind =
+  | "economic_crisis"
+  | "gold_rush"
+  | "pirate_surge"
+  | "faction_boom";
 
 /**
  * Événement de monde (chantier 17) : crise ou essor régional, vague pirate, essor de
@@ -122,4 +126,16 @@ export interface ForeignColony {
   name: string;
   systemId: string;
   planetId: string;
+}
+
+/** Présence étrangère redactée d'une station orbitale (chantier 24), même patron que
+ *  `ForeignColony`. */
+export interface ForeignStation {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  ownerColor: string;
+  name: string;
+  systemId: string;
+  bodyId: string;
 }

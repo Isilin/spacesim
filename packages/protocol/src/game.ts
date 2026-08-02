@@ -13,14 +13,22 @@ const liftRuleSchema = z.object({
   direction: z.enum(["up", "down"]),
 });
 const routeRuleSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("maintain"), minAtDestination: z.number(), keepAtSource: z.number() }),
+  z.object({
+    type: z.literal("maintain"),
+    minAtDestination: z.number(),
+    keepAtSource: z.number(),
+  }),
   z.object({ type: z.literal("fixed"), amount: z.number() }),
   z.object({ type: z.literal("surplus"), keepAtSource: z.number() }),
 ]);
 
 /** Commands accepted from a player WebSocket connection. */
 export const ClientMessageSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("build"), colonyId: idSchema, buildingId: z.enum(BUILDING_IDS) }),
+  z.object({
+    type: z.literal("build"),
+    colonyId: idSchema,
+    buildingId: z.enum(BUILDING_IDS),
+  }),
   z.object({
     type: z.literal("transfer"),
     fromColonyId: idSchema,
@@ -28,8 +36,31 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     resources: resourcesSchema,
     ships: shipsSchema.optional(),
   }),
-  z.object({ type: z.literal("probe"), colonyId: idSchema, systemId: idSchema }),
-  z.object({ type: z.literal("colonize"), colonyId: idSchema, planetId: idSchema }),
+  z.object({
+    type: z.literal("probe"),
+    colonyId: idSchema,
+    systemId: idSchema,
+  }),
+  z.object({
+    type: z.literal("colonize"),
+    colonyId: idSchema,
+    planetId: idSchema,
+  }),
+  z.object({
+    type: z.literal("foundStation"),
+    colonyId: idSchema,
+    bodyId: idSchema,
+  }),
+  z.object({
+    type: z.literal("buildZone"),
+    stationId: idSchema,
+    zoneTypeId: idSchema,
+  }),
+  z.object({
+    type: z.literal("buildInstallation"),
+    stationId: idSchema,
+    installationId: idSchema,
+  }),
   z.object({ type: z.literal("research"), techId: idSchema }),
   z.object({ type: z.literal("queueResearch"), techId: idSchema }),
   z.object({ type: z.literal("clearResearchQueue") }),
@@ -52,7 +83,11 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     resource: resourceSchema,
     budget: z.number(),
   }),
-  z.object({ type: z.literal("buildShip"), colonyId: idSchema, shipId: idSchema }),
+  z.object({
+    type: z.literal("buildShip"),
+    colonyId: idSchema,
+    shipId: idSchema,
+  }),
   z.object({
     type: z.literal("createBlueprint"),
     name: z.string(),
@@ -92,7 +127,11 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     shipId: idSchema,
     count: z.number(),
   }),
-  z.object({ type: z.literal("buildOutpost"), colonyId: idSchema, beltId: idSchema }),
+  z.object({
+    type: z.literal("buildOutpost"),
+    colonyId: idSchema,
+    beltId: idSchema,
+  }),
   z.object({
     type: z.literal("createRoute"),
     ownerColonyId: idSchema,
@@ -104,7 +143,11 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     rule: routeRuleSchema,
     ships: shipsSchema,
   }),
-  z.object({ type: z.literal("setRoutePaused"), routeId: idSchema, paused: z.boolean() }),
+  z.object({
+    type: z.literal("setRoutePaused"),
+    routeId: idSchema,
+    paused: z.boolean(),
+  }),
   z.object({ type: z.literal("deleteRoute"), routeId: idSchema }),
   z.object({ type: z.literal("claimSystem"), systemId: idSchema }),
   z.object({ type: z.literal("unclaimSystem"), systemId: idSchema }),
@@ -114,17 +157,41 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     galaxyId: idSchema,
     resources: resourcesSchema,
   }),
-  z.object({ type: z.literal("createFleet"), colonyId: idSchema, name: z.string() }),
-  z.object({ type: z.literal("buildWarship"), fleetId: idSchema, warshipId: idSchema }),
+  z.object({
+    type: z.literal("createFleet"),
+    colonyId: idSchema,
+    name: z.string(),
+  }),
+  z.object({
+    type: z.literal("buildWarship"),
+    fleetId: idSchema,
+    warshipId: idSchema,
+  }),
   z.object({
     type: z.literal("setFleetDirectives"),
     fleetId: idSchema,
     directives: z.record(z.string(), z.string()),
   }),
-  z.object({ type: z.literal("moveFleet"), fleetId: idSchema, toSystemId: idSchema }),
-  z.object({ type: z.literal("attackLair"), fleetId: idSchema, lairId: idSchema }),
-  z.object({ type: z.literal("attackFleet"), fleetId: idSchema, targetFleetId: idSchema }),
-  z.object({ type: z.literal("attackColony"), fleetId: idSchema, targetColonyId: idSchema }),
+  z.object({
+    type: z.literal("moveFleet"),
+    fleetId: idSchema,
+    toSystemId: idSchema,
+  }),
+  z.object({
+    type: z.literal("attackLair"),
+    fleetId: idSchema,
+    lairId: idSchema,
+  }),
+  z.object({
+    type: z.literal("attackFleet"),
+    fleetId: idSchema,
+    targetFleetId: idSchema,
+  }),
+  z.object({
+    type: z.literal("attackColony"),
+    fleetId: idSchema,
+    targetColonyId: idSchema,
+  }),
   z.object({ type: z.literal("declareWar"), targetEmpireId: idSchema }),
   z.object({ type: z.literal("makePeace"), targetEmpireId: idSchema }),
   z.object({ type: z.literal("disbandFleet"), fleetId: idSchema }),
@@ -148,7 +215,11 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     targetEmpireId: idSchema,
     kind: z.enum(["nap", "alliance"]),
   }),
-  z.object({ type: z.literal("respondRelation"), proposalId: idSchema, accept: z.boolean() }),
+  z.object({
+    type: z.literal("respondRelation"),
+    proposalId: idSchema,
+    accept: z.boolean(),
+  }),
   z.object({ type: z.literal("cancelProposal"), proposalId: idSchema }),
   z.object({ type: z.literal("breakRelation"), targetEmpireId: idSchema }),
 ]);

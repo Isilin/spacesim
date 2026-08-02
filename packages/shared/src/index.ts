@@ -62,6 +62,7 @@ export {
   type ContractStatus,
   type Contract,
   type ForeignColony,
+  type ForeignStation,
 } from "./model/social.js";
 export {
   TICK_MS,
