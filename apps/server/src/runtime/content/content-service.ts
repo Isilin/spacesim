@@ -10,6 +10,8 @@ import {
   DIRECTIVES,
   FACTION_IDS,
   FACTIONS,
+  INSTALLATIONS,
+  INSTALLATION_IDS,
   MILESTONES,
   MODULES,
   MODULE_IDS,
@@ -22,13 +24,17 @@ import {
   WARSHIP_CATEGORY,
   WARSHIP_IDS,
   WARSHIPS,
+  ZONE_TYPES,
+  ZONE_TYPE_IDS,
   type BalanceConstants,
   type BuildingDef,
   type ChassisDef,
   type CombatDef,
+  type InstallationDef,
   type ModuleDef,
   type ShipDef,
   type TechDef,
+  type ZoneTypeDef,
 } from "@spacesim/shared";
 import { ContentRepository } from "./content-repository.js";
 import type {
@@ -37,12 +43,14 @@ import type {
   ContentChassis,
   ContentConstant,
   ContentFaction,
+  ContentInstallation,
   ContentMilestone,
   ContentModule,
   ContentPreset,
   ContentShip,
   ContentTech,
   ContentWarship,
+  ContentZoneType,
 } from "./content-types.js";
 
 const repo = new ContentRepository();
@@ -53,13 +61,22 @@ const repo = new ContentRepository();
  * voir CLAUDE.md). Sept entrées, seed one-shot uniquement : un admin peut les modifier
  * ensuite, ce n'est plus la source d'affichage une fois la table peuplée.
  */
-const SEED_WARSHIP_LABELS: Record<string, { name: string; description: string }> = {
-  fighter: { name: "Chasseur", description: "Rapide, létal en mêlée. Domine les croiseurs." },
+const SEED_WARSHIP_LABELS: Record<
+  string,
+  { name: string; description: string }
+> = {
+  fighter: {
+    name: "Chasseur",
+    description: "Rapide, létal en mêlée. Domine les croiseurs.",
+  },
   frigate: {
     name: "Frégate",
     description: "Polyvalente à moyenne portée. Domine les chasseurs.",
   },
-  cruiser: { name: "Croiseur", description: "Lourd, longue portée. Domine les frégates." },
+  cruiser: {
+    name: "Croiseur",
+    description: "Lourd, longue portée. Domine les frégates.",
+  },
   support: {
     name: "Vaisseau de soutien",
     description: "Boucliers épais, +12 % dégâts de flotte.",
@@ -106,9 +123,12 @@ function seedWarships(): ContentWarship[] {
  * n'ont pas besoin de ce traitement : `content/factions.ts` les porte déjà en canonique.
  */
 const SEED_FACTION_DESCRIPTIONS: Record<string, string> = {
-  ferride: "Forges orbitales et chaînes de montage. Vend le métal, paie cher les vivres.",
-  ostara_league: "Les greniers de la galaxie. Vend nourriture et biens, achète l'industrie.",
-  aether_cartel: "Réacteurs, minerai brut et discrétion. Vend l'énergie, achète le raffiné.",
+  ferride:
+    "Forges orbitales et chaînes de montage. Vend le métal, paie cher les vivres.",
+  ostara_league:
+    "Les greniers de la galaxie. Vend nourriture et biens, achète l'industrie.",
+  aether_cartel:
+    "Réacteurs, minerai brut et discrétion. Vend l'énergie, achète le raffiné.",
 };
 
 /** Factions historiques (`packages/shared`) au format `ContentFaction`. */
@@ -130,15 +150,27 @@ function seedFactions(): ContentFaction[] {
  * Libellés français des bâtiments, dupliqués depuis `apps/web/src/labels.ts`
  * (`BUILDING_LABELS`) — même raison que `SEED_WARSHIP_LABELS` ci-dessus.
  */
-const SEED_BUILDING_LABELS: Record<string, { name: string; description: string }> = {
+const SEED_BUILDING_LABELS: Record<
+  string,
+  { name: string; description: string }
+> = {
   mine: { name: "Mine", description: "Extrait le minerai (selon gisement)." },
-  power_plant: { name: "Centrale", description: "Produit de l'énergie (selon gisement)." },
-  farm: { name: "Ferme", description: "Produit de la nourriture (selon gisement)." },
+  power_plant: {
+    name: "Centrale",
+    description: "Produit de l'énergie (selon gisement).",
+  },
+  farm: {
+    name: "Ferme",
+    description: "Produit de la nourriture (selon gisement).",
+  },
   habitat: {
     name: "Habitat",
     description: "20 logements par niveau (modulés par l'habitabilité).",
   },
-  storage_depot: { name: "Entrepôt", description: "+1000 de stockage par niveau." },
+  storage_depot: {
+    name: "Entrepôt",
+    description: "+1000 de stockage par niveau.",
+  },
   laboratory: {
     name: "Laboratoire",
     description: "Produit de la science, consomme de l'énergie.",
@@ -152,7 +184,10 @@ const SEED_BUILDING_LABELS: Record<string, { name: string; description: string }
     name: "Usine de biens",
     description: "Métaux + énergie → biens de consommation.",
   },
-  shipyard: { name: "Chantier naval", description: "Produit les vaisseaux civils (cargos)." },
+  shipyard: {
+    name: "Chantier naval",
+    description: "Produit les vaisseaux civils (cargos).",
+  },
   monument: {
     name: "Monument",
     description: "Rayonnement culturel : +0,5 influence par tick.",
@@ -187,18 +222,26 @@ function seedBuildings(): ContentBuilding[] {
  * Libellés français des classes civiles historiques, dupliqués depuis `apps/web/src/labels.ts`
  * (`SHIP_LABELS`) — même raison que `SEED_WARSHIP_LABELS` ci-dessus.
  */
-const SEED_SHIP_LABELS: Record<string, { name: string; description: string }> = {
-  cargo_small: { name: "Cargo léger", description: "Soute de 200. Le mulet de l'espace." },
-  cargo_large: {
-    name: "Cargo lourd",
-    description: "Soute de 600. Requiert la logistique orbitale.",
-  },
-  hauler: {
-    name: "Transporteur",
-    description: "Soute de 1800, lent et gourmand. Requiert l'ascenseur spatial.",
-  },
-  courier: { name: "Courrier", description: "Soute de 80, très rapide. Idéal pour les urgences." },
-};
+const SEED_SHIP_LABELS: Record<string, { name: string; description: string }> =
+  {
+    cargo_small: {
+      name: "Cargo léger",
+      description: "Soute de 200. Le mulet de l'espace.",
+    },
+    cargo_large: {
+      name: "Cargo lourd",
+      description: "Soute de 600. Requiert la logistique orbitale.",
+    },
+    hauler: {
+      name: "Transporteur",
+      description:
+        "Soute de 1800, lent et gourmand. Requiert l'ascenseur spatial.",
+    },
+    courier: {
+      name: "Courrier",
+      description: "Soute de 80, très rapide. Idéal pour les urgences.",
+    },
+  };
 
 /** Vaisseaux civils historiques (`packages/shared`) au format `ContentShip`. */
 function seedShips(): ContentShip[] {
@@ -228,26 +271,38 @@ const SEED_CONSTANT_LABELS: Record<keyof BalanceConstants, string> = {
   baseStorage: "Capacité de stockage de base, par ressource plafonnée.",
   storagePerDepot: "Stockage additionnel par niveau d'entrepôt.",
   maxQueueLength: "Taille max de la file de construction d'une colonie.",
-  noDepositModifier: "Modificateur de production quand la planète n'a pas de gisement.",
+  noDepositModifier:
+    "Modificateur de production quand la planète n'a pas de gisement.",
   foodPerColonist: "Nourriture consommée par colon et par tick.",
   housingPerHabitat: "Logements fournis par niveau d'habitat.",
-  creditsPerColonist: "Impôt en crédits par colon et par tick, à satisfaction pleine.",
+  creditsPerColonist:
+    "Impôt en crédits par colon et par tick, à satisfaction pleine.",
   popGrowthBase: "Taux de croissance de population de base par tick.",
-  satisfactionGrowthThreshold: "Seuil de satisfaction en-dessous duquel la population décline.",
+  satisfactionGrowthThreshold:
+    "Seuil de satisfaction en-dessous duquel la population décline.",
   goodsPerColonist: "Biens de consommation désirés par colon et par tick.",
   raidFraction: "Fraction des ressources pillées lors d'un raid PvP réussi.",
-  transferBaseMs: "Durée de base d'un convoi (barème abstrait sans vaisseau précisé).",
+  transferBaseMs:
+    "Durée de base d'un convoi (barème abstrait sans vaisseau précisé).",
   transferMsPerJump: "Durée additionnelle par saut pour un convoi.",
   transferBaseCredits: "Frais de base d'un convoi.",
   transferCreditsPerJump: "Frais additionnels par saut pour un convoi.",
-  fuelPerMassJump: "Carburant lié à la masse transportée, par unité et par saut.",
-  gatewayTollCredits: "Péage prélevé à chaque portail inter-galactique emprunté.",
+  fuelPerMassJump:
+    "Carburant lié à la masse transportée, par unité et par saut.",
+  gatewayTollCredits:
+    "Péage prélevé à chaque portail inter-galactique emprunté.",
   probeCostCredits: "Coût en crédits d'une sonde d'exploration.",
   probeBaseMs: "Durée de base d'une sonde d'exploration.",
   probeMsPerJump: "Durée additionnelle par saut pour une sonde.",
   colonyShipBaseMs: "Durée de base d'un trajet de vaisseau colonial.",
-  colonyShipMsPerJump: "Durée additionnelle par saut pour un vaisseau colonial.",
-  newColonyPopulation: "Population de départ d'une colonie fondée par vaisseau colonial.",
+  colonyShipMsPerJump:
+    "Durée additionnelle par saut pour un vaisseau colonial.",
+  stationShipBaseMs:
+    "Durée de base d'un trajet de fondation de station orbitale.",
+  stationShipMsPerJump:
+    "Durée additionnelle par saut pour fonder une station orbitale.",
+  newColonyPopulation:
+    "Population de départ d'une colonie fondée par vaisseau colonial.",
   orbitalCapPerDock: "Capacité de stockage orbital par niveau de dock.",
   liftPerDock: "Débit de l'ascenseur orbital par niveau de dock et par tick.",
   liftEnergyPerUnit: "Énergie consommée au sol par unité hissée en orbite.",
@@ -255,184 +310,214 @@ const SEED_CONSTANT_LABELS: Record<keyof BalanceConstants, string> = {
 
 /** Scalaires d'équilibrage (`packages/shared/src/balance.ts`) au format `ContentConstant`. */
 function seedConstants(): ContentConstant[] {
-  return (Object.keys(DEFAULT_BALANCE) as (keyof BalanceConstants)[]).map((key) => ({
-    key,
-    value: DEFAULT_BALANCE[key],
-    descriptionFr: SEED_CONSTANT_LABELS[key],
-  }));
+  return (Object.keys(DEFAULT_BALANCE) as (keyof BalanceConstants)[]).map(
+    (key) => ({
+      key,
+      value: DEFAULT_BALANCE[key],
+      descriptionFr: SEED_CONSTANT_LABELS[key],
+    }),
+  );
 }
 
 /**
  * Libellés français des techs, dupliqués depuis `apps/web/src/labels.ts` (`TECH_LABELS`)
  * — même raison que `SEED_WARSHIP_LABELS` ci-dessus.
  */
-const SEED_TECH_LABELS: Record<string, { name: string; description: string }> = {
-  metallurgy: {
-    name: "Métallurgie",
-    description: "Les premiers hauts-fourneaux orbitaux. Débloque la fonderie.",
-  },
-  industrial_chains: {
-    name: "Chaînes industrielles",
-    description:
-      "Standardisation des lignes d'assemblage. Débloque usines de composants et de biens.",
-  },
-  advanced_mining: {
-    name: "Extraction avancée",
-    description: "Foreuses à plasma auto-répliquantes. Production des mines +25 %.",
-  },
-  fusion_power: {
-    name: "Fusion contrôlée",
-    description: "Le deutérium des océans alimente les réacteurs. Centrales +30 %.",
-  },
-  automation: {
-    name: "Automatisation",
-    description: "Les machines ne dorment jamais. Toute production +10 %.",
-  },
-  orbital_logistics: {
-    name: "Logistique orbitale",
-    description: "Docks en orbite basse. Débloque le dock orbital, convois 30 % plus rapides.",
-  },
-  space_elevator: {
-    name: "Ascenseur spatial",
-    description:
-      "Un ruban jusqu'à l'orbite. Débit +80 %, capacité +40 %, carburant des convois −20 %. Débloque le transporteur.",
-  },
-  astro_cartography: {
-    name: "Cartographie stellaire",
-    description: "Interféromètres longue portée. Sondes 40 % plus rapides.",
-  },
-  autonomous_probes: {
-    name: "Sondes autonomes",
-    description: "Essaims auto-assemblés à bas coût. Coût des sondes −60 %.",
-  },
-  colonial_engineering: {
-    name: "Génie colonial",
-    description: "Coques modulaires à déploiement rapide. Vaisseaux coloniaux 30 % plus rapides.",
-  },
-  habitat_engineering: {
-    name: "Habitats étendus",
-    description: "Dômes pressurisés de nouvelle génération. Logements +25 %.",
-  },
-  light_terraforming: {
-    name: "Terraformation légère",
-    description: "Régulation atmosphérique locale. Habitabilité effective +10.",
-  },
-  orbital_construction: {
-    name: "Construction orbitale",
-    description: "Chantiers en apesanteur. +1 emplacement dans la file de construction.",
-  },
-  gateway_engineering: {
-    name: "Ingénierie des portails",
-    description:
-      "Dompter les ancrages stables détectés en bord de galaxie. Débloque les chantiers de portail inter-galactique.",
-  },
-  civic_planning: {
-    name: "Urbanisme",
-    description: "Des villes pensées pour vivre, pas survivre. Satisfaction +5.",
-  },
-  education_networks: {
-    name: "Réseaux éducatifs",
-    description: "Le savoir circule plus vite que la lumière locale. Laboratoires +25 %.",
-  },
-  colonial_medicine: {
-    name: "Médecine coloniale",
-    description: "Cliniques adaptées aux biosphères hostiles. Croissance démographique +30 %.",
-  },
-  cultural_media: {
-    name: "Médias culturels",
-    description: "Le divertissement voyage en ansible. Besoin en biens −30 %.",
-  },
-  tax_reform: {
-    name: "Réforme fiscale",
-    description: "Une bureaucratie presque indolore. Crédits +30 %.",
-  },
-  governance_ai: {
-    name: "IA de gouvernance",
-    description: "Elle optimise tout, discrètement. Production et croissance +10 %.",
-  },
-  military_doctrine: {
-    name: "Doctrine militaire",
-    description: "Premiers arsenaux de guerre. Débloque chasseurs et frégates.",
-  },
-  fleet_logistics: {
-    name: "Logistique de flotte",
-    description: "Coordination des escadres. Débloque les vaisseaux de soutien.",
-  },
-  capital_ships: {
-    name: "Vaisseaux capitaux",
-    description: "Les chantiers assemblent des croiseurs lourds.",
-  },
-  ore_processing: {
-    name: "Traitement du minerai",
-    description: "Concassage et tri sur site. Mines +15 %, avant-postes +40 %, stockage +25 %.",
-  },
-  modular_construction: {
-    name: "Construction modulaire",
-    description: "Des modules préfabriqués en orbite. Chantiers 25 % plus rapides, navals 20 %.",
-  },
-  heavy_industry: {
-    name: "Industrie lourde",
-    description: "Complexes métallurgiques intégrés. Fonderies +30 %, composants +25 %.",
-  },
-  nanofabrication: {
-    name: "Nanofabrication",
-    description: "L'assemblage atome par atome. Toute production +15 %, chantiers −15 %.",
-  },
-  deep_survey: {
-    name: "Sondage profond",
-    description: "Balises jetables en essaim. Sondes 30 % plus rapides et 30 % moins chères.",
-  },
-  arcology_design: {
-    name: "Arcologies",
-    description: "Des villes-mondes verticales et vivables. Logements +30 %, satisfaction +3.",
-  },
-  deep_terraforming: {
-    name: "Terraformation profonde",
-    description: "Remodeler une biosphère entière. Habitabilité +12, croissance +10 %.",
-  },
-  agro_synthesis: {
-    name: "Agro-synthèse",
-    description: "Protéines cultivées en cuve. Besoin en nourriture −30 %, fermes +20 %.",
-  },
-  civic_archives: {
-    name: "Archives civiques",
-    description: "Une mémoire commune qui fait nation. Influence +40 %.",
-  },
-  trade_charters: {
-    name: "Chartes commerciales",
-    description:
-      "Des couloirs marchands protégés. Crédits +20 %, convois 15 % plus rapides, marge en comptoir +8 %.",
-  },
-  point_defense: {
-    name: "Défense rapprochée",
-    description: "Tourelles à tir rapide. Débloque la corvette d'escorte.",
-  },
-  strike_doctrine: {
-    name: "Doctrine de frappe",
-    description: "Frapper loin, avant d'être vu. Débloque le bombardier de ligne.",
-  },
-  dreadnoughts: {
-    name: "Cuirassés",
-    description: "Des forteresses mobiles qui décident d'une guerre. Débloque le cuirassé.",
-  },
-  plasma_weapons: {
-    name: "Armement plasma",
-    description: "Canons à plasma confiné. Débloque le canon plasma, puissant à toute portée.",
-  },
-  reactive_armor: {
-    name: "Blindage réactif",
-    description: "Plaques auto-réactives absorbant l'impact. Débloque le blindage réactif.",
-  },
-  graviton_thrusters: {
-    name: "Propulsion à graviton",
-    description: "Manipulation locale de la gravité. Débloque le propulseur à graviton.",
-  },
-  xeno_survey: {
-    name: "Prospection xéno",
-    description:
-      "Cartographie des confins inexplorés. Débloque l'éclaireur lointain et la foreuse à noyau.",
-  },
-};
+const SEED_TECH_LABELS: Record<string, { name: string; description: string }> =
+  {
+    metallurgy: {
+      name: "Métallurgie",
+      description:
+        "Les premiers hauts-fourneaux orbitaux. Débloque la fonderie.",
+    },
+    industrial_chains: {
+      name: "Chaînes industrielles",
+      description:
+        "Standardisation des lignes d'assemblage. Débloque usines de composants et de biens.",
+    },
+    advanced_mining: {
+      name: "Extraction avancée",
+      description:
+        "Foreuses à plasma auto-répliquantes. Production des mines +25 %.",
+    },
+    fusion_power: {
+      name: "Fusion contrôlée",
+      description:
+        "Le deutérium des océans alimente les réacteurs. Centrales +30 %.",
+    },
+    automation: {
+      name: "Automatisation",
+      description: "Les machines ne dorment jamais. Toute production +10 %.",
+    },
+    orbital_logistics: {
+      name: "Logistique orbitale",
+      description:
+        "Docks en orbite basse. Débloque le dock orbital, convois 30 % plus rapides.",
+    },
+    space_elevator: {
+      name: "Ascenseur spatial",
+      description:
+        "Un ruban jusqu'à l'orbite. Débit +80 %, capacité +40 %, carburant des convois −20 %. Débloque le transporteur.",
+    },
+    astro_cartography: {
+      name: "Cartographie stellaire",
+      description: "Interféromètres longue portée. Sondes 40 % plus rapides.",
+    },
+    autonomous_probes: {
+      name: "Sondes autonomes",
+      description: "Essaims auto-assemblés à bas coût. Coût des sondes −60 %.",
+    },
+    colonial_engineering: {
+      name: "Génie colonial",
+      description:
+        "Coques modulaires à déploiement rapide. Vaisseaux coloniaux 30 % plus rapides.",
+    },
+    habitat_engineering: {
+      name: "Habitats étendus",
+      description: "Dômes pressurisés de nouvelle génération. Logements +25 %.",
+    },
+    light_terraforming: {
+      name: "Terraformation légère",
+      description:
+        "Régulation atmosphérique locale. Habitabilité effective +10.",
+    },
+    orbital_construction: {
+      name: "Construction orbitale",
+      description:
+        "Chantiers en apesanteur. +1 emplacement dans la file de construction.",
+    },
+    gateway_engineering: {
+      name: "Ingénierie des portails",
+      description:
+        "Dompter les ancrages stables détectés en bord de galaxie. Débloque les chantiers de portail inter-galactique.",
+    },
+    civic_planning: {
+      name: "Urbanisme",
+      description:
+        "Des villes pensées pour vivre, pas survivre. Satisfaction +5.",
+    },
+    education_networks: {
+      name: "Réseaux éducatifs",
+      description:
+        "Le savoir circule plus vite que la lumière locale. Laboratoires +25 %.",
+    },
+    colonial_medicine: {
+      name: "Médecine coloniale",
+      description:
+        "Cliniques adaptées aux biosphères hostiles. Croissance démographique +30 %.",
+    },
+    cultural_media: {
+      name: "Médias culturels",
+      description:
+        "Le divertissement voyage en ansible. Besoin en biens −30 %.",
+    },
+    tax_reform: {
+      name: "Réforme fiscale",
+      description: "Une bureaucratie presque indolore. Crédits +30 %.",
+    },
+    governance_ai: {
+      name: "IA de gouvernance",
+      description:
+        "Elle optimise tout, discrètement. Production et croissance +10 %.",
+    },
+    military_doctrine: {
+      name: "Doctrine militaire",
+      description:
+        "Premiers arsenaux de guerre. Débloque chasseurs et frégates.",
+    },
+    fleet_logistics: {
+      name: "Logistique de flotte",
+      description:
+        "Coordination des escadres. Débloque les vaisseaux de soutien.",
+    },
+    capital_ships: {
+      name: "Vaisseaux capitaux",
+      description: "Les chantiers assemblent des croiseurs lourds.",
+    },
+    ore_processing: {
+      name: "Traitement du minerai",
+      description:
+        "Concassage et tri sur site. Mines +15 %, avant-postes +40 %, stockage +25 %.",
+    },
+    modular_construction: {
+      name: "Construction modulaire",
+      description:
+        "Des modules préfabriqués en orbite. Chantiers 25 % plus rapides, navals 20 %.",
+    },
+    heavy_industry: {
+      name: "Industrie lourde",
+      description:
+        "Complexes métallurgiques intégrés. Fonderies +30 %, composants +25 %.",
+    },
+    nanofabrication: {
+      name: "Nanofabrication",
+      description:
+        "L'assemblage atome par atome. Toute production +15 %, chantiers −15 %.",
+    },
+    deep_survey: {
+      name: "Sondage profond",
+      description:
+        "Balises jetables en essaim. Sondes 30 % plus rapides et 30 % moins chères.",
+    },
+    arcology_design: {
+      name: "Arcologies",
+      description:
+        "Des villes-mondes verticales et vivables. Logements +30 %, satisfaction +3.",
+    },
+    deep_terraforming: {
+      name: "Terraformation profonde",
+      description:
+        "Remodeler une biosphère entière. Habitabilité +12, croissance +10 %.",
+    },
+    agro_synthesis: {
+      name: "Agro-synthèse",
+      description:
+        "Protéines cultivées en cuve. Besoin en nourriture −30 %, fermes +20 %.",
+    },
+    civic_archives: {
+      name: "Archives civiques",
+      description: "Une mémoire commune qui fait nation. Influence +40 %.",
+    },
+    trade_charters: {
+      name: "Chartes commerciales",
+      description:
+        "Des couloirs marchands protégés. Crédits +20 %, convois 15 % plus rapides, marge en comptoir +8 %.",
+    },
+    point_defense: {
+      name: "Défense rapprochée",
+      description: "Tourelles à tir rapide. Débloque la corvette d'escorte.",
+    },
+    strike_doctrine: {
+      name: "Doctrine de frappe",
+      description:
+        "Frapper loin, avant d'être vu. Débloque le bombardier de ligne.",
+    },
+    dreadnoughts: {
+      name: "Cuirassés",
+      description:
+        "Des forteresses mobiles qui décident d'une guerre. Débloque le cuirassé.",
+    },
+    plasma_weapons: {
+      name: "Armement plasma",
+      description:
+        "Canons à plasma confiné. Débloque le canon plasma, puissant à toute portée.",
+    },
+    reactive_armor: {
+      name: "Blindage réactif",
+      description:
+        "Plaques auto-réactives absorbant l'impact. Débloque le blindage réactif.",
+    },
+    graviton_thrusters: {
+      name: "Propulsion à graviton",
+      description:
+        "Manipulation locale de la gravité. Débloque le propulseur à graviton.",
+    },
+    xeno_survey: {
+      name: "Prospection xéno",
+      description:
+        "Cartographie des confins inexplorés. Débloque l'éclaireur lointain et la foreuse à noyau.",
+    },
+  };
 
 /** Techs historiques (`packages/shared`) au format `ContentTech`. */
 function seedTechs(): ContentTech[] {
@@ -456,27 +541,46 @@ function seedTechs(): ContentTech[] {
  * Libellés français des châssis, dupliqués depuis `apps/web/src/labels.ts`
  * (`CHASSIS_LABELS`) — même raison que `SEED_WARSHIP_LABELS` ci-dessus.
  */
-const SEED_CHASSIS_LABELS: Record<string, { name: string; description: string }> = {
-  scout_frame: { name: "Éclaireur", description: "Coque légère polyvalente, vive et sobre." },
-  standard_hull: { name: "Coque standard", description: "Généraliste équilibrée, deux armes." },
-  warframe: { name: "Cadre de guerre", description: "Militaire : +15 % dégâts, trois armes." },
+const SEED_CHASSIS_LABELS: Record<
+  string,
+  { name: string; description: string }
+> = {
+  scout_frame: {
+    name: "Éclaireur",
+    description: "Coque légère polyvalente, vive et sobre.",
+  },
+  standard_hull: {
+    name: "Coque standard",
+    description: "Généraliste équilibrée, deux armes.",
+  },
+  warframe: {
+    name: "Cadre de guerre",
+    description: "Militaire : +15 % dégâts, trois armes.",
+  },
   battlecruiser: {
     name: "Croiseur de bataille",
     description: "Colossal : +20 % dégâts, +10 % défense, quatre armes.",
   },
-  light_freighter: { name: "Cargo léger", description: "Civil : +20 % soute, coque nue." },
+  light_freighter: {
+    name: "Cargo léger",
+    description: "Civil : +20 % soute, coque nue.",
+  },
   heavy_freighter: {
     name: "Soutier lourd",
     description: "Civil : +50 % soute, quatre utilitaires.",
   },
-  mining_barge: { name: "Barge minière", description: "Extraction : +60 % rendement de minage." },
+  mining_barge: {
+    name: "Barge minière",
+    description: "Extraction : +60 % rendement de minage.",
+  },
   colony_ark: {
     name: "Arche coloniale",
     description: "Colonisation : +30 % habitat, gros vaisseau.",
   },
   explorer_frame: {
     name: "Éclaireur lointain",
-    description: "Prospection : +30 % senseurs, +15 % minage, deux propulseurs.",
+    description:
+      "Prospection : +30 % senseurs, +15 % minage, deux propulseurs.",
   },
 };
 
@@ -511,30 +615,72 @@ function seedChassis(): ContentChassis[] {
  * Libellés français des modules, dupliqués depuis `apps/web/src/labels.ts`
  * (`MODULE_LABELS`) — même raison que `SEED_WARSHIP_LABELS` ci-dessus.
  */
-const SEED_MODULE_LABELS: Record<string, { name: string; description: string }> = {
-  laser_pulse: { name: "Laser à impulsion", description: "Arme de mêlée (court)." },
-  autocannon: { name: "Canon automatique", description: "Arme à moyenne portée." },
+const SEED_MODULE_LABELS: Record<
+  string,
+  { name: string; description: string }
+> = {
+  laser_pulse: {
+    name: "Laser à impulsion",
+    description: "Arme de mêlée (court).",
+  },
+  autocannon: {
+    name: "Canon automatique",
+    description: "Arme à moyenne portée.",
+  },
   railgun: { name: "Railgun", description: "Arme longue portée, perforante." },
-  missile_battery: { name: "Batterie de missiles", description: "Frappe très longue portée." },
+  missile_battery: {
+    name: "Batterie de missiles",
+    description: "Frappe très longue portée.",
+  },
   armor_plating: { name: "Blindage", description: "+60 points de coque." },
-  deflector_shield: { name: "Bouclier déflecteur", description: "+30 boucliers." },
+  deflector_shield: {
+    name: "Bouclier déflecteur",
+    description: "+30 boucliers.",
+  },
   aegis_shield: { name: "Bouclier Aegis", description: "+70 boucliers." },
-  ion_thruster: { name: "Propulseur ionique", description: "+vitesse, un peu de carburant." },
-  warp_drive: { name: "Distorseur", description: "+vitesse forte, carburant élevé." },
-  ramscoop: { name: "Collecteur Bussard", description: "+vitesse légère, carburant réduit." },
+  ion_thruster: {
+    name: "Propulseur ionique",
+    description: "+vitesse, un peu de carburant.",
+  },
+  warp_drive: {
+    name: "Distorseur",
+    description: "+vitesse forte, carburant élevé.",
+  },
+  ramscoop: {
+    name: "Collecteur Bussard",
+    description: "+vitesse légère, carburant réduit.",
+  },
   cargo_pod: { name: "Module de soute", description: "+150 de capacité." },
   cargo_hold_xl: { name: "Cale XL", description: "+450 de capacité." },
-  mining_laser: { name: "Laser de minage", description: "+40 rendement d'extraction." },
-  habitat_pod: { name: "Module d'habitat", description: "Rend le vaisseau colonisateur." },
-  fleet_uplink: { name: "Liaison de flotte", description: "+12 % dégâts de flotte (soutien)." },
+  mining_laser: {
+    name: "Laser de minage",
+    description: "+40 rendement d'extraction.",
+  },
+  habitat_pod: {
+    name: "Module d'habitat",
+    description: "Rend le vaisseau colonisateur.",
+  },
+  fleet_uplink: {
+    name: "Liaison de flotte",
+    description: "+12 % dégâts de flotte (soutien).",
+  },
   sensor_array: { name: "Réseau de senseurs", description: "+4 initiative." },
-  plasma_cannon: { name: "Canon plasma", description: "Arme puissante à toute portée." },
-  reactive_plating: { name: "Blindage réactif", description: "+120 points de coque." },
+  plasma_cannon: {
+    name: "Canon plasma",
+    description: "Arme puissante à toute portée.",
+  },
+  reactive_plating: {
+    name: "Blindage réactif",
+    description: "+120 points de coque.",
+  },
   graviton_engine: {
     name: "Propulseur à graviton",
     description: "+vitesse forte, sobre en carburant.",
   },
-  deep_core_drill: { name: "Foreuse à noyau", description: "+80 rendement d'extraction." },
+  deep_core_drill: {
+    name: "Foreuse à noyau",
+    description: "+80 rendement d'extraction.",
+  },
 };
 
 /** Modules historiques (`packages/shared`) au format `ContentModule`. */
@@ -575,7 +721,97 @@ function seedPresets(): ContentPreset[] {
 
 /** Jalons sandbox (`packages/shared`) au format `ContentMilestone`. */
 function seedMilestones(): ContentMilestone[] {
-  return MILESTONES.map((m) => ({ id: m.id, metric: m.metric, threshold: m.threshold }));
+  return MILESTONES.map((m) => ({
+    id: m.id,
+    metric: m.metric,
+    threshold: m.threshold,
+  }));
+}
+
+/** Libellés français des types de zone de station orbitale (chantier 24). */
+const SEED_ZONE_TYPE_LABELS: Record<
+  string,
+  { name: string; description: string }
+> = {
+  industrial_zone: {
+    name: "Zone industrielle",
+    description:
+      "Accueille les installations de production et de transformation.",
+  },
+  science_zone: {
+    name: "Zone scientifique",
+    description: "Accueille les installations de recherche.",
+  },
+  military_zone: {
+    name: "Zone militaire",
+    description: "Accueille les installations de défense et d'armement.",
+  },
+};
+
+/** Types de zone historiques (`packages/shared`) au format `ContentZoneType`. */
+function seedZoneTypes(): ContentZoneType[] {
+  return ZONE_TYPE_IDS.map((id) => {
+    const def = ZONE_TYPES[id];
+    const label = SEED_ZONE_TYPE_LABELS[id];
+    return {
+      id,
+      nameFr: label?.name ?? id,
+      descriptionFr: label?.description ?? "",
+      cost: def.cost,
+      buildMs: def.buildMs,
+      requiresTech: def.requiresTech ?? null,
+    };
+  });
+}
+
+/** Libellés français des installations de station orbitale (chantier 24). */
+const SEED_INSTALLATION_LABELS: Record<
+  string,
+  { name: string; description: string }
+> = {
+  orbital_solar_array: {
+    name: "Panneaux solaires orbitaux",
+    description: "Produit de l'énergie sans intrant.",
+  },
+  orbital_smelter_module: {
+    name: "Module de fonderie orbitale",
+    description: "Transforme le minerai livré en métaux.",
+  },
+  orbital_observatory: {
+    name: "Observatoire orbital",
+    description: "Produit de la science.",
+  },
+  orbital_research_lab: {
+    name: "Laboratoire de recherche orbital",
+    description: "Production de science accrue.",
+  },
+  orbital_armory: {
+    name: "Arsenal orbital",
+    description: "Contrats de défense : génère des crédits.",
+  },
+  orbital_shipyard_annex: {
+    name: "Annexe de chantier naval orbitale",
+    description: "Produit des composants.",
+  },
+};
+
+/** Installations historiques (`packages/shared`) au format `ContentInstallation`. */
+function seedInstallations(): ContentInstallation[] {
+  return INSTALLATION_IDS.map((id) => {
+    const def = INSTALLATIONS[id];
+    const label = SEED_INSTALLATION_LABELS[id];
+    return {
+      id,
+      nameFr: label?.name ?? id,
+      descriptionFr: label?.description ?? "",
+      zoneType: def.zoneType,
+      cost: def.cost,
+      buildMs: def.buildMs,
+      inputs: def.inputs ?? null,
+      outputs: def.outputs ?? null,
+      requiresTech: def.requiresTech ?? null,
+    };
+  });
 }
 
 /**
@@ -624,6 +860,12 @@ export async function ensureContentSeeded(): Promise<void> {
   if ((await repo.countMilestones()) === 0) {
     await repo.insertMilestones(seedMilestones());
   }
+  if ((await repo.countZoneTypes()) === 0) {
+    await repo.insertZoneTypes(seedZoneTypes());
+  }
+  if ((await repo.countInstallations()) === 0) {
+    await repo.insertInstallations(seedInstallations());
+  }
 }
 
 /** Charge tout le contenu depuis la DB — appelé au boot puis après chaque édition admin
@@ -641,6 +883,8 @@ export async function loadContentBundle(): Promise<ContentBundle> {
     modules,
     presets,
     milestones,
+    zoneTypes,
+    installations,
   ] = await Promise.all([
     repo.loadWarships(),
     repo.loadTuning(),
@@ -653,6 +897,8 @@ export async function loadContentBundle(): Promise<ContentBundle> {
     repo.loadModules(),
     repo.loadPresets(),
     repo.loadMilestones(),
+    repo.loadZoneTypes(),
+    repo.loadInstallations(),
   ]);
   return {
     warships,
@@ -666,6 +912,8 @@ export async function loadContentBundle(): Promise<ContentBundle> {
     modules,
     presets,
     milestones,
+    zoneTypes,
+    installations,
   };
 }
 
@@ -703,7 +951,8 @@ export function buildingDefsFromContent(
         buildMs: b.buildMs,
         outputs: b.outputs ?? undefined,
         inputs: b.inputs ?? undefined,
-        depositScaled: (b.depositScaled ?? undefined) as BuildingDef["depositScaled"],
+        depositScaled: (b.depositScaled ??
+          undefined) as BuildingDef["depositScaled"],
         jobsPerInstance: b.jobsPerInstance ?? undefined,
       } satisfies BuildingDef,
     ]),
@@ -713,7 +962,9 @@ export function buildingDefsFromContent(
 /** Convertit les vaisseaux civils chargés en table de définitions (`sim/industry/ships.ts`
  *  `legacyCapacity`/`enqueueShip`, `sim/exploration/travel.ts` `legacyConvoyStat`) — même
  *  forme que `SHIPS`, sourcée depuis le contenu DB-backed. */
-export function shipDefsFromContent(ships: Record<string, ContentShip>): Record<string, ShipDef> {
+export function shipDefsFromContent(
+  ships: Record<string, ContentShip>,
+): Record<string, ShipDef> {
   return Object.fromEntries(
     Object.entries(ships).map(([id, s]) => [
       id,
@@ -732,9 +983,13 @@ export function shipDefsFromContent(ships: Record<string, ContentShip>): Record<
 
 /** Convertit les constantes chargées en `BalanceConstants` (défaut `DEFAULT_BALANCE` par
  *  champ manquant — ne devrait arriver qu'avant le premier `ensureContentSeeded()`). */
-export function balanceFromContent(constants: Record<string, ContentConstant>): BalanceConstants {
+export function balanceFromContent(
+  constants: Record<string, ContentConstant>,
+): BalanceConstants {
   const result = { ...DEFAULT_BALANCE };
-  for (const key of Object.keys(DEFAULT_BALANCE) as (keyof BalanceConstants)[]) {
+  for (const key of Object.keys(
+    DEFAULT_BALANCE,
+  ) as (keyof BalanceConstants)[]) {
     const value = constants[key]?.value;
     if (value !== undefined) result[key] = value;
   }
@@ -744,7 +999,9 @@ export function balanceFromContent(constants: Record<string, ContentConstant>): 
 /** Convertit les techs chargées en table de définitions (`sim/empire/research.ts`
  *  `computeEffects`/`canResearch`, `sim/empire/techtree.ts` `researchPath`/`validateTree`)
  *  — même forme que `TECHS`, sourcée depuis le contenu DB-backed. */
-export function techDefsFromContent(techs: Record<string, ContentTech>): Record<string, TechDef> {
+export function techDefsFromContent(
+  techs: Record<string, ContentTech>,
+): Record<string, TechDef> {
   return Object.fromEntries(
     Object.entries(techs).map(([id, t]) => [
       id,
@@ -784,7 +1041,8 @@ export function chassisDefsFromContent(
         roleBonus: (c.roleBonus ?? undefined) as ChassisDef["roleBonus"],
         cost: c.cost,
         buildMs: c.buildMs,
-        requiresTech: (c.requiresTech ?? undefined) as ChassisDef["requiresTech"],
+        requiresTech: (c.requiresTech ??
+          undefined) as ChassisDef["requiresTech"],
       } satisfies ChassisDef,
     ]),
   );
@@ -808,9 +1066,51 @@ export function moduleDefsFromContent(
         calc: m.calc,
         cost: m.cost,
         buildMs: m.buildMs,
-        requiresTech: (m.requiresTech ?? undefined) as ModuleDef["requiresTech"],
+        requiresTech: (m.requiresTech ??
+          undefined) as ModuleDef["requiresTech"],
         effects: m.effects,
       } satisfies ModuleDef,
+    ]),
+  );
+}
+
+/** Convertit les types de zone chargés en table de définitions (`sim/industry/station.ts`)
+ *  — même forme que `ZONE_TYPES`, sourcée depuis le contenu DB-backed. */
+export function zoneTypeDefsFromContent(
+  zoneTypes: Record<string, ContentZoneType>,
+): Record<string, ZoneTypeDef> {
+  return Object.fromEntries(
+    Object.entries(zoneTypes).map(([id, z]) => [
+      id,
+      {
+        id: id as ZoneTypeDef["id"],
+        cost: z.cost,
+        buildMs: z.buildMs,
+        requiresTech: (z.requiresTech ??
+          undefined) as ZoneTypeDef["requiresTech"],
+      } satisfies ZoneTypeDef,
+    ]),
+  );
+}
+
+/** Convertit les installations chargées en table de définitions (`sim/industry/station.ts`)
+ *  — même forme que `INSTALLATIONS`, sourcée depuis le contenu DB-backed. */
+export function installationDefsFromContent(
+  installations: Record<string, ContentInstallation>,
+): Record<string, InstallationDef> {
+  return Object.fromEntries(
+    Object.entries(installations).map(([id, i]) => [
+      id,
+      {
+        id: id as InstallationDef["id"],
+        zoneType: i.zoneType as InstallationDef["zoneType"],
+        cost: i.cost,
+        buildMs: i.buildMs,
+        inputs: i.inputs ?? undefined,
+        outputs: i.outputs ?? undefined,
+        requiresTech: (i.requiresTech ??
+          undefined) as InstallationDef["requiresTech"],
+      } satisfies InstallationDef,
     ]),
   );
 }

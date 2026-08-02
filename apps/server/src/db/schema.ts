@@ -1,4 +1,11 @@
-import { bigint, doublePrecision, integer, pgTable, primaryKey, text } from "drizzle-orm/pg-core";
+import {
+  bigint,
+  doublePrecision,
+  integer,
+  pgTable,
+  primaryKey,
+  text,
+} from "drizzle-orm/pg-core";
 
 /**
  * L'univers est STOCKÉ en DB (tables `universe_*`, chantier 18) et la base fait
@@ -391,6 +398,31 @@ export const colonies = pgTable("colonies", {
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 
+/**
+ * Stations orbitales (chantier 24) : structure possédée, en orbite d'un corps précis —
+ * distincte d'une colonie (un corps peut porter les deux). resources/zones/zoneQueue/
+ * installations/installQueue en JSON, même patron que `colonies`. `ownerId` est requis
+ * (pas de legacy pré-multi-empire, contrairement à `colonies.owner_id`).
+ */
+export const stations = pgTable("stations", {
+  id: text("id").primaryKey(),
+  gameId: text("game_id").notNull(),
+  ownerId: text("owner_id").notNull(),
+  bodyId: text("body_id")
+    .notNull()
+    .references(() => universeBodies.id),
+  systemId: text("system_id")
+    .notNull()
+    .references(() => universeSystems.id),
+  name: text("name").notNull(),
+  resources: text("resources").notNull(),
+  zones: text("zones").notNull().default("{}"),
+  zoneQueue: text("zone_queue").notNull().default("[]"),
+  installations: text("installations").notNull().default("{}"),
+  installQueue: text("install_queue").notNull().default("[]"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
 /** Routes logistiques automatiques (rule/ships/activeCycle en JSON). `fromId`/`toId`
  *  restent polymorphes (colonie ou avant-poste) — pas de FK, discriminées par `*Kind`. */
 export const routes = pgTable("routes", {
@@ -662,6 +694,37 @@ export const contentModules = pgTable("content_modules", {
   requiresTech: text("requires_tech"),
   /** JSON `ModuleEffects`. */
   effects: text("effects").notNull().default("{}"),
+});
+
+/**
+ * Types de zone de station orbitale (chantier 24) — `id` libre (id-minting), même
+ * raison que `content_chassis`/`content_modules` : `sim/industry/station.ts` n'a
+ * aucune injection avant ce chantier.
+ */
+export const contentZoneTypes = pgTable("content_zone_types", {
+  id: text("id").primaryKey(),
+  nameFr: text("name_fr").notNull(),
+  descriptionFr: text("description_fr").notNull().default(""),
+  /** JSON `Partial<Record<ResourceId, number>>`. */
+  cost: text("cost").notNull().default("{}"),
+  buildMs: integer("build_ms").notNull(),
+  requiresTech: text("requires_tech"),
+});
+
+/** Installations de station orbitale (chantier 24) — `id` libre, même raison que
+ *  `content_zone_types`. `zoneType` référence un id de `content_zone_types` (pas de FK :
+ *  même convention informelle que le reste du schéma pour les liens inter-domaines). */
+export const contentInstallations = pgTable("content_installations", {
+  id: text("id").primaryKey(),
+  nameFr: text("name_fr").notNull(),
+  descriptionFr: text("description_fr").notNull().default(""),
+  zoneType: text("zone_type").notNull(),
+  /** JSON `Partial<Record<ResourceId, number>>`. */
+  cost: text("cost").notNull().default("{}"),
+  buildMs: integer("build_ms").notNull(),
+  inputs: text("inputs").notNull().default("{}"),
+  outputs: text("outputs").notNull().default("{}"),
+  requiresTech: text("requires_tech"),
 });
 
 /**

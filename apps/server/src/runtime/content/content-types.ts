@@ -29,7 +29,10 @@ export interface ContentWarship {
 }
 
 export interface ContentCombatTuning {
-  categoryAdvantage: Record<CombatCategory, Partial<Record<CombatCategory, number>>>;
+  categoryAdvantage: Record<
+    CombatCategory,
+    Partial<Record<CombatCategory, number>>
+  >;
   directives: Record<
     CombatDirective,
     { damageMult: number; incomingMult: number; shieldMult: number }
@@ -175,6 +178,35 @@ export interface ContentMilestone {
   threshold: number;
 }
 
+/**
+ * Type de zone de station orbitale (chantier 24) — `id: string` libre (id-minting),
+ * même raison que `ContentChassis`/`ContentModule`.
+ */
+export interface ContentZoneType {
+  id: string;
+  nameFr: string;
+  descriptionFr: string;
+  cost: Record<string, number>;
+  buildMs: number;
+  /** null = aucune tech requise. */
+  requiresTech: string | null;
+}
+
+/** Installation de station orbitale (chantier 24) — `id: string` libre, même raison
+ *  que `ContentZoneType`. */
+export interface ContentInstallation {
+  id: string;
+  nameFr: string;
+  descriptionFr: string;
+  zoneType: string;
+  cost: Record<string, number>;
+  buildMs: number;
+  inputs: Record<string, number> | null;
+  outputs: Record<string, number> | null;
+  /** null = aucune tech requise. */
+  requiresTech: string | null;
+}
+
 /** Contenu chargé en mémoire (`GameRuntime.content`) — remplacé en bloc à chaque édition
  *  admin (édition en live, chantier 23 décision 3), jamais muté en place. */
 export interface ContentBundle {
@@ -189,4 +221,6 @@ export interface ContentBundle {
   modules: Record<string, ContentModule>;
   presets: Record<string, ContentPreset>;
   milestones: Record<string, ContentMilestone>;
+  zoneTypes: Record<string, ContentZoneType>;
+  installations: Record<string, ContentInstallation>;
 }

@@ -51,7 +51,10 @@ describe("/api/admin/content/warships", () => {
 
   it("un moderator (gestion joueurs) ne peut pas lire le contenu (403)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "mod@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "mod@exemple.fr",
+    );
     await setTestRole(accountId, "moderator");
     const res = await app.inject({
       method: "GET",
@@ -63,7 +66,10 @@ describe("/api/admin/content/warships", () => {
 
   it("un content_editor liste les 7 classes historiques amorcées au boot", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
     const res = await app.inject({
       method: "GET",
@@ -76,17 +82,26 @@ describe("/api/admin/content/warships", () => {
 
   it("modifie une entrée existante — effective immédiatement (édition en live)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
       method: "PUT",
       url: "/api/admin/content/warships/fighter",
       headers: { authorization: `Bearer ${token}` },
-      payload: { ...VALID_WARSHIP_BODY, nameFr: "Chasseur", category: "skirmisher" },
+      payload: {
+        ...VALID_WARSHIP_BODY,
+        nameFr: "Chasseur",
+        category: "skirmisher",
+      },
     });
     expect(res.statusCode).toBe(200);
-    const updated = res.json().warships.find((w: { id: string }) => w.id === "fighter");
+    const updated = res
+      .json()
+      .warships.find((w: { id: string }) => w.id === "fighter");
     expect(updated.hull).toBe(250);
     expect(updated.nameFr).toBe("Chasseur");
 
@@ -97,13 +112,18 @@ describe("/api/admin/content/warships", () => {
       url: "/api/admin/content/warships",
       headers: { authorization: `Bearer ${token}` },
     });
-    const fighter = reread.json().warships.find((w: { id: string }) => w.id === "fighter");
+    const fighter = reread
+      .json()
+      .warships.find((w: { id: string }) => w.id === "fighter");
     expect(fighter.hull).toBe(250);
   });
 
   it("un id inconnu crée une entrée neuve (id-minting, sans mécanique dédiée)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -114,13 +134,18 @@ describe("/api/admin/content/warships", () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().warships).toHaveLength(8);
-    const created = res.json().warships.find((w: { id: string }) => w.id === "plasma_cruiser");
+    const created = res
+      .json()
+      .warships.find((w: { id: string }) => w.id === "plasma_cruiser");
     expect(created.nameFr).toBe("Croiseur plasma");
   });
 
   it("un corps invalide est refusé (400)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -136,7 +161,10 @@ describe("/api/admin/content/warships", () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
     // "admin" plutôt que "content_editor" : cette action a aussi besoin de "audit.read"
     // pour relire le journal ensuite, que content_editor n'a pas (chantier 23.1/23.5).
-    const { token, accountId } = await registerTestAccount(app, "admin@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "admin@exemple.fr",
+    );
     await setTestRole(accountId, "admin");
 
     await app.inject({
@@ -163,7 +191,10 @@ describe("/api/admin/content/warships", () => {
 
   it("expose les réglages de combat (triangle, directives) en lecture", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
     const res = await app.inject({
       method: "GET",
@@ -186,7 +217,10 @@ const VALID_FACTION_BODY = {
 describe("/api/admin/content/factions", () => {
   it("un content_editor liste les 3 factions historiques amorcées au boot", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
     const res = await app.inject({
       method: "GET",
@@ -199,7 +233,10 @@ describe("/api/admin/content/factions", () => {
 
   it("modifie une faction existante — effective immédiatement", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -209,14 +246,19 @@ describe("/api/admin/content/factions", () => {
       payload: { ...VALID_FACTION_BODY, name: "Consortium Ferride" },
     });
     expect(res.statusCode).toBe(200);
-    const updated = res.json().factions.find((f: { id: string }) => f.id === "ferride");
+    const updated = res
+      .json()
+      .factions.find((f: { id: string }) => f.id === "ferride");
     expect(updated.color).toBe("#3388ff");
     expect(updated.produces.energy).toBe(40);
   });
 
   it("un id inconnu crée une faction neuve (id-minting)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -231,7 +273,10 @@ describe("/api/admin/content/factions", () => {
 
   it("une couleur mal formée est refusée (400)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -270,7 +315,10 @@ const VALID_BUILDING_BODY = {
 describe("/api/admin/content/buildings", () => {
   it("un content_editor liste les 12 bâtiments historiques amorcés au boot", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
     const res = await app.inject({
       method: "GET",
@@ -283,7 +331,10 @@ describe("/api/admin/content/buildings", () => {
 
   it("modifie un bâtiment existant — effective immédiatement", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -293,14 +344,19 @@ describe("/api/admin/content/buildings", () => {
       payload: VALID_BUILDING_BODY,
     });
     expect(res.statusCode).toBe(200);
-    const updated = res.json().buildings.find((b: { id: string }) => b.id === "mine");
+    const updated = res
+      .json()
+      .buildings.find((b: { id: string }) => b.id === "mine");
     expect(updated.cost.ore).toBe(999);
     expect(updated.outputs.ore).toBe(4);
   });
 
   it("un id inconnu de BUILDING_IDS est refusé (400) — pas d'id-minting pour ce domaine", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -314,7 +370,10 @@ describe("/api/admin/content/buildings", () => {
 
   it("un corps invalide est refusé (400)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -353,7 +412,10 @@ const VALID_SHIP_BODY = {
 describe("/api/admin/content/ships", () => {
   it("un content_editor liste les 4 classes civiles historiques amorcées au boot", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
     const res = await app.inject({
       method: "GET",
@@ -366,7 +428,10 @@ describe("/api/admin/content/ships", () => {
 
   it("modifie un vaisseau existant — effective immédiatement", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -376,13 +441,18 @@ describe("/api/admin/content/ships", () => {
       payload: { ...VALID_SHIP_BODY, capacity: 9999, requiresTech: null },
     });
     expect(res.statusCode).toBe(200);
-    const updated = res.json().ships.find((s: { id: string }) => s.id === "cargo_small");
+    const updated = res
+      .json()
+      .ships.find((s: { id: string }) => s.id === "cargo_small");
     expect(updated.capacity).toBe(9999);
   });
 
   it("un id inconnu crée un vaisseau neuf (id-minting)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -397,7 +467,10 @@ describe("/api/admin/content/ships", () => {
 
   it("un corps invalide est refusé (400)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -423,9 +496,12 @@ describe("/api/admin/content/ships", () => {
 });
 
 describe("/api/admin/content/constants", () => {
-  it("un content_editor liste les 26 scalaires d'équilibrage amorcés au boot", async () => {
+  it("un content_editor liste les 28 scalaires d'équilibrage amorcés au boot", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
     const res = await app.inject({
       method: "GET",
@@ -433,28 +509,39 @@ describe("/api/admin/content/constants", () => {
       headers: { authorization: `Bearer ${token}` },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().constants).toHaveLength(26);
+    expect(res.json().constants).toHaveLength(28);
   });
 
   it("modifie une constante existante — effective immédiatement", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
       method: "PUT",
       url: "/api/admin/content/constants/raidFraction",
       headers: { authorization: `Bearer ${token}` },
-      payload: { value: 0.9, descriptionFr: "Fraction pillée, modifiée pour test." },
+      payload: {
+        value: 0.9,
+        descriptionFr: "Fraction pillée, modifiée pour test.",
+      },
     });
     expect(res.statusCode).toBe(200);
-    const updated = res.json().constants.find((c: { key: string }) => c.key === "raidFraction");
+    const updated = res
+      .json()
+      .constants.find((c: { key: string }) => c.key === "raidFraction");
     expect(updated.value).toBe(0.9);
   });
 
   it("une clé inconnue de BalanceConstants est refusée (400) — pas d'id-minting pour ce domaine", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -468,7 +555,10 @@ describe("/api/admin/content/constants", () => {
 
   it("un corps invalide est refusé (400)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -504,9 +594,12 @@ const VALID_TECH_BODY = {
 };
 
 describe("/api/admin/content/techs", () => {
-  it("un content_editor liste les 40 techs historiques amorcées au boot", async () => {
+  it("un content_editor liste les 43 techs historiques amorcées au boot", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
     const res = await app.inject({
       method: "GET",
@@ -514,12 +607,15 @@ describe("/api/admin/content/techs", () => {
       headers: { authorization: `Bearer ${token}` },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().techs).toHaveLength(40);
+    expect(res.json().techs).toHaveLength(43);
   });
 
   it("modifie une tech existante — effective immédiatement", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -529,13 +625,18 @@ describe("/api/admin/content/techs", () => {
       payload: { ...VALID_TECH_BODY, requires: [] },
     });
     expect(res.statusCode).toBe(200);
-    const updated = res.json().techs.find((t: { id: string }) => t.id === "metallurgy");
+    const updated = res
+      .json()
+      .techs.find((t: { id: string }) => t.id === "metallurgy");
     expect(updated.cost).toBe(200);
   });
 
   it("un id inconnu crée une tech neuve (id-minting)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -545,12 +646,15 @@ describe("/api/admin/content/techs", () => {
       payload: VALID_TECH_BODY,
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().techs).toHaveLength(41);
+    expect(res.json().techs).toHaveLength(44);
   });
 
   it("un prérequis inconnu est refusé (400) — validateTree rejoué côté serveur", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -564,7 +668,10 @@ describe("/api/admin/content/techs", () => {
 
   it("un cycle de prérequis est refusé (400)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     // metallurgy exige déjà industrial_chains : cycle direct.
@@ -579,7 +686,10 @@ describe("/api/admin/content/techs", () => {
 
   it("un corps invalide est refusé (400)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -626,7 +736,10 @@ const VALID_CHASSIS_BODY = {
 describe("/api/admin/content/chassis", () => {
   it("un content_editor liste les 9 châssis historiques amorcés au boot", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
     const res = await app.inject({
       method: "GET",
@@ -639,7 +752,10 @@ describe("/api/admin/content/chassis", () => {
 
   it("modifie un châssis existant — effective immédiatement", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -649,13 +765,18 @@ describe("/api/admin/content/chassis", () => {
       payload: { ...VALID_CHASSIS_BODY, hull: 9999, requiresTech: null },
     });
     expect(res.statusCode).toBe(200);
-    const updated = res.json().chassis.find((c: { id: string }) => c.id === "scout_frame");
+    const updated = res
+      .json()
+      .chassis.find((c: { id: string }) => c.id === "scout_frame");
     expect(updated.hull).toBe(9999);
   });
 
   it("un id inconnu crée un châssis neuf (id-minting)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -670,7 +791,10 @@ describe("/api/admin/content/chassis", () => {
 
   it("un corps invalide est refusé (400)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -712,7 +836,10 @@ const VALID_MODULE_BODY = {
 describe("/api/admin/content/modules", () => {
   it("un content_editor liste les 20 modules historiques amorcés au boot", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
     const res = await app.inject({
       method: "GET",
@@ -725,7 +852,10 @@ describe("/api/admin/content/modules", () => {
 
   it("modifie un module existant — effective immédiatement", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -735,13 +865,18 @@ describe("/api/admin/content/modules", () => {
       payload: { ...VALID_MODULE_BODY, power: 999, requiresTech: null },
     });
     expect(res.statusCode).toBe(200);
-    const updated = res.json().modules.find((m: { id: string }) => m.id === "laser_pulse");
+    const updated = res
+      .json()
+      .modules.find((m: { id: string }) => m.id === "laser_pulse");
     expect(updated.power).toBe(999);
   });
 
   it("un id inconnu crée un module neuf (id-minting)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -756,7 +891,10 @@ describe("/api/admin/content/modules", () => {
 
   it("un corps invalide est refusé (400)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -792,7 +930,10 @@ const VALID_PRESET_BODY = {
 describe("/api/admin/content/presets", () => {
   it("un content_editor liste les 8 plans historiques amorcés au boot", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
     const res = await app.inject({
       method: "GET",
@@ -805,24 +946,36 @@ describe("/api/admin/content/presets", () => {
 
   it("modifie un preset existant — effective immédiatement", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
       method: "PUT",
       url: "/api/admin/content/presets/interceptor",
       headers: { authorization: `Bearer ${token}` },
-      payload: { ...VALID_PRESET_BODY, nameFr: "Intercepteur amélioré", starter: true },
+      payload: {
+        ...VALID_PRESET_BODY,
+        nameFr: "Intercepteur amélioré",
+        starter: true,
+      },
     });
     expect(res.statusCode).toBe(200);
-    const updated = res.json().presets.find((p: { id: string }) => p.id === "interceptor");
+    const updated = res
+      .json()
+      .presets.find((p: { id: string }) => p.id === "interceptor");
     expect(updated.nameFr).toBe("Intercepteur amélioré");
     expect(updated.starter).toBe(true);
   });
 
   it("un id inconnu crée un preset neuf (id-minting)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -837,7 +990,10 @@ describe("/api/admin/content/presets", () => {
 
   it("un corps invalide est refusé (400)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -867,7 +1023,10 @@ const VALID_MILESTONE_BODY = { metric: "population", threshold: 5000 };
 describe("/api/admin/content/milestones", () => {
   it("un content_editor liste les 13 jalons historiques amorcés au boot", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
     const res = await app.inject({
       method: "GET",
@@ -880,7 +1039,10 @@ describe("/api/admin/content/milestones", () => {
 
   it("modifie un jalon existant — effective immédiatement", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -890,13 +1052,18 @@ describe("/api/admin/content/milestones", () => {
       payload: { metric: "population", threshold: 50 },
     });
     expect(res.statusCode).toBe(200);
-    const updated = res.json().milestones.find((m: { id: string }) => m.id === "pop-25");
+    const updated = res
+      .json()
+      .milestones.find((m: { id: string }) => m.id === "pop-25");
     expect(updated.threshold).toBe(50);
   });
 
   it("un id inconnu crée un jalon neuf (id-minting)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({
@@ -911,7 +1078,10 @@ describe("/api/admin/content/milestones", () => {
 
   it("une métrique inconnue est refusée (400) — enum fermé", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "editeur@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "editeur@exemple.fr",
+    );
     await setTestRole(accountId, "content_editor");
 
     const res = await app.inject({

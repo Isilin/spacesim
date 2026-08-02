@@ -6,12 +6,14 @@ import type {
   ContentCombatTuning,
   ContentConstant,
   ContentFaction,
+  ContentInstallation,
   ContentMilestone,
   ContentModule,
   ContentPreset,
   ContentShip,
   ContentTech,
   ContentWarship,
+  ContentZoneType,
 } from "./content-types.js";
 
 /** Ligne unique de `content_combat_tuning` — id fixe, jamais une clé de contenu. */
@@ -28,6 +30,8 @@ type ChassisRow = typeof schema.contentChassis.$inferSelect;
 type ModuleRow = typeof schema.contentModules.$inferSelect;
 type PresetRow = typeof schema.contentPresets.$inferSelect;
 type MilestoneRow = typeof schema.contentMilestones.$inferSelect;
+type ZoneTypeRow = typeof schema.contentZoneTypes.$inferSelect;
+type InstallationRow = typeof schema.contentInstallations.$inferSelect;
 
 function warshipFromRow(row: WarshipRow): ContentWarship {
   return {
@@ -302,6 +306,56 @@ function rowFromMilestone(m: ContentMilestone) {
   return { id: m.id, metric: m.metric, threshold: m.threshold };
 }
 
+function zoneTypeFromRow(row: ZoneTypeRow): ContentZoneType {
+  return {
+    id: row.id,
+    nameFr: row.nameFr,
+    descriptionFr: row.descriptionFr,
+    cost: JSON.parse(row.cost),
+    buildMs: row.buildMs,
+    requiresTech: row.requiresTech,
+  };
+}
+
+function rowFromZoneType(z: ContentZoneType) {
+  return {
+    id: z.id,
+    nameFr: z.nameFr,
+    descriptionFr: z.descriptionFr,
+    cost: JSON.stringify(z.cost),
+    buildMs: z.buildMs,
+    requiresTech: z.requiresTech,
+  };
+}
+
+function installationFromRow(row: InstallationRow): ContentInstallation {
+  return {
+    id: row.id,
+    nameFr: row.nameFr,
+    descriptionFr: row.descriptionFr,
+    zoneType: row.zoneType,
+    cost: JSON.parse(row.cost),
+    buildMs: row.buildMs,
+    inputs: row.inputs ? JSON.parse(row.inputs) : null,
+    outputs: row.outputs ? JSON.parse(row.outputs) : null,
+    requiresTech: row.requiresTech,
+  };
+}
+
+function rowFromInstallation(i: ContentInstallation) {
+  return {
+    id: i.id,
+    nameFr: i.nameFr,
+    descriptionFr: i.descriptionFr,
+    zoneType: i.zoneType,
+    cost: JSON.stringify(i.cost),
+    buildMs: i.buildMs,
+    inputs: JSON.stringify(i.inputs ?? {}),
+    outputs: JSON.stringify(i.outputs ?? {}),
+    requiresTech: i.requiresTech,
+  };
+}
+
 /**
  * Accès DB au contenu de jeu (chantier 23.5+) — une classe par cohérence avec le reste
  * du moteur, mais hors `WriteSet`/`Persister` : chemin admin à basse fréquence, pas le
@@ -310,7 +364,9 @@ function rowFromMilestone(m: ContentMilestone) {
  */
 export class ContentRepository {
   async countWarships(): Promise<number> {
-    const rows = await db.select({ id: schema.contentWarships.id }).from(schema.contentWarships);
+    const rows = await db
+      .select({ id: schema.contentWarships.id })
+      .from(schema.contentWarships);
     return rows.length;
   }
 
@@ -318,13 +374,18 @@ export class ContentRepository {
     // Tri explicite par id : sans lui, l'ordre de restitution n'est pas garanti stable
     // après un UPDATE (ex. via `onConflictDoUpdate`), ce qui ferait sauter les lignes
     // dans l'écran admin à chaque édition.
-    const rows = await db.select().from(schema.contentWarships).orderBy(schema.contentWarships.id);
+    const rows = await db
+      .select()
+      .from(schema.contentWarships)
+      .orderBy(schema.contentWarships.id);
     return Object.fromEntries(rows.map((row) => [row.id, warshipFromRow(row)]));
   }
 
   async insertWarships(warships: ContentWarship[]): Promise<void> {
     if (warships.length === 0) return;
-    await db.insert(schema.contentWarships).values(warships.map(rowFromWarship));
+    await db
+      .insert(schema.contentWarships)
+      .values(warships.map(rowFromWarship));
   }
 
   async saveWarship(warship: ContentWarship): Promise<void> {
@@ -350,7 +411,9 @@ export class ContentRepository {
       .where(eq(schema.contentCombatTuning.id, TUNING_ROW_ID));
     const row = rows[0];
     if (!row)
-      throw new Error("content_combat_tuning non initialisée — ensureSeeded() manquant au boot");
+      throw new Error(
+        "content_combat_tuning non initialisée — ensureSeeded() manquant au boot",
+      );
     return tuningFromRow(row);
   }
 
@@ -367,18 +430,25 @@ export class ContentRepository {
   }
 
   async countFactions(): Promise<number> {
-    const rows = await db.select({ id: schema.contentFactions.id }).from(schema.contentFactions);
+    const rows = await db
+      .select({ id: schema.contentFactions.id })
+      .from(schema.contentFactions);
     return rows.length;
   }
 
   async loadFactions(): Promise<Record<string, ContentFaction>> {
-    const rows = await db.select().from(schema.contentFactions).orderBy(schema.contentFactions.id);
+    const rows = await db
+      .select()
+      .from(schema.contentFactions)
+      .orderBy(schema.contentFactions.id);
     return Object.fromEntries(rows.map((row) => [row.id, factionFromRow(row)]));
   }
 
   async insertFactions(factions: ContentFaction[]): Promise<void> {
     if (factions.length === 0) return;
-    await db.insert(schema.contentFactions).values(factions.map(rowFromFaction));
+    await db
+      .insert(schema.contentFactions)
+      .values(factions.map(rowFromFaction));
   }
 
   async saveFaction(faction: ContentFaction): Promise<void> {
@@ -390,7 +460,9 @@ export class ContentRepository {
   }
 
   async countBuildings(): Promise<number> {
-    const rows = await db.select({ id: schema.contentBuildings.id }).from(schema.contentBuildings);
+    const rows = await db
+      .select({ id: schema.contentBuildings.id })
+      .from(schema.contentBuildings);
     return rows.length;
   }
 
@@ -399,12 +471,16 @@ export class ContentRepository {
       .select()
       .from(schema.contentBuildings)
       .orderBy(schema.contentBuildings.id);
-    return Object.fromEntries(rows.map((row) => [row.id, buildingFromRow(row)]));
+    return Object.fromEntries(
+      rows.map((row) => [row.id, buildingFromRow(row)]),
+    );
   }
 
   async insertBuildings(buildings: ContentBuilding[]): Promise<void> {
     if (buildings.length === 0) return;
-    await db.insert(schema.contentBuildings).values(buildings.map(rowFromBuilding));
+    await db
+      .insert(schema.contentBuildings)
+      .values(buildings.map(rowFromBuilding));
   }
 
   async saveBuilding(building: ContentBuilding): Promise<void> {
@@ -416,12 +492,17 @@ export class ContentRepository {
   }
 
   async countShips(): Promise<number> {
-    const rows = await db.select({ id: schema.contentShips.id }).from(schema.contentShips);
+    const rows = await db
+      .select({ id: schema.contentShips.id })
+      .from(schema.contentShips);
     return rows.length;
   }
 
   async loadShips(): Promise<Record<string, ContentShip>> {
-    const rows = await db.select().from(schema.contentShips).orderBy(schema.contentShips.id);
+    const rows = await db
+      .select()
+      .from(schema.contentShips)
+      .orderBy(schema.contentShips.id);
     return Object.fromEntries(rows.map((row) => [row.id, shipFromRow(row)]));
   }
 
@@ -450,12 +531,16 @@ export class ContentRepository {
       .select()
       .from(schema.contentConstants)
       .orderBy(schema.contentConstants.key);
-    return Object.fromEntries(rows.map((row) => [row.key, constantFromRow(row)]));
+    return Object.fromEntries(
+      rows.map((row) => [row.key, constantFromRow(row)]),
+    );
   }
 
   async insertConstants(constants: ContentConstant[]): Promise<void> {
     if (constants.length === 0) return;
-    await db.insert(schema.contentConstants).values(constants.map(rowFromConstant));
+    await db
+      .insert(schema.contentConstants)
+      .values(constants.map(rowFromConstant));
   }
 
   async saveConstant(constant: ContentConstant): Promise<void> {
@@ -467,12 +552,17 @@ export class ContentRepository {
   }
 
   async countTechs(): Promise<number> {
-    const rows = await db.select({ id: schema.contentTechs.id }).from(schema.contentTechs);
+    const rows = await db
+      .select({ id: schema.contentTechs.id })
+      .from(schema.contentTechs);
     return rows.length;
   }
 
   async loadTechs(): Promise<Record<string, ContentTech>> {
-    const rows = await db.select().from(schema.contentTechs).orderBy(schema.contentTechs.id);
+    const rows = await db
+      .select()
+      .from(schema.contentTechs)
+      .orderBy(schema.contentTechs.id);
     return Object.fromEntries(rows.map((row) => [row.id, techFromRow(row)]));
   }
 
@@ -490,12 +580,17 @@ export class ContentRepository {
   }
 
   async countChassis(): Promise<number> {
-    const rows = await db.select({ id: schema.contentChassis.id }).from(schema.contentChassis);
+    const rows = await db
+      .select({ id: schema.contentChassis.id })
+      .from(schema.contentChassis);
     return rows.length;
   }
 
   async loadChassis(): Promise<Record<string, ContentChassis>> {
-    const rows = await db.select().from(schema.contentChassis).orderBy(schema.contentChassis.id);
+    const rows = await db
+      .select()
+      .from(schema.contentChassis)
+      .orderBy(schema.contentChassis.id);
     return Object.fromEntries(rows.map((row) => [row.id, chassisFromRow(row)]));
   }
 
@@ -513,12 +608,17 @@ export class ContentRepository {
   }
 
   async countModules(): Promise<number> {
-    const rows = await db.select({ id: schema.contentModules.id }).from(schema.contentModules);
+    const rows = await db
+      .select({ id: schema.contentModules.id })
+      .from(schema.contentModules);
     return rows.length;
   }
 
   async loadModules(): Promise<Record<string, ContentModule>> {
-    const rows = await db.select().from(schema.contentModules).orderBy(schema.contentModules.id);
+    const rows = await db
+      .select()
+      .from(schema.contentModules)
+      .orderBy(schema.contentModules.id);
     return Object.fromEntries(rows.map((row) => [row.id, moduleFromRow(row)]));
   }
 
@@ -536,12 +636,17 @@ export class ContentRepository {
   }
 
   async countPresets(): Promise<number> {
-    const rows = await db.select({ id: schema.contentPresets.id }).from(schema.contentPresets);
+    const rows = await db
+      .select({ id: schema.contentPresets.id })
+      .from(schema.contentPresets);
     return rows.length;
   }
 
   async loadPresets(): Promise<Record<string, ContentPreset>> {
-    const rows = await db.select().from(schema.contentPresets).orderBy(schema.contentPresets.id);
+    const rows = await db
+      .select()
+      .from(schema.contentPresets)
+      .orderBy(schema.contentPresets.id);
     return Object.fromEntries(rows.map((row) => [row.id, presetFromRow(row)]));
   }
 
@@ -570,12 +675,16 @@ export class ContentRepository {
       .select()
       .from(schema.contentMilestones)
       .orderBy(schema.contentMilestones.id);
-    return Object.fromEntries(rows.map((row) => [row.id, milestoneFromRow(row)]));
+    return Object.fromEntries(
+      rows.map((row) => [row.id, milestoneFromRow(row)]),
+    );
   }
 
   async insertMilestones(milestones: ContentMilestone[]): Promise<void> {
     if (milestones.length === 0) return;
-    await db.insert(schema.contentMilestones).values(milestones.map(rowFromMilestone));
+    await db
+      .insert(schema.contentMilestones)
+      .values(milestones.map(rowFromMilestone));
   }
 
   async saveMilestone(milestone: ContentMilestone): Promise<void> {
@@ -584,5 +693,71 @@ export class ContentRepository {
       .insert(schema.contentMilestones)
       .values(row)
       .onConflictDoUpdate({ target: schema.contentMilestones.id, set: row });
+  }
+
+  async countZoneTypes(): Promise<number> {
+    const rows = await db
+      .select({ id: schema.contentZoneTypes.id })
+      .from(schema.contentZoneTypes);
+    return rows.length;
+  }
+
+  async loadZoneTypes(): Promise<Record<string, ContentZoneType>> {
+    const rows = await db
+      .select()
+      .from(schema.contentZoneTypes)
+      .orderBy(schema.contentZoneTypes.id);
+    return Object.fromEntries(
+      rows.map((row) => [row.id, zoneTypeFromRow(row)]),
+    );
+  }
+
+  async insertZoneTypes(zoneTypes: ContentZoneType[]): Promise<void> {
+    if (zoneTypes.length === 0) return;
+    await db
+      .insert(schema.contentZoneTypes)
+      .values(zoneTypes.map(rowFromZoneType));
+  }
+
+  async saveZoneType(zoneType: ContentZoneType): Promise<void> {
+    const row = rowFromZoneType(zoneType);
+    await db
+      .insert(schema.contentZoneTypes)
+      .values(row)
+      .onConflictDoUpdate({ target: schema.contentZoneTypes.id, set: row });
+  }
+
+  async countInstallations(): Promise<number> {
+    const rows = await db
+      .select({ id: schema.contentInstallations.id })
+      .from(schema.contentInstallations);
+    return rows.length;
+  }
+
+  async loadInstallations(): Promise<Record<string, ContentInstallation>> {
+    const rows = await db
+      .select()
+      .from(schema.contentInstallations)
+      .orderBy(schema.contentInstallations.id);
+    return Object.fromEntries(
+      rows.map((row) => [row.id, installationFromRow(row)]),
+    );
+  }
+
+  async insertInstallations(
+    installations: ContentInstallation[],
+  ): Promise<void> {
+    if (installations.length === 0) return;
+    await db
+      .insert(schema.contentInstallations)
+      .values(installations.map(rowFromInstallation));
+  }
+
+  async saveInstallation(installation: ContentInstallation): Promise<void> {
+    const row = rowFromInstallation(installation);
+    await db
+      .insert(schema.contentInstallations)
+      .values(row)
+      .onConflictDoUpdate({ target: schema.contentInstallations.id, set: row });
   }
 }

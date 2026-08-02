@@ -15,6 +15,7 @@ type SchemaKey = keyof typeof schema;
 const PRIMARY_KEYS: Partial<Record<SchemaKey, readonly string[]>> = {
   games: ["id"],
   colonies: ["id"],
+  stations: ["id"],
   relations: ["empireA", "empireB"],
   relationProposals: ["id"],
   objectives: ["id"],
@@ -41,7 +42,10 @@ const PRIMARY_KEYS: Partial<Record<SchemaKey, readonly string[]>> = {
   universeLinks: ["aSystemId", "bSystemId"],
 };
 
-function tableFor(name: string): { table: PgTable; pkNames: readonly string[] } {
+function tableFor(name: string): {
+  table: PgTable;
+  pkNames: readonly string[];
+} {
   const pkNames = PRIMARY_KEYS[name as SchemaKey];
   const table = schema[name as SchemaKey] as PgTable | undefined;
   if (!table || !pkNames) {
@@ -50,7 +54,11 @@ function tableFor(name: string): { table: PgTable; pkNames: readonly string[] } 
   return { table, pkNames };
 }
 
-function whereClause(table: PgTable, pkNames: readonly string[], pk: readonly unknown[]) {
+function whereClause(
+  table: PgTable,
+  pkNames: readonly string[],
+  pk: readonly unknown[],
+) {
   // biome-ignore lint/suspicious/noExplicitAny: table dynamique, colonnes indexées par nom
   const t = table as any;
   const conditions = pkNames.map((name, i) => eq(t[name], pk[i]));
@@ -68,7 +76,11 @@ function whereClause(table: PgTable, pkNames: readonly string[], pk: readonly un
 async function applyUpsert(tx: any, entry: DrainedUpsert): Promise<void> {
   const { table, pkNames } = tableFor(entry.table);
   const where = whereClause(table, pkNames, entry.pk);
-  const updated = await tx.update(table).set(entry.values).where(where).returning();
+  const updated = await tx
+    .update(table)
+    .set(entry.values)
+    .where(where)
+    .returning();
   if (updated.length === 0) {
     await tx.insert(table).values(entry.values);
   }
@@ -126,7 +138,8 @@ export class Persister {
     } catch (err) {
       // La transaction a fait rollback : on remet les entrées en attente pour le
       // prochain flush plutôt que de les perdre silencieusement.
-      for (const entry of upserts) this.writeSet.upsert(entry.table, entry.pk, entry.values);
+      for (const entry of upserts)
+        this.writeSet.upsert(entry.table, entry.pk, entry.values);
       for (const entry of deletes) this.writeSet.delete(entry.table, entry.pk);
       this.lastFlushError = err instanceof Error ? err.message : String(err);
       this.logger.warn(

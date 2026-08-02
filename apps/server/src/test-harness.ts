@@ -29,6 +29,7 @@ export const ALL_TABLES = [
   schema.outposts,
   schema.routes,
   schema.colonies,
+  schema.stations,
   schema.battles,
   schema.pirateLairs,
   schema.fleets,
@@ -67,7 +68,8 @@ export interface EmpireSummary {
   exploredSystemIds: string[];
   colonies: { name: string; systemId: string; credits: number; ore: number }[];
 }
-export const summaries = (engine: GameEngine) => engine.devEmpireSummaries() as EmpireSummary[];
+export const summaries = (engine: GameEngine) =>
+  engine.devEmpireSummaries() as EmpireSummary[];
 
 /**
  * Empire d'un compte fictif (chantier 8) : le premier compte adopte l'empire amorcé au
@@ -77,4 +79,5 @@ export const empireFor = (engine: GameEngine, accountId: string) =>
   engine.createEmpireForAccount(accountId, accountId)!;
 
 /** Nombre de ticks avancés par `devFastForward` : delta multiple exact de TICK_MS (5s). */
-export const advanceTicks = (engine: GameEngine, ticks: number) => engine.devFastForward(ticks * 5);
+export const advanceTicks = (engine: GameEngine, ticks: number) =>
+  engine.devFastForward(ticks * 5);
