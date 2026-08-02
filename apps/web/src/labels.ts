@@ -13,6 +13,7 @@ import type {
   RelationState,
   ResourceId,
   SlotType,
+  StationMarketAccess,
   TechBranch,
   TechId,
   WarshipId,
@@ -37,6 +38,30 @@ export const RELATION_BADGES: Record<RelationState, string> = {
   nap: " 🤝 pacte de non-agression",
   alliance: " ⭐ allié",
   war: " ⚔ en guerre",
+};
+
+/** Politique de marché d'une station (chantier 25) : palier minimal de relation
+ * requis pour qu'un visiteur puisse y commercer. */
+export const STATION_MARKET_ACCESS_LABELS: Record<
+  StationMarketAccess,
+  { name: string; description: string }
+> = {
+  closed: {
+    name: "Fermé",
+    description: "Seul le propriétaire peut y commercer.",
+  },
+  alliance: {
+    name: "Alliés",
+    description: "Ouvert aux empires alliés.",
+  },
+  nap: {
+    name: "Pacte ou mieux",
+    description: "Ouvert aux alliés et aux partenaires de pacte de non-agression.",
+  },
+  public: {
+    name: "Public",
+    description: "Ouvert à tout empire, sauf en guerre.",
+  },
 };
 
 /** Objectif éphémère (chantier 17), affiché dans le fil du monde. */

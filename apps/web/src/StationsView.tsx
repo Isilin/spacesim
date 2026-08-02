@@ -13,6 +13,7 @@ import {
   maxConvoyCapacity,
   RESOURCES,
   SHIP_IDS,
+  STATION_MARKET_ACCESS_IDS,
   ZONE_TYPE_IDS,
   ZONE_TYPES,
   type Colony,
@@ -22,6 +23,7 @@ import {
   type Route,
   type ShipId,
   type Station,
+  type StationMarketAccess,
   type Universe,
   type ZoneTypeId,
 } from "@spacesim/shared";
@@ -41,6 +43,7 @@ import {
   INSTALLATION_LABELS,
   RESOURCE_LABELS,
   SHIP_LABELS,
+  STATION_MARKET_ACCESS_LABELS,
   ZONE_TYPE_LABELS,
 } from "./labels.js";
 import { useGameStore } from "./state/game-store.js";
@@ -299,8 +302,77 @@ export function StationsView({ effects, universe, portalLinks }: Props) {
           now={now}
           send={send}
         />
+
+        <StationMarketPolicyForm station={station} send={send} />
       </div>
     </div>
+  );
+}
+
+/**
+ * Politique de marché d'une station (chantier 25) : accès (palier diplomatique
+ * minimal requis pour un visiteur) et taxe prélevée sur ses échanges. Formulaire
+ * local avec bouton d'envoi explicite (comme `StationTransferForm`), pas un
+ * enregistrement au fil de la frappe — évite d'envoyer `setStationMarketPolicy` à
+ * chaque caractère tapé dans le champ de taxe.
+ */
+function StationMarketPolicyForm({
+  station,
+  send,
+}: {
+  station: Station;
+  send: (msg: ClientMessage) => void;
+}) {
+  const [access, setAccess] = useState<StationMarketAccess>(
+    station.marketAccess,
+  );
+  const [taxPercent, setTaxPercent] = useState(
+    String(Math.round(station.marketTaxRate * 100)),
+  );
+
+  const dirty =
+    access !== station.marketAccess ||
+    taxPercent !== String(Math.round(station.marketTaxRate * 100));
+  const taxRate = Math.min(1, Math.max(0, Number(taxPercent) / 100));
+  const validTax = Number.isFinite(Number(taxPercent)) && taxPercent !== "";
+
+  return (
+    <Panel title="Politique de marché">
+      <div className="form-stack">
+        <Select
+          label="Accès"
+          value={access}
+          onChange={(e) => setAccess(e.target.value as StationMarketAccess)}
+          options={STATION_MARKET_ACCESS_IDS.map((id) => ({
+            value: id,
+            label: STATION_MARKET_ACCESS_LABELS[id].name,
+          }))}
+        />
+        <p className="muted small">
+          {STATION_MARKET_ACCESS_LABELS[access].description}
+        </p>
+        <NumberInput
+          label="Taxe sur les échanges des visiteurs (%)"
+          min={0}
+          max={100}
+          value={taxPercent}
+          onChange={(e) => setTaxPercent(e.target.value)}
+        />
+        <Button
+          disabled={!dirty || !validTax}
+          onClick={() => {
+            send({
+              type: "setStationMarketPolicy",
+              stationId: station.id,
+              marketAccess: access,
+              taxRate,
+            });
+          }}
+        >
+          Appliquer
+        </Button>
+      </div>
+    </Panel>
   );
 }
 
