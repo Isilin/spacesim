@@ -1,7 +1,7 @@
 import { Tabs } from "@spacesim/ui";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
-/** Un onglet par domaine de contenu — dernière vague ajoutée en 23.11 (presets, jalons). */
+/** Un onglet par domaine de contenu — dernière vague ajoutée en 24.7 (zones/installations). */
 const CONTENT_TABS = [
   { value: "warships", label: "Vaisseaux de guerre" },
   { value: "factions", label: "Factions" },
@@ -13,6 +13,8 @@ const CONTENT_TABS = [
   { value: "modules", label: "Modules" },
   { value: "presets", label: "Plans pré-conçus" },
   { value: "milestones", label: "Jalons" },
+  { value: "zone-types", label: "Types de zone" },
+  { value: "installations", label: "Installations" },
 ];
 
 /** Sous-navigation du CMS de contenu (chantier 23.6) — même patron que les onglets

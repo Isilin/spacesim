@@ -8,12 +8,14 @@ import { ContentLayout } from "./content/ContentLayout.js";
 import { ChassisView } from "./content/ChassisView.js";
 import { ConstantsView } from "./content/ConstantsView.js";
 import { FactionsView } from "./content/FactionsView.js";
+import { InstallationsView } from "./content/InstallationsView.js";
 import { MilestonesView } from "./content/MilestonesView.js";
 import { ModulesView } from "./content/ModulesView.js";
 import { PresetsView } from "./content/PresetsView.js";
 import { ShipsView } from "./content/ShipsView.js";
 import { TechsView } from "./content/TechsView.js";
 import { WarshipsView } from "./content/WarshipsView.js";
+import { ZoneTypesView } from "./content/ZoneTypesView.js";
 import { OpsView } from "./OpsView.js";
 import type { AdminAuth } from "./useAdminAuth.js";
 
@@ -66,6 +68,8 @@ export function App({ auth }: Props) {
             <Route path="modules" element={<ModulesView token={auth.token!} />} />
             <Route path="presets" element={<PresetsView token={auth.token!} />} />
             <Route path="milestones" element={<MilestonesView token={auth.token!} />} />
+            <Route path="zone-types" element={<ZoneTypesView token={auth.token!} />} />
+            <Route path="installations" element={<InstallationsView token={auth.token!} />} />
           </Route>
           <Route path="/ops" element={<OpsView token={auth.token!} />} />
           <Route path="/audit" element={<AuditLogView token={auth.token!} />} />
