@@ -1,22 +1,37 @@
 import {
+  hasBlueprintMarket,
+  hasResourceMarket,
+  MARKET_RESOURCES,
   redactUniverse,
   relationKey,
   type ForeignColony,
   type ForeignFleet,
   type ForeignStation,
   type LeaderboardEntry,
+  type MarketResource,
   type Objective,
   type PirateLair,
   type Relation,
   type RelationProposal,
   type RelationState,
+  type ResourceId,
+  type Station,
   type TradingPostMarket,
   type Territory,
   type Universe,
 } from "@spacesim/shared";
 import type { EmpireSnapshot } from "@spacesim/protocol";
 import type { Empire } from "../empire.js";
+import { installationDefsFromContent } from "./content/content-service.js";
 import type { GameRuntime } from "./game-runtime.js";
+
+/** Stock d'une station restreint aux ressources échangeables (chantier 25) — jamais le
+ *  reste (matériaux de construction du propriétaire, non exposés à un visiteur). */
+function tradableStocksOf(station: Station): Partial<Record<ResourceId, number>> {
+  const stocks: Partial<Record<MarketResource, number>> = {};
+  for (const res of MARKET_RESOURCES) stocks[res] = station.resources[res];
+  return stocks;
+}
 
 /**
  * Vues en lecture seule d'un `GameRuntime`, redactées au brouillard d'un empire. Aucune
@@ -163,6 +178,7 @@ export function foreignPresenceForEmpire(
   const foreignFleets: ForeignFleet[] = [];
   const foreignColonies: ForeignColony[] = [];
   const foreignStations: ForeignStation[] = [];
+  const installations = installationDefsFromContent(runtime.content.installations);
   for (const other of runtime.empires.values()) {
     if (other.id === empire.id) continue;
     for (const fleet of other.fleetMap.values()) {
@@ -192,6 +208,8 @@ export function foreignPresenceForEmpire(
     }
     for (const station of other.stationMap.values()) {
       if (!empire.explored.has(station.systemId)) continue;
+      const resourceMarket = hasResourceMarket(station, installations);
+      const blueprintMarket = hasBlueprintMarket(station, installations);
       foreignStations.push({
         id: station.id,
         ownerId: other.id,
@@ -200,6 +218,15 @@ export function foreignPresenceForEmpire(
         name: station.name,
         systemId: station.systemId,
         bodyId: station.bodyId,
+        ...((resourceMarket || blueprintMarket) && {
+          market: {
+            hasResourceMarket: resourceMarket,
+            hasBlueprintMarket: blueprintMarket,
+            access: station.marketAccess,
+            taxRate: station.marketTaxRate,
+            tradableStocks: tradableStocksOf(station),
+          },
+        }),
       });
     }
   }

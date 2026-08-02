@@ -40,6 +40,9 @@ function twoEmpireFixture() {
   runtime.empires.set(a.id, a);
   runtime.empires.set(b.id, b);
   runtime.defaultEmpire = a;
+  // `foreignPresenceForEmpire` lit runtime.content.installations (chantier 25) — seul
+  // champ exercé par ces tests, le reste n'a pas besoin d'être un ContentBundle valide.
+  runtime.content = { installations: {} } as GameRuntime["content"];
 
   const colonyA = {
     id: "colony-a",
@@ -72,7 +75,23 @@ function twoEmpireFixture() {
   };
   b.fleetMap.set(fleetB.id, fleetB);
 
-  return { runtime, a, b, systemA, systemB };
+  const stationB = {
+    id: "station-b",
+    ownerId: b.id,
+    bodyId: planetB,
+    systemId: systemB,
+    name: "Station B",
+    resources: emptyResources(),
+    zones: { commercial_zone: 1 },
+    zoneQueue: [],
+    installations: {},
+    installQueue: [],
+    marketAccess: "closed" as const,
+    marketTaxRate: 0,
+  };
+  b.stationMap.set(stationB.id, stationB);
+
+  return { runtime, a, b, systemA, systemB, stationB };
 }
 
 describe("projections — isolation multi-empire", () => {
@@ -125,6 +144,64 @@ describe("projections — isolation multi-empire", () => {
     // b, symétriquement, ne voit jamais sa propre flotte listée comme étrangère.
     const forB = foreignPresenceForEmpire(runtime, b);
     expect(forB.foreignFleets).toHaveLength(0);
+  });
+
+  it("foreignStations : sans installation de marché, aucun champ market (non-fuite, chantier 25)", () => {
+    const { runtime, a, systemB } = twoEmpireFixture();
+    a.explored.add(systemB);
+    const { foreignStations } = foreignPresenceForEmpire(runtime, a);
+    expect(foreignStations).toHaveLength(1);
+    expect(foreignStations[0]!.market).toBeUndefined();
+    expect(Object.keys(foreignStations[0]!)).toEqual([
+      "id",
+      "ownerId",
+      "ownerName",
+      "ownerColor",
+      "name",
+      "systemId",
+      "bodyId",
+    ]);
+  });
+
+  it("foreignStations : une installation de marché expose le stock échangeable, jamais le reste", () => {
+    const { runtime, a, b, systemB, stationB } = twoEmpireFixture();
+    a.explored.add(systemB);
+    runtime.content = {
+      ...runtime.content,
+      installations: {
+        orbital_trade_exchange: {
+          id: "orbital_trade_exchange",
+          nameFr: "Comptoir",
+          descriptionFr: "",
+          zoneType: "commercial_zone",
+          cost: {},
+          buildMs: 1000,
+          inputs: null,
+          outputs: null,
+          requiresTech: null,
+          grants: "resourceMarket",
+        },
+      },
+    } as GameRuntime["content"];
+    b.stationMap.set(stationB.id, {
+      ...stationB,
+      installations: { orbital_trade_exchange: 1 },
+      marketAccess: "public",
+      marketTaxRate: 0.05,
+      resources: { ...stationB.resources, metals: 42, credits: 7 },
+    });
+
+    const { foreignStations } = foreignPresenceForEmpire(runtime, a);
+    const market = foreignStations[0]!.market!;
+    expect(market.hasResourceMarket).toBe(true);
+    expect(market.hasBlueprintMarket).toBe(false);
+    expect(market.access).toBe("public");
+    expect(market.taxRate).toBe(0.05);
+    expect(market.tradableStocks.metals).toBe(42);
+    // Jamais les ressources hors marché (crédits/science) — même stock que la vraie
+    // Station derrière, mais réduit aux MARKET_RESOURCES.
+    expect(market.tradableStocks.credits).toBeUndefined();
+    expect(market.tradableStocks.science).toBeUndefined();
   });
 
   it("leaderboardForEmpire classe tous les empires, y compris ceux non explorés par le viewer", () => {
