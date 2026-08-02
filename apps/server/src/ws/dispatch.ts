@@ -116,27 +116,49 @@ export function dispatchClientMessage(
         msg.fleetId,
       );
     case "buyBlueprint":
-      return engine.industry.buyBlueprintFromTradingPost(
-        empire,
-        msg.colonyId,
-        msg.venueId,
-        msg.presetId,
-      );
+      return msg.venueKind === "station"
+        ? engine.industry.buyBlueprintFromStation(
+            empire,
+            msg.colonyId,
+            msg.venueId,
+            msg.presetId,
+          )
+        : engine.industry.buyBlueprintFromTradingPost(
+            empire,
+            msg.colonyId,
+            msg.venueId,
+            msg.presetId,
+          );
     case "sellBlueprint":
-      return engine.industry.sellBlueprint(
-        empire,
-        msg.colonyId,
-        msg.venueId,
-        msg.blueprintId,
-      );
+      return msg.venueKind === "station"
+        ? engine.industry.sellBlueprintToStation(
+            empire,
+            msg.colonyId,
+            msg.venueId,
+            msg.blueprintId,
+          )
+        : engine.industry.sellBlueprint(
+            empire,
+            msg.colonyId,
+            msg.venueId,
+            msg.blueprintId,
+          );
     case "sellShip":
-      return engine.industry.sellShip(
-        empire,
-        msg.colonyId,
-        msg.venueId,
-        msg.shipId,
-        msg.count,
-      );
+      return msg.venueKind === "station"
+        ? engine.industry.sellShipToStation(
+            empire,
+            msg.colonyId,
+            msg.venueId,
+            msg.shipId,
+            msg.count,
+          )
+        : engine.industry.sellShip(
+            empire,
+            msg.colonyId,
+            msg.venueId,
+            msg.shipId,
+            msg.count,
+          );
     case "buildOutpost":
       return engine.logistics.buildOutpost(empire, msg.colonyId, msg.beltId);
     case "createRoute":

@@ -61,8 +61,17 @@ export function composeEngine(
   let bootstrap: BootstrapService;
   let station: StationService;
 
-  const industry = new IndustryService(runtime, notify, logger, (fleet) =>
-    fleetService.persistFleet(fleet),
+  const industry = new IndustryService(
+    runtime,
+    notify,
+    logger,
+    (fleet) => fleetService.persistFleet(fleet),
+    {
+      resolveTradeAccess: (empire, fromColonyId, stationId) =>
+        station.resolveTradeAccess(empire, fromColonyId, stationId),
+      applyStationTrade: (stationId, creditDelta) =>
+        station.applyStationTrade(stationId, creditDelta),
+    },
   );
   gateway = new GatewayService(
     runtime,

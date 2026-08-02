@@ -49,6 +49,7 @@ import type { Logger } from "../logger.js";
 import { BlueprintRepository } from "../repositories/blueprint-repository.js";
 import { ColonyRepository } from "../repositories/colony-repository.js";
 import { PlayerRepository } from "../repositories/player-repository.js";
+import type { StationTradeAccess } from "./station-service.js";
 
 const MAX_BLUEPRINTS = 40;
 
@@ -68,6 +69,14 @@ export class IndustryService {
     private readonly notify: () => void,
     private readonly logger: Logger,
     private readonly persistFleet: (fleet: Fleet) => void,
+    private readonly station: {
+      resolveTradeAccess: (
+        empire: Empire,
+        fromColonyId: string,
+        stationId: string,
+      ) => StationTradeAccess;
+      applyStationTrade: (stationId: string, creditDelta: number) => number;
+    },
   ) {
     this.blueprintRepo = new BlueprintRepository(
       runtime.clock.id,
@@ -481,6 +490,146 @@ export class IndustryService {
       resources: {
         ...colony.resources,
         credits: colony.resources.credits + price,
+      },
+    });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
+    this.notify();
+    return null;
+  }
+
+  // ── Marché de station (chantier 25) ──────────────────────────────────────
+
+  /** Mirroir exact de `buyBlueprintFromTradingPost`, la validation d'accès en plus
+   *  (`station.resolveTradeAccess`, callback injecté). Instantané, comme au comptoir —
+   *  contrairement au commerce de ressources, jamais un convoi. */
+  buyBlueprintFromStation(
+    empire: Empire,
+    colonyId: string,
+    stationId: string,
+    presetId: string,
+  ): string | null {
+    if (empire.blueprintMap.size >= MAX_BLUEPRINTS)
+      return "Trop de plans enregistrés";
+    const access = this.station.resolveTradeAccess(empire, colonyId, stationId);
+    if (!access.ok) return access.reason;
+    if (!access.hasBlueprintMarket) {
+      return "Cette station n'a pas de marché de plans";
+    }
+    const colony = empire.colonyMap.get(colonyId)!;
+    const preset = this.runtime.content.presets[presetId];
+    if (!preset) return "Plan inconnu au catalogue";
+
+    const price = Math.round(
+      costValue(
+        resolveBlueprint(preset, this.chassisDefs, this.moduleDefs).cost,
+      ) * BLUEPRINT_BUY_MARKUP,
+    );
+    if (colony.resources.credits < price)
+      return `Crédits insuffisants (${price})`;
+
+    const bp: Blueprint = {
+      id: randomUUID(),
+      ownerId: empire.id,
+      name: preset.nameFr,
+      chassisId: preset.chassisId,
+      modules: [...preset.modules],
+      createdAt: Date.now(),
+    };
+    empire.blueprintMap.set(bp.id, bp);
+    this.persistBlueprint(bp);
+    empire.colonyMap.set(colony.id, {
+      ...colony,
+      resources: {
+        ...colony.resources,
+        credits: colony.resources.credits - price,
+      },
+    });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
+    // Le prix payé rejoint le stock de la station — c'est elle qui a « vendu ».
+    this.station.applyStationTrade(stationId, price);
+    this.notify();
+    return null;
+  }
+
+  /** Mirroir de `sellBlueprint`, mais le paiement est plafonné aux crédits réellement
+   *  disponibles côté station (`applyStationTrade` — liquidité émergente, une station
+   *  à court de fonds paie moins que le prix affiché). */
+  sellBlueprintToStation(
+    empire: Empire,
+    colonyId: string,
+    stationId: string,
+    blueprintId: string,
+  ): string | null {
+    const access = this.station.resolveTradeAccess(empire, colonyId, stationId);
+    if (!access.ok) return access.reason;
+    if (!access.hasBlueprintMarket) {
+      return "Cette station n'a pas de marché de plans";
+    }
+    const colony = empire.colonyMap.get(colonyId)!;
+    const bp = empire.blueprintMap.get(blueprintId);
+    if (!bp) return "Plan inconnu";
+
+    const price = Math.round(
+      costValue(resolveBlueprint(bp, this.chassisDefs, this.moduleDefs).cost) *
+        BLUEPRINT_SELL_FRACTION,
+    );
+    const paid = Math.abs(this.station.applyStationTrade(stationId, -price));
+    empire.blueprintMap.delete(blueprintId);
+    this.blueprintRepo.remove(blueprintId);
+    empire.colonyMap.set(colony.id, {
+      ...colony,
+      resources: {
+        ...colony.resources,
+        credits: colony.resources.credits + paid,
+      },
+    });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
+    this.notify();
+    return null;
+  }
+
+  /** Mirroir de `sellShip`, même plafonnement que `sellBlueprintToStation`. */
+  sellShipToStation(
+    empire: Empire,
+    colonyId: string,
+    stationId: string,
+    shipId: string,
+    countRaw: number,
+  ): string | null {
+    const access = this.station.resolveTradeAccess(empire, colonyId, stationId);
+    if (!access.ok) return access.reason;
+    if (!access.hasBlueprintMarket) {
+      return "Cette station n'a pas de marché de plans";
+    }
+    const colony = empire.colonyMap.get(colonyId)!;
+    const count = Math.floor(Number(countRaw));
+    if (!Number.isFinite(count) || count <= 0) return "Quantité invalide";
+
+    const idle = idleShips(colony, [...empire.routeMap.values()]);
+    if ((idle[shipId] ?? 0) < count)
+      return "Vaisseaux indisponibles (occupés ou insuffisants)";
+
+    const legacyDef = shipDefsFromContent(this.runtime.content.ships)[shipId];
+    const bp = empire.blueprintMap.get(shipId);
+    const cost =
+      legacyDef?.cost ??
+      (bp
+        ? resolveBlueprint(bp, this.chassisDefs, this.moduleDefs).cost
+        : null);
+    if (!cost) return "Vaisseau inconnu";
+
+    const price = Math.round(costValue(cost) * BLUEPRINT_SELL_FRACTION) * count;
+    const paid = Math.abs(this.station.applyStationTrade(stationId, -price));
+    const ships = {
+      ...colony.ships,
+      [shipId]: (colony.ships[shipId] ?? 0) - count,
+    };
+    empire.colonyMap.set(colony.id, {
+      ...colony,
+      ships,
+      resources: {
+        ...colony.resources,
+        credits: colony.resources.credits + paid,
       },
     });
     this.persistColony(empire.colonyMap.get(colony.id)!);

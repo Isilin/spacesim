@@ -474,4 +474,131 @@ describe("GameEngine — marché de station (chantier 25)", () => {
       engine.station.sellToStation(alice, colony.id, stationId, { metals: 50 }),
     ).toBeNull();
   });
+
+  /** Fonde une station pour `alice`, construit la zone commerciale et la maison de
+   *  courtage (`orbital_brokerage_house` — tech séparée et plus profonde que le
+   *  comptoir de ressources) ; ouvre le marché de plans/vaisseaux au public. */
+  function foundBrokerageStation(
+    engine: GameEngine,
+    alice: ReturnType<typeof empireFor>,
+  ): string {
+    unlockTech(engine, alice, "orbital_brokerage"); // chaîne via orbital_commerce
+    engine.devGrant({ metals: 3000, components: 1500, credits: 3000 });
+
+    const colonyBefore = homeColony(engine, alice);
+    const body = uncolonizedBody(engine, alice);
+    expect(
+      engine.station.foundStation(alice, colonyBefore.id, body.id),
+    ).toBeNull();
+    advanceTicks(engine, 1000);
+    const stationId = [...alice.stationMap.keys()][0]!;
+
+    const colony = alice.colonyMap.get(colonyBefore.id)!;
+    alice.colonyMap.set(colonyBefore.id, {
+      ...colony,
+      orbitalResources: {
+        ...colony.orbitalResources,
+        metals: 1000,
+        components: 500,
+        credits: 500,
+        energy: 500,
+      },
+    });
+    // Zone (180/90) + orbital_brokerage_house (200/130) = 380/220, plus des crédits
+    // pour que la station puisse payer une revente.
+    const batches: Partial<Record<"metals" | "components" | "credits", number>>[] = [
+      { metals: 180, components: 20 },
+      { metals: 200 },
+      { components: 200 },
+      { credits: 200 },
+      { credits: 100 },
+    ];
+    for (const cargo of batches) {
+      expect(
+        engine.logistics.sendTransfer(
+          alice,
+          colonyBefore.id,
+          stationId,
+          "station",
+          cargo,
+        ),
+      ).toBeNull();
+      advanceTicks(engine, 200);
+    }
+
+    expect(
+      engine.station.buildZone(alice, stationId, "commercial_zone"),
+    ).toBeNull();
+    advanceTicks(engine, 100);
+    expect(
+      engine.station.buildInstallation(alice, stationId, "orbital_brokerage_house"),
+    ).toBeNull();
+    advanceTicks(engine, 100);
+    expect(
+      alice.stationMap.get(stationId)!.installations.orbital_brokerage_house,
+    ).toBe(1);
+
+    expect(
+      engine.station.setMarketPolicy(alice, stationId, "public", 0),
+    ).toBeNull();
+    return stationId;
+  }
+
+  it("achète un plan au catalogue et en revend un à une station (chantier 25)", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
+    const alice = empireFor(engine, "alice");
+    const stationId = foundBrokerageStation(engine, alice);
+
+    const bob = empireFor(engine, "bob");
+    engine.exploration.markExplored(bob, alice.stationMap.get(stationId)!.systemId);
+    const bobColony = homeColony(engine, bob);
+    const bc = bob.colonyMap.get(bobColony.id)!;
+    bob.colonyMap.set(bobColony.id, {
+      ...bc,
+      resources: { ...bc.resources, credits: 5000 },
+    });
+    const bobBlueprintsBefore = bob.blueprintMap.size;
+
+    // Achat au catalogue — instantané, pas de convoi.
+    expect(
+      engine.industry.buyBlueprintFromStation(bob, bobColony.id, stationId, "cruiser_mk1"),
+    ).toBeNull();
+    expect(bob.blueprintMap.size).toBe(bobBlueprintsBefore + 1);
+    const stationCreditsAfterBuy = alice.stationMap.get(stationId)!.resources.credits;
+    expect(stationCreditsAfterBuy).toBeGreaterThan(0);
+
+    // Revente d'un plan possédé — crédité, plafonné aux fonds de la station.
+    const plan = [...bob.blueprintMap.values()][0]!;
+    const bobCreditsBeforeSell = bob.colonyMap.get(bobColony.id)!.resources.credits;
+    expect(
+      engine.industry.sellBlueprintToStation(bob, bobColony.id, stationId, plan.id),
+    ).toBeNull();
+    expect(bob.blueprintMap.has(plan.id)).toBe(false);
+    const bobAfterSell = bob.colonyMap.get(bobColony.id)!;
+    expect(bobAfterSell.resources.credits).toBeGreaterThan(bobCreditsBeforeSell);
+    expect(alice.stationMap.get(stationId)!.resources.credits).toBeLessThan(
+      stationCreditsAfterBuy,
+    );
+  });
+
+  it("refuse le marché de plans à une station qui n'a que le marché de ressources", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
+    const alice = empireFor(engine, "alice");
+    const stationId = foundCommercialStation(engine, alice);
+    expect(
+      engine.station.setMarketPolicy(alice, stationId, "public", 0),
+    ).toBeNull();
+
+    const bob = empireFor(engine, "bob");
+    engine.exploration.markExplored(bob, alice.stationMap.get(stationId)!.systemId);
+    const bobColony = homeColony(engine, bob);
+    bob.colonyMap.set(bobColony.id, {
+      ...bob.colonyMap.get(bobColony.id)!,
+      resources: { ...bob.colonyMap.get(bobColony.id)!.resources, credits: 5000 },
+    });
+
+    expect(
+      engine.industry.buyBlueprintFromStation(bob, bobColony.id, stationId, "cruiser_mk1"),
+    ).toMatch(/marché de plans/);
+  });
 });
