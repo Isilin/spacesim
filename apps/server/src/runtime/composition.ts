@@ -148,8 +148,14 @@ export function composeEngine(
         market.addFactionRep(empire, tradingPostId, creditsExchanged),
     },
     (g) => gateway.persistGateway(g),
-    (empire, newStation) => station.insertStation(empire, newStation),
-    (s) => station.persistStation(s),
+    {
+      insertStation: (empire, newStation) => station.insertStation(empire, newStation),
+      persistStation: (s) => station.persistStation(s),
+      resolveStationSaleAt: (stationId, cargo) =>
+        station.resolveStationSaleAt(stationId, cargo),
+      resolveStationPurchaseAt: (stationId, resource, budget, capacity) =>
+        station.resolveStationPurchaseAt(stationId, resource, budget, capacity),
+    },
   );
   exploration = new ExplorationService(
     runtime,
@@ -180,8 +186,17 @@ export function composeEngine(
     notify,
     logger,
     (colony) => industry.persistColony(colony),
-    (empire, kind, fromColonyId, targetId, durationMs) =>
-      logistics.insertMission(empire, kind, fromColonyId, targetId, durationMs),
+    (empire, colony, busyUntil) =>
+      logistics.reserveShip(empire, colony, busyUntil),
+    (empire, kind, fromColonyId, targetId, durationMs, extras) =>
+      logistics.insertMission(
+        empire,
+        kind,
+        fromColonyId,
+        targetId,
+        durationMs,
+        extras,
+      ),
   );
   bootstrap = new BootstrapService(
     runtime,

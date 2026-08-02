@@ -65,6 +65,12 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     stationId: idSchema,
     installationId: idSchema,
   }),
+  z.object({
+    type: z.literal("setStationMarketPolicy"),
+    stationId: idSchema,
+    marketAccess: z.enum(["closed", "alliance", "nap", "public"]),
+    taxRate: z.number().min(0).max(1),
+  }),
   z.object({ type: z.literal("research"), techId: idSchema }),
   z.object({ type: z.literal("queueResearch"), techId: idSchema }),
   z.object({ type: z.literal("clearResearchQueue") }),

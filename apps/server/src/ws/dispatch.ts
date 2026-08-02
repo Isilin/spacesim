@@ -39,6 +39,13 @@ export function dispatchClientMessage(
         msg.stationId,
         msg.installationId,
       );
+    case "setStationMarketPolicy":
+      return engine.station.setMarketPolicy(
+        empire,
+        msg.stationId,
+        msg.marketAccess,
+        msg.taxRate,
+      );
     case "research":
       return engine.industry.startResearch(empire, msg.techId);
     case "queueResearch":
@@ -53,20 +60,35 @@ export function dispatchClientMessage(
         msg.rule,
       );
     case "sell":
-      return engine.market.sellToTradingPost(
-        empire,
-        msg.colonyId,
-        msg.venueId,
-        msg.resources,
-      );
+      return msg.venueKind === "station"
+        ? engine.station.sellToStation(
+            empire,
+            msg.colonyId,
+            msg.venueId,
+            msg.resources,
+          )
+        : engine.market.sellToTradingPost(
+            empire,
+            msg.colonyId,
+            msg.venueId,
+            msg.resources,
+          );
     case "buy":
-      return engine.market.buyFromTradingPost(
-        empire,
-        msg.colonyId,
-        msg.venueId,
-        msg.resource,
-        msg.budget,
-      );
+      return msg.venueKind === "station"
+        ? engine.station.buyFromStation(
+            empire,
+            msg.colonyId,
+            msg.venueId,
+            msg.resource,
+            msg.budget,
+          )
+        : engine.market.buyFromTradingPost(
+            empire,
+            msg.colonyId,
+            msg.venueId,
+            msg.resource,
+            msg.budget,
+          );
     case "buildShip":
       return engine.industry.buildShip(empire, msg.colonyId, msg.shipId);
     case "createBlueprint":

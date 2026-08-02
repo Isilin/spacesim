@@ -96,8 +96,20 @@ export class LogisticsService {
       ) => void;
     },
     private readonly persistGateway: (gateway: Gateway) => void,
-    private readonly insertStation: (empire: Empire, station: Station) => void,
-    private readonly persistStation: (station: Station) => void,
+    private readonly station: {
+      insertStation: (empire: Empire, station: Station) => void;
+      persistStation: (station: Station) => void;
+      resolveStationSaleAt: (
+        stationId: string,
+        cargo: Partial<Record<ResourceId, number>>,
+      ) => { revenue: number } | null;
+      resolveStationPurchaseAt: (
+        stationId: string,
+        resource: MarketResource,
+        budget: number,
+        capacity: number,
+      ) => { bought: number; spent: number } | null;
+    },
   ) {
     this.repo = new LogisticsRepository(runtime.clock.id, runtime.writeSet);
   }
@@ -769,7 +781,7 @@ export class LogisticsService {
     durationMs: number,
     extras: Pick<
       Mission,
-      "cargo" | "budget" | "buyResource" | "capacity" | "contractId"
+      "cargo" | "budget" | "buyResource" | "capacity" | "contractId" | "venueKind"
     > = {},
     departedAt = Date.now(),
   ): void {
@@ -833,7 +845,7 @@ export class LogisticsService {
             (s) => s.bodyId === mission.targetId,
           );
           if (body && !alreadyFounded) {
-            this.insertStation(empire, {
+            this.station.insertStation(empire, {
               id: randomUUID(),
               ownerId: empire.id,
               bodyId: body.id,
@@ -855,16 +867,24 @@ export class LogisticsService {
         }
         case "sell": {
           const colony = empire.colonyMap.get(mission.fromColonyId);
+          const toStation = mission.venueKind === "station";
           const result = mission.cargo
-            ? this.market.resolveSaleAt(mission.targetId, mission.cargo)
+            ? toStation
+              ? this.station.resolveStationSaleAt(mission.targetId, mission.cargo)
+              : this.market.resolveSaleAt(mission.targetId, mission.cargo)
             : null;
           if (result && colony) {
-            // Bonus de réputation : la faction paie mieux ses partenaires.
-            const revenue = Math.floor(
-              result.revenue *
-                (1 + this.market.tradingPostRepBonus(empire, mission.targetId)),
-            );
-            this.market.addFactionRep(empire, mission.targetId, result.revenue);
+            // Bonus de réputation : la faction paie mieux ses partenaires — aucune
+            // faction côté station, donc aucun bonus/rep sur cette branche.
+            const revenue = toStation
+              ? result.revenue
+              : Math.floor(
+                  result.revenue *
+                    (1 + this.market.tradingPostRepBonus(empire, mission.targetId)),
+                );
+            if (!toStation) {
+              this.market.addFactionRep(empire, mission.targetId, result.revenue);
+            }
             const resources = {
               ...colony.resources,
               credits: colony.resources.credits + revenue,
@@ -876,19 +896,32 @@ export class LogisticsService {
         }
         case "buy": {
           if (mission.buyResource && mission.budget) {
-            const result = this.market.resolvePurchaseAt(
-              mission.targetId,
-              mission.buyResource as MarketResource,
-              mission.budget,
-              mission.capacity ?? Infinity,
-            );
+            const toStation = mission.venueKind === "station";
+            const result = toStation
+              ? this.station.resolveStationPurchaseAt(
+                  mission.targetId,
+                  mission.buyResource as MarketResource,
+                  mission.budget,
+                  mission.capacity ?? Infinity,
+                )
+              : this.market.resolvePurchaseAt(
+                  mission.targetId,
+                  mission.buyResource as MarketResource,
+                  mission.budget,
+                  mission.capacity ?? Infinity,
+                );
             if (result) {
-              // Remise de réputation : une part du prix payé est restituée.
-              const rebate = Math.floor(
-                result.spent *
-                  this.market.tradingPostRepBonus(empire, mission.targetId),
-              );
-              this.market.addFactionRep(empire, mission.targetId, result.spent);
+              // Remise de réputation : une part du prix payé est restituée — aucune
+              // faction côté station, donc aucune remise sur cette branche.
+              const rebate = toStation
+                ? 0
+                : Math.floor(
+                    result.spent *
+                      this.market.tradingPostRepBonus(empire, mission.targetId),
+                  );
+              if (!toStation) {
+                this.market.addFactionRep(empire, mission.targetId, result.spent);
+              }
               // Trajet retour, chargé + reliquat de budget (et remise) à rembourser.
               this.insertMission(
                 empire,
