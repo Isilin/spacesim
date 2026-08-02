@@ -20,7 +20,8 @@ export function dispatchClientMessage(
       return engine.logistics.sendTransfer(
         empire,
         msg.fromColonyId,
-        msg.toColonyId,
+        msg.toId,
+        msg.toKind ?? "colony",
         msg.resources,
         msg.ships,
       );

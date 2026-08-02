@@ -90,32 +90,114 @@ describe("GameEngine — stations orbitales (chantier 24)", () => {
     expect(station.ownerId).toBe(empire.id);
   });
 
+  it("transfère des ressources vers une station via un convoi (chantier 24.6)", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
+    const empire = empireFor(engine, "alice");
+    unlockOrbitalEngineering(engine, empire);
+    engine.devGrant({ metals: 1000, components: 500, credits: 1000 });
+
+    const colonyBefore = homeColony(engine, empire);
+    const body = uncolonizedBody(engine, empire);
+    expect(
+      engine.station.foundStation(empire, colonyBefore.id, body.id),
+    ).toBeNull();
+    advanceTicks(engine, 1000);
+    const stationId = [...empire.stationMap.keys()][0]!;
+
+    // Le convoi ne charge (cargaison et carburant) qu'EN ORBITE (chantier 12) : on
+    // crédite ce stock directement pour isoler le transfert du reste de la chaîne de
+    // production/ascenseur.
+    const colony = empire.colonyMap.get(colonyBefore.id)!;
+    empire.colonyMap.set(colonyBefore.id, {
+      ...colony,
+      orbitalResources: {
+        ...colony.orbitalResources,
+        metals: 500,
+        energy: 200,
+      },
+    });
+
+    expect(
+      engine.logistics.sendTransfer(
+        empire,
+        colonyBefore.id,
+        stationId,
+        "station",
+        {
+          metals: 200,
+        },
+      ),
+    ).toBeNull();
+    expect(empire.transferMap.size).toBe(1);
+    // Le convoi n'est pas encore arrivé : rien n'a encore été livré.
+    expect(empire.stationMap.get(stationId)!.resources.metals).toBe(0);
+
+    advanceTicks(engine, 200);
+    expect(empire.transferMap.size).toBe(0);
+    expect(
+      empire.stationMap.get(stationId)!.resources.metals,
+    ).toBeGreaterThanOrEqual(200);
+  });
+
   it("construit une zone puis une installation, et la production tourne au tick", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = empireFor(engine, "alice");
     unlockOrbitalEngineering(engine, empire);
     engine.devGrant({ metals: 1000, components: 500, credits: 1000 });
 
-    const colony = homeColony(engine, empire);
+    const colonyBefore = homeColony(engine, empire);
     const body = uncolonizedBody(engine, empire);
-    expect(engine.station.foundStation(empire, colony.id, body.id)).toBeNull();
+    expect(
+      engine.station.foundStation(empire, colonyBefore.id, body.id),
+    ).toBeNull();
     advanceTicks(engine, 1000);
     const stationId = [...empire.stationMap.keys()][0]!;
 
-    // Le transfert ponctuel vers une station (chantier 24.6) n'existe pas encore : on
-    // crédite directement le stock pour isoler la construction de zones/installations
-    // de son mode d'approvisionnement.
-    const station = empire.stationMap.get(stationId)!;
-    empire.stationMap.set(stationId, {
-      ...station,
-      resources: {
-        ...station.resources,
+    // Approvisionne la station via deux convois successifs (chantier 24.6) plutôt
+    // qu'en injectant directement des ressources : exerce le même chemin qu'un joueur
+    // réel. Deux voyages car la soute des 2 cargos de départ (200) ne couvre pas en un
+    // coup le besoin cumulé de la zone (150 métaux, 60 composants) et de l'installation
+    // (80 métaux).
+    const colony = empire.colonyMap.get(colonyBefore.id)!;
+    empire.colonyMap.set(colonyBefore.id, {
+      ...colony,
+      orbitalResources: {
+        ...colony.orbitalResources,
         metals: 1000,
         components: 500,
-        ore: 500,
         energy: 500,
       },
     });
+    expect(
+      engine.logistics.sendTransfer(
+        empire,
+        colonyBefore.id,
+        stationId,
+        "station",
+        {
+          metals: 150,
+          components: 50,
+        },
+      ),
+    ).toBeNull();
+    // Fait revenir les cargos (libérés à l'arrivée) avant le second voyage.
+    advanceTicks(engine, 200);
+    expect(
+      engine.logistics.sendTransfer(
+        empire,
+        colonyBefore.id,
+        stationId,
+        "station",
+        {
+          metals: 80,
+          components: 10,
+        },
+      ),
+    ).toBeNull();
+    advanceTicks(engine, 200);
+    expect(
+      empire.stationMap.get(stationId)!.resources.metals,
+    ).toBeGreaterThanOrEqual(230);
 
     expect(
       engine.station.buildZone(empire, stationId, "industrial_zone"),

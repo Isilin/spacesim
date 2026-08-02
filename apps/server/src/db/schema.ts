@@ -509,11 +509,15 @@ export const contracts = pgTable("contracts", {
   status: text("status").notNull().default("open"),
 });
 
+/** `toId` reste polymorphe (colonie ou station selon `toKind`, chantier 24) — pas de FK,
+ *  même convention que `routes.to_id`/`to_kind`. `fromColonyId` reste toujours une
+ *  colonie : c'est elle qui possède les vaisseaux. */
 export const transfers = pgTable("transfers", {
   id: text("id").primaryKey(),
   gameId: text("game_id").notNull(),
   fromColonyId: text("from_colony_id").notNull(),
-  toColonyId: text("to_colony_id").notNull(),
+  toId: text("to_id").notNull(),
+  toKind: text("to_kind").notNull().default("colony"),
   resources: text("resources").notNull(),
   departedAt: bigint("departed_at", { mode: "number" }).notNull(),
   arrivesAt: bigint("arrives_at", { mode: "number" }).notNull(),

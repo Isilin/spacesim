@@ -1,4 +1,10 @@
-import type { MiningOutpost, Mission, ResourceId, Route, Transfer } from "@spacesim/shared";
+import type {
+  MiningOutpost,
+  Mission,
+  ResourceId,
+  Route,
+  Transfer,
+} from "@spacesim/shared";
 import { db, schema } from "../../db/index.js";
 import type { WriteSet } from "../persistence/write-set.js";
 
@@ -18,7 +24,8 @@ export class LogisticsRepository {
     return (await db.select().from(schema.transfers)).map((row) => ({
       id: row.id,
       fromColonyId: row.fromColonyId,
-      toColonyId: row.toColonyId,
+      toId: row.toId,
+      toKind: row.toKind as Transfer["toKind"],
       resources: JSON.parse(row.resources),
       departedAt: row.departedAt,
       arrivesAt: row.arrivesAt,
@@ -30,7 +37,8 @@ export class LogisticsRepository {
       id: transfer.id,
       gameId: this.gameId,
       fromColonyId: transfer.fromColonyId,
-      toColonyId: transfer.toColonyId,
+      toId: transfer.toId,
+      toKind: transfer.toKind,
       resources: JSON.stringify(transfer.resources),
       departedAt: transfer.departedAt,
       arrivesAt: transfer.arrivesAt,
@@ -62,7 +70,9 @@ export class LogisticsRepository {
       arrivesAt: row.arrivesAt,
       ...(row.cargo ? { cargo: JSON.parse(row.cargo) } : {}),
       ...(row.budget !== null ? { budget: row.budget } : {}),
-      ...(row.buyResource ? { buyResource: row.buyResource as ResourceId } : {}),
+      ...(row.buyResource
+        ? { buyResource: row.buyResource as ResourceId }
+        : {}),
       ...(row.capacity !== null ? { capacity: row.capacity } : {}),
       ...(row.contractId ? { contractId: row.contractId } : {}),
     }));
@@ -161,7 +171,11 @@ export class LogisticsRepository {
   }
 
   insertOutpost(outpost: MiningOutpost): void {
-    this.writeSet.upsert("outposts", outpost.id, this.outpostRow(outpost, Date.now()));
+    this.writeSet.upsert(
+      "outposts",
+      outpost.id,
+      this.outpostRow(outpost, Date.now()),
+    );
   }
 
   saveOutpostStock(outpost: MiningOutpost): void {

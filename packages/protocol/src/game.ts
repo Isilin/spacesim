@@ -32,7 +32,8 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("transfer"),
     fromColonyId: idSchema,
-    toColonyId: idSchema,
+    toId: idSchema,
+    toKind: z.enum(["colony", "station"]).optional(),
     resources: resourcesSchema,
     ships: shipsSchema.optional(),
   }),

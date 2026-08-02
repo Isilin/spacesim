@@ -4,8 +4,11 @@ import { ClientMessageSchema } from "./game.js";
 describe("ClientMessageSchema", () => {
   it("accepts representative valid game commands", () => {
     expect(
-      ClientMessageSchema.safeParse({ type: "build", colonyId: "colony-1", buildingId: "mine" })
-        .success,
+      ClientMessageSchema.safeParse({
+        type: "build",
+        colonyId: "colony-1",
+        buildingId: "mine",
+      }).success,
     ).toBe(true);
     expect(
       ClientMessageSchema.safeParse({
@@ -27,7 +30,7 @@ describe("ClientMessageSchema", () => {
       ClientMessageSchema.safeParse({
         type: "transfer",
         fromColonyId: "colony-1",
-        toColonyId: "colony-2",
+        toId: "colony-2",
         resources: { ore: 50 },
       }).success,
     ).toBe(true);
@@ -35,9 +38,19 @@ describe("ClientMessageSchema", () => {
       ClientMessageSchema.safeParse({
         type: "transfer",
         fromColonyId: "colony-1",
-        toColonyId: "colony-2",
+        toId: "colony-2",
         resources: { ore: 50 },
         ships: { hauler: 2 },
+      }).success,
+    ).toBe(true);
+    // toKind est optionnel — omis, il vaut "colony" côté serveur (chantier 24.6).
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "transfer",
+        fromColonyId: "colony-1",
+        toId: "station-1",
+        toKind: "station",
+        resources: { metals: 50 },
       }).success,
     ).toBe(true);
   });
@@ -62,9 +75,12 @@ describe("ClientMessageSchema", () => {
   });
 
   it("rejects unknown commands and incomplete payloads", () => {
-    expect(ClientMessageSchema.safeParse({ type: "teleport" }).success).toBe(false);
-    expect(ClientMessageSchema.safeParse({ type: "build", colonyId: "colony-1" }).success).toBe(
+    expect(ClientMessageSchema.safeParse({ type: "teleport" }).success).toBe(
       false,
     );
+    expect(
+      ClientMessageSchema.safeParse({ type: "build", colonyId: "colony-1" })
+        .success,
+    ).toBe(false);
   });
 });

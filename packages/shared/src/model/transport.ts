@@ -42,11 +42,20 @@ export interface Route {
   paused: boolean;
 }
 
-/** Convoi cargo ponctuel entre deux colonies (vaisseau abstrait : coût + timer). */
+/**
+ * Convoi cargo ponctuel (vaisseau abstrait : coût + timer). La source reste toujours
+ * une colonie (chantier 24) — c'est elle qui possède les vaisseaux (`reserveShip`/
+ * `reserveConvoy`), une station n'en a pas en propre. La destination, elle, peut être
+ * une colonie ou une station : `toKind` discrimine, `toId` reste polymorphe (même
+ * patron que `Route.toKind`/`toId`). Récupérer une cargaison DEPUIS une station
+ * (au lieu d'y livrer) demanderait qu'un vaisseau y soit déjà amarré — hors périmètre
+ * de ce chantier, différé à une extension future.
+ */
 export interface Transfer {
   id: string;
   fromColonyId: string;
-  toColonyId: string;
+  toId: string;
+  toKind: "colony" | "station";
   resources: Partial<Record<ResourceId, number>>;
   departedAt: number;
   arrivesAt: number;

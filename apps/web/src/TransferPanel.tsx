@@ -35,7 +35,13 @@ interface Props {
   send: (msg: ClientMessage) => void;
 }
 
-const CARGO_RESOURCES: ResourceId[] = ["ore", "metals", "components", "food", "goods"];
+const CARGO_RESOURCES: ResourceId[] = [
+  "ore",
+  "metals",
+  "components",
+  "food",
+  "goods",
+];
 
 export function TransferPanel({
   colony,
@@ -50,8 +56,12 @@ export function TransferPanel({
 }: Props) {
   const others = colonies.filter((c) => c.id !== colony.id);
   const [destinationId, setDestinationId] = useState("");
-  const [amounts, setAmounts] = useState<Partial<Record<ResourceId, string>>>({});
-  const [shipCounts, setShipCounts] = useState<Partial<Record<ShipId, string>>>({});
+  const [amounts, setAmounts] = useState<Partial<Record<ResourceId, string>>>(
+    {},
+  );
+  const [shipCounts, setShipCounts] = useState<Partial<Record<ShipId, string>>>(
+    {},
+  );
 
   /**
    * Portails empruntés : tous partent de l'ancrage de la galaxie d'origine, donc
@@ -65,13 +75,15 @@ export function TransferPanel({
   };
 
   const related = transfers.filter(
-    (t) => t.fromColonyId === colony.id || t.toColonyId === colony.id,
+    (t) => t.fromColonyId === colony.id || t.toId === colony.id,
   );
 
   // Fallback sur la première autre colonie : le state peut précéder sa fondation.
   const destination = others.find((c) => c.id === destinationId) ?? others[0];
   const fromSystem = systemIdOf(universe, colony.planetId);
-  const toSystem = destination ? systemIdOf(universe, destination.planetId) : undefined;
+  const toSystem = destination
+    ? systemIdOf(universe, destination.planetId)
+    : undefined;
   const jumps =
     fromSystem && toSystem
       ? jumpDistanceInUniverse(universe, fromSystem, toSystem, portalLinks)
@@ -93,13 +105,20 @@ export function TransferPanel({
     if (Number.isFinite(n) && n > 0) convoy[shipId] = n;
   }
   const hasConvoy = Object.keys(convoy).length > 0;
-  const capacity = hasConvoy ? convoyCapacity(convoy) : maxConvoyCapacity(colony, routes);
+  const capacity = hasConvoy
+    ? convoyCapacity(convoy)
+    : maxConvoyCapacity(colony, routes);
   const overCapacity = totalCargo > capacity;
 
   // Devis du voyage : durée du plus lent, carburant pris en orbite, frais et péages.
-  const portals = jumps > 0 && fromSystem && toSystem ? portalsBetween(fromSystem, toSystem) : 0;
-  const eta = jumps >= 0 ? convoyDurationMs(jumps, convoy) * transferSpeedMult : 0;
-  const fuel = jumps >= 0 && hasConvoy ? convoyFuel(jumps, convoy, totalCargo) : 0;
+  const portals =
+    jumps > 0 && fromSystem && toSystem
+      ? portalsBetween(fromSystem, toSystem)
+      : 0;
+  const eta =
+    jumps >= 0 ? convoyDurationMs(jumps, convoy) * transferSpeedMult : 0;
+  const fuel =
+    jumps >= 0 && hasConvoy ? convoyFuel(jumps, convoy, totalCargo) : 0;
   const fees = jumps >= 0 ? convoyFees(jumps, portals) : 0;
   const orbitalEnergy = Math.floor(colony.orbitalResources.energy ?? 0);
   const missingFuel = fuel > orbitalEnergy;
@@ -110,18 +129,25 @@ export function TransferPanel({
         <ul className="queue-list">
           {related.map((t) => {
             const outgoing = t.fromColonyId === colony.id;
-            const other = colonies.find((c) => c.id === (outgoing ? t.toColonyId : t.fromColonyId));
+            const other = colonies.find(
+              (c) => c.id === (outgoing ? t.toId : t.fromColonyId),
+            );
             return (
               <li key={t.id} className="queue-item">
                 <div className="queue-head">
                   <span>
                     {outgoing ? "→" : "←"} {other?.name ?? "?"}
                   </span>
-                  <span className="muted">{formatDuration(t.arrivesAt - now)}</span>
+                  <span className="muted">
+                    {formatDuration(t.arrivesAt - now)}
+                  </span>
                 </div>
                 <span className="small muted">
                   {Object.entries(t.resources)
-                    .map(([res, n]) => `${n} ${RESOURCE_LABELS[res as ResourceId]}`)
+                    .map(
+                      ([res, n]) =>
+                        `${n} ${RESOURCE_LABELS[res as ResourceId]}`,
+                    )
                     .join(" · ")}
                 </span>
               </li>
@@ -131,7 +157,9 @@ export function TransferPanel({
       )}
 
       {others.length === 0 ? (
-        <p className="muted small">Fondez une seconde colonie pour envoyer des convois.</p>
+        <p className="muted small">
+          Fondez une seconde colonie pour envoyer des convois.
+        </p>
       ) : (
         <div className="form-stack">
           <Select
@@ -149,7 +177,9 @@ export function TransferPanel({
               max={Math.floor(colony.orbitalResources[res] ?? 0)}
               value={amounts[res] ?? ""}
               placeholder="0"
-              onChange={(e) => setAmounts({ ...amounts, [res]: e.target.value })}
+              onChange={(e) =>
+                setAmounts({ ...amounts, [res]: e.target.value })
+              }
             />
           ))}
 
@@ -162,15 +192,19 @@ export function TransferPanel({
               max={idle[shipId] ?? 0}
               value={shipCounts[shipId] ?? ""}
               placeholder="0"
-              onChange={(e) => setShipCounts({ ...shipCounts, [shipId]: e.target.value })}
+              onChange={(e) =>
+                setShipCounts({ ...shipCounts, [shipId]: e.target.value })
+              }
             />
           ))}
 
           {jumps >= 0 && (
             <span className="small muted">
               {jumps} saut{jumps > 1 ? "s" : ""}
-              {portals > 0 ? ` · ${portals} portail${portals > 1 ? "s" : ""}` : ""} —{" "}
-              {formatDuration(eta)} — {fees} crédits
+              {portals > 0
+                ? ` · ${portals} portail${portals > 1 ? "s" : ""}`
+                : ""}{" "}
+              — {formatDuration(eta)} — {fees} crédits
               {hasConvoy ? ` · ${fuel} énergie` : ""}
             </span>
           )}
@@ -180,7 +214,8 @@ export function TransferPanel({
           </span>
           {hasConvoy && missingFuel && (
             <span className="small ko">
-              Carburant insuffisant en orbite : {fuel} requis, {orbitalEnergy} disponible.
+              Carburant insuffisant en orbite : {fuel} requis, {orbitalEnergy}{" "}
+              disponible.
             </span>
           )}
           <Button
@@ -196,7 +231,7 @@ export function TransferPanel({
               send({
                 type: "transfer",
                 fromColonyId: colony.id,
-                toColonyId: destination.id,
+                toId: destination.id,
                 resources: cargo,
                 ...(hasConvoy ? { ships: convoy } : {}),
               });

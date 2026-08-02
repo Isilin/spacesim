@@ -149,6 +149,7 @@ export function composeEngine(
     },
     (g) => gateway.persistGateway(g),
     (empire, newStation) => station.insertStation(empire, newStation),
+    (s) => station.persistStation(s),
   );
   exploration = new ExplorationService(
     runtime,

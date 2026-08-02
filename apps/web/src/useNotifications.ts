@@ -44,7 +44,9 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
 
     for (const techId of snapshot.game.researched) {
       if (!prev.game.researched.includes(techId)) {
-        texts.push(`Recherche terminée : ${TECH_LABELS[techId as TechId]?.name ?? techId}`);
+        texts.push(
+          `Recherche terminée : ${TECH_LABELS[techId as TechId]?.name ?? techId}`,
+        );
       }
     }
 
@@ -57,10 +59,12 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
     for (const systemId of snapshot.exploredSystemIds) {
       if (!prev.exploredSystemIds.includes(systemId)) {
         const name = snapshot.universe
-          ? (allSystems(snapshot.universe).find((s) => s.id === systemId)?.name ?? systemId)
+          ? (allSystems(snapshot.universe).find((s) => s.id === systemId)
+              ?.name ?? systemId)
           : systemId;
         // Le premier système (colonie mère) ne mérite pas de toast.
-        if (prev.exploredSystemIds.length > 0) texts.push(`Système exploré : ${name}`);
+        if (prev.exploredSystemIds.length > 0)
+          texts.push(`Système exploré : ${name}`);
       }
     }
 
@@ -69,10 +73,12 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
       if (!current) continue;
       for (const item of prevColony.queue) {
         const stillQueued = current.queue.some(
-          (q) => q.buildingId === item.buildingId && q.startedAt === item.startedAt,
+          (q) =>
+            q.buildingId === item.buildingId && q.startedAt === item.startedAt,
         );
         const built =
-          (current.buildings[item.buildingId] ?? 0) > (prevColony.buildings[item.buildingId] ?? 0);
+          (current.buildings[item.buildingId] ?? 0) >
+          (prevColony.buildings[item.buildingId] ?? 0);
         if (!stillQueued && built) {
           texts.push(
             `Construction terminée : ${BUILDING_LABELS[item.buildingId].name} (${current.name})`,
@@ -83,7 +89,7 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
 
     for (const transfer of prev.transfers) {
       if (!snapshot.transfers.some((t) => t.id === transfer.id)) {
-        const to = snapshot.colonies.find((c) => c.id === transfer.toColonyId);
+        const to = snapshot.colonies.find((c) => c.id === transfer.toId);
         texts.push(`Convoi livré : ${to?.name ?? "destination inconnue"}`);
       }
     }
@@ -93,8 +99,12 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
       if (mission.kind === "sell") {
         texts.push("Cargaison vendue — crédits encaissés");
       } else if (mission.kind === "buy_return") {
-        const colony = snapshot.colonies.find((c) => c.id === mission.fromColonyId);
-        texts.push(`Cargaison achetée livrée${colony ? ` : ${colony.name}` : ""}`);
+        const colony = snapshot.colonies.find(
+          (c) => c.id === mission.fromColonyId,
+        );
+        texts.push(
+          `Cargaison achetée livrée${colony ? ` : ${colony.name}` : ""}`,
+        );
       } else if (mission.kind === "build_outpost") {
         texts.push("Avant-poste minier opérationnel");
       } else if (mission.kind === "contribute_gateway") {
@@ -106,7 +116,8 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
     for (const systemId of prev.game.claimedSystemIds) {
       if (!snapshot.game.claimedSystemIds.includes(systemId)) {
         const name = snapshot.universe
-          ? (allSystems(snapshot.universe).find((s) => s.id === systemId)?.name ?? systemId)
+          ? (allSystems(snapshot.universe).find((s) => s.id === systemId)
+              ?.name ?? systemId)
           : systemId;
         texts.push(`Revendication perdue : ${name}`);
       }
@@ -129,7 +140,9 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
     setNotifications((list) => [...list, ...created]);
     // Pas de cleanup : l'effet se rejoue à chaque tick, un cleanup annulerait l'expiration.
     window.setTimeout(() => {
-      setNotifications((list) => list.filter((n) => !created.some((c) => c.id === n.id)));
+      setNotifications((list) =>
+        list.filter((n) => !created.some((c) => c.id === n.id)),
+      );
     }, DISPLAY_MS);
   }, [
     snapshot.game,

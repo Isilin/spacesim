@@ -5,6 +5,7 @@ import {
   convoyFees,
   convoyFuel,
   deliverToOrbit,
+  deliverToStation,
   emptyOrbital,
   emptyResources,
   fleetCapacity,
@@ -96,6 +97,7 @@ export class LogisticsService {
     },
     private readonly persistGateway: (gateway: Gateway) => void,
     private readonly insertStation: (empire: Empire, station: Station) => void,
+    private readonly persistStation: (station: Station) => void,
   ) {
     this.repo = new LogisticsRepository(runtime.clock.id, runtime.writeSet);
   }
@@ -216,18 +218,35 @@ export class LogisticsService {
     return null;
   }
 
-  /** Action joueur : envoyer un convoi cargo. Retourne un message d'erreur ou null. */
+  /**
+   * Action joueur : envoyer un convoi cargo. Retourne un message d'erreur ou null.
+   * La destination peut être une colonie ou une station (chantier 24) — la source
+   * reste toujours une colonie, seule propriétaire de vaisseaux.
+   */
   sendTransfer(
     empire: Empire,
     fromColonyId: string,
-    toColonyId: string,
+    toId: string,
+    toKind: "colony" | "station",
     wanted: Partial<Record<ResourceId, number>>,
     convoy?: Partial<Record<ShipId, number>>,
   ): string | null {
     const from = empire.colonyMap.get(fromColonyId);
-    const to = empire.colonyMap.get(toColonyId);
-    if (!from || !to) return "Colonie inconnue";
-    if (from.id === to.id) return "Origine et destination identiques";
+    if (!from) return "Colonie inconnue";
+
+    let toSystemId: string;
+    if (toKind === "colony") {
+      const to = empire.colonyMap.get(toId);
+      if (!to) return "Colonie inconnue";
+      if (from.id === to.id) return "Origine et destination identiques";
+      const toPlanet = this.runtime.planetsById.get(to.planetId);
+      if (!toPlanet) return "Planète inconnue";
+      toSystemId = toPlanet.systemId;
+    } else {
+      const toStation = empire.stationMap.get(toId);
+      if (!toStation) return "Station inconnue";
+      toSystemId = toStation.systemId;
+    }
 
     const cargo: Partial<Record<ResourceId, number>> = {};
     for (const [res, raw] of Object.entries(wanted) as [ResourceId, number][]) {
@@ -240,16 +259,15 @@ export class LogisticsService {
     if (Object.keys(cargo).length === 0) return "Cargaison vide";
 
     const fromPlanet = this.runtime.planetsById.get(from.planetId);
-    const toPlanet = this.runtime.planetsById.get(to.planetId);
-    if (!fromPlanet || !toPlanet) return "Planète inconnue";
+    if (!fromPlanet) return "Planète inconnue";
     const jumps = jumpDistanceInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
-      toPlanet.systemId,
+      toSystemId,
       this.portalLinks,
     );
     if (jumps < 0) return "Destination inaccessible";
-    const portals = this.portalsCrossed(fromPlanet.systemId, toPlanet.systemId);
+    const portals = this.portalsCrossed(fromPlanet.systemId, toSystemId);
 
     // La cargaison se prend en ORBITE : le stock au sol ne peut pas se substituer
     // (chantier 12). Sans dock ni ascenseur, la colonie ne peut rien exporter.
@@ -312,7 +330,8 @@ export class LogisticsService {
     const transfer: Transfer = {
       id: randomUUID(),
       fromColonyId,
-      toColonyId,
+      toId,
+      toKind,
       resources: cargo,
       departedAt: now,
       arrivesAt: now + duration,
@@ -1015,17 +1034,33 @@ export class LogisticsService {
     }
   }
 
-  /** Livre les convois arrivés à l'instant `t` (surplus au-delà du stockage perdu). */
+  /** Livre les convois arrivés à l'instant `t` (surplus au-delà du stockage perdu pour
+   *  une colonie ; sans plafond pour une station, chantier 24 — voir son modèle). */
   deliverTransfers(empire: Empire, t: number): void {
     for (const [id, transfer] of empire.transferMap) {
       if (transfer.arrivesAt > t) continue;
-      const to = empire.colonyMap.get(transfer.toColonyId);
-      if (to) {
-        // Le convoi débarque EN ORBITE ; l'ascenseur redescendra selon les règles locales.
-        empire.colonyMap.set(
-          to.id,
-          deliverToOrbit(to, transfer.resources, empire.effects, this.balance),
-        );
+      if (transfer.toKind === "station") {
+        const toStation = empire.stationMap.get(transfer.toId);
+        if (toStation) {
+          empire.stationMap.set(
+            toStation.id,
+            deliverToStation(toStation, transfer.resources),
+          );
+        }
+      } else {
+        const to = empire.colonyMap.get(transfer.toId);
+        if (to) {
+          // Le convoi débarque EN ORBITE ; l'ascenseur redescendra selon les règles locales.
+          empire.colonyMap.set(
+            to.id,
+            deliverToOrbit(
+              to,
+              transfer.resources,
+              empire.effects,
+              this.balance,
+            ),
+          );
+        }
       }
       empire.transferMap.delete(id);
       this.repo.removeTransfer(id);
