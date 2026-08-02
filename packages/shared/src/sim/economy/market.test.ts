@@ -140,7 +140,7 @@ describe("initialStocks", () => {
 });
 
 describe("prix régionaux (chantier 12)", () => {
-  const ctx = (tradingPostId: string, galaxyIndex: number) => ({ tradingPostId, galaxyIndex });
+  const ctx = (venueId: string, galaxyIndex: number) => ({ venueId, galaxyIndex });
 
   it("sans contexte, le barème d'origine est inchangé", () => {
     expect(tradingPostPrice("metals", TARGET_STOCK)).toBe(BASE_PRICES.metals);

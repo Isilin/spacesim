@@ -79,7 +79,7 @@ export function TradingPostPanel({
   // Contexte régional (chantier 12) : le comptoir a son propre barème selon son
   // éloignement — c'est ce qui fait qu'un aller-retour peut valoir le carburant.
   const priceContext = {
-    tradingPostId: tradingPost.id,
+    venueId: tradingPost.id,
     galaxyIndex: universe.galaxies.findIndex((g) =>
       g.systems.some((s) => s.id === tradingPost.systemId),
     ),
@@ -232,7 +232,8 @@ export function TradingPostPanel({
                 send({
                   type: "sell",
                   colonyId: activeColony.id,
-                  tradingPostId: tradingPost.id,
+                  venueId: tradingPost.id,
+                  venueKind: "tradingPost",
                   resources: cargo,
                 });
                 setSellAmounts({});
@@ -274,7 +275,8 @@ export function TradingPostPanel({
                 send({
                   type: "buy",
                   colonyId: activeColony.id,
-                  tradingPostId: tradingPost.id,
+                  venueId: tradingPost.id,
+                  venueKind: "tradingPost",
                   resource: buyResource,
                   budget,
                 });
@@ -342,9 +344,10 @@ function BlueprintMarket({
                   title={affordable ? "" : "Crédits insuffisants"}
                   onClick={() =>
                     send({
-                      type: "buyBlueprintFromTradingPost",
+                      type: "buyBlueprint",
                       colonyId: activeColony.id,
-                      tradingPostId: tradingPost.id,
+                      venueId: tradingPost.id,
+                      venueKind: "tradingPost",
                       presetId: preset.id,
                     })
                   }
@@ -379,7 +382,8 @@ function BlueprintMarket({
                         send({
                           type: "sellBlueprint",
                           colonyId: activeColony.id,
-                          tradingPostId: tradingPost.id,
+                          venueId: tradingPost.id,
+                          venueKind: "tradingPost",
                           blueprintId: bp.id,
                         })
                       }
@@ -414,7 +418,8 @@ function BlueprintMarket({
                         send({
                           type: "sellShip",
                           colonyId: activeColony.id,
-                          tradingPostId: tradingPost.id,
+                          venueId: tradingPost.id,
+                          venueKind: "tradingPost",
                           shipId,
                           count: 1,
                         })

@@ -41,7 +41,9 @@ export type Stocks = Record<ResourceId, number>;
  * comptoir le plus proche.
  */
 export interface PriceContext {
-  tradingPostId: string;
+  /** Id du lieu de marché — comptoir PNJ ou station de joueur (chantier 25) : sert
+   * uniquement de graine de hachage pour le biais local, aucune sémantique propre. */
+  venueId: string;
   /** Index de la galaxie : l'éloignement renchérit le manufacturé, brade le brut. */
   galaxyIndex: number;
   factionId?: string;
@@ -72,7 +74,7 @@ function hash(text: string): number {
  * c'est ce qui crée l'arbitrage entre galaxies.
  */
 export function regionalMultiplier(resource: MarketResource, ctx: PriceContext): number {
-  const local = 1 + (hash(`${ctx.tradingPostId}:${resource}`) - 0.5) * 2 * LOCAL_SPREAD;
+  const local = 1 + (hash(`${ctx.venueId}:${resource}`) - 0.5) * 2 * LOCAL_SPREAD;
   const distance = Math.min(DISTANCE_CAP, ctx.galaxyIndex * DISTANCE_STEP);
   const direction = RAW.includes(resource) ? -1 : 1;
   return Math.round(local * (1 + direction * distance) * 1000) / 1000;

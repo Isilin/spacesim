@@ -62,7 +62,7 @@ export function MarketsView({
         const galaxy = findGalaxyOfSystem(universe, post.systemId);
         const galaxyIndex = universe.galaxies.findIndex((g) => g.id === galaxy?.id);
         const price = tradingPostPrice(resource, market.stocks[resource], {
-          tradingPostId: post.id,
+          venueId: post.id,
           galaxyIndex,
           factionId: post.factionId,
         });

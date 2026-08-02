@@ -106,7 +106,7 @@ export class MarketService {
     const comptoir = this.runtime.tradingPostsById.get(tradingPostId);
     if (!comptoir) return undefined;
     return {
-      tradingPostId,
+      venueId: tradingPostId,
       galaxyIndex: this.runtime.galaxyIndexOfSystem.get(comptoir.systemId) ?? 0,
       factionId: comptoir.factionId,
     };

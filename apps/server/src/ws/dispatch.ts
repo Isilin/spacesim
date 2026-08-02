@@ -56,14 +56,14 @@ export function dispatchClientMessage(
       return engine.market.sellToTradingPost(
         empire,
         msg.colonyId,
-        msg.tradingPostId,
+        msg.venueId,
         msg.resources,
       );
     case "buy":
       return engine.market.buyFromTradingPost(
         empire,
         msg.colonyId,
-        msg.tradingPostId,
+        msg.venueId,
         msg.resource,
         msg.budget,
       );
@@ -93,25 +93,25 @@ export function dispatchClientMessage(
         msg.colonyId,
         msg.fleetId,
       );
-    case "buyBlueprintFromTradingPost":
+    case "buyBlueprint":
       return engine.industry.buyBlueprintFromTradingPost(
         empire,
         msg.colonyId,
-        msg.tradingPostId,
+        msg.venueId,
         msg.presetId,
       );
     case "sellBlueprint":
       return engine.industry.sellBlueprint(
         empire,
         msg.colonyId,
-        msg.tradingPostId,
+        msg.venueId,
         msg.blueprintId,
       );
     case "sellShip":
       return engine.industry.sellShip(
         empire,
         msg.colonyId,
-        msg.tradingPostId,
+        msg.venueId,
         msg.shipId,
         msg.count,
       );

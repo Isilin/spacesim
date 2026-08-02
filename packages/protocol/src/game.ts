@@ -21,6 +21,9 @@ const routeRuleSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("fixed"), amount: z.number() }),
   z.object({ type: z.literal("surplus"), keepAtSource: z.number() }),
 ]);
+/** Distingue un comptoir PNJ (TradingPost) d'une station orbitale de joueur — les deux
+ * peuvent porter un marché (chantier 25), avec des règles/service propriétaire différents. */
+const venueKindSchema = z.enum(["tradingPost", "station"]);
 
 /** Commands accepted from a player WebSocket connection. */
 export const ClientMessageSchema = z.discriminatedUnion("type", [
@@ -74,13 +77,15 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("sell"),
     colonyId: idSchema,
-    tradingPostId: idSchema,
+    venueId: idSchema,
+    venueKind: venueKindSchema,
     resources: resourcesSchema,
   }),
   z.object({
     type: z.literal("buy"),
     colonyId: idSchema,
-    tradingPostId: idSchema,
+    venueId: idSchema,
+    venueKind: venueKindSchema,
     resource: resourceSchema,
     budget: z.number(),
   }),
@@ -110,21 +115,24 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     fleetId: idSchema.optional(),
   }),
   z.object({
-    type: z.literal("buyBlueprintFromTradingPost"),
+    type: z.literal("buyBlueprint"),
     colonyId: idSchema,
-    tradingPostId: idSchema,
+    venueId: idSchema,
+    venueKind: venueKindSchema,
     presetId: idSchema,
   }),
   z.object({
     type: z.literal("sellBlueprint"),
     colonyId: idSchema,
-    tradingPostId: idSchema,
+    venueId: idSchema,
+    venueKind: venueKindSchema,
     blueprintId: idSchema,
   }),
   z.object({
     type: z.literal("sellShip"),
     colonyId: idSchema,
-    tradingPostId: idSchema,
+    venueId: idSchema,
+    venueKind: venueKindSchema,
     shipId: idSchema,
     count: z.number(),
   }),
