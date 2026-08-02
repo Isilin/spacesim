@@ -38,6 +38,7 @@ import { useMapLevel } from "./hooks/useMapLevel.js";
 import { MapNav, type NavTarget } from "./MapNav.js";
 import { ResearchView } from "./ResearchView.js";
 import { LogisticsView } from "./LogisticsView.js";
+import { StationsView } from "./StationsView.js";
 import { SystemPanel } from "./SystemPanel.js";
 import { SystemView } from "./SystemView.js";
 import { UniverseMap } from "./UniverseMap.js";
@@ -341,6 +342,7 @@ export function App({ auth }: Props) {
 
   const routeTabs = [
     { value: "colony", label: "Colonie" },
+    { value: "stations", label: "Stations" },
     { value: "map", label: "Carte" },
     { value: "logistics", label: "Logistique" },
     {
@@ -413,6 +415,14 @@ export function App({ auth }: Props) {
           element={
             <main className="content-single">
               <ColonyView effects={effects} />
+            </main>
+          }
+        />
+        <Route
+          path="/stations"
+          element={
+            <main className="content-single">
+              <StationsView effects={effects} universe={universe} portalLinks={portalLinks} />
             </main>
           }
         />

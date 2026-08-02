@@ -4,6 +4,7 @@ import type {
   CombatDirective,
   FactionId,
   FactionMood,
+  InstallationId,
   LegacyShipId,
   ModuleId,
   ModuleRole,
@@ -16,6 +17,7 @@ import type {
   TechId,
   WarshipId,
   WorldEventKind,
+  ZoneTypeId,
 } from "@spacesim/shared";
 
 /** Humeur de faction (chantier 15) : nom + ton d'affichage (neutre/positif/négatif). */
@@ -586,5 +588,57 @@ export const TECH_LABELS: Record<
   orbital_armaments: {
     name: "Armement orbital",
     description: "Débloque la zone militaire d'une station orbitale.",
+  },
+};
+
+/** Type de zone de station orbitale (chantier 24) — même libellés que le seed admin
+ *  (`content-service.ts`), le client recalculant depuis les tables statiques. */
+export const ZONE_TYPE_LABELS: Record<
+  ZoneTypeId,
+  { name: string; description: string }
+> = {
+  industrial_zone: {
+    name: "Zone industrielle",
+    description:
+      "Accueille les installations de production et de transformation.",
+  },
+  science_zone: {
+    name: "Zone scientifique",
+    description: "Accueille les installations de recherche.",
+  },
+  military_zone: {
+    name: "Zone militaire",
+    description: "Accueille les installations de défense et d'armement.",
+  },
+};
+
+/** Installation de station orbitale (chantier 24) — même libellés que le seed admin. */
+export const INSTALLATION_LABELS: Record<
+  InstallationId,
+  { name: string; description: string }
+> = {
+  orbital_solar_array: {
+    name: "Panneaux solaires orbitaux",
+    description: "Produit de l'énergie sans intrant.",
+  },
+  orbital_smelter_module: {
+    name: "Module de fonderie orbitale",
+    description: "Transforme le minerai livré en métaux.",
+  },
+  orbital_observatory: {
+    name: "Observatoire orbital",
+    description: "Produit de la science.",
+  },
+  orbital_research_lab: {
+    name: "Laboratoire de recherche orbital",
+    description: "Production de science accrue.",
+  },
+  orbital_armory: {
+    name: "Arsenal orbital",
+    description: "Contrats de défense : génère des crédits.",
+  },
+  orbital_shipyard_annex: {
+    name: "Annexe de chantier naval orbitale",
+    description: "Produit des composants.",
   },
 };
