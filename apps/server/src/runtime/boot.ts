@@ -16,7 +16,10 @@ import type { GameEngine } from "../game.js";
  * `GameEngine` reste privé (geste explicite via `load`/`bootstrapNewUniverse`), donc
  * cette fonction prend l'instance déjà construite.
  */
-export async function bootEngine(engine: GameEngine, isNew: boolean): Promise<void> {
+export async function bootEngine(
+  engine: GameEngine,
+  isNew: boolean,
+): Promise<void> {
   // Contenu de jeu (chantier 23.5+) : amorcé/chargé avant tout le reste — la production
   // (buildWarship) et le combat en dépendent dès que la partie tourne.
   await engine.loadContent();
@@ -30,6 +33,7 @@ export async function bootEngine(engine: GameEngine, isNew: boolean): Promise<vo
     engine.bootstrap.createHomeColony();
   } else {
     await engine.bootstrap.loadColonies();
+    await engine.station.loadStations();
     await engine.logistics.loadTransfers();
     await engine.logistics.loadMissions();
     await engine.market.loadMarkets();

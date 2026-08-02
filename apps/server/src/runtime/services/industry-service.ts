@@ -24,11 +24,13 @@ import {
   type ChassisDef,
   type Colony,
   type Fleet,
+  type InstallationDef,
   type ModuleDef,
   type ResourceId,
   type ShipId,
   type TechDef,
   type TechId,
+  type ZoneTypeDef,
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
@@ -36,9 +38,11 @@ import {
   balanceFromContent,
   buildingDefsFromContent,
   chassisDefsFromContent,
+  installationDefsFromContent,
   moduleDefsFromContent,
   shipDefsFromContent,
   techDefsFromContent,
+  zoneTypeDefsFromContent,
 } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
@@ -65,13 +69,18 @@ export class IndustryService {
     private readonly logger: Logger,
     private readonly persistFleet: (fleet: Fleet) => void,
   ) {
-    this.blueprintRepo = new BlueprintRepository(runtime.clock.id, runtime.writeSet);
+    this.blueprintRepo = new BlueprintRepository(
+      runtime.clock.id,
+      runtime.writeSet,
+    );
     this.colonyRepo = new ColonyRepository(runtime.clock.id, runtime.writeSet);
     this.playerRepo = new PlayerRepository(runtime.clock.id, runtime.writeSet);
   }
 
   private get portalLinks(): [string, string][] {
-    return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
+    return gatewayLinks(this.runtime.universe, [
+      ...this.runtime.gatewayMap.values(),
+    ]);
   }
 
   /** Scalaires d'équilibrage (DB-backed, chantier 23.8). */
@@ -93,14 +102,37 @@ export class IndustryService {
     return moduleDefsFromContent(this.runtime.content.modules);
   }
 
-  /** Effets d'empire recalculés depuis le contenu DB-backed (techs + châssis + modules). */
-  private empireEffects(researched: readonly string[]): ReturnType<typeof computeEffects> {
-    return computeEffects(researched, this.techDefs, this.chassisDefs, this.moduleDefs);
+  /** Types de zone/installations de station orbitale (DB-backed, chantier 24). */
+  private get zoneTypeDefs(): Record<string, ZoneTypeDef> {
+    return zoneTypeDefsFromContent(this.runtime.content.zoneTypes);
+  }
+
+  private get installationDefs(): Record<string, InstallationDef> {
+    return installationDefsFromContent(this.runtime.content.installations);
+  }
+
+  /** Effets d'empire recalculés depuis le contenu DB-backed (techs, châssis, modules,
+   *  types de zone et installations de station orbitale). */
+  private empireEffects(
+    researched: readonly string[],
+  ): ReturnType<typeof computeEffects> {
+    return computeEffects(
+      researched,
+      this.techDefs,
+      this.chassisDefs,
+      this.moduleDefs,
+      this.zoneTypeDefs,
+      this.installationDefs,
+    );
   }
 
   // ── Bâtiments & chantier civil ───────────────────────────────────────────
 
-  build(empire: Empire, colonyId: string, buildingId: BuildingId): string | null {
+  build(
+    empire: Empire,
+    colonyId: string,
+    buildingId: BuildingId,
+  ): string | null {
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
     const planet = this.runtime.planetsById.get(colony.planetId);
@@ -172,7 +204,8 @@ export class IndustryService {
   }
 
   seedStarterBlueprintsForAll(): void {
-    for (const empire of this.runtime.empires.values()) this.seedStarterBlueprints(empire);
+    for (const empire of this.runtime.empires.values())
+      this.seedStarterBlueprints(empire);
   }
 
   createBlueprint(
@@ -181,7 +214,8 @@ export class IndustryService {
     chassisId: string,
     modules: string[],
   ): string | null {
-    if (empire.blueprintMap.size >= MAX_BLUEPRINTS) return "Trop de plans enregistrés";
+    if (empire.blueprintMap.size >= MAX_BLUEPRINTS)
+      return "Trop de plans enregistrés";
     const problems = validateBlueprint(
       { chassisId, modules },
       empire.effects,
@@ -247,14 +281,25 @@ export class IndustryService {
   ): string | null {
     const bp = empire.blueprintMap.get(blueprintId);
     if (!bp) return "Plan inconnu";
-    const problems = validateBlueprint(bp, empire.effects, this.chassisDefs, this.moduleDefs);
+    const problems = validateBlueprint(
+      bp,
+      empire.effects,
+      this.chassisDefs,
+      this.moduleDefs,
+    );
     if (problems.length > 0) return problems[0]!;
     const stats = resolveBlueprint(bp, this.chassisDefs, this.moduleDefs);
 
     if (stats.domain === "colony") {
       const colony = colonyId ? empire.colonyMap.get(colonyId) : undefined;
       if (!colony) return "Colonie inconnue";
-      const result = enqueueShipFromStats(colony, bp.id, stats, Date.now(), empire.effects);
+      const result = enqueueShipFromStats(
+        colony,
+        bp.id,
+        stats,
+        Date.now(),
+        empire.effects,
+      );
       if (!result.ok) return result.reason;
       empire.colonyMap.set(colony.id, result.colony);
       this.persistColony(result.colony);
@@ -271,20 +316,32 @@ export class IndustryService {
     if ((home.buildings.shipyard ?? 0) < 1) return "Chantier naval requis";
     if (fleet.queue.length >= 5) return "File de production pleine";
     const resources = { ...home.resources };
-    for (const [res, amount] of Object.entries(stats.cost) as [ResourceId, number][]) {
-      if ((resources[res] ?? 0) < amount) return `Ressources insuffisantes (${amount} ${res})`;
+    for (const [res, amount] of Object.entries(stats.cost) as [
+      ResourceId,
+      number,
+    ][]) {
+      if ((resources[res] ?? 0) < amount)
+        return `Ressources insuffisantes (${amount} ${res})`;
     }
-    for (const [res, amount] of Object.entries(stats.cost) as [ResourceId, number][]) {
+    for (const [res, amount] of Object.entries(stats.cost) as [
+      ResourceId,
+      number,
+    ][]) {
       resources[res] -= amount;
     }
     empire.colonyMap.set(home.id, { ...home, resources });
     this.persistColony(empire.colonyMap.get(home.id)!);
     const now = Date.now();
     const startedAt = Math.max(now, fleet.queue.at(-1)?.finishesAt ?? now);
-    const buildMs = Math.round(stats.buildMs * empire.effects.shipBuildSpeedMult);
+    const buildMs = Math.round(
+      stats.buildMs * empire.effects.shipBuildSpeedMult,
+    );
     const next: Fleet = {
       ...fleet,
-      queue: [...fleet.queue, { warshipId: bp.id, startedAt, finishesAt: startedAt + buildMs }],
+      queue: [
+        ...fleet.queue,
+        { warshipId: bp.id, startedAt, finishesAt: startedAt + buildMs },
+      ],
     };
     empire.fleetMap.set(fleet.id, next);
     this.persistFleet(next);
@@ -312,21 +369,26 @@ export class IndustryService {
     tradingPostId: string,
     presetId: string,
   ): string | null {
-    if (empire.blueprintMap.size >= MAX_BLUEPRINTS) return "Trop de plans enregistrés";
+    if (empire.blueprintMap.size >= MAX_BLUEPRINTS)
+      return "Trop de plans enregistrés";
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
     const comptoir = this.runtime.tradingPostsById.get(tradingPostId);
     if (!comptoir) return "Comptoir inconnu";
-    if (!empire.explored.has(comptoir.systemId)) return "Comptoir non découvert";
-    if (this.jumpsToTradingPost(colony, tradingPostId) < 0) return "Comptoir inaccessible";
+    if (!empire.explored.has(comptoir.systemId))
+      return "Comptoir non découvert";
+    if (this.jumpsToTradingPost(colony, tradingPostId) < 0)
+      return "Comptoir inaccessible";
     const preset = this.runtime.content.presets[presetId];
     if (!preset) return "Plan inconnu au catalogue";
 
     const price = Math.round(
-      costValue(resolveBlueprint(preset, this.chassisDefs, this.moduleDefs).cost) *
-        BLUEPRINT_BUY_MARKUP,
+      costValue(
+        resolveBlueprint(preset, this.chassisDefs, this.moduleDefs).cost,
+      ) * BLUEPRINT_BUY_MARKUP,
     );
-    if (colony.resources.credits < price) return `Crédits insuffisants (${price})`;
+    if (colony.resources.credits < price)
+      return `Crédits insuffisants (${price})`;
 
     const bp: Blueprint = {
       id: randomUUID(),
@@ -340,7 +402,10 @@ export class IndustryService {
     this.persistBlueprint(bp);
     empire.colonyMap.set(colony.id, {
       ...colony,
-      resources: { ...colony.resources, credits: colony.resources.credits - price },
+      resources: {
+        ...colony.resources,
+        credits: colony.resources.credits - price,
+      },
     });
     this.persistColony(empire.colonyMap.get(colony.id)!);
     this.notify();
@@ -355,7 +420,8 @@ export class IndustryService {
   ): string | null {
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
-    if (this.jumpsToTradingPost(colony, tradingPostId) < 0) return "Comptoir inaccessible";
+    if (this.jumpsToTradingPost(colony, tradingPostId) < 0)
+      return "Comptoir inaccessible";
     const bp = empire.blueprintMap.get(blueprintId);
     if (!bp) return "Plan inconnu";
 
@@ -367,7 +433,10 @@ export class IndustryService {
     this.blueprintRepo.remove(blueprintId);
     empire.colonyMap.set(colony.id, {
       ...colony,
-      resources: { ...colony.resources, credits: colony.resources.credits + price },
+      resources: {
+        ...colony.resources,
+        credits: colony.resources.credits + price,
+      },
     });
     this.persistColony(empire.colonyMap.get(colony.id)!);
     this.notify();
@@ -383,25 +452,36 @@ export class IndustryService {
   ): string | null {
     const colony = empire.colonyMap.get(colonyId);
     if (!colony) return "Colonie inconnue";
-    if (this.jumpsToTradingPost(colony, tradingPostId) < 0) return "Comptoir inaccessible";
+    if (this.jumpsToTradingPost(colony, tradingPostId) < 0)
+      return "Comptoir inaccessible";
     const count = Math.floor(Number(countRaw));
     if (!Number.isFinite(count) || count <= 0) return "Quantité invalide";
 
     const idle = idleShips(colony, [...empire.routeMap.values()]);
-    if ((idle[shipId] ?? 0) < count) return "Vaisseaux indisponibles (occupés ou insuffisants)";
+    if ((idle[shipId] ?? 0) < count)
+      return "Vaisseaux indisponibles (occupés ou insuffisants)";
 
     const legacyDef = shipDefsFromContent(this.runtime.content.ships)[shipId];
     const bp = empire.blueprintMap.get(shipId);
     const cost =
-      legacyDef?.cost ?? (bp ? resolveBlueprint(bp, this.chassisDefs, this.moduleDefs).cost : null);
+      legacyDef?.cost ??
+      (bp
+        ? resolveBlueprint(bp, this.chassisDefs, this.moduleDefs).cost
+        : null);
     if (!cost) return "Vaisseau inconnu";
 
     const price = Math.round(costValue(cost) * BLUEPRINT_SELL_FRACTION) * count;
-    const ships = { ...colony.ships, [shipId]: (colony.ships[shipId] ?? 0) - count };
+    const ships = {
+      ...colony.ships,
+      [shipId]: (colony.ships[shipId] ?? 0) - count,
+    };
     empire.colonyMap.set(colony.id, {
       ...colony,
       ships,
-      resources: { ...colony.resources, credits: colony.resources.credits + price },
+      resources: {
+        ...colony.resources,
+        credits: colony.resources.credits + price,
+      },
     });
     this.persistColony(empire.colonyMap.get(colony.id)!);
     this.notify();
@@ -432,7 +512,11 @@ export class IndustryService {
    * Débite la science et démarre une recherche. Retourne false si la science manque —
    * la file (11.4) réessaiera au tick suivant plutôt que d'être vidée.
    */
-  private beginResearch(empire: Empire, techId: string, now = Date.now()): boolean {
+  private beginResearch(
+    empire: Empire,
+    techId: string,
+    now = Date.now(),
+  ): boolean {
     const tech = this.techDefs[techId]!;
     const colonies = [...empire.colonyMap.values()];
     const totalScience = colonies.reduce((s, c) => s + c.resources.science, 0);
@@ -447,13 +531,20 @@ export class IndustryService {
       remaining -= take;
       const updated = {
         ...colony,
-        resources: { ...colony.resources, science: colony.resources.science - take },
+        resources: {
+          ...colony.resources,
+          science: colony.resources.science - take,
+        },
       };
       empire.colonyMap.set(colony.id, updated);
       this.persistColony(updated);
     }
 
-    empire.research = { techId: tech.id, startedAt: now, finishesAt: now + tech.durationMs };
+    empire.research = {
+      techId: tech.id,
+      startedAt: now,
+      finishesAt: now + tech.durationMs,
+    };
     this.persistResearch(empire);
     return true;
   }
@@ -485,7 +576,9 @@ export class IndustryService {
   private advanceResearchQueue(empire: Empire, now = Date.now()): void {
     if (empire.research || empire.researchQueue.length === 0) return;
     // Les techs déjà acquises entre-temps (autre chemin) sont retirées silencieusement.
-    empire.researchQueue = empire.researchQueue.filter((id) => !empire.researched.includes(id));
+    empire.researchQueue = empire.researchQueue.filter(
+      (id) => !empire.researched.includes(id),
+    );
     const next = empire.researchQueue[0];
     if (!next) return;
     if (!canResearch(next, empire.researched, this.techDefs)) return;
@@ -495,7 +588,10 @@ export class IndustryService {
   }
 
   resolveResearch(empire: Empire, t: number): void {
-    const finished = empire.research && empire.research.finishesAt <= t ? empire.research : null;
+    const finished =
+      empire.research && empire.research.finishesAt <= t
+        ? empire.research
+        : null;
     if (finished) {
       empire.researched = [...empire.researched, finished.techId];
       empire.research = null;
@@ -505,7 +601,8 @@ export class IndustryService {
     // Enchaînement de la file, y compris quand la science manquait au tick précédent.
     const beforeQueue = empire.research;
     this.advanceResearchQueue(empire, t);
-    if (finished || beforeQueue !== empire.research) this.persistResearch(empire);
+    if (finished || beforeQueue !== empire.research)
+      this.persistResearch(empire);
   }
 
   persistResearch(empire: Empire): void {
@@ -523,7 +620,8 @@ export class IndustryService {
       const effects = claimed
         ? {
             ...empire.effects,
-            outputMultAll: empire.effects.outputMultAll * CLAIM_PRODUCTION_BONUS,
+            outputMultAll:
+              empire.effects.outputMultAll * CLAIM_PRODUCTION_BONUS,
           }
         : empire.effects;
       // L'ascenseur tourne après la production : ce qui vient d'être produit peut monter.

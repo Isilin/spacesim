@@ -27,7 +27,10 @@ import type { EmpireSnapshot } from "@spacesim/protocol";
 import { randomUUID } from "node:crypto";
 import { Empire, type Clock } from "./empire.js";
 import { bootEngine } from "./runtime/boot.js";
-import { ensureContentSeeded, loadContentBundle } from "./runtime/content/content-service.js";
+import {
+  ensureContentSeeded,
+  loadContentBundle,
+} from "./runtime/content/content-service.js";
 import type { ContentBundle } from "./runtime/content/content-types.js";
 import { composeEngine } from "./runtime/composition.js";
 import { GameRuntime } from "./runtime/game-runtime.js";
@@ -43,6 +46,7 @@ import type { IndustryService } from "./runtime/services/industry-service.js";
 import type { LogisticsService } from "./runtime/services/logistics-service.js";
 import type { MarketService } from "./runtime/services/market-service.js";
 import type { ObjectiveService } from "./runtime/services/objective-service.js";
+import type { StationService } from "./runtime/services/station-service.js";
 import { Persister } from "./runtime/persistence/persister.js";
 import { GameRepository } from "./runtime/repositories/game-repository.js";
 import { Notifier, type StateListener } from "./runtime/notifier.js";
@@ -94,6 +98,8 @@ export class GameEngine {
   readonly diplomacy: DiplomacyService;
   /** Objectifs éphémères personnels (chantier 17), domaine isolé. */
   readonly objective: ObjectiveService;
+  /** Stations orbitales (chantier 24) : zones, installations, tick de production. */
+  readonly station: StationService;
   /** Bootstrap des empires (compte joueur, PNJ, colonie mère) et outils de dev associés. */
   readonly bootstrap: BootstrapService;
   /** Outils de dev (chantier 19.11) : jamais en production, voir `http/routes/dev.ts`. */
@@ -191,7 +197,12 @@ export class GameEngine {
       warn: (message) => this.logger.warn(message),
     };
     this.persister = new Persister(this.runtime.writeSet, logger);
-    const composed = composeEngine(this.runtime, logger, () => this.notify(), this.persister);
+    const composed = composeEngine(
+      this.runtime,
+      logger,
+      () => this.notify(),
+      this.persister,
+    );
     this.industry = composed.industry;
     this.logistics = composed.logistics;
     this.gateway = composed.gateway;
@@ -201,6 +212,7 @@ export class GameEngine {
     this.fleetService = composed.fleetService;
     this.diplomacy = composed.diplomacy;
     this.objective = composed.objective;
+    this.station = composed.station;
     this.bootstrap = composed.bootstrap;
     this.devService = composed.devService;
     this.tickRunner = composed.tickRunner;
@@ -220,7 +232,9 @@ export class GameEngine {
   static async load(): Promise<GameEngine> {
     const row = await new GameRepository().find();
     if (!row) {
-      throw new Error("Aucun univers en base — utiliser GameEngine.bootstrapNewUniverse()");
+      throw new Error(
+        "Aucun univers en base — utiliser GameEngine.bootstrapNewUniverse()",
+      );
     }
     const clock: Clock = {
       id: row.id,
@@ -240,12 +254,17 @@ export class GameEngine {
         galaxies: [],
       };
       const missing: Universe["galaxies"] = [];
-      for (let i = done; i < clock.galaxyCount; i++) missing.push(generateGalaxyAt(clock.seed, i));
+      for (let i = done; i < clock.galaxyCount; i++)
+        missing.push(generateGalaxyAt(clock.seed, i));
       const stamped = withParentIndexes({
         seed: clock.seed,
         galaxies: [...existing.galaxies, ...missing],
       });
-      await appendGalaxies(clock.id, stamped.galaxies.slice(done), clock.galaxyCount);
+      await appendGalaxies(
+        clock.id,
+        stamped.galaxies.slice(done),
+        clock.galaxyCount,
+      );
       console.log(
         `[game] rattrapage one-shot : ${clock.galaxyCount - done} galaxie(s) matérialisée(s) depuis la seed`,
       );
@@ -253,12 +272,16 @@ export class GameEngine {
       // Les tables font autorité : le compteur se réaligne sur elles.
       await appendGalaxies(clock.id, [], done);
       clock.galaxyCount = done;
-      console.warn(`[game] games.galaxyCount réaligné sur les tables univers (${done})`);
+      console.warn(
+        `[game] games.galaxyCount réaligné sur les tables univers (${done})`,
+      );
     }
 
     const universe = await loadUniverse(clock.id, clock.seed);
     if (!universe) {
-      throw new Error("Univers introuvable en base malgré une ligne games — base corrompue ?");
+      throw new Error(
+        "Univers introuvable en base malgré une ligne games — base corrompue ?",
+      );
     }
     return GameEngine.boot(clock, universe, false);
   }
@@ -270,7 +293,9 @@ export class GameEngine {
   static async bootstrapNewUniverse(): Promise<GameEngine> {
     const gameRepo = new GameRepository();
     if (await gameRepo.find()) {
-      throw new Error("Un univers existe déjà en base — utiliser GameEngine.load()");
+      throw new Error(
+        "Un univers existe déjà en base — utiliser GameEngine.load()",
+      );
     }
     const row = {
       id: randomUUID(),
@@ -281,7 +306,9 @@ export class GameEngine {
       galaxyCount: INITIAL_GALAXIES,
     };
     await gameRepo.insert(row);
-    const universe = withParentIndexes(generateUniverse(row.seed, INITIAL_GALAXIES));
+    const universe = withParentIndexes(
+      generateUniverse(row.seed, INITIAL_GALAXIES),
+    );
     await appendGalaxies(row.id, universe.galaxies, INITIAL_GALAXIES);
     const clock: Clock = {
       id: row.id,
@@ -306,7 +333,11 @@ export class GameEngine {
    * `load`/`bootstrapNewUniverse`), cette méthode reste le seul point qui construit
    * l'instance avant de lui déléguer la séquence.
    */
-  private static async boot(clock: Clock, universe: Universe, isNew: boolean): Promise<GameEngine> {
+  private static async boot(
+    clock: Clock,
+    universe: Universe,
+    isNew: boolean,
+  ): Promise<GameEngine> {
     const engine = new GameEngine(clock, universe);
     await bootEngine(engine, isNew);
     return engine;
@@ -367,7 +398,11 @@ export class GameEngine {
   // ─────────────────────────── Événements de monde (chantier 17) ───────────────────────────
 
   /** Action joueur : attaquer une flotte ennemie stationnée dans le même système (PvP). */
-  attackFleet(empire: Empire, fleetId: string, targetFleetId: string): string | null {
+  attackFleet(
+    empire: Empire,
+    fleetId: string,
+    targetFleetId: string,
+  ): string | null {
     return this.fleetService.attackFleet(empire, fleetId, targetFleetId);
   }
 
@@ -377,7 +412,11 @@ export class GameEngine {
    * qu'il n'y a pas de défenseur), il pille une fraction des ressources et rompt le
    * claim ennemi sur le système. Pas de capture de colonie à ce stade.
    */
-  attackColony(empire: Empire, fleetId: string, targetColonyId: string): string | null {
+  attackColony(
+    empire: Empire,
+    fleetId: string,
+    targetColonyId: string,
+  ): string | null {
     return this.fleetService.attackColony(empire, fleetId, targetColonyId);
   }
 
@@ -415,6 +454,7 @@ export class GameEngine {
     this.diplomacy.shiftTime(delta);
     this.objective.shiftTime(delta);
     this.fleetService.shiftTime(this.defaultEmpire, delta);
+    this.station.shiftTime(this.defaultEmpire, delta);
     this.persistResearch(this.defaultEmpire);
 
     const missed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);
@@ -514,7 +554,11 @@ export class GameEngine {
   }
 
   /** Outil de dev uniquement : arme une flotte d'un empire dans un système (tests PvP). */
-  devArmFleet(empire: Empire, systemId: string, ships: Partial<Record<string, number>>): string {
+  devArmFleet(
+    empire: Empire,
+    systemId: string,
+    ships: Partial<Record<string, number>>,
+  ): string {
     return this.devService.devArmFleet(empire, systemId, ships);
   }
 

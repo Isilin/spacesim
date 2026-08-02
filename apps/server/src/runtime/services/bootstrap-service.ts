@@ -12,8 +12,10 @@ import { randomUUID } from "node:crypto";
 import { Empire } from "../../empire.js";
 import {
   chassisDefsFromContent,
+  installationDefsFromContent,
   moduleDefsFromContent,
   techDefsFromContent,
+  zoneTypeDefsFromContent,
 } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
@@ -27,7 +29,14 @@ const DEFAULT_PLAYER_NAME = "Empire";
 const DEFAULT_PLAYER_COLOR = "#4fd1ff";
 
 /** Couleurs de territoire attribuées aux empires supplémentaires (outil de dev). */
-const DEV_EMPIRE_COLORS = ["#4fd1ff", "#ff6b6b", "#ffd93d", "#6bcB77", "#c77dff", "#ff922b"];
+const DEV_EMPIRE_COLORS = [
+  "#4fd1ff",
+  "#ff6b6b",
+  "#ffd93d",
+  "#6bcB77",
+  "#c77dff",
+  "#ff922b",
+];
 
 /**
  * Amorce d'empires PNJ au boot (chantier 14) : distincte du peuplement joueur — juste
@@ -118,6 +127,8 @@ export class BootstrapService {
         techDefsFromContent(this.runtime.content.techs),
         chassisDefsFromContent(this.runtime.content.chassis),
         moduleDefsFromContent(this.runtime.content.modules),
+        zoneTypeDefsFromContent(this.runtime.content.zoneTypes),
+        installationDefsFromContent(this.runtime.content.installations),
       );
       this.runtime.empires.set(empire.id, empire);
     }
@@ -135,7 +146,9 @@ export class BootstrapService {
   createHomeColony(): void {
     const homeGalaxy = this.runtime.universe.galaxies[0]!;
     const planets = homeGalaxy.systems.flatMap((s) => s.planets);
-    const home = planets.reduce((best, p) => (p.habitability > best.habitability ? p : best));
+    const home = planets.reduce((best, p) =>
+      p.habitability > best.habitability ? p : best,
+    );
     this.foundHomeColony(this.runtime.defaultEmpire, home);
   }
 
@@ -145,12 +158,25 @@ export class BootstrapService {
       id: randomUUID(),
       planetId: planet.id,
       name: `${planet.name} — Colonie mère`,
-      resources: { ...emptyResources(), ore: 400, energy: 200, food: 200, credits: 50 },
+      resources: {
+        ...emptyResources(),
+        ore: 400,
+        energy: 200,
+        food: 200,
+        credits: 50,
+      },
       // La colonie mère naît avec son dock et une soute orbitale amorcée : le premier
       // convoi doit rester possible sans attendre l'ascenseur (chantier 12).
       orbitalResources: { ...emptyOrbital(), ore: 150, food: 50 },
       liftRules: { ore: { keepGround: 250, direction: "up" } },
-      buildings: { mine: 1, power_plant: 1, farm: 1, habitat: 1, shipyard: 1, orbital_dock: 1 },
+      buildings: {
+        mine: 1,
+        power_plant: 1,
+        farm: 1,
+        habitat: 1,
+        shipyard: 1,
+        orbital_dock: 1,
+      },
       queue: [],
       population: 12,
       satisfaction: 80,
@@ -171,8 +197,11 @@ export class BootstrapService {
   }
 
   async loadColonies(): Promise<void> {
-    for (const colony of await this.colonyRepo.loadAll(this.runtime.defaultEmpire.id)) {
-      const empire = this.runtime.empires.get(colony.ownerId!) ?? this.runtime.defaultEmpire;
+    for (const colony of await this.colonyRepo.loadAll(
+      this.runtime.defaultEmpire.id,
+    )) {
+      const empire =
+        this.runtime.empires.get(colony.ownerId!) ?? this.runtime.defaultEmpire;
       empire.colonyMap.set(colony.id, colony);
     }
   }
@@ -203,10 +232,14 @@ export class BootstrapService {
         if (sys) occupiedSystems.add(sys);
       }
     }
-    const candidates = this.runtime.universe.galaxies[starter]!.systems.flatMap((s) => s.planets)
+    const candidates = this.runtime.universe.galaxies[starter]!.systems.flatMap(
+      (s) => s.planets,
+    )
       .filter((p) => p.type !== "gas" && !occupiedPlanets.has(p.id))
       .sort((a, b) => b.habitability - a.habitability);
-    const freeSystem = candidates.filter((p) => !occupiedSystems.has(p.systemId));
+    const freeSystem = candidates.filter(
+      (p) => !occupiedSystems.has(p.systemId),
+    );
     return freeSystem[0] ?? candidates[0] ?? null;
   }
 
@@ -250,7 +283,9 @@ export class BootstrapService {
    * de `load()` à dessein — les tests qui n'en ont pas besoin restent à un seul empire.
    */
   ensureNpcPopulation(count = NPC_EMPIRE_COUNT): void {
-    const existing = [...this.runtime.empires.values()].filter((e) => e.kind === "npc").length;
+    const existing = [...this.runtime.empires.values()].filter(
+      (e) => e.kind === "npc",
+    ).length;
     for (let i = existing; i < count; i++) {
       const name = NPC_EMPIRE_NAMES[i % NPC_EMPIRE_NAMES.length]!;
       this.createEmpire(randomUUID(), name, null, "npc");
@@ -312,7 +347,9 @@ export class BootstrapService {
 
   /** Outil de dev uniquement : résumé par empire (état en mémoire) pour l'observation. */
   devEmpireSummaries(): unknown {
-    return [...this.runtime.empires.values()].map((e) => this.summarizeEmpire(e));
+    return [...this.runtime.empires.values()].map((e) =>
+      this.summarizeEmpire(e),
+    );
   }
 
   /**
@@ -355,10 +392,16 @@ export class BootstrapService {
     const colony = [...this.runtime.defaultEmpire.colonyMap.values()][0];
     if (!colony) return;
     const updated = { ...colony.resources };
-    for (const [res, amount] of Object.entries(resources) as [ResourceId, number][]) {
+    for (const [res, amount] of Object.entries(resources) as [
+      ResourceId,
+      number,
+    ][]) {
       updated[res] = (updated[res] ?? 0) + amount;
     }
-    this.runtime.defaultEmpire.colonyMap.set(colony.id, { ...colony, resources: updated });
+    this.runtime.defaultEmpire.colonyMap.set(colony.id, {
+      ...colony,
+      resources: updated,
+    });
     this.colonyRepo.save(this.runtime.defaultEmpire.colonyMap.get(colony.id)!);
     this.notify();
   }

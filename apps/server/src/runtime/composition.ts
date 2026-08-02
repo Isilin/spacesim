@@ -12,9 +12,10 @@ import { IndustryService } from "./services/industry-service.js";
 import { LogisticsService } from "./services/logistics-service.js";
 import { MarketService } from "./services/market-service.js";
 import { ObjectiveService } from "./services/objective-service.js";
+import { StationService } from "./services/station-service.js";
 import { TickRunner } from "./tick-runner.js";
 
-/** Les neuf services par domaine + bootstrap + outils de dev + l'orchestrateur de tick, composés. */
+/** Les dix services par domaine + bootstrap + outils de dev + l'orchestrateur de tick, composés. */
 export interface ComposedEngine {
   industry: IndustryService;
   logistics: LogisticsService;
@@ -25,6 +26,7 @@ export interface ComposedEngine {
   fleetService: FleetService;
   diplomacy: DiplomacyService;
   objective: ObjectiveService;
+  station: StationService;
   bootstrap: BootstrapService;
   devService: DevService;
   tickRunner: TickRunner;
@@ -66,18 +68,35 @@ export function composeEngine(
     notify,
     logger,
     (colony) => industry.persistColony(colony),
-    (empire, colony, busyUntil) => logistics.reserveShip(empire, colony, busyUntil),
+    (empire, colony, busyUntil) =>
+      logistics.reserveShip(empire, colony, busyUntil),
     (empire, kind, fromColonyId, targetId, durationMs, extras) =>
-      logistics.insertMission(empire, kind, fromColonyId, targetId, durationMs, extras),
+      logistics.insertMission(
+        empire,
+        kind,
+        fromColonyId,
+        targetId,
+        durationMs,
+        extras,
+      ),
   );
   contract = new ContractService(
     runtime,
     notify,
     logger,
     (colony) => industry.persistColony(colony),
-    (empire, colony, busyUntil) => logistics.reserveShip(empire, colony, busyUntil),
+    (empire, colony, busyUntil) =>
+      logistics.reserveShip(empire, colony, busyUntil),
     (empire, kind, fromColonyId, targetId, durationMs, extras, departedAt) =>
-      logistics.insertMission(empire, kind, fromColonyId, targetId, durationMs, extras, departedAt),
+      logistics.insertMission(
+        empire,
+        kind,
+        fromColonyId,
+        targetId,
+        durationMs,
+        extras,
+        departedAt,
+      ),
   );
   market = new MarketService(
     runtime,
@@ -86,11 +105,27 @@ export function composeEngine(
     (colony) => industry.persistColony(colony),
     (state) => diplomacy.persistFactionState(state),
     (galaxyId) => diplomacy.worldEventKindsOnGalaxy(galaxyId),
-    (empire, colony, busyUntil) => logistics.reserveShip(empire, colony, busyUntil),
+    (empire, colony, busyUntil) =>
+      logistics.reserveShip(empire, colony, busyUntil),
     (empire, kind, fromColonyId, targetId, durationMs, extras, departedAt) =>
-      logistics.insertMission(empire, kind, fromColonyId, targetId, durationMs, extras, departedAt),
+      logistics.insertMission(
+        empire,
+        kind,
+        fromColonyId,
+        targetId,
+        durationMs,
+        extras,
+        departedAt,
+      ),
     (empire, colonyId, resource, quantity, pricePerUnit, durationMs) =>
-      contract.postContract(empire, colonyId, resource, quantity, pricePerUnit, durationMs),
+      contract.postContract(
+        empire,
+        colonyId,
+        resource,
+        quantity,
+        pricePerUnit,
+        durationMs,
+      ),
     (c) => contract.insertContract(c),
   );
   logistics = new LogisticsService(
@@ -102,10 +137,12 @@ export function composeEngine(
     (empire, systemId) => exploration.markExplored(empire, systemId),
     (colonyId) => bootstrap.empireOfColony(colonyId),
     {
-      resolveSaleAt: (tradingPostId, cargo) => market.resolveSaleAt(tradingPostId, cargo),
+      resolveSaleAt: (tradingPostId, cargo) =>
+        market.resolveSaleAt(tradingPostId, cargo),
       resolvePurchaseAt: (tradingPostId, resource, budget, capacity) =>
         market.resolvePurchaseAt(tradingPostId, resource, budget, capacity),
-      tradingPostRepBonus: (empire, tradingPostId) => market.tradingPostRepBonus(empire, tradingPostId),
+      tradingPostRepBonus: (empire, tradingPostId) =>
+        market.tradingPostRepBonus(empire, tradingPostId),
       addFactionRep: (empire, tradingPostId, creditsExchanged) =>
         market.addFactionRep(empire, tradingPostId, creditsExchanged),
     },
@@ -135,6 +172,7 @@ export function composeEngine(
   const objective = new ObjectiveService(runtime, notify, logger, (colony) =>
     industry.persistColony(colony),
   );
+  const station = new StationService(runtime, notify, logger);
   bootstrap = new BootstrapService(
     runtime,
     notify,
@@ -157,6 +195,7 @@ export function composeEngine(
       fleetService,
       diplomacy,
       objective,
+      station,
     },
     notify,
     persister,
@@ -180,6 +219,7 @@ export function composeEngine(
     fleetService,
     diplomacy,
     objective,
+    station,
     bootstrap,
     devService,
     tickRunner,

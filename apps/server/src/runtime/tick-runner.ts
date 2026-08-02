@@ -12,8 +12,9 @@ import type { IndustryService } from "./services/industry-service.js";
 import type { LogisticsService } from "./services/logistics-service.js";
 import type { MarketService } from "./services/market-service.js";
 import type { ObjectiveService } from "./services/objective-service.js";
+import type { StationService } from "./services/station-service.js";
 
-/** Les neuf services que `TickRunner` orchestre, dans l'ordre exact de production. */
+/** Les dix services que `TickRunner` orchestre, dans l'ordre exact de production. */
 export interface TickServices {
   industry: IndustryService;
   logistics: LogisticsService;
@@ -24,6 +25,7 @@ export interface TickServices {
   fleetService: FleetService;
   diplomacy: DiplomacyService;
   objective: ObjectiveService;
+  station: StationService;
 }
 
 /**
@@ -46,14 +48,20 @@ export class TickRunner {
 
   run(ticks: number): void {
     for (let i = 1; i <= ticks; i++) {
-      this.runOne(this.runtime.clock.lastTickAt + i * TICK_MS, this.runtime.clock.tick + i);
+      this.runOne(
+        this.runtime.clock.lastTickAt + i * TICK_MS,
+        this.runtime.clock.tick + i,
+      );
     }
     this.runtime.clock.tick += ticks;
     this.runtime.clock.lastTickAt += ticks * TICK_MS;
     this.gameRepo.saveTick(this.runtime.clock, this.runtime.writeSet);
     for (const empire of this.runtime.empires.values()) {
       this.playerRepo.saveInfluence(empire);
-      for (const colony of empire.colonyMap.values()) this.services.industry.persistColony(colony);
+      for (const colony of empire.colonyMap.values())
+        this.services.industry.persistColony(colony);
+      for (const station of empire.stationMap.values())
+        this.services.station.persistStation(station);
       this.services.logistics.persistOutposts(empire);
     }
     this.notify();
@@ -99,7 +107,8 @@ export class TickRunner {
         (systemId) => services.exploration.claimOwner(systemId),
       );
     }
-    for (const empire of runtime.empires.values()) services.exploration.influenceTick(empire);
+    for (const empire of runtime.empires.values())
+      services.exploration.influenceTick(empire);
     // Marchés PNJ : univers partagé, une fois par tick éco.
     if (isEconomyTick) {
       services.market.economyTick(tickNumber);
@@ -108,7 +117,8 @@ export class TickRunner {
       services.market.factionMoodTick(t, tickNumber);
       // Économie des empires PNJ (chantier 14) : après les marchés, pour tarifer
       // leurs contrats sur des cours à jour.
-      for (const empire of runtime.empires.values()) services.market.npcTick(empire);
+      for (const empire of runtime.empires.values())
+        services.market.npcTick(empire);
       // Objectifs éphémères (chantier 17) : un nouveau tirage par cycle éco, pas par tick.
       services.objective.generateObjectives(tickNumber, t);
     }
@@ -116,6 +126,7 @@ export class TickRunner {
     if (isEconomyTick) services.exploration.ensureFrontier();
     for (const empire of runtime.empires.values()) {
       services.industry.colonyProductionTick(empire, t);
+      services.station.stationProductionTick(empire, t);
     }
   }
 }

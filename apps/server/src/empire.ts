@@ -9,6 +9,7 @@ import {
   type MiningOutpost,
   type Mission,
   type Route,
+  type Station,
   type TechId,
   type Transfer,
 } from "@spacesim/shared";
@@ -35,6 +36,8 @@ export class Empire {
   // ── Entités possédées ──────────────────────────────────────────────────
   /** Colonies possédées, indexées par id. */
   readonly colonyMap = new Map<string, Colony>();
+  /** Stations orbitales possédées (chantier 24), distinctes d'une colonie. */
+  readonly stationMap = new Map<string, Station>();
   /** Convois cargo en vol (transferts manuels). */
   readonly transferMap = new Map<string, Transfer>();
   /** Missions en cours (sonde, colonisation, commerce, avant-poste…). */

@@ -44,7 +44,11 @@ function makeEmpire(id: string): Empire {
  * compatibles avec `TickServices`), pas les vrais. `TickRunner` ne connaît plus qu'une
  * interface par service depuis le chantier 19.6 ; ce harnais reflète cette frontière.
  */
-function recordingServices(): { services: TickServices; notify: () => void; calls: string[] } {
+function recordingServices(): {
+  services: TickServices;
+  notify: () => void;
+  calls: string[];
+} {
   const calls: string[] = [];
   const services: TickServices = {
     industry: {
@@ -88,6 +92,10 @@ function recordingServices(): { services: TickServices; notify: () => void; call
       resolveObjectives: () => calls.push("resolveObjectives"),
       generateObjectives: () => calls.push("generateObjectives"),
     } as unknown as TickServices["objective"],
+    station: {
+      stationProductionTick: () => calls.push("stationProductionTick"),
+      persistStation: () => calls.push("persistStation"),
+    } as unknown as TickServices["station"],
   };
   return { services, notify: () => calls.push("notify"), calls };
 }
@@ -104,11 +112,18 @@ describe("TickRunner — ordre des phases", () => {
       },
       generateUniverse("tick-runner-test", 1),
     );
-    await db.insert(schema.games).values({ ...runtime.clock, createdAt: Date.now() });
+    await db
+      .insert(schema.games)
+      .values({ ...runtime.clock, createdAt: Date.now() });
     runtime.empires.set("a", makeEmpire("a"));
 
     const { services, notify, calls } = recordingServices();
-    new TickRunner(runtime, services, notify, new Persister(runtime.writeSet)).run(1);
+    new TickRunner(
+      runtime,
+      services,
+      notify,
+      new Persister(runtime.writeSet),
+    ).run(1);
 
     expect(calls).toEqual([
       "deliverTransfers",
@@ -123,6 +138,7 @@ describe("TickRunner — ordre des phases", () => {
       "fleetsTick",
       "influenceTick",
       "colonyProductionTick",
+      "stationProductionTick",
       "persistColony",
       "persistOutposts",
       "notify",
@@ -140,11 +156,18 @@ describe("TickRunner — ordre des phases", () => {
       },
       generateUniverse("tick-runner-test", 1),
     );
-    await db.insert(schema.games).values({ ...runtime.clock, createdAt: Date.now() });
+    await db
+      .insert(schema.games)
+      .values({ ...runtime.clock, createdAt: Date.now() });
     runtime.empires.set("a", makeEmpire("a"));
 
     const { services, notify, calls } = recordingServices();
-    new TickRunner(runtime, services, notify, new Persister(runtime.writeSet)).run(1);
+    new TickRunner(
+      runtime,
+      services,
+      notify,
+      new Persister(runtime.writeSet),
+    ).run(1);
 
     expect(calls).toEqual([
       "deliverTransfers",
@@ -166,6 +189,7 @@ describe("TickRunner — ordre des phases", () => {
       "generateObjectives",
       "ensureFrontier",
       "colonyProductionTick",
+      "stationProductionTick",
       "persistColony",
       "persistOutposts",
       "notify",
@@ -183,7 +207,9 @@ describe("TickRunner — ordre des phases", () => {
       },
       generateUniverse("tick-runner-test", 1),
     );
-    await db.insert(schema.games).values({ ...runtime.clock, createdAt: Date.now() });
+    await db
+      .insert(schema.games)
+      .values({ ...runtime.clock, createdAt: Date.now() });
 
     const { services, notify } = recordingServices();
     const persister = new Persister(runtime.writeSet);
