@@ -25,6 +25,8 @@ export class StationRepository {
       zoneQueue: JSON.parse(row.zoneQueue),
       installations: JSON.parse(row.installations),
       installQueue: JSON.parse(row.installQueue),
+      marketAccess: row.marketAccess as Station["marketAccess"],
+      marketTaxRate: row.marketTaxRate,
     }));
   }
 
@@ -42,6 +44,8 @@ export class StationRepository {
       installations: JSON.stringify(station.installations),
       installQueue: JSON.stringify(station.installQueue),
       createdAt,
+      marketAccess: station.marketAccess,
+      marketTaxRate: station.marketTaxRate,
     };
   }
 

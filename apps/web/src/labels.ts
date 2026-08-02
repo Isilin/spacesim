@@ -589,6 +589,15 @@ export const TECH_LABELS: Record<
     name: "Armement orbital",
     description: "Débloque la zone militaire d'une station orbitale.",
   },
+  orbital_commerce: {
+    name: "Commerce orbital",
+    description:
+      "Débloque la zone commerciale d'une station orbitale et son marché de ressources.",
+  },
+  orbital_brokerage: {
+    name: "Courtage orbital",
+    description: "Débloque le marché de plans et de vaisseaux en station orbitale.",
+  },
 };
 
 /** Type de zone de station orbitale (chantier 24) — même libellés que le seed admin
@@ -609,6 +618,10 @@ export const ZONE_TYPE_LABELS: Record<
   military_zone: {
     name: "Zone militaire",
     description: "Accueille les installations de défense et d'armement.",
+  },
+  commercial_zone: {
+    name: "Zone commerciale",
+    description: "Accueille les installations de marché.",
   },
 };
 
@@ -640,5 +653,14 @@ export const INSTALLATION_LABELS: Record<
   orbital_shipyard_annex: {
     name: "Annexe de chantier naval orbitale",
     description: "Produit des composants.",
+  },
+  orbital_trade_exchange: {
+    name: "Comptoir d'échange orbital",
+    description:
+      "Ouvre le marché de ressources de la station (accès et taxe pilotés par le propriétaire).",
+  },
+  orbital_brokerage_house: {
+    name: "Maison de courtage orbitale",
+    description: "Ouvre le marché de plans et de vaisseaux de la station.",
   },
 };

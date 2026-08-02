@@ -98,4 +98,7 @@ export interface Mission {
   capacity?: number;
   /** deliver_contract : contrat honoré, résolu contre l'empire émetteur à l'arrivée. */
   contractId?: string;
+  /** sell / buy (chantier 25) : lieu de marché visé — absent = comptoir PNJ, pour
+   * compatibilité avec les missions déjà en vol avant ce chantier. */
+  venueKind?: "tradingPost" | "station";
 }

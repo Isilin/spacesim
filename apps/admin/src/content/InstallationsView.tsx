@@ -6,10 +6,19 @@ import {
   Modal,
   NumberInput,
   Panel,
+  Select,
   Table,
   type TableColumn,
 } from "@spacesim/ui";
 import { useEffect, useState } from "react";
+
+type InstallationGrant = "resourceMarket" | "blueprintMarket";
+
+const GRANT_OPTIONS = [
+  { value: "", label: "Aucune" },
+  { value: "resourceMarket", label: "Marché de ressources" },
+  { value: "blueprintMarket", label: "Marché de plans / vaisseaux" },
+];
 
 interface Installation {
   id: string;
@@ -21,6 +30,7 @@ interface Installation {
   inputs: Record<string, number> | null;
   outputs: Record<string, number> | null;
   requiresTech: string | null;
+  grants: InstallationGrant | null;
 }
 
 interface Props {
@@ -36,6 +46,7 @@ interface InstallationForm {
   inputs: Record<string, number>;
   outputs: Record<string, number>;
   requiresTech: string;
+  grants: InstallationGrant | "";
 }
 
 function emptyForm(): InstallationForm {
@@ -48,6 +59,7 @@ function emptyForm(): InstallationForm {
     inputs: {},
     outputs: {},
     requiresTech: "",
+    grants: "",
   };
 }
 
@@ -61,6 +73,7 @@ function formFromInstallation(i: Installation): InstallationForm {
     inputs: i.inputs ?? {},
     outputs: i.outputs ?? {},
     requiresTech: i.requiresTech ?? "",
+    grants: i.grants ?? "",
   };
 }
 
@@ -137,6 +150,7 @@ export function InstallationsView({ token }: Props) {
       inputs: form.inputs,
       outputs: form.outputs,
       requiresTech: form.requiresTech.trim() || null,
+      grants: form.grants || null,
     };
     setSubmitting(true);
     setSubmitError(null);
@@ -196,6 +210,12 @@ export function InstallationsView({ token }: Props) {
       key: "requiresTech",
       label: "Tech requise",
       render: (v) => (v as string | null) ?? "—",
+    },
+    {
+      key: "grants",
+      label: "Marché",
+      render: (v) =>
+        GRANT_OPTIONS.find((o) => o.value === (v ?? ""))?.label ?? "—",
     },
     {
       key: "actions",
@@ -266,6 +286,17 @@ export function InstallationsView({ token }: Props) {
               value={form.requiresTech}
               onChange={(e) =>
                 setForm({ ...form, requiresTech: e.target.value })
+              }
+            />
+            <Select
+              label="Marché ouvert par cette installation (chantier 25)"
+              value={form.grants}
+              options={GRANT_OPTIONS}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  grants: e.target.value as InstallationForm["grants"],
+                })
               }
             />
             <p className="muted small">Coût de construction</p>

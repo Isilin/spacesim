@@ -9,6 +9,11 @@ import type { ZoneTypeId } from "./zone-types.js";
  * (`inputs`/`outputs`), mais sans notion d'emploi/dotation : une station n'a pas de
  * population (voir `Station`, `model/industry.ts`).
  */
+/** Capacité spéciale conférée par une installation (chantier 25), au-delà de la
+ * simple conversion inputs/outputs par tick — voir `hasResourceMarket`/
+ * `hasBlueprintMarket` (sim/industry/station.ts). Absent = comportement actuel. */
+export type InstallationGrant = "resourceMarket" | "blueprintMarket";
+
 export interface InstallationDef {
   id: InstallationId;
   zoneType: ZoneTypeId;
@@ -18,6 +23,7 @@ export interface InstallationDef {
   outputs?: Partial<Record<ResourceId, number>>;
   /** Tech requise ; absente = disponible d'emblée (voir BASE_INSTALLATIONS, vide ici). */
   requiresTech?: TechId;
+  grants?: InstallationGrant;
 }
 
 export const INSTALLATION_IDS = [
@@ -27,6 +33,8 @@ export const INSTALLATION_IDS = [
   "orbital_research_lab",
   "orbital_armory",
   "orbital_shipyard_annex",
+  "orbital_trade_exchange",
+  "orbital_brokerage_house",
 ] as const;
 
 export type InstallationId = (typeof INSTALLATION_IDS)[number];
@@ -87,6 +95,28 @@ export const INSTALLATIONS: Record<InstallationId, InstallationDef> = {
     inputs: { metals: 2, energy: 3 },
     outputs: { components: 1.2 },
     requiresTech: "capital_ships",
+  },
+  // ─── commercial_zone (chantier 25) ───
+  /** Entretien pur (pas d'outputs) : le marché lui-même n'est pas une conversion
+   * inputs/outputs par tick, c'est une capacité (`grants`) exploitée par les actions
+   * d'achat/vente — voir sim/economy/station-market.ts. */
+  orbital_trade_exchange: {
+    id: "orbital_trade_exchange",
+    zoneType: "commercial_zone",
+    cost: { metals: 140, components: 70 },
+    buildMs: 55_000,
+    inputs: { energy: 3, credits: 0.5 },
+    requiresTech: "orbital_commerce",
+    grants: "resourceMarket",
+  },
+  orbital_brokerage_house: {
+    id: "orbital_brokerage_house",
+    zoneType: "commercial_zone",
+    cost: { metals: 200, components: 130 },
+    buildMs: 75_000,
+    inputs: { energy: 3, credits: 1 },
+    requiresTech: "orbital_brokerage",
+    grants: "blueprintMarket",
   },
 };
 

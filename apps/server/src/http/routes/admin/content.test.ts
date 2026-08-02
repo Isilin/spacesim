@@ -596,7 +596,7 @@ const VALID_TECH_BODY = {
 };
 
 describe("/api/admin/content/techs", () => {
-  it("un content_editor liste les 43 techs historiques amorcées au boot", async () => {
+  it("un content_editor liste les 45 techs historiques amorcées au boot", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
     const { token, accountId } = await registerTestAccount(
       app,
@@ -609,7 +609,7 @@ describe("/api/admin/content/techs", () => {
       headers: { authorization: `Bearer ${token}` },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().techs).toHaveLength(43);
+    expect(res.json().techs).toHaveLength(45);
   });
 
   it("modifie une tech existante — effective immédiatement", async () => {
@@ -648,7 +648,7 @@ describe("/api/admin/content/techs", () => {
       payload: VALID_TECH_BODY,
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().techs).toHaveLength(44);
+    expect(res.json().techs).toHaveLength(46);
   });
 
   it("un prérequis inconnu est refusé (400) — validateTree rejoué côté serveur", async () => {
@@ -1117,7 +1117,7 @@ const VALID_ZONE_TYPE_BODY = {
 };
 
 describe("/api/admin/content/zone-types", () => {
-  it("un content_editor liste les 3 types de zone historiques amorcés au boot", async () => {
+  it("un content_editor liste les 4 types de zone historiques amorcés au boot", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
     const { token, accountId } = await registerTestAccount(
       app,
@@ -1130,7 +1130,7 @@ describe("/api/admin/content/zone-types", () => {
       headers: { authorization: `Bearer ${token}` },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().zoneTypes).toHaveLength(3);
+    expect(res.json().zoneTypes).toHaveLength(4);
   });
 
   it("modifie un type de zone existant — effective immédiatement", async () => {
@@ -1169,7 +1169,7 @@ describe("/api/admin/content/zone-types", () => {
       payload: VALID_ZONE_TYPE_BODY,
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().zoneTypes).toHaveLength(4);
+    expect(res.json().zoneTypes).toHaveLength(5);
   });
 
   it("un coût négatif est refusé (400)", async () => {
@@ -1214,7 +1214,7 @@ const VALID_INSTALLATION_BODY = {
 };
 
 describe("/api/admin/content/installations", () => {
-  it("un content_editor liste les 6 installations historiques amorcées au boot", async () => {
+  it("un content_editor liste les 8 installations historiques amorcées au boot", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
     const { token, accountId } = await registerTestAccount(
       app,
@@ -1227,7 +1227,7 @@ describe("/api/admin/content/installations", () => {
       headers: { authorization: `Bearer ${token}` },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().installations).toHaveLength(6);
+    expect(res.json().installations).toHaveLength(8);
   });
 
   it("modifie une installation existante — effective immédiatement", async () => {
@@ -1268,7 +1268,7 @@ describe("/api/admin/content/installations", () => {
       payload: VALID_INSTALLATION_BODY,
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().installations).toHaveLength(7);
+    expect(res.json().installations).toHaveLength(9);
   });
 
   it("un coût négatif est refusé (400)", async () => {

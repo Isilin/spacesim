@@ -21,6 +21,7 @@ export const ZONE_TYPE_IDS = [
   "industrial_zone",
   "science_zone",
   "military_zone",
+  "commercial_zone",
 ] as const;
 
 export type ZoneTypeId = (typeof ZONE_TYPE_IDS)[number];
@@ -43,6 +44,14 @@ export const ZONE_TYPES: Record<ZoneTypeId, ZoneTypeDef> = {
     cost: { metals: 200, components: 100 },
     buildMs: 90_000,
     requiresTech: "orbital_armaments",
+  },
+  /** Station commerciale (chantier 25) : accueille les installations de marché
+   * (`grants: "resourceMarket" | "blueprintMarket"`, content/installations.ts). */
+  commercial_zone: {
+    id: "commercial_zone",
+    cost: { metals: 180, components: 90 },
+    buildMs: 80_000,
+    requiresTech: "orbital_commerce",
   },
 };
 

@@ -421,6 +421,10 @@ export const stations = pgTable("stations", {
   installations: text("installations").notNull().default("{}"),
   installQueue: text("install_queue").notNull().default("[]"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  /** Politique de marché (chantier 25) — "closed" par défaut, aucune ambiguïté à
+   *  lever sur les lignes existantes (une station déjà fondée n'avait aucun marché). */
+  marketAccess: text("market_access").notNull().default("closed"),
+  marketTaxRate: doublePrecision("market_tax_rate").notNull().default(0),
 });
 
 /** Routes logistiques automatiques (rule/ships/activeCycle en JSON). `fromId`/`toId`
@@ -471,6 +475,9 @@ export const missions = pgTable("missions", {
   capacity: doublePrecision("capacity"),
   /** Contrat honoré (mission deliver_contract, chantier 14). */
   contractId: text("contract_id"),
+  /** Lieu de marché visé (mission sell/buy, chantier 25) — absent = comptoir PNJ,
+   *  rétrocompatible avec les missions déjà en vol avant ce chantier. */
+  venueKind: text("venue_kind"),
 });
 
 /** Stocks dynamiques des comptoirs PNJ — les prix en dérivent (sim/market). */
@@ -729,6 +736,9 @@ export const contentInstallations = pgTable("content_installations", {
   inputs: text("inputs").notNull().default("{}"),
   outputs: text("outputs").notNull().default("{}"),
   requiresTech: text("requires_tech"),
+  /** Capacité spéciale conférée (chantier 25) : "resourceMarket" | "blueprintMarket" |
+   *  null. Non vérifié contre un enum — même convention que `requiresTech`. */
+  grants: text("grants"),
 });
 
 /**

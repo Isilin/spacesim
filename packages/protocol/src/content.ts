@@ -288,5 +288,8 @@ export const upsertInstallationSchema = z.object({
   outputs: z.record(z.string(), z.number().nonnegative()).nullable(),
   /** null = aucune tech requise. */
   requiresTech: z.string().trim().min(1).nullable(),
+  /** Capacité de marché conférée (chantier 25) ; null/absent = aucune — défaut permissif
+   * pour ne pas casser un client (admin ou test) écrit avant l'ajout de ce champ. */
+  grants: z.enum(["resourceMarket", "blueprintMarket"]).nullable().default(null),
 });
 export type UpsertInstallationInput = z.infer<typeof upsertInstallationSchema>;

@@ -1,3 +1,4 @@
+import type { StationMarketAccess } from "./industry.js";
 import type { ResourceId } from "./resources.js";
 
 export type FactionMood = "neutral" | "boom" | "shortage" | "embargo";
@@ -138,4 +139,14 @@ export interface ForeignStation {
   name: string;
   systemId: string;
   bodyId: string;
+  /** Présent seulement si la station a au moins une installation de marché
+   * opérationnelle (chantier 25) — jamais le reste du stock (matériaux de
+   * construction du propriétaire, non exposés aux visiteurs). */
+  market?: {
+    hasResourceMarket: boolean;
+    hasBlueprintMarket: boolean;
+    access: StationMarketAccess;
+    taxRate: number;
+    tradableStocks: Partial<Record<ResourceId, number>>;
+  };
 }

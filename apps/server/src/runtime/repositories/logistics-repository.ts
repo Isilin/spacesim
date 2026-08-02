@@ -75,6 +75,9 @@ export class LogisticsRepository {
         : {}),
       ...(row.capacity !== null ? { capacity: row.capacity } : {}),
       ...(row.contractId ? { contractId: row.contractId } : {}),
+      ...(row.venueKind
+        ? { venueKind: row.venueKind as Mission["venueKind"] }
+        : {}),
     }));
   }
 
@@ -92,6 +95,7 @@ export class LogisticsRepository {
       buyResource: mission.buyResource ?? null,
       capacity: mission.capacity ?? null,
       contractId: mission.contractId ?? null,
+      venueKind: mission.venueKind ?? null,
     };
   }
 

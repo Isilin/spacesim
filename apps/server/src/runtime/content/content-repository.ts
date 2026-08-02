@@ -339,6 +339,7 @@ function installationFromRow(row: InstallationRow): ContentInstallation {
     inputs: row.inputs ? JSON.parse(row.inputs) : null,
     outputs: row.outputs ? JSON.parse(row.outputs) : null,
     requiresTech: row.requiresTech,
+    grants: row.grants,
   };
 }
 
@@ -353,6 +354,7 @@ function rowFromInstallation(i: ContentInstallation) {
     inputs: JSON.stringify(i.inputs ?? {}),
     outputs: JSON.stringify(i.outputs ?? {}),
     requiresTech: i.requiresTech,
+    grants: i.grants,
   };
 }
 

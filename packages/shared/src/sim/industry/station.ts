@@ -26,6 +26,29 @@ export function canFoundStation(effects: EmpireEffects): boolean {
   return effects.unlockedZoneTypes.size > 0;
 }
 
+/** Une installation `grants: "resourceMarket"` construite (comptée, pas en file) rend
+ * la station apte à commercer des ressources — chantier 25. Testé par étiquette de
+ * contenu (`grants`), jamais par id en dur : `ZoneTypeId`/`InstallationId` sont libres
+ * côté DB (id-minting), un admin peut renommer/recréer ce contenu. */
+export function hasResourceMarket(
+  station: Station,
+  installations: Record<string, InstallationDef> = INSTALLATIONS,
+): boolean {
+  return Object.entries(station.installations as Record<string, number>).some(
+    ([id, count]) => (count ?? 0) > 0 && installations[id]?.grants === "resourceMarket",
+  );
+}
+
+/** Même patron que `hasResourceMarket`, pour le marché de plans/vaisseaux. */
+export function hasBlueprintMarket(
+  station: Station,
+  installations: Record<string, InstallationDef> = INSTALLATIONS,
+): boolean {
+  return Object.entries(station.installations as Record<string, number>).some(
+    ([id, count]) => (count ?? 0) > 0 && installations[id]?.grants === "blueprintMarket",
+  );
+}
+
 export function canAffordStation(
   station: Station,
   cost: Partial<Record<ResourceId, number>>,

@@ -205,6 +205,8 @@ export interface ContentInstallation {
   outputs: Record<string, number> | null;
   /** null = aucune tech requise. */
   requiresTech: string | null;
+  /** "resourceMarket" | "blueprintMarket" | null (chantier 25). */
+  grants: string | null;
 }
 
 /** Contenu chargé en mémoire (`GameRuntime.content`) — remplacé en bloc à chaque édition

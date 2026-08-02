@@ -746,6 +746,10 @@ const SEED_ZONE_TYPE_LABELS: Record<
     name: "Zone militaire",
     description: "Accueille les installations de défense et d'armement.",
   },
+  commercial_zone: {
+    name: "Zone commerciale",
+    description: "Accueille les installations de marché.",
+  },
 };
 
 /** Types de zone historiques (`packages/shared`) au format `ContentZoneType`. */
@@ -793,6 +797,15 @@ const SEED_INSTALLATION_LABELS: Record<
     name: "Annexe de chantier naval orbitale",
     description: "Produit des composants.",
   },
+  orbital_trade_exchange: {
+    name: "Comptoir d'échange orbital",
+    description:
+      "Ouvre le marché de ressources de la station (accès et taxe pilotés par le propriétaire).",
+  },
+  orbital_brokerage_house: {
+    name: "Maison de courtage orbitale",
+    description: "Ouvre le marché de plans et de vaisseaux de la station.",
+  },
 };
 
 /** Installations historiques (`packages/shared`) au format `ContentInstallation`. */
@@ -810,6 +823,7 @@ function seedInstallations(): ContentInstallation[] {
       inputs: def.inputs ?? null,
       outputs: def.outputs ?? null,
       requiresTech: def.requiresTech ?? null,
+      grants: def.grants ?? null,
     };
   });
 }
@@ -1110,6 +1124,7 @@ export function installationDefsFromContent(
         outputs: i.outputs ?? undefined,
         requiresTech: (i.requiresTech ??
           undefined) as InstallationDef["requiresTech"],
+        grants: (i.grants ?? undefined) as InstallationDef["grants"],
       } satisfies InstallationDef,
     ]),
   );

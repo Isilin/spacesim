@@ -844,6 +844,10 @@ export class LogisticsService {
               zoneQueue: [],
               installations: {},
               installQueue: [],
+              // Chantier 25 : une station neuve n'expose rien tant que le propriétaire
+              // n'ouvre pas explicitement sa politique de marché.
+              marketAccess: "closed",
+              marketTaxRate: 0,
             });
             this.logger.info(`[game] station fondée en orbite de ${body.name}`);
           }

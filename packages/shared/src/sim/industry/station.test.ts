@@ -10,6 +10,8 @@ import {
   emptyStationResources,
   enqueueInstallation,
   enqueueZone,
+  hasBlueprintMarket,
+  hasResourceMarket,
   resolveInstallQueue,
   resolveZoneQueue,
   takeFromStation,
@@ -27,6 +29,8 @@ function makeStation(overrides: Partial<Station> = {}): Station {
     zoneQueue: [],
     installations: {},
     installQueue: [],
+    marketAccess: "closed",
+    marketTaxRate: 0,
     ...overrides,
   };
 }
@@ -241,5 +245,49 @@ describe("takeFromStation / deliverToStation", () => {
       resources: { ...emptyStationResources(), ore: 10 },
     });
     expect(takeFromStation(station, { ore: 20 })).toBeNull();
+  });
+});
+
+describe("hasResourceMarket / hasBlueprintMarket (chantier 25)", () => {
+  it("refuse sans installation construite", () => {
+    expect(hasResourceMarket(makeStation())).toBe(false);
+    expect(hasBlueprintMarket(makeStation())).toBe(false);
+  });
+
+  it("refuse tant que l'installation est seulement en file", () => {
+    const station = makeStation({
+      installQueue: [
+        {
+          installationId: "orbital_trade_exchange",
+          startedAt: 0,
+          finishesAt: 1000,
+        },
+      ],
+    });
+    expect(hasResourceMarket(station)).toBe(false);
+  });
+
+  it("autorise dès que l'installation de marché de ressources est construite", () => {
+    const station = makeStation({
+      installations: { orbital_trade_exchange: 1 },
+    });
+    expect(hasResourceMarket(station)).toBe(true);
+    expect(hasBlueprintMarket(station)).toBe(false);
+  });
+
+  it("autorise le marché de plans indépendamment du marché de ressources", () => {
+    const station = makeStation({
+      installations: { orbital_brokerage_house: 1 },
+    });
+    expect(hasBlueprintMarket(station)).toBe(true);
+    expect(hasResourceMarket(station)).toBe(false);
+  });
+
+  it("une installation sans grants (ex. panneau solaire) n'ouvre aucun marché", () => {
+    const station = makeStation({
+      installations: { orbital_solar_array: 1 },
+    });
+    expect(hasResourceMarket(station)).toBe(false);
+    expect(hasBlueprintMarket(station)).toBe(false);
   });
 });

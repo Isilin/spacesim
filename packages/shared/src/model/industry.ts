@@ -112,6 +112,20 @@ export interface InstallQueueItem {
 }
 
 /**
+ * Politique de marché d'une station (chantier 25) : palier minimal de relation
+ * diplomatique requis pour qu'un empire tiers puisse y commercer, en permissivité
+ * croissante. "war" bloque toujours, quel que soit le palier — "public" veut dire
+ * « tout empire pas en guerre », pas « même les ennemis ».
+ */
+export const STATION_MARKET_ACCESS_IDS = [
+  "closed",
+  "alliance",
+  "nap",
+  "public",
+] as const;
+export type StationMarketAccess = (typeof STATION_MARKET_ACCESS_IDS)[number];
+
+/**
  * Station orbitale (chantier 24) : structure possédée, distincte d'une colonie —
  * en orbite d'un corps précis, pas sur sa surface (un corps peut porter les deux).
  * `ownerId` est requis (pas de legacy pré-multi-empire, contrairement à `Colony.ownerId`) —
@@ -143,6 +157,11 @@ export interface Station {
   /** Nombre d'installations construites par type — plafonné par les zones de son type. */
   installations: Partial<Record<string, number>>;
   installQueue: InstallQueueItem[];
+  /** Politique de marché (chantier 25) : défaut "closed" à la fondation — une station
+   * neuve n'expose rien tant que le propriétaire ne l'ouvre pas explicitement. */
+  marketAccess: StationMarketAccess;
+  /** Taxe prélevée sur les échanges des visiteurs (hors propriétaire), 0–1. */
+  marketTaxRate: number;
 }
 
 /** Avant-poste minier robotisé sur une ceinture d'astéroïdes. */

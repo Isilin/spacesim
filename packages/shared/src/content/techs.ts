@@ -52,6 +52,9 @@ export const TECH_IDS = [
   "orbital_engineering",
   "orbital_astrophysics",
   "orbital_armaments",
+  // Station commerciale (chantier 25) : techs dédiées, séparées du marché de plans.
+  "orbital_commerce",
+  "orbital_brokerage",
 ] as const;
 
 export type TechId = (typeof TECH_IDS)[number];
@@ -479,6 +482,26 @@ export const TECHS: Record<TechId, TechDef> = {
     durationMs: 420_000,
     requires: ["orbital_engineering", "capital_ships"],
     // Débloque la zone militaire orbitale (content/zone-types).
+    effects: {},
+  },
+  orbital_commerce: {
+    id: "orbital_commerce",
+    branch: "society",
+    cost: 480,
+    durationMs: 400_000,
+    requires: ["orbital_engineering", "trade_charters"],
+    // Débloque la zone commerciale orbitale et le marché de ressources
+    // (orbital_trade_exchange, content/zone-types + content/installations).
+    effects: {},
+  },
+  orbital_brokerage: {
+    id: "orbital_brokerage",
+    branch: "society",
+    cost: 520,
+    durationMs: 420_000,
+    requires: ["orbital_commerce"],
+    // Débloque le marché de plans/vaisseaux en station (orbital_brokerage_house) —
+    // palier de progression séparé du marché de ressources, pas empilé sur la même tech.
     effects: {},
   },
 };

@@ -33,6 +33,8 @@ export {
   type Station,
   type ZoneQueueItem,
   type InstallQueueItem,
+  STATION_MARKET_ACCESS_IDS,
+  type StationMarketAccess,
 } from "./model/industry.js";
 export {
   type LiftRule,
@@ -218,6 +220,7 @@ export {
   BASE_INSTALLATIONS,
   type InstallationId,
   type InstallationDef,
+  type InstallationGrant,
 } from "./content/installations.js";
 export {
   ROUNDS_PER_PHASE,
@@ -259,6 +262,12 @@ export {
   type Stocks,
   type PriceContext,
 } from "./sim/economy/market.js";
+export {
+  canTradeAtStation,
+  applyStationCredits,
+  resolveStationSale,
+  resolveStationPurchase,
+} from "./sim/economy/station-market.js";
 export {
   legacyCapacity,
   idleShips,
@@ -385,6 +394,8 @@ export {
   emptyStationResources,
   canFoundStation,
   canAffordStation,
+  hasResourceMarket,
+  hasBlueprintMarket,
   enqueueZone,
   resolveZoneQueue,
   enqueueInstallation,
