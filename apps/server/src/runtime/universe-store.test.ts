@@ -24,15 +24,13 @@ const UNIVERSE_TABLES = [
 
 beforeEach(async () => {
   for (const table of UNIVERSE_TABLES) await db.delete(table);
-  await db
-    .insert(schema.games)
-    .values({
-      id: GAME_ID,
-      seed: SEED,
-      lastTickAt: 0,
-      createdAt: 0,
-      galaxyCount: 0,
-    });
+  await db.insert(schema.games).values({
+    id: GAME_ID,
+    seed: SEED,
+    lastTickAt: 0,
+    createdAt: 0,
+    galaxyCount: 0,
+  });
 });
 
 const galaxyCount = async () => {

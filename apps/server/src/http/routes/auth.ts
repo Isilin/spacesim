@@ -50,11 +50,9 @@ export function registerAuthRoutes(
       if (!result.ok) return reply.code(400).send({ error: result.error });
       // L'empire naît avec le compte : une inscription = un empire dans l'univers partagé.
       if (!engine.createEmpireForAccount(result.account.id, empireName)) {
-        return reply
-          .code(503)
-          .send({
-            error: "Univers plein — aucune planète d'accueil disponible",
-          });
+        return reply.code(503).send({
+          error: "Univers plein — aucune planète d'accueil disponible",
+        });
       }
       return authPayload(engine, result);
     },

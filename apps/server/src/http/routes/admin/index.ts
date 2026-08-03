@@ -79,11 +79,9 @@ export function registerAdminRoutes(
           const { id } = request.params as { id: string };
           const parsed = applySanctionSchema.safeParse(request.body);
           if (!parsed.success) {
-            return reply
-              .code(400)
-              .send({
-                error: parsed.error.issues[0]?.message ?? "Requête invalide",
-              });
+            return reply.code(400).send({
+              error: parsed.error.issues[0]?.message ?? "Requête invalide",
+            });
           }
           const actor = request.adminAccount!;
           const action = SANCTION_ACTIONS[parsed.data.kind];

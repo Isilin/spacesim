@@ -75,11 +75,9 @@ export function registerContentRoutes(
       const { id } = request.params as { id: string };
       const parsed = upsertWarshipSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply
-          .code(400)
-          .send({
-            error: parsed.error.issues[0]?.message ?? "Requête invalide",
-          });
+        return reply.code(400).send({
+          error: parsed.error.issues[0]?.message ?? "Requête invalide",
+        });
       }
       const isNew = !(id in engine.content.warships);
       const warship: ContentWarship = { id, ...parsed.data };
@@ -115,11 +113,9 @@ export function registerContentRoutes(
       const { id } = request.params as { id: string };
       const parsed = upsertFactionSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply
-          .code(400)
-          .send({
-            error: parsed.error.issues[0]?.message ?? "Requête invalide",
-          });
+        return reply.code(400).send({
+          error: parsed.error.issues[0]?.message ?? "Requête invalide",
+        });
       }
       const isNew = !(id in engine.content.factions);
       const faction: ContentFaction = { id, ...parsed.data };
@@ -163,11 +159,9 @@ export function registerContentRoutes(
       }
       const parsed = upsertBuildingSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply
-          .code(400)
-          .send({
-            error: parsed.error.issues[0]?.message ?? "Requête invalide",
-          });
+        return reply.code(400).send({
+          error: parsed.error.issues[0]?.message ?? "Requête invalide",
+        });
       }
       const building: ContentBuilding = {
         id: id as BuildingId,
@@ -206,11 +200,9 @@ export function registerContentRoutes(
       const { id } = request.params as { id: string };
       const parsed = upsertShipSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply
-          .code(400)
-          .send({
-            error: parsed.error.issues[0]?.message ?? "Requête invalide",
-          });
+        return reply.code(400).send({
+          error: parsed.error.issues[0]?.message ?? "Requête invalide",
+        });
       }
       const isNew = !(id in engine.content.ships);
       const ship: ContentShip = { id, ...parsed.data };
@@ -253,11 +245,9 @@ export function registerContentRoutes(
       }
       const parsed = upsertConstantSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply
-          .code(400)
-          .send({
-            error: parsed.error.issues[0]?.message ?? "Requête invalide",
-          });
+        return reply.code(400).send({
+          error: parsed.error.issues[0]?.message ?? "Requête invalide",
+        });
       }
       const constant: ContentConstant = { key, ...parsed.data };
       await repo.saveConstant(constant);
@@ -294,11 +284,9 @@ export function registerContentRoutes(
       const { id } = request.params as { id: string };
       const parsed = upsertTechSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply
-          .code(400)
-          .send({
-            error: parsed.error.issues[0]?.message ?? "Requête invalide",
-          });
+        return reply.code(400).send({
+          error: parsed.error.issues[0]?.message ?? "Requête invalide",
+        });
       }
       const isNew = !(id in engine.content.techs);
       const tech: ContentTech = { id, ...parsed.data };
@@ -341,11 +329,9 @@ export function registerContentRoutes(
       const { id } = request.params as { id: string };
       const parsed = upsertChassisSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply
-          .code(400)
-          .send({
-            error: parsed.error.issues[0]?.message ?? "Requête invalide",
-          });
+        return reply.code(400).send({
+          error: parsed.error.issues[0]?.message ?? "Requête invalide",
+        });
       }
       const isNew = !(id in engine.content.chassis);
       const chassis: ContentChassis = { id, ...parsed.data };
@@ -380,11 +366,9 @@ export function registerContentRoutes(
       const { id } = request.params as { id: string };
       const parsed = upsertModuleSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply
-          .code(400)
-          .send({
-            error: parsed.error.issues[0]?.message ?? "Requête invalide",
-          });
+        return reply.code(400).send({
+          error: parsed.error.issues[0]?.message ?? "Requête invalide",
+        });
       }
       const isNew = !(id in engine.content.modules);
       const module: ContentModule = { id, ...parsed.data };
@@ -421,11 +405,9 @@ export function registerContentRoutes(
       const { id } = request.params as { id: string };
       const parsed = upsertPresetSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply
-          .code(400)
-          .send({
-            error: parsed.error.issues[0]?.message ?? "Requête invalide",
-          });
+        return reply.code(400).send({
+          error: parsed.error.issues[0]?.message ?? "Requête invalide",
+        });
       }
       const isNew = !(id in engine.content.presets);
       const preset: ContentPreset = { id, ...parsed.data };
@@ -462,11 +444,9 @@ export function registerContentRoutes(
       const { id } = request.params as { id: string };
       const parsed = upsertMilestoneSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply
-          .code(400)
-          .send({
-            error: parsed.error.issues[0]?.message ?? "Requête invalide",
-          });
+        return reply.code(400).send({
+          error: parsed.error.issues[0]?.message ?? "Requête invalide",
+        });
       }
       const isNew = !(id in engine.content.milestones);
       const milestone: ContentMilestone = { id, ...parsed.data };
@@ -503,11 +483,9 @@ export function registerContentRoutes(
       const { id } = request.params as { id: string };
       const parsed = upsertZoneTypeSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply
-          .code(400)
-          .send({
-            error: parsed.error.issues[0]?.message ?? "Requête invalide",
-          });
+        return reply.code(400).send({
+          error: parsed.error.issues[0]?.message ?? "Requête invalide",
+        });
       }
       const isNew = !(id in engine.content.zoneTypes);
       const zoneType: ContentZoneType = { id, ...parsed.data };
@@ -544,11 +522,9 @@ export function registerContentRoutes(
       const { id } = request.params as { id: string };
       const parsed = upsertInstallationSchema.safeParse(request.body);
       if (!parsed.success) {
-        return reply
-          .code(400)
-          .send({
-            error: parsed.error.issues[0]?.message ?? "Requête invalide",
-          });
+        return reply.code(400).send({
+          error: parsed.error.issues[0]?.message ?? "Requête invalide",
+        });
       }
       const isNew = !(id in engine.content.installations);
       const installation: ContentInstallation = { id, ...parsed.data };
