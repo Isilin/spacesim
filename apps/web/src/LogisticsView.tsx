@@ -42,6 +42,9 @@ export function LogisticsView({ effects, portalLinks, now }: Props) {
     outposts,
     markets,
     contracts,
+    stations,
+    foreignStations,
+    leaderboard,
     playerId,
     send,
   } = useGameStore();
@@ -100,6 +103,10 @@ export function LogisticsView({ effects, portalLinks, now }: Props) {
           activeColony={colony}
           exploredSystemIds={exploredSystemIds}
           portalLinks={portalLinks}
+          stations={stations}
+          foreignStations={foreignStations}
+          leaderboard={leaderboard}
+          playerId={playerId}
         />
       ) : (
         <ContractsView

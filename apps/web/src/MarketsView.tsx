@@ -2,14 +2,19 @@ import {
   allTradingPosts,
   allSystems,
   BASE_PRICES,
+  canTradeAtStation,
   convoyFees,
   convoyFuel,
   findGalaxyOfSystem,
+  hasResourceMarket,
   jumpDistanceInUniverse,
   MARKET_RESOURCES,
   tradingPostPrice,
   type Colony,
+  type ForeignStation,
+  type LeaderboardEntry,
   type MarketResource,
+  type Station,
   type TradingPostMarket,
   type Universe,
 } from "@spacesim/shared";
@@ -25,16 +30,31 @@ interface Props {
   activeColony: Colony | null;
   exploredSystemIds: string[];
   portalLinks: [string, string][];
+  /** Stations commerciales qualifiées (chantier 25) : les siennes + celles d'autres
+   *  empires dont la politique de marché autorise le viewer. */
+  stations: Station[];
+  foreignStations: ForeignStation[];
+  leaderboard: LeaderboardEntry[];
+  playerId: string | null;
 }
 
 /** Convoi de référence du comparateur : un cargo léger plein. */
 const REFERENCE_LOT = 200;
 const REFERENCE_CONVOY = { cargo_small: 1 } as const;
 
+interface MarketVenue {
+  id: string;
+  name: string;
+  systemId: string;
+  factionId?: string;
+}
+
 /**
- * Comparateur de marchés (chantier 12) : sans lui, les prix régionaux ne seraient
- * qu'un bruit invisible — c'est ce tableau qui transforme l'écart de prix en décision.
- * Ne montre que les comptoirs déjà découverts.
+ * Comparateur de marchés (chantier 12, étendu au chantier 25) : sans lui, les prix
+ * régionaux ne seraient qu'un bruit invisible — c'est ce tableau qui transforme
+ * l'écart de prix en décision. Ne montre que les comptoirs déjà découverts et les
+ * stations commerciales qualifiées (marché de ressources + accès autorisé pour le
+ * viewer) — sinon l'outil devient trompeur une fois les stations de joueur courantes.
  */
 export function MarketsView({
   universe,
@@ -43,6 +63,10 @@ export function MarketsView({
   activeColony,
   exploredSystemIds,
   portalLinks,
+  stations,
+  foreignStations,
+  leaderboard,
+  playerId,
 }: Props) {
   const [resource, setResource] = useState<MarketResource>("components");
 
@@ -52,22 +76,49 @@ export function MarketsView({
       ?.id;
   }, [universe, activeColony]);
 
-  const rows = useMemo(() => {
+  const venues = useMemo(() => {
     const explored = new Set(exploredSystemIds);
     const marketById = new Map(markets.map((m) => [m.tradingPostId, m]));
-    return allTradingPosts(universe)
+    const tradingPostVenues: { venue: MarketVenue; stock: number }[] = allTradingPosts(universe)
       .filter((post) => explored.has(post.systemId) && marketById.has(post.id))
-      .map((post) => {
-        const market = marketById.get(post.id)!;
-        const galaxy = findGalaxyOfSystem(universe, post.systemId);
+      .map((post) => ({
+        venue: { id: post.id, name: post.name, systemId: post.systemId, factionId: post.factionId },
+        stock: marketById.get(post.id)!.stocks[resource],
+      }));
+
+    const ownStationVenues: { venue: MarketVenue; stock: number }[] = stations
+      .filter((s) => hasResourceMarket(s))
+      .map((s) => ({
+        venue: { id: s.id, name: s.name, systemId: s.systemId },
+        stock: s.resources[resource],
+      }));
+
+    const foreignStationVenues: { venue: MarketVenue; stock: number }[] = foreignStations
+      .filter((s) => {
+        if (!s.market?.hasResourceMarket) return false;
+        const relation = leaderboard.find((e) => e.id === s.ownerId)?.relation ?? "neutral";
+        return canTradeAtStation(s.ownerId, playerId ?? "", s.market.access, relation);
+      })
+      .map((s) => ({
+        venue: { id: s.id, name: `${s.name} (${s.ownerName})`, systemId: s.systemId },
+        stock: s.market!.tradableStocks[resource] ?? 0,
+      }));
+
+    return [...tradingPostVenues, ...ownStationVenues, ...foreignStationVenues];
+  }, [universe, markets, stations, foreignStations, leaderboard, playerId, exploredSystemIds, resource]);
+
+  const rows = useMemo(() => {
+    return venues
+      .map(({ venue, stock }) => {
+        const galaxy = findGalaxyOfSystem(universe, venue.systemId);
         const galaxyIndex = universe.galaxies.findIndex((g) => g.id === galaxy?.id);
-        const price = tradingPostPrice(resource, market.stocks[resource], {
-          venueId: post.id,
+        const price = tradingPostPrice(resource, stock, {
+          venueId: venue.id,
           galaxyIndex,
-          factionId: post.factionId,
+          factionId: venue.factionId,
         });
         const jumps = fromSystem
-          ? jumpDistanceInUniverse(universe, fromSystem, post.systemId, portalLinks)
+          ? jumpDistanceInUniverse(universe, fromSystem, venue.systemId, portalLinks)
           : -1;
         const portals =
           galaxyIndex > 0 && fromSystem && !fromSystem.startsWith(`${galaxy?.id}-`) ? 1 : 0;
@@ -76,9 +127,9 @@ export function MarketsView({
         const fees = jumps >= 0 ? convoyFees(jumps, portals) : 0;
         const fuel = jumps >= 0 ? convoyFuel(jumps, REFERENCE_CONVOY, REFERENCE_LOT) : 0;
         return {
-          post,
+          venue,
           galaxyName: galaxy?.name ?? "?",
-          stock: market.stocks[resource],
+          stock,
           price,
           jumps,
           fees,
@@ -87,7 +138,7 @@ export function MarketsView({
         };
       })
       .sort((a, b) => b.price - a.price);
-  }, [universe, markets, exploredSystemIds, resource, fromSystem, portalLinks]);
+  }, [venues, universe, resource, fromSystem, portalLinks]);
 
   const best = rows[0];
   type MarketRow = (typeof rows)[number];
@@ -95,9 +146,9 @@ export function MarketsView({
 
   const columns: TableColumn<MarketRow>[] = [
     {
-      key: "post",
-      label: "Comptoir",
-      render: (_, row) => (row.post.id === best?.post.id ? `★ ${row.post.name}` : row.post.name),
+      key: "venue",
+      label: "Comptoir / station",
+      render: (_, row) => (row.venue.id === best?.venue.id ? `★ ${row.venue.name}` : row.venue.name),
     },
     { key: "galaxyName", label: "Galaxie" },
     { key: "stock", label: "Stock", align: "right", render: (_, row) => Math.floor(row.stock) },
@@ -148,16 +199,19 @@ export function MarketsView({
 
       {rows.length === 0 ? (
         <p className="muted">
-          Aucun comptoir découvert. Explorez des systèmes pour comparer les marchés.
+          Aucun comptoir ni station commerciale découvert. Explorez des systèmes pour comparer les
+          marchés.
         </p>
       ) : (
         <Table columns={columns} rows={rows} />
       )}
 
       <p className="small muted">
-        Le prix d'un comptoir dépend de son stock, de son biais local et de l'éloignement de sa
-        galaxie : les anneaux lointains paient cher le manufacturé et bradent le brut. La colonne «
-        net » retranche les frais du voyage pour un cargo léger plein.
+        Le prix d'un lieu de marché dépend de son stock, de son biais local et de l'éloignement de
+        sa galaxie : les anneaux lointains paient cher le manufacturé et bradent le brut. Les
+        stations commerciales de joueurs n'apparaissent ici que si leur marché de ressources est
+        construit et leur politique d'accès vous autorise. La colonne « net » retranche les frais
+        du voyage pour un cargo léger plein.
       </p>
     </Panel>
   );
