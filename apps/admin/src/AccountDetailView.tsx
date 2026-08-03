@@ -13,6 +13,7 @@ import {
 } from "@spacesim/ui";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useModal } from "@spacesim/ui";
 
 interface ColonyRow {
   name: string;
@@ -124,7 +125,7 @@ export function AccountDetailView({ token }: Props) {
   const { id } = useParams<{ id: string }>();
   const [account, setAccount] = useState<AccountDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const { open, openModal, closeModal } = useModal();
   const [kind, setKind] = useState<SanctionKind>("warn");
   const [reason, setReason] = useState("");
   const [durationHours, setDurationHours] = useState(24);
@@ -170,7 +171,7 @@ export function AccountDetailView({ token }: Props) {
         return;
       }
       setAccount(body);
-      setModalOpen(false);
+      closeModal();
       setReason("");
     } catch {
       setSubmitError("Serveur injoignable");
@@ -196,7 +197,7 @@ export function AccountDetailView({ token }: Props) {
                   {account.role}
                 </Badge>
                 {statusBadge(account.sanctionStatus)}
-                <Button variant="primary" onClick={() => setModalOpen(true)}>
+                <Button variant="primary" onClick={openModal}>
                   Sanctionner
                 </Button>
               </>
@@ -270,11 +271,8 @@ export function AccountDetailView({ token }: Props) {
             )}
           </Panel>
 
-          <Modal open={modalOpen} onClickOutside={() => setModalOpen(false)}>
-            <Modal.Header
-              title={`Sanctionner ${account.email}`}
-              onClose={() => setModalOpen(false)}
-            />
+          <Modal open={open} onClose={closeModal}>
+            <Modal.Header title={`Sanctionner ${account.email}`} />
             <Modal.Body>
               <Select
                 label="Type de sanction"
@@ -300,7 +298,7 @@ export function AccountDetailView({ token }: Props) {
               {submitError && <p className="auth-error">{submitError}</p>}
             </Modal.Body>
             <Modal.Actions>
-              <Button variant="ghost" onClick={() => setModalOpen(false)}>
+              <Button variant="ghost" onClick={closeModal}>
                 Annuler
               </Button>
               <Button

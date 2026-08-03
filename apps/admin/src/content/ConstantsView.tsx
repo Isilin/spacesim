@@ -113,11 +113,8 @@ export function ConstantsView({ token }: Props) {
       {!error && constants && <Table columns={columns} rows={constants} />}
 
       {editingKey && form && (
-        <Modal onClickOutside={() => setEditingKey(null)}>
-          <Modal.Header
-            title={`Modifier « ${editingKey} »`}
-            onClose={() => setEditingKey(null)}
-          />
+        <Modal open={editingKey !== null} onClose={() => setEditingKey(null)}>
+          <Modal.Header title={`Modifier « ${editingKey} »`} />
           <Modal.Body>
             <NumberInput
               label="Valeur"

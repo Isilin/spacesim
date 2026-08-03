@@ -211,12 +211,11 @@ export function TechsView({ token }: Props) {
       {!error && techs && <Table columns={columns} rows={techs} />}
 
       {editing && (
-        <Modal onClickOutside={() => setEditing(null)}>
+        <Modal open={editing !== null} onClose={() => setEditing(null)}>
           <Modal.Header
             title={
               editing.isNew ? "Nouvelle tech" : `Modifier « ${editing.id} »`
             }
-            onClose={() => setEditing(null)}
           />
           <Modal.Body>
             {editing.isNew && (

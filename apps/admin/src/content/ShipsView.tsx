@@ -175,14 +175,13 @@ export function ShipsView({ token }: Props) {
       {!error && ships && <Table columns={columns} rows={ships} />}
 
       {editing && (
-        <Modal onClickOutside={() => setEditing(null)}>
+        <Modal open={editing !== null} onClose={() => setEditing(null)}>
           <Modal.Header
             title={
               editing.isNew
                 ? "Nouveau vaisseau civil"
                 : `Modifier « ${editing.id} »`
             }
-            onClose={() => setEditing(null)}
           />
           <Modal.Body>
             {editing.isNew && (

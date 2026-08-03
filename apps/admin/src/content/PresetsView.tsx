@@ -177,12 +177,11 @@ export function PresetsView({ token }: Props) {
       {!error && presets && <Table columns={columns} rows={presets} />}
 
       {editing && (
-        <Modal onClickOutside={() => setEditing(null)}>
+        <Modal open={editing !== null} onClose={() => setEditing(null)}>
           <Modal.Header
             title={
               editing.isNew ? "Nouveau plan" : `Modifier « ${editing.id} »`
             }
-            onClose={() => setEditing(null)}
           />
           <Modal.Body>
             {editing.isNew && (

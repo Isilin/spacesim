@@ -165,11 +165,8 @@ export function BuildingsView({ token }: Props) {
       {!error && buildings && <Table columns={columns} rows={buildings} />}
 
       {editingId && form && (
-        <Modal onClickOutside={() => setEditingId(null)}>
-          <Modal.Header
-            title={`Modifier « ${editingId} »`}
-            onClose={() => setEditingId(null)}
-          />
+        <Modal open={editingId !== null} onClose={() => setEditingId(null)}>
+          <Modal.Header title={`Modifier « ${editingId} »`} />
           <Modal.Body>
             <Field
               label="Nom"

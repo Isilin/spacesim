@@ -183,12 +183,11 @@ export function FactionsView({ token }: Props) {
       {!error && factions && <Table columns={columns} rows={factions} />}
 
       {editing && (
-        <Modal onClickOutside={() => setEditing(null)}>
+        <Modal open={editing !== null} onClose={() => setEditing(null)}>
           <Modal.Header
             title={
               editing.isNew ? "Nouvelle faction" : `Modifier « ${editing.id} »`
             }
-            onClose={() => setEditing(null)}
           />
           <Modal.Body>
             {editing.isNew && (

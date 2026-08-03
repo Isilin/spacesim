@@ -4,28 +4,31 @@ import styles from "./modal.module.css";
 import { ModalHeader } from "./ModalHeader";
 import { ModalActions } from "./ModalActions";
 import { ModalBody } from "./ModalBody";
+import { ModalProvider } from "./modal.context";
 
 export interface ModalProps {
   open?: boolean;
-  onClickOutside?: () => void;
+  onClose?: () => void;
 }
 
 export const Modal = ({
   open = true,
-  onClickOutside,
+  onClose,
   children,
 }: PropsWithChildren<ModalProps>) => {
   if (!open) return null;
 
   return createPortal(
-    <div className={styles.overlay} onClick={onClickOutside}>
-      <div
-        className={styles.modal}
-        onClick={(e: MouseEvent) => e.stopPropagation()}
-      >
-        <div className={styles.modalIn}>{children}</div>
+    <ModalProvider onClose={onClose}>
+      <div className={styles.overlay} onClick={onClose}>
+        <div
+          className={styles.modal}
+          onClick={(e: MouseEvent) => e.stopPropagation()}
+        >
+          <div className={styles.modalIn}>{children}</div>
+        </div>
       </div>
-    </div>,
+    </ModalProvider>,
     document.body,
   );
 };

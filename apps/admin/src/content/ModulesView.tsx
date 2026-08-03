@@ -242,12 +242,11 @@ export function ModulesView({ token }: Props) {
       {!error && modules && <Table columns={columns} rows={modules} />}
 
       {editing && (
-        <Modal onClickOutside={() => setEditing(null)}>
+        <Modal open={editing !== null} onClose={() => setEditing(null)}>
           <Modal.Header
             title={
               editing.isNew ? "Nouveau module" : `Modifier « ${editing.id} »`
             }
-            onClose={() => setEditing(null)}
           />
           <Modal.Body>
             {editing.isNew && (

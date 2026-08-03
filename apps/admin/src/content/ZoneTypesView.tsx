@@ -180,14 +180,13 @@ export function ZoneTypesView({ token }: Props) {
       {!error && zoneTypes && <Table columns={columns} rows={zoneTypes} />}
 
       {editing && (
-        <Modal onClickOutside={() => setEditing(null)}>
+        <Modal open={editing !== null} onClose={() => setEditing(null)}>
           <Modal.Header
             title={
               editing.isNew
                 ? "Nouveau type de zone"
                 : `Modifier « ${editing.id} »`
             }
-            onClose={() => setEditing(null)}
           />
           <Modal.Body>
             {editing.isNew && (

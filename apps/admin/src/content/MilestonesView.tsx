@@ -156,12 +156,11 @@ export function MilestonesView({ token }: Props) {
       {!error && milestones && <Table columns={columns} rows={milestones} />}
 
       {editing && (
-        <Modal onClickOutside={() => setEditing(null)}>
+        <Modal open={editing !== null} onClose={() => setEditing(null)}>
           <Modal.Header
             title={
               editing.isNew ? "Nouveau jalon" : `Modifier « ${editing.id} »`
             }
-            onClose={() => setEditing(null)}
           />
           <Modal.Body>
             {editing.isNew && (
