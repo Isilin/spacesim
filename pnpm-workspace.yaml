@@ -8,4 +8,4 @@ catalog:
   "@types/react": ^18.3.0
   "@types/react-dom": ^18.3.0
   typescript: ^7.0.0
-  zod: ^3.24.1
+  zod: ^4.0.0

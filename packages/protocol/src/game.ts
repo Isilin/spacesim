@@ -3,7 +3,12 @@ import { z } from "zod";
 
 const idSchema = z.string();
 const resourceSchema = z.enum(RESOURCES);
-const resourcesSchema = z.record(resourceSchema, z.number());
+// z.partialRecord (pas z.record) : ces messages décrivent une contribution/un panier
+// choisi par le joueur (transfert, achat/vente, financement de portail) — jamais forcément
+// les 8 ressources à la fois. Sous Zod 4, `z.record(enumKey, ...)` infère désormais le
+// Record complet (toutes les clés requises) ; l'ancien comportement partiel se demande
+// explicitement.
+const resourcesSchema = z.partialRecord(resourceSchema, z.number());
 // `.optional()` on the value (not just the field) makes Zod infer `Partial<Record<string,
 // number>>` instead of a plain index signature — matching `Partial<Record<ShipId, number>>`
 // in @spacesim/shared, which callers like `idleShips()` actually return.

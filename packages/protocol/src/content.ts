@@ -215,8 +215,12 @@ export const upsertChassisSchema = z.object({
   slots: slotCountsSchema,
   baseSpeedMult: z.number().positive(),
   baseFuelPerJump: z.number().nonnegative(),
-  /** null = pas de spécialisation de rôle. */
-  roleBonus: z.record(moduleRoleSchema, z.number().positive()).nullable(),
+  /** null = pas de spécialisation de rôle ; sinon, bonus pour un sous-ensemble des rôles
+   * (jamais forcément les 4) — z.partialRecord, pas z.record (voir game.ts:resourcesSchema
+   * pour le même changement de comportement Zod 4). */
+  roleBonus: z
+    .partialRecord(moduleRoleSchema, z.number().positive())
+    .nullable(),
   cost: z.record(z.string(), z.number().nonnegative()),
   buildMs: z.number().int().positive(),
   /** null = aucune tech requise. */
