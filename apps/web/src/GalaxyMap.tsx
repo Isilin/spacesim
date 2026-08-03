@@ -2,6 +2,7 @@ import {
   MAP_HEIGHT,
   MAP_WIDTH,
   type Colony,
+  type ForeignStation,
   type Galaxy,
   type Mission,
   type StarSystem,
@@ -15,6 +16,7 @@ interface Props {
   galaxy: Galaxy;
   colonies: Colony[];
   stations: Station[];
+  foreignStations: ForeignStation[];
   missions: Mission[];
   exploredSystemIds: string[];
   claimedSystemIds: string[];
@@ -29,6 +31,7 @@ export function GalaxyMap({
   galaxy,
   colonies,
   stations,
+  foreignStations,
   missions,
   exploredSystemIds,
   claimedSystemIds,
@@ -48,6 +51,9 @@ export function GalaxyMap({
   );
   const stationSystems = new Set(
     stations.map((s) => planetToSystem.get(s.bodyId)).filter(Boolean),
+  );
+  const foreignStationColorBySystem = new Map(
+    foreignStations.map((s) => [s.systemId, s.ownerColor] as const),
   );
 
   const home = useMemo<ViewBox>(() => ({ x: 0, y: 0, width: MAP_WIDTH, height: MAP_HEIGHT }), []);
@@ -127,6 +133,13 @@ export function GalaxyMap({
             )}
             {hasColony && <circle r={9} className="colony-ring" />}
             {hasStation && <circle r={12} className="station-ring" />}
+            {foreignStationColorBySystem.has(sys.id) && (
+              <circle
+                r={15}
+                className="foreign-station-ring"
+                style={{ stroke: foreignStationColorBySystem.get(sys.id) }}
+              />
+            )}
             <circle r={5} className="system-star" />
             {sys.station && isExplored && (
               <rect

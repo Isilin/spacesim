@@ -1,10 +1,10 @@
 import type { ClientMessage } from "@spacesim/protocol";
 import {
   BASE_PRICES,
+  canTradeAtStation,
   jumpDistanceInUniverse,
   MARKET_RESOURCES,
   maxConvoyCapacity,
-  repBonus,
   resolvePurchase,
   resolveSale,
   tradingPostPrice,
@@ -12,45 +12,71 @@ import {
   transferDurationMs,
   type Blueprint,
   type Colony,
-  type FactionId,
   type MarketResource,
   type Mission,
+  type RelationState,
   type ResourceId,
   type Route,
-  type TradingPostMarket,
-  type TradingPost,
+  type StationMarketAccess,
   type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
 import { Button, NumberInput, Panel, SectionTitle, Select, Table, type TableColumn } from "@spacesim/ui";
 import { BlueprintMarket } from "./BlueprintMarket.js";
 import { formatDuration, systemIdOf } from "./format.js";
-import { FACTION_LABELS, RESOURCE_LABELS, repTierName } from "./labels.js";
+import { RESOURCE_LABELS, STATION_MARKET_ACCESS_LABELS } from "./labels.js";
 
 interface Props {
-  tradingPost: TradingPost;
-  market: TradingPostMarket | undefined;
+  id: string;
+  name: string;
+  systemId: string;
+  ownerId: string;
+  ownerName?: string;
+  isOwn: boolean;
+  viewerEmpireId: string | null;
+  relation: RelationState;
+  hasResourceMarket: boolean;
+  hasBlueprintMarket: boolean;
+  access: StationMarketAccess;
+  taxRate: number;
+  tradableStocks: Partial<Record<ResourceId, number>>;
   activeColony: Colony | null;
   missions: Mission[];
   universe: Universe;
   transferSpeedMult: number;
-  factionRep: Record<string, number>;
   routes: Route[];
-  /** Plans de vaisseaux de l'empire (chantier 13) : marché de plans en comptoir. */
   blueprints: Blueprint[];
   portalLinks: [string, string][];
   now: number;
   send: (msg: ClientMessage) => void;
 }
 
-export function TradingPostPanel({
-  tradingPost,
-  market,
+/**
+ * Marché d'une station orbitale (chantier 25) : la sienne ou celle d'un autre empire,
+ * découverte dans un système exploré. Miroir de `TradingPostPanel.tsx` (même formulaire
+ * de vente/achat, même `BlueprintMarket` partagé), avec en plus la validation d'accès
+ * (`canTradeAtStation`, calculée ici côté client sur le même modèle que le serveur
+ * — la vraie garde reste `StationService.resolveTradeAccess`) et l'affichage d'un
+ * message explicite si la politique du propriétaire refuse le visiteur.
+ */
+export function StationMarketPanel({
+  id,
+  name,
+  systemId,
+  ownerId,
+  ownerName,
+  isOwn,
+  viewerEmpireId,
+  relation,
+  hasResourceMarket,
+  hasBlueprintMarket,
+  access,
+  taxRate,
+  tradableStocks,
   activeColony,
   missions,
   universe,
   transferSpeedMult,
-  factionRep,
   routes,
   blueprints,
   portalLinks,
@@ -60,21 +86,18 @@ export function TradingPostPanel({
   const [sellAmounts, setSellAmounts] = useState<Partial<Record<ResourceId, string>>>({});
   const [buyResource, setBuyResource] = useState<MarketResource>("metals");
   const [buyBudget, setBuyBudget] = useState("");
-  const faction = FACTION_LABELS[tradingPost.factionId as FactionId];
 
-  // Contexte régional (chantier 12) : le comptoir a son propre barème selon son
-  // éloignement — c'est ce qui fait qu'un aller-retour peut valoir le carburant.
+  const allowed =
+    isOwn || canTradeAtStation(ownerId, viewerEmpireId ?? "", access, relation);
+
   const priceContext = {
-    venueId: tradingPost.id,
-    galaxyIndex: universe.galaxies.findIndex((g) =>
-      g.systems.some((s) => s.id === tradingPost.systemId),
-    ),
-    factionId: tradingPost.factionId,
+    venueId: id,
+    galaxyIndex: universe.galaxies.findIndex((g) => g.systems.some((s) => s.id === systemId)),
   };
 
   const fromSystem = activeColony ? systemIdOf(universe, activeColony.planetId) : undefined;
   const jumps = fromSystem
-    ? jumpDistanceInUniverse(universe, fromSystem, tradingPost.systemId, portalLinks)
+    ? jumpDistanceInUniverse(universe, fromSystem, systemId, portalLinks)
     : -1;
   const fee = jumps >= 0 ? transferCostCredits(jumps) : 0;
   const eta = jumps >= 0 ? transferDurationMs(jumps) * transferSpeedMult : 0;
@@ -82,9 +105,13 @@ export function TradingPostPanel({
   const related = missions.filter(
     (m) =>
       (m.kind === "sell" || m.kind === "buy" || m.kind === "buy_return") &&
-      m.targetId === tradingPost.id,
+      m.venueKind === "station" &&
+      m.targetId === id,
   );
 
+  // Prix appliqué au visiteur, taxe comprise — même formule que
+  // `resolveStationSale`/`resolveStationPurchase` côté serveur, en estimation seulement
+  // (le serveur reste la seule source de vérité au règlement).
   const cargo: Partial<Record<ResourceId, number>> = {};
   for (const res of MARKET_RESOURCES) {
     const n = Math.floor(Number(sellAmounts[res] ?? ""));
@@ -94,47 +121,42 @@ export function TradingPostPanel({
   const totalCargo = Object.values(cargo).reduce((s, n) => s + n, 0);
   const convoyCapacity = activeColony ? maxConvoyCapacity(activeColony, routes) : 0;
   const overCapacity = totalCargo > convoyCapacity;
+  const stockForPricing = { ...tradableStocks } as Record<ResourceId, number>;
   const estimatedRevenue =
-    market && hasCargo ? resolveSale(market.stocks, cargo, priceContext).revenue : 0;
+    hasCargo && isOwn
+      ? Math.floor(resolveSale(stockForPricing, cargo, priceContext).revenue * (1 - taxRate))
+      : 0;
 
   const budget = Math.floor(Number(buyBudget));
   const validBudget = Number.isFinite(budget) && budget > 0;
   const estimatedPurchase =
-    market && validBudget
-      ? resolvePurchase(market.stocks, buyResource, budget, Infinity, priceContext)
+    validBudget && isOwn
+      ? resolvePurchase(stockForPricing, buyResource, budget / (1 + taxRate), Infinity, priceContext)
       : null;
 
-  const canTrade = activeColony && jumps >= 0;
+  const canTrade = allowed && activeColony && jumps >= 0;
 
   return (
-    <Panel title={`⬡ ${tradingPost.name}`}>
-      <p className="muted small">
-        {faction?.name ?? tradingPost.factionId} — {faction?.description ?? ""}
-      </p>
+    <Panel title={`◆ ${name}${ownerName ? ` — ${ownerName}` : ""}`}>
       {jumps >= 0 && (
         <p className="small muted">
           {jumps} saut{jumps > 1 ? "s" : ""} — {formatDuration(eta)} — frais {fee} crédits par
           convoi
         </p>
       )}
-      {(() => {
-        const rep = factionRep[tradingPost.factionId] ?? 0;
-        const bonus = repBonus(rep);
-        return (
-          <p className="small">
-            Réputation : <span className="ok">{repTierName(rep)}</span>{" "}
-            <span className="muted">({Math.floor(rep)})</span>
-            {bonus > 0 && (
-              <span className="ok">
-                {" "}
-                — ventes +{bonus * 100} %, achats −{bonus * 100} %
-              </span>
-            )}
-          </p>
-        );
-      })()}
+      {!isOwn && (
+        <p className="small muted">
+          Accès : {STATION_MARKET_ACCESS_LABELS[access].name}
+          {taxRate > 0 ? ` · taxe ${Math.round(taxRate * 100)} %` : ""}
+        </p>
+      )}
+      {!allowed && (
+        <p className="small ko">
+          Accès refusé — politique de marché : {STATION_MARKET_ACCESS_LABELS[access].name}.
+        </p>
+      )}
 
-      {market ? (
+      {hasResourceMarket ? (
         <Table
           columns={
             [
@@ -143,7 +165,7 @@ export function TradingPostPanel({
                 key: "stock",
                 label: "Stock",
                 align: "right",
-                render: (_, res) => Math.floor(market.stocks[res]),
+                render: (_, res) => Math.floor(tradableStocks[res] ?? 0),
               },
               {
                 key: "price",
@@ -151,11 +173,13 @@ export function TradingPostPanel({
                 align: "right",
                 trend: (res) => {
                   const gap =
-                    tradingPostPrice(res, market.stocks[res], priceContext) / BASE_PRICES[res] - 1;
+                    tradingPostPrice(res, tradableStocks[res] ?? 0, priceContext) /
+                      BASE_PRICES[res] -
+                    1;
                   return gap > 0.15 ? "up" : gap < -0.15 ? "down" : undefined;
                 },
                 render: (_, res) => {
-                  const price = tradingPostPrice(res, market.stocks[res], priceContext);
+                  const price = tradingPostPrice(res, tradableStocks[res] ?? 0, priceContext);
                   const gap = price / BASE_PRICES[res] - 1;
                   return `${price.toFixed(2)} (${gap >= 0 ? "+" : ""}${Math.round(gap * 100)} %)`;
                 },
@@ -165,7 +189,7 @@ export function TradingPostPanel({
           rows={MARKET_RESOURCES}
         />
       ) : (
-        <p className="muted small">Marché inconnu.</p>
+        <p className="muted small">Aucun marché de ressources sur cette station.</p>
       )}
 
       {related.length > 0 && (
@@ -187,11 +211,10 @@ export function TradingPostPanel({
         </ul>
       )}
 
-      {canTrade && market && (
+      {canTrade && hasResourceMarket && (
         <>
           <SectionTitle>Vendre</SectionTitle>
           <div className="form-stack">
-            {/* On ne vend que ce qui est déjà en orbite (chantier 12). */}
             {MARKET_RESOURCES.map((res) => (
               <NumberInput
                 key={res}
@@ -207,9 +230,9 @@ export function TradingPostPanel({
               Soute disponible : {convoyCapacity}
               {overCapacity ? ` — cargaison trop lourde (${totalCargo})` : ""}
             </span>
-            {hasCargo && !overCapacity && (
+            {hasCargo && !overCapacity && isOwn && (
               <span className="small ok">
-                Revenu estimé au prix actuel : ~{estimatedRevenue} crédits
+                Revenu estimé net de taxe : ~{estimatedRevenue} crédits
               </span>
             )}
             <Button
@@ -218,8 +241,8 @@ export function TradingPostPanel({
                 send({
                   type: "sell",
                   colonyId: activeColony.id,
-                  venueId: tradingPost.id,
-                  venueKind: "tradingPost",
+                  venueId: id,
+                  venueKind: "station",
                   resources: cargo,
                 });
                 setSellAmounts({});
@@ -238,7 +261,7 @@ export function TradingPostPanel({
               options={MARKET_RESOURCES.map((res) => ({ value: res, label: RESOURCE_LABELS[res] }))}
             />
             <NumberInput
-              label="Budget (crédits)"
+              label="Budget (crédits, taxe comprise)"
               min={0}
               value={buyBudget}
               placeholder="0"
@@ -246,8 +269,7 @@ export function TradingPostPanel({
             />
             {estimatedPurchase && estimatedPurchase.bought > 0 && (
               <span className="small ok">
-                ~{estimatedPurchase.bought} {RESOURCE_LABELS[buyResource]} pour{" "}
-                {estimatedPurchase.spent} crédits (au prix actuel)
+                ~{estimatedPurchase.bought} {RESOURCE_LABELS[buyResource]} (au prix actuel)
               </span>
             )}
             <Button
@@ -261,8 +283,8 @@ export function TradingPostPanel({
                 send({
                   type: "buy",
                   colonyId: activeColony.id,
-                  venueId: tradingPost.id,
-                  venueKind: "tradingPost",
+                  venueId: id,
+                  venueKind: "station",
                   resource: buyResource,
                   budget,
                 });
@@ -272,16 +294,18 @@ export function TradingPostPanel({
               Envoyer le convoi d'achat
             </Button>
           </div>
-
-          <BlueprintMarket
-            activeColony={activeColony}
-            venueId={tradingPost.id}
-            venueKind="tradingPost"
-            blueprints={blueprints}
-            routes={routes}
-            send={send}
-          />
         </>
+      )}
+
+      {canTrade && hasBlueprintMarket && (
+        <BlueprintMarket
+          activeColony={activeColony}
+          venueId={id}
+          venueKind="station"
+          blueprints={blueprints}
+          routes={routes}
+          send={send}
+        />
       )}
     </Panel>
   );

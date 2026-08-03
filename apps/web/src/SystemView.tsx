@@ -32,7 +32,7 @@ const PLANET_RADIUS: Record<string, number> = {
 /** Niveau système : étoile au centre, orbites, planètes, lunes, ceintures. */
 export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }: Props) {
   const explored = useGameStore(selectExplored(system.id));
-  const { colonies, stations } = useGameStore();
+  const { colonies, stations, foreignStations } = useGameStore();
   const c = SYSTEM_VIEW_SIZE / 2;
   const home = useMemo<ViewBox>(
     () => ({ x: 0, y: 0, width: SYSTEM_VIEW_SIZE, height: SYSTEM_VIEW_SIZE }),
@@ -40,6 +40,11 @@ export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }:
   );
   const colonyPlanetIds = new Set(colonies.map((col) => col.planetId));
   const stationBodyIds = new Set(stations.map((s) => s.bodyId));
+  const foreignStationColorByBodyId = new Map(
+    foreignStations
+      .filter((s) => s.systemId === system.id)
+      .map((s) => [s.bodyId, s.ownerColor] as const),
+  );
   const planets = system.planets.filter((p) => p.kind === "planet");
   const moonsOf = (planetId: string) =>
     system.planets.filter((p) => p.kind === "moon" && p.parentPlanetId === planetId);
@@ -135,6 +140,15 @@ export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }:
                     {stationBodyIds.has(moon.id) && (
                       <circle cx={mpos.x} cy={mpos.y} r={9} className="station-ring" />
                     )}
+                    {foreignStationColorByBodyId.has(moon.id) && (
+                      <circle
+                        cx={mpos.x}
+                        cy={mpos.y}
+                        r={11}
+                        className="foreign-station-ring"
+                        style={{ stroke: foreignStationColorByBodyId.get(moon.id) }}
+                      />
+                    )}
                   </g>
                 </g>
               );
@@ -161,6 +175,15 @@ export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }:
               )}
               {stationBodyIds.has(planet.id) && (
                 <circle cx={pos.x} cy={pos.y} r={radius + 9} className="station-ring" />
+              )}
+              {foreignStationColorByBodyId.has(planet.id) && (
+                <circle
+                  cx={pos.x}
+                  cy={pos.y}
+                  r={radius + 12}
+                  className="foreign-station-ring"
+                  style={{ stroke: foreignStationColorByBodyId.get(planet.id) }}
+                />
               )}
               <text x={pos.x} y={pos.y - radius - 8} textAnchor="middle" className="body-label">
                 {planet.name}

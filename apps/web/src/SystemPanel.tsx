@@ -1,5 +1,8 @@
 import {
   CLAIM_COST,
+  hasBlueprintMarket,
+  hasResourceMarket,
+  MARKET_RESOURCES,
   OUTPOST_COST,
   OUTPOST_STOCK_CAP,
   PROBE_COST_CREDITS,
@@ -13,6 +16,7 @@ import { Button, Panel } from "@spacesim/ui";
 import { BodyActions, COLONY_SHIP_COST_TEXT } from "./BodyActions.js";
 import { formatDuration } from "./format.js";
 import { PLANET_TYPE_LABELS, RESOURCE_LABELS } from "./labels.js";
+import { StationMarketPanel } from "./StationMarketPanel.js";
 import { TradingPostPanel } from "./TradingPostPanel.js";
 import { useGameStore } from "./state/game-store.js";
 import { selectActiveColony, selectExplored } from "./state/selectors.js";
@@ -41,6 +45,9 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
     universe,
     outposts,
     stations,
+    foreignStations,
+    playerId,
+    leaderboard,
     game,
     routes,
     blueprints,
@@ -229,6 +236,65 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
           send={send}
         />
       )}
+      {stations
+        .filter((s) => s.systemId === system.id)
+        .map((s) => (
+          <StationMarketPanel
+            key={s.id}
+            id={s.id}
+            name={s.name}
+            systemId={s.systemId}
+            ownerId={s.ownerId}
+            isOwn
+            viewerEmpireId={playerId}
+            relation="neutral"
+            hasResourceMarket={hasResourceMarket(s)}
+            hasBlueprintMarket={hasBlueprintMarket(s)}
+            access={s.marketAccess}
+            taxRate={s.marketTaxRate}
+            tradableStocks={Object.fromEntries(
+              MARKET_RESOURCES.map((res) => [res, s.resources[res]]),
+            )}
+            activeColony={activeColony}
+            missions={missions}
+            universe={universe}
+            transferSpeedMult={effects.transferSpeedMult}
+            routes={routes}
+            blueprints={blueprints}
+            portalLinks={portalLinks}
+            now={now}
+            send={send}
+          />
+        ))}
+      {foreignStations
+        .filter((s) => s.systemId === system.id && s.market)
+        .map((s) => (
+          <StationMarketPanel
+            key={s.id}
+            id={s.id}
+            name={s.name}
+            systemId={s.systemId}
+            ownerId={s.ownerId}
+            ownerName={s.ownerName}
+            isOwn={false}
+            viewerEmpireId={playerId}
+            relation={leaderboard.find((e) => e.id === s.ownerId)?.relation ?? "neutral"}
+            hasResourceMarket={s.market!.hasResourceMarket}
+            hasBlueprintMarket={s.market!.hasBlueprintMarket}
+            access={s.market!.access}
+            taxRate={s.market!.taxRate}
+            tradableStocks={s.market!.tradableStocks}
+            activeColony={activeColony}
+            missions={missions}
+            universe={universe}
+            transferSpeedMult={effects.transferSpeedMult}
+            routes={routes}
+            blueprints={blueprints}
+            portalLinks={portalLinks}
+            now={now}
+            send={send}
+          />
+        ))}
     </>
   );
 }

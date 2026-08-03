@@ -7,6 +7,7 @@ import {
   type Contract,
   type EmpireEffects,
   type Fleet,
+  type ForeignStation,
   type GameState,
   type Gateway,
   type Mission,
@@ -68,6 +69,7 @@ interface MapPageProps {
   colony: Colony | null;
   colonies: Colony[];
   stations: Station[];
+  foreignStations: ForeignStation[];
   missions: Mission[];
   exploredSystemIds: string[];
   gateways: Gateway[];
@@ -90,6 +92,7 @@ function MapPage({
   colony,
   colonies,
   stations,
+  foreignStations,
   missions,
   exploredSystemIds,
   gateways,
@@ -220,6 +223,7 @@ function MapPage({
             galaxy={viewGalaxy}
             colonies={colonies}
             stations={stations}
+            foreignStations={foreignStations}
             missions={missions}
             exploredSystemIds={exploredSystemIds}
             claimedSystemIds={game.claimedSystemIds}
@@ -298,6 +302,7 @@ export function App({ auth }: Props) {
     foreignFleets,
     foreignColonies,
     stations,
+    foreignStations,
     leaderboard,
     territories,
     objectives,
@@ -510,6 +515,7 @@ export function App({ auth }: Props) {
                 colony={colony}
                 colonies={colonies}
                 stations={stations}
+                foreignStations={foreignStations}
                 missions={missions}
                 exploredSystemIds={exploredSystemIds}
                 gateways={gateways}

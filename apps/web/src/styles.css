@@ -78,6 +78,16 @@
   stroke-dasharray: 3 2;
 }
 
+/* Station orbitale d'un AUTRE empire (chantier 25) : anneau distinct (pointillé plus
+ * large) de `.station-ring`, teinté par `ownerColor` en style inline — un corps peut
+ * porter à la fois sa propre station et celle d'un tiers si les deux orbitent. */
+.foreign-station-ring {
+  fill: none;
+  stroke: #b48fe0;
+  stroke-width: 1.5;
+  stroke-dasharray: 1 2;
+}
+
 .mission-line {
   stroke: var(--accent);
   stroke-width: 1;
