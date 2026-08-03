@@ -18,7 +18,7 @@ function makeStation(overrides: Partial<Station> = {}): Station {
     systemId: "gal-0-sys-0",
     name: "Comptoir orbital",
     resources: emptyStationResources(),
-    zones: {},
+    zones: [],
     zoneQueue: [],
     installations: {},
     installQueue: [],

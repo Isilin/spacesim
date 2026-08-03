@@ -82,7 +82,7 @@ function twoEmpireFixture() {
     systemId: systemB,
     name: "Station B",
     resources: emptyResources(),
-    zones: { commercial_zone: 1 },
+    zones: [{ zoneTypeId: "commercial_zone", q: 1, r: 0 }],
     zoneQueue: [],
     installations: {},
     installQueue: [],

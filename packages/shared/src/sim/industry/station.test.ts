@@ -3,6 +3,7 @@ import { INSTALLATIONS } from "../../content/installations.js";
 import { ZONE_TYPES } from "../../content/zone-types.js";
 import type { Station } from "../../model/industry.js";
 import { computeEffects, NO_EFFECTS } from "../empire/research.js";
+import { computeGrowthPoints } from "./station-layout.js";
 import {
   applyStationTick,
   canFoundStation,
@@ -25,7 +26,7 @@ function makeStation(overrides: Partial<Station> = {}): Station {
     systemId: "gal-0-sys-0",
     name: "Avant-poste",
     resources: emptyStationResources(),
-    zones: {},
+    zones: [],
     zoneQueue: [],
     installations: {},
     installQueue: [],
@@ -33,6 +34,14 @@ function makeStation(overrides: Partial<Station> = {}): Station {
     marketTaxRate: 0,
     ...overrides,
   };
+}
+
+/** Premier point de croissance disponible — pour ne pas coder de coordonnées en dur
+ *  dans les tests et rester robuste à un futur réglage de la géométrie. */
+function firstGrowthPoint(station: Pick<Station, "zones" | "zoneQueue">) {
+  const [point] = computeGrowthPoints(station);
+  if (!point) throw new Error("Aucun point de croissance disponible");
+  return point;
 }
 
 const baseEffects = computeEffects(["orbital_engineering"]);
@@ -48,11 +57,12 @@ describe("canFoundStation", () => {
 });
 
 describe("enqueueZone", () => {
-  it("paie le coût et ajoute à la file", () => {
+  it("paie le coût et ajoute à la file, positionnée au point de croissance demandé", () => {
     const station = makeStation({
       resources: { ...emptyStationResources(), metals: 500, components: 200 },
     });
-    const result = enqueueZone(station, "industrial_zone", 1000, baseEffects);
+    const { q, r } = firstGrowthPoint(station);
+    const result = enqueueZone(station, "industrial_zone", q, r, 1000, baseEffects);
     if (!result.ok) throw new Error(result.reason);
     expect(result.station.resources.metals).toBe(
       500 - ZONE_TYPES.industrial_zone.cost.metals!,
@@ -61,6 +71,7 @@ describe("enqueueZone", () => {
       200 - ZONE_TYPES.industrial_zone.cost.components!,
     );
     expect(result.station.zoneQueue).toHaveLength(1);
+    expect(result.station.zoneQueue[0]).toMatchObject({ q, r });
     expect(result.station.zoneQueue[0]!.finishesAt).toBe(
       1000 + ZONE_TYPES.industrial_zone.buildMs,
     );
@@ -70,7 +81,8 @@ describe("enqueueZone", () => {
     const station = makeStation({
       resources: { ...emptyStationResources(), metals: 500, components: 200 },
     });
-    const result = enqueueZone(station, "science_zone", 0, baseEffects);
+    const { q, r } = firstGrowthPoint(station);
+    const result = enqueueZone(station, "science_zone", q, r, 0, baseEffects);
     expect(result.ok).toBe(false);
   });
 
@@ -78,8 +90,30 @@ describe("enqueueZone", () => {
     const station = makeStation({
       resources: { ...emptyStationResources(), metals: 10 },
     });
-    const result = enqueueZone(station, "industrial_zone", 0, baseEffects);
+    const { q, r } = firstGrowthPoint(station);
+    const result = enqueueZone(station, "industrial_zone", q, r, 0, baseEffects);
     expect(result.ok).toBe(false);
+  });
+
+  it("refuse un emplacement qui n'est pas un point de croissance valide", () => {
+    const station = makeStation({
+      resources: { ...emptyStationResources(), metals: 500, components: 200 },
+    });
+    // Le hub (0,0) n'est jamais un point de croissance valide.
+    const result = enqueueZone(station, "industrial_zone", 0, 0, 0, baseEffects);
+    expect(result.ok).toBe(false);
+  });
+
+  it("refuse de viser deux fois la même cellule (déjà réservée en file)", () => {
+    let station = makeStation({
+      resources: { ...emptyStationResources(), metals: 100_000, components: 100_000 },
+    });
+    const { q, r } = firstGrowthPoint(station);
+    const first = enqueueZone(station, "industrial_zone", q, r, 0, baseEffects);
+    if (!first.ok) throw new Error(first.reason);
+    station = first.station;
+    const second = enqueueZone(station, "industrial_zone", q, r, 0, baseEffects);
+    expect(second.ok).toBe(false);
   });
 
   it("n'a pas de plafond de nombre de zones — seul le coût limite", () => {
@@ -91,34 +125,35 @@ describe("enqueueZone", () => {
       },
     });
     for (let i = 0; i < 10; i++) {
-      const r = enqueueZone(station, "industrial_zone", 0, baseEffects);
-      if (!r.ok) throw new Error(r.reason);
-      station = r.station;
+      const { q, r } = firstGrowthPoint(station);
+      const result = enqueueZone(station, "industrial_zone", q, r, 0, baseEffects);
+      if (!result.ok) throw new Error(result.reason);
+      station = result.station;
     }
     expect(station.zoneQueue).toHaveLength(10);
   });
 });
 
 describe("resolveZoneQueue", () => {
-  it("convertit les zones terminées en emplacements", () => {
+  it("convertit les zones terminées en instances positionnées", () => {
     const station = makeStation({
       zoneQueue: [
-        { zoneTypeId: "industrial_zone", startedAt: 0, finishesAt: 1000 },
+        { zoneTypeId: "industrial_zone", q: 1, r: 0, startedAt: 0, finishesAt: 1000 },
       ],
     });
     const resolved = resolveZoneQueue(station, 1000);
-    expect(resolved.zones.industrial_zone).toBe(1);
+    expect(resolved.zones).toEqual([{ zoneTypeId: "industrial_zone", q: 1, r: 0 }]);
     expect(resolved.zoneQueue).toHaveLength(0);
   });
 
   it("laisse en file ce qui n'est pas encore terminé", () => {
     const station = makeStation({
       zoneQueue: [
-        { zoneTypeId: "industrial_zone", startedAt: 0, finishesAt: 2000 },
+        { zoneTypeId: "industrial_zone", q: 1, r: 0, startedAt: 0, finishesAt: 2000 },
       ],
     });
     const resolved = resolveZoneQueue(station, 1000);
-    expect(resolved.zones.industrial_zone).toBeUndefined();
+    expect(resolved.zones).toHaveLength(0);
     expect(resolved.zoneQueue).toHaveLength(1);
   });
 });
@@ -129,7 +164,7 @@ describe("enqueueInstallation", () => {
   it("refuse sans emplacement de zone disponible", () => {
     const station = makeStation({
       resources: { ...emptyStationResources(), metals: 500 },
-      zones: {},
+      zones: [],
     });
     const result = enqueueInstallation(
       station,
@@ -143,7 +178,7 @@ describe("enqueueInstallation", () => {
   it("accepte dans la limite des zones construites", () => {
     const station = makeStation({
       resources: { ...emptyStationResources(), metals: 500 },
-      zones: { industrial_zone: 1 },
+      zones: [{ zoneTypeId: "industrial_zone", q: 1, r: 0 }],
     });
     const result = enqueueInstallation(
       station,
@@ -161,7 +196,7 @@ describe("enqueueInstallation", () => {
   it("refuse au-delà du nombre de zones du type visé", () => {
     let station = makeStation({
       resources: { ...emptyStationResources(), metals: 100_000 },
-      zones: { industrial_zone: 1 },
+      zones: [{ zoneTypeId: "industrial_zone", q: 1, r: 0 }],
     });
     const first = enqueueInstallation(
       station,

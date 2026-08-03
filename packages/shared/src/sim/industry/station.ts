@@ -7,6 +7,7 @@ import { ZONE_TYPES, type ZoneTypeDef } from "../../content/zone-types.js";
 import type { Station } from "../../model/industry.js";
 import { RESOURCES, type ResourceId } from "../../model/resources.js";
 import { NO_EFFECTS, type EmpireEffects } from "../empire/research.js";
+import { isValidGrowthPoint, zoneCount } from "./station-layout.js";
 
 /** Stock de station vide (toutes ressources à zéro). */
 export function emptyStationResources(): Record<ResourceId, number> {
@@ -65,10 +66,15 @@ export type EnqueueZoneResult =
 /**
  * Valide et paie une zone, l'ajoute à la file (séquentielle) — pas de plafond de
  * nombre de zones : la seule limite est le coût, à chaque fois (voir CLAUDE.md/plan).
+ * `q`/`r` doit être un point de croissance valide (chantier 26 — grille hexagonale de
+ * la station) : une cellule vide adjacente à une cellule déjà occupée (zone bâtie ou en
+ * file) ou au hub. La position se réserve dès la mise en file.
  */
 export function enqueueZone(
   station: Station,
   zoneTypeId: string,
+  q: number,
+  r: number,
   now: number,
   effects: EmpireEffects = NO_EFFECTS,
   zoneTypes: Record<string, ZoneTypeDef> = ZONE_TYPES,
@@ -80,6 +86,8 @@ export function enqueueZone(
   if (!effects.unlockedZoneTypes.has(zoneTypeId)) {
     return { ok: false, reason: "Technologie requise non recherchée" };
   }
+  if (!isValidGrowthPoint(station, q, r))
+    return { ok: false, reason: "Emplacement invalide" };
   if (!canAffordStation(station, def.cost))
     return { ok: false, reason: "Ressources insuffisantes" };
 
@@ -98,19 +106,22 @@ export function enqueueZone(
     station: {
       ...station,
       resources,
-      zoneQueue: [...station.zoneQueue, { zoneTypeId, startedAt, finishesAt }],
+      zoneQueue: [
+        ...station.zoneQueue,
+        { zoneTypeId, q, r, startedAt, finishesAt },
+      ],
     },
   };
 }
 
-/** Applique les zones terminées à l'instant `now` : +1 emplacement du type chacune. */
+/** Applique les zones terminées à l'instant `now` : ajoute chacune à sa position. */
 export function resolveZoneQueue(station: Station, now: number): Station {
   const done = station.zoneQueue.filter((q) => q.finishesAt <= now);
   if (done.length === 0) return station;
-  const zones = { ...station.zones };
-  for (const item of done) {
-    zones[item.zoneTypeId] = (zones[item.zoneTypeId] ?? 0) + 1;
-  }
+  const zones = [
+    ...station.zones,
+    ...done.map((item) => ({ zoneTypeId: item.zoneTypeId, q: item.q, r: item.r })),
+  ];
   return {
     ...station,
     zones,
@@ -160,7 +171,7 @@ export function enqueueInstallation(
   if (!effects.unlockedInstallations.has(installationId)) {
     return { ok: false, reason: "Technologie requise non recherchée" };
   }
-  const zoneSlots = station.zones[def.zoneType] ?? 0;
+  const zoneSlots = zoneCount(station, def.zoneType);
   if (
     installationsOfZoneType(station, def.zoneType, installations) >= zoneSlots
   ) {

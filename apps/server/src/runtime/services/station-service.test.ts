@@ -1,8 +1,21 @@
+import { computeGrowthPoints } from "@spacesim/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import { GameEngine } from "../../game.js";
 import { advanceTicks, empireFor, resetDb } from "../../test-harness.js";
 
 beforeEach(() => resetDb());
+
+/** Premier point de croissance disponible sur la grille hexagonale de la station
+ *  (chantier 26) — pour ne pas coder de coordonnées en dur dans les tests. */
+function firstGrowthPoint(
+  empire: ReturnType<typeof empireFor>,
+  stationId: string,
+) {
+  const station = empire.stationMap.get(stationId)!;
+  const [point] = computeGrowthPoints(station);
+  if (!point) throw new Error("Aucun point de croissance disponible");
+  return point;
+}
 
 describe("GameEngine — stations orbitales (chantier 24)", () => {
   /** Colonie mère de l'empire, relue depuis le snapshot. */
@@ -216,11 +229,18 @@ describe("GameEngine — stations orbitales (chantier 24)", () => {
       empire.stationMap.get(stationId)!.resources.metals,
     ).toBeGreaterThanOrEqual(230);
 
-    expect(
-      engine.station.buildZone(empire, stationId, "industrial_zone"),
-    ).toBeNull();
+    {
+      const { q, r } = firstGrowthPoint(empire, stationId);
+      expect(
+        engine.station.buildZone(empire, stationId, "industrial_zone", q, r),
+      ).toBeNull();
+    }
     advanceTicks(engine, 100);
-    expect(empire.stationMap.get(stationId)!.zones.industrial_zone).toBe(1);
+    expect(
+      empire.stationMap
+        .get(stationId)!
+        .zones.some((z) => z.zoneTypeId === "industrial_zone"),
+    ).toBe(true);
 
     expect(
       engine.station.buildInstallation(
@@ -245,6 +265,74 @@ describe("GameEngine — stations orbitales (chantier 24)", () => {
     advanceTicks(engine, 5);
     const afterTick = empire.stationMap.get(stationId)!;
     expect(afterTick.resources.energy).toBeGreaterThan(energyBefore);
+  });
+
+  it("buildZone (chantier 26) : la deuxième zone atterrit sur un point de croissance adjacent, refuse un emplacement invalide", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
+    const empire = empireFor(engine, "Empire");
+    unlockOrbitalEngineering(engine, empire);
+    engine.devGrant({ metals: 100_000, components: 100_000, credits: 1000 });
+
+    const colonyBefore = homeColony(engine, empire);
+    const body = uncolonizedBody(engine, empire);
+    expect(
+      engine.station.foundStation(empire, colonyBefore.id, body.id),
+    ).toBeNull();
+    advanceTicks(engine, 1000);
+    const stationId = [...empire.stationMap.keys()][0]!;
+    const colony = empire.colonyMap.get(colonyBefore.id)!;
+    empire.colonyMap.set(colonyBefore.id, {
+      ...colony,
+      orbitalResources: {
+        ...colony.orbitalResources,
+        metals: 2000,
+        components: 1000,
+        energy: 500,
+      },
+    });
+    for (const cargo of [
+      { metals: 180, components: 20 },
+      { metals: 180, components: 20 },
+      { metals: 40, components: 160 },
+    ]) {
+      expect(
+        engine.logistics.sendTransfer(empire, colonyBefore.id, stationId, "station", cargo),
+      ).toBeNull();
+      advanceTicks(engine, 200);
+    }
+
+    // Emplacement invalide : le hub (0,0) n'est jamais un point de croissance.
+    expect(
+      engine.station.buildZone(empire, stationId, "industrial_zone", 0, 0),
+    ).toMatch(/emplacement/i);
+
+    const first = firstGrowthPoint(empire, stationId);
+    expect(
+      engine.station.buildZone(empire, stationId, "industrial_zone", first.q, first.r),
+    ).toBeNull();
+    advanceTicks(engine, 100);
+
+    // Une deuxième zone visant la même cellule (déjà occupée) est refusée.
+    expect(
+      engine.station.buildZone(empire, stationId, "industrial_zone", first.q, first.r),
+    ).toMatch(/emplacement/i);
+
+    const second = firstGrowthPoint(empire, stationId);
+    expect(second).not.toEqual(first);
+    expect(
+      engine.station.buildZone(empire, stationId, "industrial_zone", second.q, second.r),
+    ).toBeNull();
+    advanceTicks(engine, 100);
+
+    const zones = empire.stationMap.get(stationId)!.zones;
+    expect(zones).toHaveLength(2);
+    // Adjacence hexagonale : distance de 1 entre les deux zones (voisinage direct)
+    // ou chacune adjacente au hub — les deux sont voisines du hub ici puisque
+    // `first`/`second` sont tous deux des voisins directs de (0,0).
+    const dq = zones[0]!.q - zones[1]!.q;
+    const dr = zones[0]!.r - zones[1]!.r;
+    const hexDistance = Math.max(Math.abs(dq), Math.abs(dr), Math.abs(dq + dr));
+    expect(hexDistance).toBeLessThanOrEqual(2);
   });
 });
 
@@ -355,9 +443,12 @@ describe("GameEngine — marché de station (chantier 25)", () => {
       advanceTicks(engine, 200);
     }
 
-    expect(
-      engine.station.buildZone(alice, stationId, "commercial_zone"),
-    ).toBeNull();
+    {
+      const { q, r } = firstGrowthPoint(alice, stationId);
+      expect(
+        engine.station.buildZone(alice, stationId, "commercial_zone", q, r),
+      ).toBeNull();
+    }
     advanceTicks(engine, 100);
     expect(
       engine.station.buildInstallation(alice, stationId, "orbital_trade_exchange"),
@@ -526,9 +617,12 @@ describe("GameEngine — marché de station (chantier 25)", () => {
       advanceTicks(engine, 200);
     }
 
-    expect(
-      engine.station.buildZone(alice, stationId, "commercial_zone"),
-    ).toBeNull();
+    {
+      const { q, r } = firstGrowthPoint(alice, stationId);
+      expect(
+        engine.station.buildZone(alice, stationId, "commercial_zone", q, r),
+      ).toBeNull();
+    }
     advanceTicks(engine, 100);
     expect(
       engine.station.buildInstallation(alice, stationId, "orbital_brokerage_house"),

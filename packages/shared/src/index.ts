@@ -31,6 +31,7 @@ export {
   type MiningOutpost,
   type TradingPostMarket,
   type Station,
+  type StationZone,
   type ZoneQueueItem,
   type InstallQueueItem,
   STATION_MARKET_ACCESS_IDS,
@@ -406,6 +407,15 @@ export {
   type EnqueueZoneResult,
   type EnqueueInstallationResult,
 } from "./sim/industry/station.js";
+export {
+  hexKey,
+  computeGrowthPoints,
+  isValidGrowthPoint,
+  zoneCount,
+  migrateLegacyZones,
+  migrateLegacyZoneQueue,
+  type HexCoord,
+} from "./sim/industry/station-layout.js";
 export {
   jumpDistance,
   jumpDistanceInUniverse,

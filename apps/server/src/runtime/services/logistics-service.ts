@@ -852,7 +852,7 @@ export class LogisticsService {
               systemId: body.systemId,
               name: `Station ${body.name}`,
               resources: emptyStationResources(),
-              zones: {},
+              zones: [],
               zoneQueue: [],
               installations: {},
               installQueue: [],

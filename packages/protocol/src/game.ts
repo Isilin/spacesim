@@ -59,6 +59,9 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("buildZone"),
     stationId: idSchema,
     zoneTypeId: idSchema,
+    /** Point de croissance visé sur la grille hexagonale de la station (chantier 26). */
+    q: z.number().int(),
+    r: z.number().int(),
   }),
   z.object({
     type: z.literal("buildInstallation"),

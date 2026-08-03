@@ -97,9 +97,23 @@ export interface Colony {
   shipQueue: ShipQueueItem[];
 }
 
-/** Une zone en construction sur une station (voir Station.zoneQueue). */
+/**
+ * Une zone bâtie sur une station (chantier 26) : ancrée à une cellule d'une grille
+ * hexagonale axiale propre à la station — `{q, r}` est déjà une clé unique, pas d'id à
+ * minter. Positions et adjacence calculées par `sim/industry/station-layout`.
+ */
+export interface StationZone {
+  zoneTypeId: string;
+  q: number;
+  r: number;
+}
+
+/** Une zone en construction sur une station (voir Station.zoneQueue) — sa position est
+ *  réservée dès la mise en file, pas seulement à la résolution. */
 export interface ZoneQueueItem {
   zoneTypeId: string;
+  q: number;
+  r: number;
   startedAt: number;
   finishesAt: number;
 }
@@ -137,12 +151,14 @@ export type StationMarketAccess = (typeof STATION_MARKET_ACCESS_IDS)[number];
  *   équipage hors-champ dans ce jeu, et `MiningOutpost`/`Fleet`/`Blueprint` sont déjà des
  *   entités possédées sans population — Station rejoint cette catégorie, n'en invente pas
  *   une nouvelle ;
- * - `zones`/`installations` en compte par type (comme `Colony.buildings`), pas en liste
- *   (contrairement à `Blueprint.modules`) : une zone/installation s'accumule une à une via
- *   une file de construction, elle n'est pas un plan remplacé en bloc. Les ids de types de
- *   zone/installation restent `string` ici (model/industry est la base, importée par
- *   content/*) ; le typage fort (ZoneTypeId/InstallationId) et la validation vivent dans
- *   `sim/industry/station`.
+ * - `installations` en compte par type (comme `Colony.buildings`), pas en liste
+ *   (contrairement à `Blueprint.modules`) : une installation s'accumule une à une via une
+ *   file de construction, elle n'est pas un plan remplacé en bloc. `zones` suit la même
+ *   logique d'accumulation mais chaque zone porte en plus sa position sur la grille
+ *   hexagonale de la station (chantier 26 — constructeur spatial), d'où une liste
+ *   d'instances plutôt qu'un compte. Les ids de types de zone/installation restent `string`
+ *   ici (model/industry est la base, importée par content/*) ; le typage fort
+ *   (ZoneTypeId/InstallationId) et la validation vivent dans `sim/industry/station`.
  */
 export interface Station {
   id: string;
@@ -151,8 +167,9 @@ export interface Station {
   systemId: string;
   name: string;
   resources: Record<ResourceId, number>;
-  /** Nombre de zones construites par type — chaque zone ajoute un emplacement de son type. */
-  zones: Partial<Record<string, number>>;
+  /** Zones construites, chacune ancrée à une cellule de la grille hexagonale de la
+   *  station (chantier 26) — voir `StationZone` et `sim/industry/station-layout`. */
+  zones: StationZone[];
   zoneQueue: ZoneQueueItem[];
   /** Nombre d'installations construites par type — plafonné par les zones de son type. */
   installations: Partial<Record<string, number>>;

@@ -1,4 +1,9 @@
-import { emptyStationResources, type Station } from "@spacesim/shared";
+import {
+  emptyStationResources,
+  migrateLegacyZoneQueue,
+  migrateLegacyZones,
+  type Station,
+} from "@spacesim/shared";
 import { db, schema } from "../../db/index.js";
 import type { WriteSet } from "../persistence/write-set.js";
 
@@ -14,20 +19,29 @@ export class StationRepository {
   ) {}
 
   async loadAll(): Promise<Station[]> {
-    return (await db.select().from(schema.stations)).map((row) => ({
-      id: row.id,
-      ownerId: row.ownerId,
-      bodyId: row.bodyId,
-      systemId: row.systemId,
-      name: row.name,
-      resources: { ...emptyStationResources(), ...JSON.parse(row.resources) },
-      zones: JSON.parse(row.zones),
-      zoneQueue: JSON.parse(row.zoneQueue),
-      installations: JSON.parse(row.installations),
-      installQueue: JSON.parse(row.installQueue),
-      marketAccess: row.marketAccess as Station["marketAccess"],
-      marketTaxRate: row.marketTaxRate,
-    }));
+    return (await db.select().from(schema.stations)).map((row) => {
+      // Rattrapage de forme (chantier 26) : `zones`/`zoneQueue` d'avant la grille
+      // hexagonale n'ont pas de position — converties en instances positionnées ici,
+      // une fois, en mémoire. Idempotent ; réécrit en base au lot de ticks suivant
+      // (chaque station est persistée sans condition, `tick-runner.ts`), sans rattrapage
+      // SQL séparé.
+      const zones = migrateLegacyZones(JSON.parse(row.zones));
+      const zoneQueue = migrateLegacyZoneQueue(JSON.parse(row.zoneQueue), zones);
+      return {
+        id: row.id,
+        ownerId: row.ownerId,
+        bodyId: row.bodyId,
+        systemId: row.systemId,
+        name: row.name,
+        resources: { ...emptyStationResources(), ...JSON.parse(row.resources) },
+        zones,
+        zoneQueue,
+        installations: JSON.parse(row.installations),
+        installQueue: JSON.parse(row.installQueue),
+        marketAccess: row.marketAccess as Station["marketAccess"],
+        marketTaxRate: row.marketTaxRate,
+      };
+    });
   }
 
   private toRow(station: Station, createdAt: number) {

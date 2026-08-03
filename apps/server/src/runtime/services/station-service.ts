@@ -189,17 +189,22 @@ export class StationService {
     return null;
   }
 
-  /** Action joueur : construire une zone sur une station possédée. */
+  /** Action joueur : construire une zone sur une station possédée, ancrée à un point de
+   *  croissance de sa grille hexagonale (chantier 26). */
   buildZone(
     empire: Empire,
     stationId: string,
     zoneTypeId: string,
+    q: number,
+    r: number,
   ): string | null {
     const station = empire.stationMap.get(stationId);
     if (!station) return "Station inconnue";
     const result = enqueueZone(
       station,
       zoneTypeId,
+      q,
+      r,
       Date.now(),
       empire.effects,
       this.zoneTypeDefs,
