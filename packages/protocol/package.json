@@ -11,10 +11,10 @@
   },
   "dependencies": {
     "@spacesim/shared": "workspace:*",
-    "zod": "^3.24.1"
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "typescript": "^5.6.0",
+    "typescript": "catalog:",
     "vitest": "^2.1.0"
   }
 }
