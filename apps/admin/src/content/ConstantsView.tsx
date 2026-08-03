@@ -118,21 +118,23 @@ export function ConstantsView({ token }: Props) {
             title={`Modifier « ${editingKey} »`}
             onClose={() => setEditingKey(null)}
           />
-          <NumberInput
-            label="Valeur"
-            value={form.value}
-            onChange={(e) =>
-              setForm({ ...form, value: Number(e.target.value) })
-            }
-          />
-          <Field
-            label="Description"
-            value={form.descriptionFr}
-            onChange={(e) =>
-              setForm({ ...form, descriptionFr: e.target.value })
-            }
-          />
-          {submitError && <p className="auth-error">{submitError}</p>}
+          <Modal.Body>
+            <NumberInput
+              label="Valeur"
+              value={form.value}
+              onChange={(e) =>
+                setForm({ ...form, value: Number(e.target.value) })
+              }
+            />
+            <Field
+              label="Description"
+              value={form.descriptionFr}
+              onChange={(e) =>
+                setForm({ ...form, descriptionFr: e.target.value })
+              }
+            />
+            {submitError && <p className="auth-error">{submitError}</p>}
+          </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditingKey(null)}>
               Annuler

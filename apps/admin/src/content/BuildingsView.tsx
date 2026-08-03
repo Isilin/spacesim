@@ -170,95 +170,97 @@ export function BuildingsView({ token }: Props) {
             title={`Modifier « ${editingId} »`}
             onClose={() => setEditingId(null)}
           />
-          <Field
-            label="Nom"
-            value={form.nameFr}
-            onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
-          />
-          <Field
-            label="Description"
-            value={form.descriptionFr}
-            onChange={(e) =>
-              setForm({ ...form, descriptionFr: e.target.value })
-            }
-          />
-          <div className="stat-row">
-            <NumberInput
-              label="Temps de fabrication (s)"
-              value={form.buildMs / 1000}
+          <Modal.Body>
+            <Field
+              label="Nom"
+              value={form.nameFr}
+              onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
+            />
+            <Field
+              label="Description"
+              value={form.descriptionFr}
               onChange={(e) =>
-                setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
+                setForm({ ...form, descriptionFr: e.target.value })
               }
             />
-            <NumberInput
-              label="Emplois par instance"
-              value={form.jobsPerInstance ?? 0}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  jobsPerInstance: Number(e.target.value) || null,
-                })
-              }
-            />
-            <Select
-              label="Production boostée par le gisement de"
-              value={form.depositScaled ?? NO_DEPOSIT}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  depositScaled:
-                    e.target.value === NO_DEPOSIT ? null : e.target.value,
-                })
-              }
-              options={[
-                { value: NO_DEPOSIT, label: "Aucune" },
-                ...RESOURCES.map((res) => ({ value: res, label: res })),
-              ]}
-            />
-          </div>
-          <p className="muted small">Coût de construction</p>
-          <div className="stat-row">
-            {RESOURCES.map((res) => (
+            <div className="stat-row">
               <NumberInput
-                key={`cost-${res}`}
-                label={res}
-                value={form.cost[res] ?? 0}
+                label="Temps de fabrication (s)"
+                value={form.buildMs / 1000}
+                onChange={(e) =>
+                  setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
+                }
+              />
+              <NumberInput
+                label="Emplois par instance"
+                value={form.jobsPerInstance ?? 0}
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    cost: { ...form.cost, [res]: Number(e.target.value) },
+                    jobsPerInstance: Number(e.target.value) || null,
                   })
                 }
               />
-            ))}
-          </div>
-          <p className="muted small">Production par tick</p>
-          <div className="stat-row">
-            {RESOURCES.map((res) => (
-              <NumberInput
-                key={`outputs-${res}`}
-                label={res}
-                value={form.outputs?.[res] ?? 0}
+              <Select
+                label="Production boostée par le gisement de"
+                value={form.depositScaled ?? NO_DEPOSIT}
                 onChange={(e) =>
-                  setResource("outputs", res, Number(e.target.value))
+                  setForm({
+                    ...form,
+                    depositScaled:
+                      e.target.value === NO_DEPOSIT ? null : e.target.value,
+                  })
                 }
+                options={[
+                  { value: NO_DEPOSIT, label: "Aucune" },
+                  ...RESOURCES.map((res) => ({ value: res, label: res })),
+                ]}
               />
-            ))}
-          </div>
-          <p className="muted small">Consommation par tick</p>
-          <div className="stat-row">
-            {RESOURCES.map((res) => (
-              <NumberInput
-                key={`inputs-${res}`}
-                label={res}
-                value={form.inputs?.[res] ?? 0}
-                onChange={(e) =>
-                  setResource("inputs", res, Number(e.target.value))
-                }
-              />
-            ))}
-          </div>
-          {submitError && <p className="auth-error">{submitError}</p>}
+            </div>
+            <p className="muted small">Coût de construction</p>
+            <div className="stat-row">
+              {RESOURCES.map((res) => (
+                <NumberInput
+                  key={`cost-${res}`}
+                  label={res}
+                  value={form.cost[res] ?? 0}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      cost: { ...form.cost, [res]: Number(e.target.value) },
+                    })
+                  }
+                />
+              ))}
+            </div>
+            <p className="muted small">Production par tick</p>
+            <div className="stat-row">
+              {RESOURCES.map((res) => (
+                <NumberInput
+                  key={`outputs-${res}`}
+                  label={res}
+                  value={form.outputs?.[res] ?? 0}
+                  onChange={(e) =>
+                    setResource("outputs", res, Number(e.target.value))
+                  }
+                />
+              ))}
+            </div>
+            <p className="muted small">Consommation par tick</p>
+            <div className="stat-row">
+              {RESOURCES.map((res) => (
+                <NumberInput
+                  key={`inputs-${res}`}
+                  label={res}
+                  value={form.inputs?.[res] ?? 0}
+                  onChange={(e) =>
+                    setResource("inputs", res, Number(e.target.value))
+                  }
+                />
+              ))}
+            </div>
+            {submitError && <p className="auth-error">{submitError}</p>}
+          </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditingId(null)}>
               Annuler

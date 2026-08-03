@@ -190,57 +190,59 @@ export function FactionsView({ token }: Props) {
             }
             onClose={() => setEditing(null)}
           />
-          {editing.isNew && (
+          <Modal.Body>
+            {editing.isNew && (
+              <Field
+                label="Id (identifiant technique, ex. helion_syndicate)"
+                value={newId}
+                onChange={(e) => setNewId(e.target.value)}
+              />
+            )}
             <Field
-              label="Id (identifiant technique, ex. helion_syndicate)"
-              value={newId}
-              onChange={(e) => setNewId(e.target.value)}
+              label="Nom"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
-          )}
-          <Field
-            label="Nom"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-          <Field
-            label="Couleur (hex, ex. #ff8c42)"
-            value={form.color}
-            onChange={(e) => setForm({ ...form, color: e.target.value })}
-          />
-          <Field
-            label="Description"
-            value={form.descriptionFr}
-            onChange={(e) =>
-              setForm({ ...form, descriptionFr: e.target.value })
-            }
-          />
-          <p className="muted small">Production par tick économique</p>
-          <div className="stat-row">
-            {RESOURCES.map((res) => (
-              <NumberInput
-                key={`produces-${res}`}
-                label={res}
-                value={form.produces[res] ?? 0}
-                onChange={(e) =>
-                  setResource("produces", res, Number(e.target.value))
-                }
-              />
-            ))}
-          </div>
-          <p className="muted small">Consommation par tick économique</p>
-          <div className="stat-row">
-            {RESOURCES.map((res) => (
-              <NumberInput
-                key={`consumes-${res}`}
-                label={res}
-                value={form.consumes[res] ?? 0}
-                onChange={(e) =>
-                  setResource("consumes", res, Number(e.target.value))
-                }
-              />
-            ))}
-          </div>
-          {submitError && <p className="auth-error">{submitError}</p>}
+            <Field
+              label="Couleur (hex, ex. #ff8c42)"
+              value={form.color}
+              onChange={(e) => setForm({ ...form, color: e.target.value })}
+            />
+            <Field
+              label="Description"
+              value={form.descriptionFr}
+              onChange={(e) =>
+                setForm({ ...form, descriptionFr: e.target.value })
+              }
+            />
+            <p className="muted small">Production par tick économique</p>
+            <div className="stat-row">
+              {RESOURCES.map((res) => (
+                <NumberInput
+                  key={`produces-${res}`}
+                  label={res}
+                  value={form.produces[res] ?? 0}
+                  onChange={(e) =>
+                    setResource("produces", res, Number(e.target.value))
+                  }
+                />
+              ))}
+            </div>
+            <p className="muted small">Consommation par tick économique</p>
+            <div className="stat-row">
+              {RESOURCES.map((res) => (
+                <NumberInput
+                  key={`consumes-${res}`}
+                  label={res}
+                  value={form.consumes[res] ?? 0}
+                  onChange={(e) =>
+                    setResource("consumes", res, Number(e.target.value))
+                  }
+                />
+              ))}
+            </div>
+            {submitError && <p className="auth-error">{submitError}</p>}
+          </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler

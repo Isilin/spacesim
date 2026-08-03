@@ -184,47 +184,51 @@ export function PresetsView({ token }: Props) {
             }
             onClose={() => setEditing(null)}
           />
-          {editing.isNew && (
+          <Modal.Body>
+            {editing.isNew && (
+              <Field
+                label="Id (identifiant technique, ex. corvette_mk1)"
+                value={newId}
+                onChange={(e) => setNewId(e.target.value)}
+              />
+            )}
             <Field
-              label="Id (identifiant technique, ex. corvette_mk1)"
-              value={newId}
-              onChange={(e) => setNewId(e.target.value)}
+              label="Nom"
+              value={form.nameFr}
+              onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
             />
-          )}
-          <Field
-            label="Nom"
-            value={form.nameFr}
-            onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
-          />
-          <Field
-            label="Description"
-            value={form.descriptionFr}
-            onChange={(e) =>
-              setForm({ ...form, descriptionFr: e.target.value })
-            }
-          />
-          <Field
-            label="Id du châssis"
-            value={form.chassisId}
-            onChange={(e) => setForm({ ...form, chassisId: e.target.value })}
-          />
-          <Field
-            label="Modules (ids séparés par des virgules)"
-            value={form.modulesText}
-            onChange={(e) => setForm({ ...form, modulesText: e.target.value })}
-          />
-          <Select
-            label="Fourni à la création d'un empire"
-            value={form.starter}
-            onChange={(e) =>
-              setForm({ ...form, starter: e.target.value as "yes" | "no" })
-            }
-            options={[
-              { value: "no", label: "Non" },
-              { value: "yes", label: "Oui" },
-            ]}
-          />
-          {submitError && <p className="auth-error">{submitError}</p>}
+            <Field
+              label="Description"
+              value={form.descriptionFr}
+              onChange={(e) =>
+                setForm({ ...form, descriptionFr: e.target.value })
+              }
+            />
+            <Field
+              label="Id du châssis"
+              value={form.chassisId}
+              onChange={(e) => setForm({ ...form, chassisId: e.target.value })}
+            />
+            <Field
+              label="Modules (ids séparés par des virgules)"
+              value={form.modulesText}
+              onChange={(e) =>
+                setForm({ ...form, modulesText: e.target.value })
+              }
+            />
+            <Select
+              label="Fourni à la création d'un empire"
+              value={form.starter}
+              onChange={(e) =>
+                setForm({ ...form, starter: e.target.value as "yes" | "no" })
+              }
+              options={[
+                { value: "no", label: "Non" },
+                { value: "yes", label: "Oui" },
+              ]}
+            />
+            {submitError && <p className="auth-error">{submitError}</p>}
+          </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler

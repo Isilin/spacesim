@@ -218,75 +218,82 @@ export function TechsView({ token }: Props) {
             }
             onClose={() => setEditing(null)}
           />
-          {editing.isNew && (
+          <Modal.Body>
+            {editing.isNew && (
+              <Field
+                label="Id (identifiant technique, ex. deep_mining)"
+                value={newId}
+                onChange={(e) => setNewId(e.target.value)}
+              />
+            )}
             <Field
-              label="Id (identifiant technique, ex. deep_mining)"
-              value={newId}
-              onChange={(e) => setNewId(e.target.value)}
+              label="Nom"
+              value={form.nameFr}
+              onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
             />
-          )}
-          <Field
-            label="Nom"
-            value={form.nameFr}
-            onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
-          />
-          <Field
-            label="Description"
-            value={form.descriptionFr}
-            onChange={(e) =>
-              setForm({ ...form, descriptionFr: e.target.value })
-            }
-          />
-          <div className="stat-row">
-            <Select
-              label="Branche"
-              value={form.branch}
+            <Field
+              label="Description"
+              value={form.descriptionFr}
               onChange={(e) =>
-                setForm({
-                  ...form,
-                  branch: e.target.value as UpsertTechInput["branch"],
-                })
-              }
-              options={TECH_BRANCHES.map((b) => ({
-                value: b,
-                label: BRANCH_LABELS[b] ?? b,
-              }))}
-            />
-            <NumberInput
-              label="Coût (science)"
-              value={form.cost}
-              onChange={(e) =>
-                setForm({ ...form, cost: Number(e.target.value) })
+                setForm({ ...form, descriptionFr: e.target.value })
               }
             />
-            <NumberInput
-              label="Durée (s)"
-              value={form.durationMs / 1000}
+            <div className="stat-row">
+              <Select
+                label="Branche"
+                value={form.branch}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    branch: e.target.value as UpsertTechInput["branch"],
+                  })
+                }
+                options={TECH_BRANCHES.map((b) => ({
+                  value: b,
+                  label: BRANCH_LABELS[b] ?? b,
+                }))}
+              />
+              <NumberInput
+                label="Coût (science)"
+                value={form.cost}
+                onChange={(e) =>
+                  setForm({ ...form, cost: Number(e.target.value) })
+                }
+              />
+              <NumberInput
+                label="Durée (s)"
+                value={form.durationMs / 1000}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    durationMs: Number(e.target.value) * 1000,
+                  })
+                }
+              />
+            </div>
+            <Field
+              label="Prérequis (ids séparés par des virgules)"
+              value={form.requiresText}
               onChange={(e) =>
-                setForm({ ...form, durationMs: Number(e.target.value) * 1000 })
+                setForm({ ...form, requiresText: e.target.value })
               }
             />
-          </div>
-          <Field
-            label="Prérequis (ids séparés par des virgules)"
-            value={form.requiresText}
-            onChange={(e) => setForm({ ...form, requiresText: e.target.value })}
-          />
-          <div className="field-textarea-wrap">
-            <label htmlFor="tech-effects">
-              Effets (JSON — champs de TechEffects)
-            </label>
-            <textarea
-              id="tech-effects"
-              className="field-textarea"
-              value={form.effectsText}
-              onChange={(e) =>
-                setForm({ ...form, effectsText: e.target.value })
-              }
-              spellCheck={false}
-            />
-          </div>
-          {submitError && <p className="auth-error">{submitError}</p>}
+            <div className="field-textarea-wrap">
+              <label htmlFor="tech-effects">
+                Effets (JSON — champs de TechEffects)
+              </label>
+              <textarea
+                id="tech-effects"
+                className="field-textarea"
+                value={form.effectsText}
+                onChange={(e) =>
+                  setForm({ ...form, effectsText: e.target.value })
+                }
+                spellCheck={false}
+              />
+            </div>
+            {submitError && <p className="auth-error">{submitError}</p>}
+          </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler

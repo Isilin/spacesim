@@ -184,74 +184,79 @@ export function ShipsView({ token }: Props) {
             }
             onClose={() => setEditing(null)}
           />
-          {editing.isNew && (
-            <Field
-              label="Id (identifiant technique, ex. bulk_freighter)"
-              value={newId}
-              onChange={(e) => setNewId(e.target.value)}
-            />
-          )}
-          <Field
-            label="Nom"
-            value={form.nameFr}
-            onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
-          />
-          <Field
-            label="Description"
-            value={form.descriptionFr}
-            onChange={(e) =>
-              setForm({ ...form, descriptionFr: e.target.value })
-            }
-          />
-          <div className="stat-row">
-            <NumberInput
-              label="Soute"
-              value={form.capacity}
-              onChange={(e) =>
-                setForm({ ...form, capacity: Number(e.target.value) })
-              }
-            />
-            <NumberInput
-              label="Vitesse (× base)"
-              value={form.speedMult}
-              onChange={(e) =>
-                setForm({ ...form, speedMult: Number(e.target.value) })
-              }
-            />
-            <NumberInput
-              label="Carburant par saut"
-              value={form.fuelPerJump}
-              onChange={(e) =>
-                setForm({ ...form, fuelPerJump: Number(e.target.value) })
-              }
-            />
-          </div>
-          <NumberInput
-            label="Temps de fabrication (s)"
-            value={form.buildMs / 1000}
-            onChange={(e) =>
-              setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
-            }
-          />
-          <Field
-            label="Tech requise (id, vide = aucune)"
-            value={form.requiresTech ?? ""}
-            onChange={(e) =>
-              setForm({ ...form, requiresTech: e.target.value.trim() || null })
-            }
-          />
-          <p className="muted small">Coût de construction</p>
-          <div className="stat-row">
-            {RESOURCES.map((res) => (
-              <NumberInput
-                key={res}
-                label={res}
-                value={form.cost[res] ?? 0}
-                onChange={(e) => setCost(res, Number(e.target.value))}
+          <Modal.Body>
+            {editing.isNew && (
+              <Field
+                label="Id (identifiant technique, ex. bulk_freighter)"
+                value={newId}
+                onChange={(e) => setNewId(e.target.value)}
               />
-            ))}
-          </div>
-          {submitError && <p className="auth-error">{submitError}</p>}
+            )}
+            <Field
+              label="Nom"
+              value={form.nameFr}
+              onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
+            />
+            <Field
+              label="Description"
+              value={form.descriptionFr}
+              onChange={(e) =>
+                setForm({ ...form, descriptionFr: e.target.value })
+              }
+            />
+            <div className="stat-row">
+              <NumberInput
+                label="Soute"
+                value={form.capacity}
+                onChange={(e) =>
+                  setForm({ ...form, capacity: Number(e.target.value) })
+                }
+              />
+              <NumberInput
+                label="Vitesse (× base)"
+                value={form.speedMult}
+                onChange={(e) =>
+                  setForm({ ...form, speedMult: Number(e.target.value) })
+                }
+              />
+              <NumberInput
+                label="Carburant par saut"
+                value={form.fuelPerJump}
+                onChange={(e) =>
+                  setForm({ ...form, fuelPerJump: Number(e.target.value) })
+                }
+              />
+            </div>
+            <NumberInput
+              label="Temps de fabrication (s)"
+              value={form.buildMs / 1000}
+              onChange={(e) =>
+                setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
+              }
+            />
+            <Field
+              label="Tech requise (id, vide = aucune)"
+              value={form.requiresTech ?? ""}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  requiresTech: e.target.value.trim() || null,
+                })
+              }
+            />
+            <p className="muted small">Coût de construction</p>
+            <div className="stat-row">
+              {RESOURCES.map((res) => (
+                <NumberInput
+                  key={res}
+                  label={res}
+                  value={form.cost[res] ?? 0}
+                  onChange={(e) => setCost(res, Number(e.target.value))}
+                />
+              ))}
+            </div>
+            {submitError && <p className="auth-error">{submitError}</p>}
+          </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler

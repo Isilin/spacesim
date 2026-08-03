@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import styles from "./modal.module.css";
 import { ModalHeader } from "./ModalHeader";
 import { ModalActions } from "./ModalActions";
+import { ModalBody } from "./ModalBody";
 
 export interface ModalProps {
   open?: boolean;
@@ -31,4 +32,5 @@ export const Modal = ({
 
 Modal.displayName = "Modal";
 Modal.Header = ModalHeader;
+Modal.Body = ModalBody;
 Modal.Actions = ModalActions;

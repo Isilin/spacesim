@@ -249,119 +249,123 @@ export function ModulesView({ token }: Props) {
             }
             onClose={() => setEditing(null)}
           />
-          {editing.isNew && (
-            <Field
-              label="Id (identifiant technique, ex. quantum_scanner)"
-              value={newId}
-              onChange={(e) => setNewId(e.target.value)}
-            />
-          )}
-          <Field
-            label="Nom"
-            value={form.nameFr}
-            onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
-          />
-          <Field
-            label="Description"
-            value={form.descriptionFr}
-            onChange={(e) =>
-              setForm({ ...form, descriptionFr: e.target.value })
-            }
-          />
-          <div className="stat-row">
-            <Select
-              label="Emplacement"
-              value={form.slot}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  slot: e.target.value as UpsertModuleInput["slot"],
-                })
-              }
-              options={SLOT_TYPES.map((s) => ({
-                value: s,
-                label: SLOT_LABELS[s] ?? s,
-              }))}
-            />
-            <Select
-              label="Rôle"
-              value={form.role}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  role: e.target.value as UpsertModuleInput["role"],
-                })
-              }
-              options={MODULE_ROLES.map((r) => ({
-                value: r,
-                label: ROLE_LABELS[r] ?? r,
-              }))}
-            />
-          </div>
-          <p className="muted small">Budgets consommés</p>
-          <div className="stat-row">
-            <NumberInput
-              label="Énergie"
-              value={form.power}
-              onChange={(e) =>
-                setForm({ ...form, power: Number(e.target.value) })
-              }
-            />
-            <NumberInput
-              label="Tonnage"
-              value={form.tonnage}
-              onChange={(e) =>
-                setForm({ ...form, tonnage: Number(e.target.value) })
-              }
-            />
-            <NumberInput
-              label="Calcul"
-              value={form.calc}
-              onChange={(e) =>
-                setForm({ ...form, calc: Number(e.target.value) })
-              }
-            />
-          </div>
-          <NumberInput
-            label="Temps de fabrication (s)"
-            value={form.buildMs / 1000}
-            onChange={(e) =>
-              setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
-            }
-          />
-          <Field
-            label="Tech requise (id, vide = aucune)"
-            value={form.requiresTech}
-            onChange={(e) => setForm({ ...form, requiresTech: e.target.value })}
-          />
-          <div className="field-textarea-wrap">
-            <label htmlFor="module-effects">
-              Effets (JSON — champs de ModuleEffects)
-            </label>
-            <textarea
-              id="module-effects"
-              className="field-textarea"
-              value={form.effectsText}
-              onChange={(e) =>
-                setForm({ ...form, effectsText: e.target.value })
-              }
-              spellCheck={false}
-            />
-          </div>
-          <p className="muted small">
-            Coût de construction (ajouté au châssis)
-          </p>
-          <div className="stat-row">
-            {RESOURCES.map((res) => (
-              <NumberInput
-                key={res}
-                label={res}
-                value={form.cost[res] ?? 0}
-                onChange={(e) => setCost(res, Number(e.target.value))}
+          <Modal.Body>
+            {editing.isNew && (
+              <Field
+                label="Id (identifiant technique, ex. quantum_scanner)"
+                value={newId}
+                onChange={(e) => setNewId(e.target.value)}
               />
-            ))}
-          </div>
-          {submitError && <p className="auth-error">{submitError}</p>}
+            )}
+            <Field
+              label="Nom"
+              value={form.nameFr}
+              onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
+            />
+            <Field
+              label="Description"
+              value={form.descriptionFr}
+              onChange={(e) =>
+                setForm({ ...form, descriptionFr: e.target.value })
+              }
+            />
+            <div className="stat-row">
+              <Select
+                label="Emplacement"
+                value={form.slot}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    slot: e.target.value as UpsertModuleInput["slot"],
+                  })
+                }
+                options={SLOT_TYPES.map((s) => ({
+                  value: s,
+                  label: SLOT_LABELS[s] ?? s,
+                }))}
+              />
+              <Select
+                label="Rôle"
+                value={form.role}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    role: e.target.value as UpsertModuleInput["role"],
+                  })
+                }
+                options={MODULE_ROLES.map((r) => ({
+                  value: r,
+                  label: ROLE_LABELS[r] ?? r,
+                }))}
+              />
+            </div>
+            <p className="muted small">Budgets consommés</p>
+            <div className="stat-row">
+              <NumberInput
+                label="Énergie"
+                value={form.power}
+                onChange={(e) =>
+                  setForm({ ...form, power: Number(e.target.value) })
+                }
+              />
+              <NumberInput
+                label="Tonnage"
+                value={form.tonnage}
+                onChange={(e) =>
+                  setForm({ ...form, tonnage: Number(e.target.value) })
+                }
+              />
+              <NumberInput
+                label="Calcul"
+                value={form.calc}
+                onChange={(e) =>
+                  setForm({ ...form, calc: Number(e.target.value) })
+                }
+              />
+            </div>
+            <NumberInput
+              label="Temps de fabrication (s)"
+              value={form.buildMs / 1000}
+              onChange={(e) =>
+                setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
+              }
+            />
+            <Field
+              label="Tech requise (id, vide = aucune)"
+              value={form.requiresTech}
+              onChange={(e) =>
+                setForm({ ...form, requiresTech: e.target.value })
+              }
+            />
+            <div className="field-textarea-wrap">
+              <label htmlFor="module-effects">
+                Effets (JSON — champs de ModuleEffects)
+              </label>
+              <textarea
+                id="module-effects"
+                className="field-textarea"
+                value={form.effectsText}
+                onChange={(e) =>
+                  setForm({ ...form, effectsText: e.target.value })
+                }
+                spellCheck={false}
+              />
+            </div>
+            <p className="muted small">
+              Coût de construction (ajouté au châssis)
+            </p>
+            <div className="stat-row">
+              {RESOURCES.map((res) => (
+                <NumberInput
+                  key={res}
+                  label={res}
+                  value={form.cost[res] ?? 0}
+                  onChange={(e) => setCost(res, Number(e.target.value))}
+                />
+              ))}
+            </div>
+            {submitError && <p className="auth-error">{submitError}</p>}
+          </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler

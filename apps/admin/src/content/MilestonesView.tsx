@@ -163,35 +163,37 @@ export function MilestonesView({ token }: Props) {
             }
             onClose={() => setEditing(null)}
           />
-          {editing.isNew && (
-            <Field
-              label="Id (identifiant technique, ex. pop-5000)"
-              value={newId}
-              onChange={(e) => setNewId(e.target.value)}
+          <Modal.Body>
+            {editing.isNew && (
+              <Field
+                label="Id (identifiant technique, ex. pop-5000)"
+                value={newId}
+                onChange={(e) => setNewId(e.target.value)}
+              />
+            )}
+            <Select
+              label="Mesure"
+              value={form.metric}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  metric: e.target.value as UpsertMilestoneInput["metric"],
+                })
+              }
+              options={MILESTONE_METRICS.map((m) => ({
+                value: m,
+                label: METRIC_LABELS[m] ?? m,
+              }))}
             />
-          )}
-          <Select
-            label="Mesure"
-            value={form.metric}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                metric: e.target.value as UpsertMilestoneInput["metric"],
-              })
-            }
-            options={MILESTONE_METRICS.map((m) => ({
-              value: m,
-              label: METRIC_LABELS[m] ?? m,
-            }))}
-          />
-          <NumberInput
-            label="Seuil"
-            value={form.threshold}
-            onChange={(e) =>
-              setForm({ ...form, threshold: Number(e.target.value) })
-            }
-          />
-          {submitError && <p className="auth-error">{submitError}</p>}
+            <NumberInput
+              label="Seuil"
+              value={form.threshold}
+              onChange={(e) =>
+                setForm({ ...form, threshold: Number(e.target.value) })
+              }
+            />
+            {submitError && <p className="auth-error">{submitError}</p>}
+          </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler

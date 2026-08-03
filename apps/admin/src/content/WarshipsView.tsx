@@ -210,132 +210,140 @@ export function WarshipsView({ token }: Props) {
             }
             onClose={() => setEditing(null)}
           />
-          {editing.isNew && (
-            <Field
-              label="Id (identifiant technique, ex. plasma_cruiser)"
-              value={newId}
-              onChange={(e) => setNewId(e.target.value)}
-            />
-          )}
-          <Field
-            label="Nom"
-            value={form.nameFr}
-            onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
-          />
-          <Field
-            label="Description"
-            value={form.descriptionFr}
-            onChange={(e) =>
-              setForm({ ...form, descriptionFr: e.target.value })
-            }
-          />
-          <Select
-            label="Catégorie"
-            value={form.category}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                category: e.target.value as UpsertWarshipInput["category"],
-              })
-            }
-            options={WARSHIP_CATEGORIES.map((c) => ({
-              value: c,
-              label: CATEGORY_LABELS[c] ?? c,
-            }))}
-          />
-          <div className="stat-row">
-            <NumberInput
-              label="Coque"
-              value={form.hull}
-              onChange={(e) =>
-                setForm({ ...form, hull: Number(e.target.value) })
-              }
-            />
-            <NumberInput
-              label="Boucliers"
-              value={form.shield}
-              onChange={(e) =>
-                setForm({ ...form, shield: Number(e.target.value) })
-              }
-            />
-            <NumberInput
-              label="Initiative"
-              value={form.initiative}
-              onChange={(e) =>
-                setForm({ ...form, initiative: Number(e.target.value) })
-              }
-            />
-          </div>
-          <div className="stat-row">
-            <NumberInput
-              label="Armes (longue portée)"
-              value={form.weapons.long}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  weapons: { ...form.weapons, long: Number(e.target.value) },
-                })
-              }
-            />
-            <NumberInput
-              label="Armes (portée moyenne)"
-              value={form.weapons.medium}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  weapons: { ...form.weapons, medium: Number(e.target.value) },
-                })
-              }
-            />
-            <NumberInput
-              label="Armes (courte portée)"
-              value={form.weapons.short}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  weapons: { ...form.weapons, short: Number(e.target.value) },
-                })
-              }
-            />
-          </div>
-          <div className="stat-row">
-            <NumberInput
-              label="Temps de fabrication (s)"
-              value={form.buildMs / 1000}
-              onChange={(e) =>
-                setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
-              }
-            />
-            <NumberInput
-              label="Bonus dégâts de flotte"
-              value={form.fleetDamageBonus ?? 0}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  fleetDamageBonus: Number(e.target.value) || null,
-                })
-              }
-            />
-          </div>
-          <Field
-            label="Tech requise (id, vide = aucune)"
-            value={form.requiresTech ?? ""}
-            onChange={(e) =>
-              setForm({ ...form, requiresTech: e.target.value.trim() || null })
-            }
-          />
-          <p className="muted small">Coût de construction</p>
-          <div className="stat-row">
-            {RESOURCES.map((res) => (
-              <NumberInput
-                key={res}
-                label={res}
-                value={form.cost[res] ?? 0}
-                onChange={(e) => setCost(res, Number(e.target.value))}
+          <Modal.Body>
+            {editing.isNew && (
+              <Field
+                label="Id (identifiant technique, ex. plasma_cruiser)"
+                value={newId}
+                onChange={(e) => setNewId(e.target.value)}
               />
-            ))}
-          </div>
-          {submitError && <p className="auth-error">{submitError}</p>}
+            )}
+            <Field
+              label="Nom"
+              value={form.nameFr}
+              onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
+            />
+            <Field
+              label="Description"
+              value={form.descriptionFr}
+              onChange={(e) =>
+                setForm({ ...form, descriptionFr: e.target.value })
+              }
+            />
+            <Select
+              label="Catégorie"
+              value={form.category}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  category: e.target.value as UpsertWarshipInput["category"],
+                })
+              }
+              options={WARSHIP_CATEGORIES.map((c) => ({
+                value: c,
+                label: CATEGORY_LABELS[c] ?? c,
+              }))}
+            />
+            <div className="stat-row">
+              <NumberInput
+                label="Coque"
+                value={form.hull}
+                onChange={(e) =>
+                  setForm({ ...form, hull: Number(e.target.value) })
+                }
+              />
+              <NumberInput
+                label="Boucliers"
+                value={form.shield}
+                onChange={(e) =>
+                  setForm({ ...form, shield: Number(e.target.value) })
+                }
+              />
+              <NumberInput
+                label="Initiative"
+                value={form.initiative}
+                onChange={(e) =>
+                  setForm({ ...form, initiative: Number(e.target.value) })
+                }
+              />
+            </div>
+            <div className="stat-row">
+              <NumberInput
+                label="Armes (longue portée)"
+                value={form.weapons.long}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    weapons: { ...form.weapons, long: Number(e.target.value) },
+                  })
+                }
+              />
+              <NumberInput
+                label="Armes (portée moyenne)"
+                value={form.weapons.medium}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    weapons: {
+                      ...form.weapons,
+                      medium: Number(e.target.value),
+                    },
+                  })
+                }
+              />
+              <NumberInput
+                label="Armes (courte portée)"
+                value={form.weapons.short}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    weapons: { ...form.weapons, short: Number(e.target.value) },
+                  })
+                }
+              />
+            </div>
+            <div className="stat-row">
+              <NumberInput
+                label="Temps de fabrication (s)"
+                value={form.buildMs / 1000}
+                onChange={(e) =>
+                  setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
+                }
+              />
+              <NumberInput
+                label="Bonus dégâts de flotte"
+                value={form.fleetDamageBonus ?? 0}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    fleetDamageBonus: Number(e.target.value) || null,
+                  })
+                }
+              />
+            </div>
+            <Field
+              label="Tech requise (id, vide = aucune)"
+              value={form.requiresTech ?? ""}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  requiresTech: e.target.value.trim() || null,
+                })
+              }
+            />
+            <p className="muted small">Coût de construction</p>
+            <div className="stat-row">
+              {RESOURCES.map((res) => (
+                <NumberInput
+                  key={res}
+                  label={res}
+                  value={form.cost[res] ?? 0}
+                  onChange={(e) => setCost(res, Number(e.target.value))}
+                />
+              ))}
+            </div>
+            {submitError && <p className="auth-error">{submitError}</p>}
+          </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler

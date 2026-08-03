@@ -13,8 +13,6 @@
   --cut: var(--cut-lg);
   --frame-border: var(--border-bright);
   width: min(560px, 90vw);
-  max-height: 90vh;
-  overflow-y: auto;
   box-shadow: var(--shadow-panel), 0 0 40px -10px
     color-mix(in oklch, var(--cyan) 25%, transparent);
 }

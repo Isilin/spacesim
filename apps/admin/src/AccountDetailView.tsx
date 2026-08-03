@@ -275,28 +275,30 @@ export function AccountDetailView({ token }: Props) {
               title={`Sanctionner ${account.email}`}
               onClose={() => setModalOpen(false)}
             />
-            <Select
-              label="Type de sanction"
-              options={SANCTION_KIND_OPTIONS}
-              value={kind}
-              onChange={(e) => setKind(e.target.value as SanctionKind)}
-            />
-            {kind === "suspend" && (
-              <Field
-                label="Durée (heures)"
-                type="number"
-                min={1}
-                value={durationHours}
-                onChange={(e) => setDurationHours(Number(e.target.value))}
+            <Modal.Body>
+              <Select
+                label="Type de sanction"
+                options={SANCTION_KIND_OPTIONS}
+                value={kind}
+                onChange={(e) => setKind(e.target.value as SanctionKind)}
               />
-            )}
-            <Field
-              label="Raison (obligatoire, journalisée)"
-              required
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
-            {submitError && <p className="auth-error">{submitError}</p>}
+              {kind === "suspend" && (
+                <Field
+                  label="Durée (heures)"
+                  type="number"
+                  min={1}
+                  value={durationHours}
+                  onChange={(e) => setDurationHours(Number(e.target.value))}
+                />
+              )}
+              <Field
+                label="Raison (obligatoire, journalisée)"
+                required
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
+              {submitError && <p className="auth-error">{submitError}</p>}
+            </Modal.Body>
             <Modal.Actions>
               <Button variant="ghost" onClick={() => setModalOpen(false)}>
                 Annuler
