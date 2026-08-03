@@ -234,6 +234,7 @@ export function composeEngine(
     },
     notify,
     persister,
+    logger,
   );
   const devService = new DevService(runtime, notify, logger, {
     gateway,

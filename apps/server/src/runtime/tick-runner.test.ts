@@ -222,4 +222,33 @@ describe("TickRunner — ordre des phases", () => {
     const rows = await db.select().from(schema.games);
     expect(rows[0]!.tick).toBe(8);
   });
+
+  it("expose la durée du dernier run() (chantier 27.5)", async () => {
+    const runtime = new GameRuntime(
+      {
+        id: "g",
+        seed: "tick-runner-test",
+        tick: 0,
+        lastTickAt: Date.now(),
+        galaxyCount: 1,
+      },
+      generateUniverse("tick-runner-test", 1),
+    );
+    await db
+      .insert(schema.games)
+      .values({ ...runtime.clock, createdAt: Date.now() });
+
+    const { services, notify } = recordingServices();
+    const runner = new TickRunner(
+      runtime,
+      services,
+      notify,
+      new Persister(runtime.writeSet),
+    );
+    expect(runner.lastRunDurationMs).toBeNull();
+    runner.run(1);
+    expect(runner.lastRunDurationMs).not.toBeNull();
+    expect(runner.lastRunDurationMs).toBeGreaterThanOrEqual(0);
+    expect(runner.lastRunTickCount).toBe(1);
+  });
 });

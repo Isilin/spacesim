@@ -1,5 +1,6 @@
 import { ECONOMY_TICK_TICKS, TICK_MS } from "@spacesim/shared";
 import type { GameRuntime } from "./game-runtime.js";
+import { consoleLogger, type Logger } from "./logger.js";
 import type { Persister } from "./persistence/persister.js";
 import { GameRepository } from "./repositories/game-repository.js";
 import { PlayerRepository } from "./repositories/player-repository.js";
@@ -37,16 +38,24 @@ export class TickRunner {
   private readonly gameRepo = new GameRepository();
   private readonly playerRepo: PlayerRepository;
 
+  /** Durée du dernier `run()`, en ms — un seul lot, pas la moyenne par tick. Exposé pour
+   *  la supervision (même patron que `Persister.lastFlushAt`) et pour 27.6/27.12 sans
+   *  redériver la mesure. */
+  lastRunDurationMs: number | null = null;
+  lastRunTickCount: number | null = null;
+
   constructor(
     private readonly runtime: GameRuntime,
     private readonly services: TickServices,
     private readonly notify: () => void,
     private readonly persister: Persister,
+    private readonly logger: Logger = consoleLogger,
   ) {
     this.playerRepo = new PlayerRepository(runtime.clock.id, runtime.writeSet);
   }
 
   run(ticks: number): void {
+    const startedAt = performance.now();
     for (let i = 1; i <= ticks; i++) {
       this.runOne(
         this.runtime.clock.lastTickAt + i * TICK_MS,
@@ -69,6 +78,11 @@ export class TickRunner {
     // RAM fait déjà autorité, `notify()` est parti sans l'attendre ; le `Persister` se
     // sérialise et journalise lui-même ses échecs.
     void this.persister.flush();
+    this.lastRunDurationMs = performance.now() - startedAt;
+    this.lastRunTickCount = ticks;
+    this.logger.info(
+      `[tick] ${ticks} tick(s) en ${this.lastRunDurationMs.toFixed(1)}ms`,
+    );
   }
 
   /** Une passe de tick : arrivées/recherche, monde partagé, routes/flottes/influence,
