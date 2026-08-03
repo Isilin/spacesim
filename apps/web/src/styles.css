@@ -1526,8 +1526,12 @@
   border-radius: 3px;
   cursor: pointer;
 }
-.chip:hover {
+.chip:hover:not(:disabled) {
   border-color: var(--accent);
+}
+.chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .chip.add.active {
   border-color: var(--accent);
