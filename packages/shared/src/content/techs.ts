@@ -61,7 +61,7 @@ export type TechId = (typeof TECH_IDS)[number];
 
 /** Effets cumulables d'une tech (les mult se multiplient entre techs). */
 export interface TechEffects {
-  unlockBuildings?: BuildingId[];
+  unlockBuildings?: string[];
   /** Multiplicateur de production d'un bâtiment précis. */
   outputMult?: Partial<Record<BuildingId, number>>;
   /** Multiplicateur de production de tous les bâtiments. */
@@ -102,17 +102,22 @@ export interface TechEffects {
 }
 
 export interface TechDef {
-  id: TechId;
+  id: string;
   branch: TechBranch;
   /** Coût en science (pool de l'empire). */
   cost: number;
   /** Durée de recherche en ms (timer réel). */
   durationMs: number;
-  requires: TechId[];
+  requires: string[];
   effects: TechEffects;
 }
 
-export const TECHS: Record<TechId, TechDef> = {
+export interface StaticTechDef extends TechDef {
+  id: TechId;
+  requires: TechId[];
+}
+
+export const TECHS: Record<TechId, StaticTechDef> = {
   // ─── Industrie ───
   metallurgy: {
     id: "metallurgy",

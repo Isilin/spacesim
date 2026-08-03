@@ -14,7 +14,11 @@ export interface Fleet {
   /** File de production de vaisseaux (au chantier naval du système). */
   queue: { warshipId: string; startedAt: number; finishesAt: number }[];
   /** Déplacement en cours vers un système, sinon null. */
-  movement: { toSystemId: string; departedAt: number; arrivesAt: number } | null;
+  movement: {
+    toSystemId: string;
+    departedAt: number;
+    arrivesAt: number;
+  } | null;
 }
 
 /**

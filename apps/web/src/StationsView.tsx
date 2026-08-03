@@ -26,9 +26,20 @@ import {
   type ZoneTypeId,
 } from "@spacesim/shared";
 import { useEffect, useState } from "react";
-import { Button, EmptyState, NumberInput, Panel, ProgressBar, RowHeader, Select } from "@spacesim/ui";
+import {
+  Button,
+  EmptyState,
+  NumberInput,
+  Panel,
+  ProgressBar,
+  RowHeader,
+  Select,
+} from "@spacesim/ui";
 import { formatDuration, systemIdOf } from "./format.js";
-import { StationBuildPicker, type BuildSelection } from "./StationBuildPicker.js";
+import {
+  StationBuildPicker,
+  type BuildSelection,
+} from "./StationBuildPicker.js";
 import { StationDiagram } from "./StationDiagram.js";
 import {
   INSTALLATION_LABELS,
@@ -120,14 +131,25 @@ export function StationsView({ effects, universe, portalLinks }: Props) {
 
       <StationDiagram
         station={station}
-        selectedGrowthPoint={selection?.kind === "growthPoint" ? selection : null}
-        onSelectGrowthPoint={(p) => setSelection({ kind: "growthPoint", q: p.q, r: p.r })}
+        selectedGrowthPoint={
+          selection?.kind === "growthPoint" ? selection : null
+        }
+        onSelectGrowthPoint={(p) =>
+          setSelection({ kind: "growthPoint", q: p.q, r: p.r })
+        }
         selectedZoneKey={
-          selection?.kind === "zone" ? hexKey(selection.zone.q, selection.zone.r) : null
+          selection?.kind === "zone"
+            ? hexKey(selection.zone.q, selection.zone.r)
+            : null
         }
         onSelectZone={(zone) => setSelection({ kind: "zone", zone })}
       />
-      <StationBuildPicker station={station} effects={effects} selection={selection} send={send} />
+      <StationBuildPicker
+        station={station}
+        effects={effects}
+        selection={selection}
+        send={send}
+      />
 
       <div className="colony-columns">
         <Panel

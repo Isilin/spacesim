@@ -56,7 +56,8 @@ export const STATION_MARKET_ACCESS_LABELS: Record<
   },
   nap: {
     name: "Pacte ou mieux",
-    description: "Ouvert aux alliés et aux partenaires de pacte de non-agression.",
+    description:
+      "Ouvert aux alliés et aux partenaires de pacte de non-agression.",
   },
   public: {
     name: "Public",
@@ -621,7 +622,8 @@ export const TECH_LABELS: Record<
   },
   orbital_brokerage: {
     name: "Courtage orbital",
-    description: "Débloque le marché de plans et de vaisseaux en station orbitale.",
+    description:
+      "Débloque le marché de plans et de vaisseaux en station orbitale.",
   },
 };
 

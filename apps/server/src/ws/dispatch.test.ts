@@ -12,7 +12,9 @@ describe("dispatchClientMessage — exhaustivité", () => {
     const empire = engine.defaultEmpireForDev;
     // Parcourt le schéma runtime (pas seulement le typage) : un `type` ajouté au
     // protocole sans branche correspondante tombe dans `assertNever` et ce test échoue.
-    const types = ClientMessageSchema.options.map((option) => option.shape.type.value as string);
+    const types = ClientMessageSchema.options.map(
+      (option) => option.shape.type.value as string,
+    );
     expect(types.length).toBeGreaterThan(40);
     for (const type of types) {
       const stub = { type } as unknown as ClientMessage;
@@ -20,7 +22,11 @@ describe("dispatchClientMessage — exhaustivité", () => {
         try {
           dispatchClientMessage(engine, empire, stub);
         } catch (err) {
-          if (err instanceof Error && /Commande WebSocket non gérée/.test(err.message)) throw err;
+          if (
+            err instanceof Error &&
+            /Commande WebSocket non gérée/.test(err.message)
+          )
+            throw err;
           // Un throw métier (champ manquant sur le stub minimal) est attendu et ignoré ici :
           // seule l'absence de branche dans le switch doit faire échouer ce test.
         }
@@ -40,8 +46,12 @@ describe("dispatchClientMessage — passage d'arguments", () => {
     const colonyId = engine.snapshotForEmpire(owner).colonies[0]!.id;
 
     const ok: ClientMessage = { type: "build", colonyId, buildingId: "mine" };
-    expect(dispatchClientMessage(engine, owner, ok)).not.toBe("Colonie inconnue");
-    expect(dispatchClientMessage(engine, stranger, ok)).toBe("Colonie inconnue");
+    expect(dispatchClientMessage(engine, owner, ok)).not.toBe(
+      "Colonie inconnue",
+    );
+    expect(dispatchClientMessage(engine, stranger, ok)).toBe(
+      "Colonie inconnue",
+    );
   });
 
   it("claimSystem : revendique le système de la colonie mère", async () => {
@@ -54,7 +64,10 @@ describe("dispatchClientMessage — passage d'arguments", () => {
       .flatMap((s) => s.planets.map((p) => ({ ...p, systemId: s.id })))
       .find((p) => p.id === colony.planetId)!;
 
-    const msg: ClientMessage = { type: "claimSystem", systemId: planet.systemId };
+    const msg: ClientMessage = {
+      type: "claimSystem",
+      systemId: planet.systemId,
+    };
     expect(dispatchClientMessage(engine, empire, msg)).toBeNull();
   });
 

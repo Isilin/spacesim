@@ -16,7 +16,11 @@ export function ProgressBar({
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
   return (
     <div className={styles.progress} data-size={size}>
-      <div className={styles.progressFill} data-status={status} style={{ width: `${pct}%` }} />
+      <div
+        className={styles.progressFill}
+        data-status={status}
+        style={{ width: `${pct}%` }}
+      />
     </div>
   );
 }

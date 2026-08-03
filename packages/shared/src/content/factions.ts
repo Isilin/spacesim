@@ -1,6 +1,10 @@
 import type { ResourceId } from "../model/resources.js";
 
-export const FACTION_IDS = ["ferride", "ostara_league", "aether_cartel"] as const;
+export const FACTION_IDS = [
+  "ferride",
+  "ostara_league",
+  "aether_cartel",
+] as const;
 
 export type FactionId = (typeof FACTION_IDS)[number];
 

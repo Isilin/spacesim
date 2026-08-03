@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { Colony } from "../../model/industry.js";
 import { emptyResources } from "../industry/colony.js";
 import { emptyOrbital } from "../industry/orbital.js";
-import { decideColonyEconomy, NPC_DEFICIT_THRESHOLD, NPC_SURPLUS_THRESHOLD } from "./npc.js";
+import {
+  decideColonyEconomy,
+  NPC_DEFICIT_THRESHOLD,
+  NPC_SURPLUS_THRESHOLD,
+} from "./npc.js";
 
 function makeColony(overrides: Partial<Colony> = {}): Colony {
   return {
@@ -72,7 +76,11 @@ describe("decideColonyEconomy", () => {
     });
     const intents = decideColonyEconomy(colony);
     expect(intents).toEqual([
-      { kind: "postContract", resource: "ore", quantity: NPC_DEFICIT_THRESHOLD - 10 },
+      {
+        kind: "postContract",
+        resource: "ore",
+        quantity: NPC_DEFICIT_THRESHOLD - 10,
+      },
     ]);
   });
 

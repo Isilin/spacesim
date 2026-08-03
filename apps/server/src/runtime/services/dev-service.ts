@@ -66,7 +66,9 @@ export class DevService {
   devFundGateway(galaxyId: string, leave = 50): void {
     const gateway = this.runtime.gatewayMap.get(galaxyId);
     if (!gateway || gateway.active) return;
-    const progress: Partial<Record<ResourceId, number>> = { ...gatewayCost(galaxyId) };
+    const progress: Partial<Record<ResourceId, number>> = {
+      ...gatewayCost(galaxyId),
+    };
     progress.metals = Math.max(0, (progress.metals ?? 0) - leave);
     let next: Gateway = { ...gateway, progress };
     // Coût entièrement couvert (`leave` = 0) : on lance le chantier final tout de suite,
@@ -85,11 +87,15 @@ export class DevService {
     mood: FactionState["mood"],
     durationMs = FACTION_MOOD_DURATION_MS,
   ): boolean {
-    return this.services.diplomacy.devSetFactionMood(factionId, mood, durationMs, (fid) =>
-      this.services.market.factionPostShortageContract(
-        fid,
-        createRng(`dev-shortage-${fid}-${Date.now()}`),
-      ),
+    return this.services.diplomacy.devSetFactionMood(
+      factionId,
+      mood,
+      durationMs,
+      (fid) =>
+        this.services.market.factionPostShortageContract(
+          fid,
+          createRng(`dev-shortage-${fid}-${Date.now()}`),
+        ),
     );
   }
 
@@ -103,7 +109,11 @@ export class DevService {
     target = "",
     durationMs = WORLD_EVENT_DURATION_MS,
   ): string | null {
-    return this.services.diplomacy.devTriggerWorldEvent(kind, target, durationMs);
+    return this.services.diplomacy.devTriggerWorldEvent(
+      kind,
+      target,
+      durationMs,
+    );
   }
 
   /** Fait apparaître un repaire pirate dans un système. */
@@ -111,7 +121,9 @@ export class DevService {
     // Sans système précisé : celui de la première colonie (pratique pour tester).
     if (!systemId) {
       const home = [...this.runtime.defaultEmpire.colonyMap.values()][0];
-      const sys = home ? this.runtime.planetsById.get(home.planetId)?.systemId : undefined;
+      const sys = home
+        ? this.runtime.planetsById.get(home.planetId)?.systemId
+        : undefined;
       if (!sys) return;
       systemId = sys;
     }
@@ -160,7 +172,11 @@ export class DevService {
   }
 
   /** Arme une flotte d'un empire dans un système (tests PvP). */
-  devArmFleet(empire: Empire, systemId: string, ships: Partial<Record<string, number>>): string {
+  devArmFleet(
+    empire: Empire,
+    systemId: string,
+    ships: Partial<Record<string, number>>,
+  ): string {
     const home = [...empire.colonyMap.values()][0];
     const fleet: Fleet = {
       id: randomUUID(),

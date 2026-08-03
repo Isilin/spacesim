@@ -19,7 +19,11 @@ export interface AuthState {
 }
 
 export interface Auth extends AuthState {
-  register: (email: string, password: string, empireName: string) => Promise<string | null>;
+  register: (
+    email: string,
+    password: string,
+    empireName: string,
+  ) => Promise<string | null>;
   login: (email: string, password: string) => Promise<string | null>;
   logout: () => Promise<void>;
   /** Retour à l'écran de connexion quand le serveur rejette la session (WS 4001). */
@@ -33,7 +37,9 @@ interface AuthPayload {
 }
 
 /** Lit le corps JSON d'une réponse ; retourne le message d'erreur français du serveur. */
-async function readJson<T>(response: Response): Promise<{ data: T } | { error: string }> {
+async function readJson<T>(
+  response: Response,
+): Promise<{ data: T } | { error: string }> {
   let body: unknown;
   try {
     body = await response.json();
@@ -68,12 +74,19 @@ export function useAuth(): Auth {
     }
     let cancelled = false;
     fetch("/auth/me", { headers: { Authorization: `Bearer ${token}` } })
-      .then((response) => readJson<{ email: string; empire: EmpireIdentity | null }>(response))
+      .then((response) =>
+        readJson<{ email: string; empire: EmpireIdentity | null }>(response),
+      )
       .then((result) => {
         if (cancelled) return;
         if ("error" in result) {
           localStorage.removeItem(SESSION_KEY);
-          setState({ status: "anonymous", token: null, email: null, empire: null });
+          setState({
+            status: "anonymous",
+            token: null,
+            email: null,
+            empire: null,
+          });
           return;
         }
         setState({
@@ -93,7 +106,10 @@ export function useAuth(): Auth {
   }, []);
 
   const submit = useCallback(
-    async (path: string, body: Record<string, string>): Promise<string | null> => {
+    async (
+      path: string,
+      body: Record<string, string>,
+    ): Promise<string | null> => {
       let result: { data: AuthPayload } | { error: string };
       try {
         const response = await fetch(path, {
@@ -125,7 +141,8 @@ export function useAuth(): Auth {
   );
 
   const login = useCallback(
-    (email: string, password: string) => submit("/auth/login", { email, password }),
+    (email: string, password: string) =>
+      submit("/auth/login", { email, password }),
     [submit],
   );
 

@@ -1,4 +1,8 @@
-import { emptyOrbital, emptyResources, generateUniverse } from "@spacesim/shared";
+import {
+  emptyOrbital,
+  emptyResources,
+  generateUniverse,
+} from "@spacesim/shared";
 import { describe, expect, it } from "vitest";
 import { Empire } from "../empire.js";
 import { GameRuntime } from "./game-runtime.js";
@@ -59,7 +63,12 @@ function twoEmpireFixture() {
     shipsBusy: [],
     shipQueue: [],
   };
-  const colonyB = { ...colonyA, id: "colony-b", planetId: planetB, name: "Colonie B" };
+  const colonyB = {
+    ...colonyA,
+    id: "colony-b",
+    planetId: planetB,
+    name: "Colonie B",
+  };
   a.colonyMap.set(colonyA.id, colonyA);
   b.colonyMap.set(colonyB.id, colonyB);
 
@@ -136,7 +145,10 @@ describe("projections — isolation multi-empire", () => {
   it("foreignPresenceForEmpire ne montre jamais les entités de l'empire lui-même", () => {
     const { runtime, a, b, systemB } = twoEmpireFixture();
     a.explored.add(systemB); // a explore maintenant le système de b
-    const { foreignFleets, foreignColonies } = foreignPresenceForEmpire(runtime, a);
+    const { foreignFleets, foreignColonies } = foreignPresenceForEmpire(
+      runtime,
+      a,
+    );
     expect(foreignFleets.map((f) => f.id)).toEqual(["fleet-b"]);
     expect(foreignFleets.every((f) => f.ownerId !== a.id)).toBe(true);
     expect(foreignColonies.map((c) => c.id)).toEqual(["colony-b"]);

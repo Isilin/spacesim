@@ -21,7 +21,15 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
-import { Button, NumberInput, Panel, SectionTitle, Select, Table, type TableColumn } from "@spacesim/ui";
+import {
+  Button,
+  NumberInput,
+  Panel,
+  SectionTitle,
+  Select,
+  Table,
+  type TableColumn,
+} from "@spacesim/ui";
 import { BlueprintMarket } from "./BlueprintMarket.js";
 import { formatDuration, systemIdOf } from "./format.js";
 import { RESOURCE_LABELS, STATION_MARKET_ACCESS_LABELS } from "./labels.js";
@@ -83,7 +91,9 @@ export function StationMarketPanel({
   now,
   send,
 }: Props) {
-  const [sellAmounts, setSellAmounts] = useState<Partial<Record<ResourceId, string>>>({});
+  const [sellAmounts, setSellAmounts] = useState<
+    Partial<Record<ResourceId, string>>
+  >({});
   const [buyResource, setBuyResource] = useState<MarketResource>("metals");
   const [buyBudget, setBuyBudget] = useState("");
 
@@ -92,10 +102,14 @@ export function StationMarketPanel({
 
   const priceContext = {
     venueId: id,
-    galaxyIndex: universe.galaxies.findIndex((g) => g.systems.some((s) => s.id === systemId)),
+    galaxyIndex: universe.galaxies.findIndex((g) =>
+      g.systems.some((s) => s.id === systemId),
+    ),
   };
 
-  const fromSystem = activeColony ? systemIdOf(universe, activeColony.planetId) : undefined;
+  const fromSystem = activeColony
+    ? systemIdOf(universe, activeColony.planetId)
+    : undefined;
   const jumps = fromSystem
     ? jumpDistanceInUniverse(universe, fromSystem, systemId, portalLinks)
     : -1;
@@ -119,19 +133,30 @@ export function StationMarketPanel({
   }
   const hasCargo = Object.keys(cargo).length > 0;
   const totalCargo = Object.values(cargo).reduce((s, n) => s + n, 0);
-  const convoyCapacity = activeColony ? maxConvoyCapacity(activeColony, routes) : 0;
+  const convoyCapacity = activeColony
+    ? maxConvoyCapacity(activeColony, routes)
+    : 0;
   const overCapacity = totalCargo > convoyCapacity;
   const stockForPricing = { ...tradableStocks } as Record<ResourceId, number>;
   const estimatedRevenue =
     hasCargo && isOwn
-      ? Math.floor(resolveSale(stockForPricing, cargo, priceContext).revenue * (1 - taxRate))
+      ? Math.floor(
+          resolveSale(stockForPricing, cargo, priceContext).revenue *
+            (1 - taxRate),
+        )
       : 0;
 
   const budget = Math.floor(Number(buyBudget));
   const validBudget = Number.isFinite(budget) && budget > 0;
   const estimatedPurchase =
     validBudget && isOwn
-      ? resolvePurchase(stockForPricing, buyResource, budget / (1 + taxRate), Infinity, priceContext)
+      ? resolvePurchase(
+          stockForPricing,
+          buyResource,
+          budget / (1 + taxRate),
+          Infinity,
+          priceContext,
+        )
       : null;
 
   const canTrade = allowed && activeColony && jumps >= 0;
@@ -140,8 +165,8 @@ export function StationMarketPanel({
     <Panel title={`◆ ${name}${ownerName ? ` — ${ownerName}` : ""}`}>
       {jumps >= 0 && (
         <p className="small muted">
-          {jumps} saut{jumps > 1 ? "s" : ""} — {formatDuration(eta)} — frais {fee} crédits par
-          convoi
+          {jumps} saut{jumps > 1 ? "s" : ""} — {formatDuration(eta)} — frais{" "}
+          {fee} crédits par convoi
         </p>
       )}
       {!isOwn && (
@@ -152,7 +177,8 @@ export function StationMarketPanel({
       )}
       {!allowed && (
         <p className="small ko">
-          Accès refusé — politique de marché : {STATION_MARKET_ACCESS_LABELS[access].name}.
+          Accès refusé — politique de marché :{" "}
+          {STATION_MARKET_ACCESS_LABELS[access].name}.
         </p>
       )}
 
@@ -160,7 +186,11 @@ export function StationMarketPanel({
         <Table
           columns={
             [
-              { key: "res", label: "Ressource", render: (_, res) => RESOURCE_LABELS[res] },
+              {
+                key: "res",
+                label: "Ressource",
+                render: (_, res) => RESOURCE_LABELS[res],
+              },
               {
                 key: "stock",
                 label: "Stock",
@@ -173,13 +203,21 @@ export function StationMarketPanel({
                 align: "right",
                 trend: (res) => {
                   const gap =
-                    tradingPostPrice(res, tradableStocks[res] ?? 0, priceContext) /
+                    tradingPostPrice(
+                      res,
+                      tradableStocks[res] ?? 0,
+                      priceContext,
+                    ) /
                       BASE_PRICES[res] -
                     1;
                   return gap > 0.15 ? "up" : gap < -0.15 ? "down" : undefined;
                 },
                 render: (_, res) => {
-                  const price = tradingPostPrice(res, tradableStocks[res] ?? 0, priceContext);
+                  const price = tradingPostPrice(
+                    res,
+                    tradableStocks[res] ?? 0,
+                    priceContext,
+                  );
                   const gap = price / BASE_PRICES[res] - 1;
                   return `${price.toFixed(2)} (${gap >= 0 ? "+" : ""}${Math.round(gap * 100)} %)`;
                 },
@@ -189,7 +227,9 @@ export function StationMarketPanel({
           rows={MARKET_RESOURCES}
         />
       ) : (
-        <p className="muted small">Aucun marché de ressources sur cette station.</p>
+        <p className="muted small">
+          Aucun marché de ressources sur cette station.
+        </p>
       )}
 
       {related.length > 0 && (
@@ -204,7 +244,9 @@ export function StationMarketPanel({
                       ? "Achat (aller)"
                       : "Achat (retour)"}
                 </span>
-                <span className="muted">{formatDuration(m.arrivesAt - now)}</span>
+                <span className="muted">
+                  {formatDuration(m.arrivesAt - now)}
+                </span>
               </div>
             </li>
           ))}
@@ -223,7 +265,9 @@ export function StationMarketPanel({
                 max={Math.floor(activeColony.orbitalResources[res] ?? 0)}
                 value={sellAmounts[res] ?? ""}
                 placeholder="0"
-                onChange={(e) => setSellAmounts({ ...sellAmounts, [res]: e.target.value })}
+                onChange={(e) =>
+                  setSellAmounts({ ...sellAmounts, [res]: e.target.value })
+                }
               />
             ))}
             <span className={`small ${overCapacity ? "ko" : "muted"}`}>
@@ -258,7 +302,10 @@ export function StationMarketPanel({
               label="Ressource"
               value={buyResource}
               onChange={(e) => setBuyResource(e.target.value as MarketResource)}
-              options={MARKET_RESOURCES.map((res) => ({ value: res, label: RESOURCE_LABELS[res] }))}
+              options={MARKET_RESOURCES.map((res) => ({
+                value: res,
+                label: RESOURCE_LABELS[res],
+              }))}
             />
             <NumberInput
               label="Budget (crédits, taxe comprise)"
@@ -269,11 +316,14 @@ export function StationMarketPanel({
             />
             {estimatedPurchase && estimatedPurchase.bought > 0 && (
               <span className="small ok">
-                ~{estimatedPurchase.bought} {RESOURCE_LABELS[buyResource]} (au prix actuel)
+                ~{estimatedPurchase.bought} {RESOURCE_LABELS[buyResource]} (au
+                prix actuel)
               </span>
             )}
             <Button
-              disabled={!validBudget || activeColony.resources.credits < budget + fee}
+              disabled={
+                !validBudget || activeColony.resources.credits < budget + fee
+              }
               title={
                 activeColony.resources.credits < budget + fee
                   ? "Crédits insuffisants (budget + frais)"

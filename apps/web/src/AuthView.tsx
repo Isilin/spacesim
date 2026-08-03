@@ -65,7 +65,9 @@ export function AuthView({ auth }: Props) {
         <Field
           label="Mot de passe"
           type="password"
-          autoComplete={mode === "register" ? "new-password" : "current-password"}
+          autoComplete={
+            mode === "register" ? "new-password" : "current-password"
+          }
           required
           minLength={mode === "register" ? 8 : undefined}
           value={password}

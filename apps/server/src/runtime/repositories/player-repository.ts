@@ -63,7 +63,10 @@ export class PlayerRepository {
 
   async loadAll(): Promise<PlayerRecord[]> {
     return (
-      await db.select().from(schema.players).where(eq(schema.players.gameId, this.gameId))
+      await db
+        .select()
+        .from(schema.players)
+        .where(eq(schema.players.gameId, this.gameId))
     ).map((row) => this.mapRow(row));
   }
 

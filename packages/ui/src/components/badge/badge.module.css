@@ -9,7 +9,14 @@
   padding: 2px 8px;
   border: 1px solid var(--border);
   color: var(--muted);
-  clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
+  clip-path: polygon(
+    4px 0,
+    100% 0,
+    100% calc(100% - 4px),
+    calc(100% - 4px) 100%,
+    0 100%,
+    0 4px
+  );
 }
 .badge[data-variant="ok"] {
   border-color: var(--ok);

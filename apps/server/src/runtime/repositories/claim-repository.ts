@@ -35,6 +35,11 @@ export class ClaimRepository {
     await db
       .update(schema.claims)
       .set({ ownerId })
-      .where(and(eq(schema.claims.gameId, this.gameId), isNull(schema.claims.ownerId)));
+      .where(
+        and(
+          eq(schema.claims.gameId, this.gameId),
+          isNull(schema.claims.ownerId),
+        ),
+      );
   }
 }

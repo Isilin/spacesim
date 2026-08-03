@@ -28,7 +28,9 @@ describe("generateUniverse", () => {
     const ids = allSystems(u).map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
     // La galaxie d'origine est la plus vaste : c'est le berceau des empires.
-    expect(u.galaxies[0]!.systems.length).toBeGreaterThan(u.galaxies[1]!.systems.length);
+    expect(u.galaxies[0]!.systems.length).toBeGreaterThan(
+      u.galaxies[1]!.systems.length,
+    );
   });
 
   it("génère planètes en orbite, lunes rattachées et ceintures", () => {
@@ -114,7 +116,10 @@ describe("univers extensible (chantier 9)", () => {
     let closest = Infinity;
     for (let i = 0; i < defs.length; i++) {
       for (let j = i + 1; j < defs.length; j++) {
-        closest = Math.min(closest, Math.hypot(defs[i]!.x - defs[j]!.x, defs[i]!.y - defs[j]!.y));
+        closest = Math.min(
+          closest,
+          Math.hypot(defs[i]!.x - defs[j]!.x, defs[i]!.y - defs[j]!.y),
+        );
       }
     }
     // Densité constante : les voisines restent à peu près à un espacement l'une de l'autre.
@@ -134,6 +139,8 @@ describe("univers extensible (chantier 9)", () => {
   it("galaxyDefAt est déterministe et dépend de la seed", () => {
     expect(galaxyDefAt("kappa", 7)).toEqual(galaxyDefAt("kappa", 7));
     // Même géométrie (l'index fixe la position), mais nom et taille dépendent de la seed.
-    expect(galaxyDefAt("kappa", 7).name).not.toBe(galaxyDefAt("lambda", 7).name);
+    expect(galaxyDefAt("kappa", 7).name).not.toBe(
+      galaxyDefAt("lambda", 7).name,
+    );
   });
 });

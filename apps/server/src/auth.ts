@@ -1,6 +1,16 @@
-import { emailSchema, passwordSchema, type RoleId, type SanctionKind } from "@spacesim/protocol";
+import {
+  emailSchema,
+  passwordSchema,
+  type RoleId,
+  type SanctionKind,
+} from "@spacesim/protocol";
 import { desc, eq, lt } from "drizzle-orm";
-import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import {
+  randomBytes,
+  randomUUID,
+  scryptSync,
+  timingSafeEqual,
+} from "node:crypto";
 import { db, schema } from "./db/index.js";
 
 /** Durée de vie d'une session, en ms (glissante : prolongée à chaque usage). */
@@ -90,7 +100,9 @@ export async function createSession(
 ): Promise<{ token: string; expiresAt: number }> {
   const token = randomBytes(32).toString("base64url");
   const expiresAt = now + SESSION_TTL_MS;
-  await db.insert(schema.sessions).values({ token, accountId, createdAt: now, expiresAt });
+  await db
+    .insert(schema.sessions)
+    .values({ token, accountId, createdAt: now, expiresAt });
   return { token, expiresAt };
 }
 
@@ -104,7 +116,10 @@ export async function resolveSession(
   now = Date.now(),
 ): Promise<Account | null> {
   if (!token) return null;
-  const sessions = await db.select().from(schema.sessions).where(eq(schema.sessions.token, token));
+  const sessions = await db
+    .select()
+    .from(schema.sessions)
+    .where(eq(schema.sessions.token, token));
   const session = sessions[0];
   if (!session) return null;
   if (session.expiresAt <= now) {
@@ -146,18 +161,28 @@ export async function findAccountByEmail(
     .from(schema.accounts)
     .where(eq(schema.accounts.email, normalizeEmail(email)));
   const row = rows[0];
-  return row ? { id: row.id, passwordHash: row.passwordHash, role: row.role as RoleId } : null;
+  return row
+    ? { id: row.id, passwordHash: row.passwordHash, role: row.role as RoleId }
+    : null;
 }
 
 /**
  * Inscrit un compte et ouvre sa session. L'empire associé est créé par l'appelant
  * (le moteur de jeu) : ce module ne connaît que l'identité.
  */
-export async function register(email: string, password: string, ip = "?"): Promise<AuthResult> {
+export async function register(
+  email: string,
+  password: string,
+  ip = "?",
+): Promise<AuthResult> {
   const parsedEmail = emailSchema.safeParse(email ?? "");
-  if (!parsedEmail.success) return { ok: false, error: "Adresse e-mail invalide" };
+  if (!parsedEmail.success)
+    return { ok: false, error: "Adresse e-mail invalide" };
   const parsedPassword = passwordSchema.safeParse(password);
-  if (!parsedPassword.success && (typeof password !== "string" || password.length < 8)) {
+  if (
+    !parsedPassword.success &&
+    (typeof password !== "string" || password.length < 8)
+  ) {
     return {
       ok: false,
       error: "Mot de passe trop court (8 caractères minimum)",
@@ -181,16 +206,28 @@ export async function register(email: string, password: string, ip = "?"): Promi
   });
   clearFailures(ip);
   const { token, expiresAt } = await createSession(id, now);
-  return { ok: true, account: { id, email: normalized, role: "player" }, token, expiresAt };
+  return {
+    ok: true,
+    account: { id, email: normalized, role: "player" },
+    token,
+    expiresAt,
+  };
 }
 
 /**
  * Connecte un compte existant. Le message d'erreur ne distingue jamais
  * « adresse inconnue » de « mot de passe incorrect » (pas d'énumération de comptes).
  */
-export async function login(email: string, password: string, ip = "?"): Promise<AuthResult> {
+export async function login(
+  email: string,
+  password: string,
+  ip = "?",
+): Promise<AuthResult> {
   if (isRateLimited(ip)) {
-    return { ok: false, error: "Trop de tentatives — réessayez dans quelques minutes" };
+    return {
+      ok: false,
+      error: "Trop de tentatives — réessayez dans quelques minutes",
+    };
   }
   const invalid = { ok: false as const, error: "Identifiants incorrects" };
   const parsedEmail = emailSchema.safeParse(email ?? "");
@@ -247,11 +284,16 @@ export function bearerToken(header: string | undefined): string | undefined {
 
 /** Ferme toutes les sessions d'un compte (changement de mot de passe, déconnexion globale). */
 export async function revokeAllSessions(accountId: string): Promise<void> {
-  await db.delete(schema.sessions).where(eq(schema.sessions.accountId, accountId));
+  await db
+    .delete(schema.sessions)
+    .where(eq(schema.sessions.accountId, accountId));
 }
 
 /** Nombre de sessions actives d'un compte (diagnostic / tests). */
-export async function activeSessionCount(accountId: string, now = Date.now()): Promise<number> {
+export async function activeSessionCount(
+  accountId: string,
+  now = Date.now(),
+): Promise<number> {
   const rows = await db
     .select()
     .from(schema.sessions)
@@ -284,7 +326,9 @@ export interface SanctionStatus {
 }
 
 /** Historique des sanctions d'un compte, plus récentes d'abord. */
-export async function sanctionHistory(accountId: string): Promise<SanctionEntry[]> {
+export async function sanctionHistory(
+  accountId: string,
+): Promise<SanctionEntry[]> {
   const rows = await db
     .select()
     .from(schema.accountSanctions)
@@ -309,7 +353,12 @@ export function computeSanctionStatus(
     return { active: false, kind: null, reason: null, expiresAt: null };
   }
   if (statusEvent.kind === "ban") {
-    return { active: true, kind: "ban", reason: statusEvent.reason, expiresAt: null };
+    return {
+      active: true,
+      kind: "ban",
+      reason: statusEvent.reason,
+      expiresAt: null,
+    };
   }
   const active = statusEvent.expiresAt !== null && statusEvent.expiresAt > now;
   return {

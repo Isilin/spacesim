@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuditLogView } from "./AuditLogView.js";
 
 function mockFetch(body: unknown, status = 200) {
-  vi.spyOn(global, "fetch").mockResolvedValue(new Response(JSON.stringify(body), { status }));
+  vi.spyOn(global, "fetch").mockResolvedValue(
+    new Response(JSON.stringify(body), { status }),
+  );
 }
 
 describe("AuditLogView", () => {
@@ -36,13 +38,17 @@ describe("AuditLogView", () => {
     expect(screen.getByText("audit.read")).toBeDefined();
     expect(global.fetch).toHaveBeenCalledWith(
       "/api/admin/audit",
-      expect.objectContaining({ headers: { Authorization: "Bearer tok-secret" } }),
+      expect.objectContaining({
+        headers: { Authorization: "Bearer tok-secret" },
+      }),
     );
   });
 
   it("affiche l'erreur renvoyée par le serveur (403)", async () => {
     mockFetch({ error: "Action non autorisée pour ce rôle" }, 403);
     render(<AuditLogView token="tok" />);
-    expect(await screen.findByText("Action non autorisée pour ce rôle")).toBeDefined();
+    expect(
+      await screen.findByText("Action non autorisée pour ce rôle"),
+    ).toBeDefined();
   });
 });

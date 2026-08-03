@@ -14,7 +14,11 @@ import {
 } from "@spacesim/shared";
 import { Panel } from "@spacesim/ui";
 import { formatDuration } from "./format.js";
-import { INSTALLATION_LABELS, RESOURCE_LABELS, ZONE_TYPE_LABELS } from "./labels.js";
+import {
+  INSTALLATION_LABELS,
+  RESOURCE_LABELS,
+  ZONE_TYPE_LABELS,
+} from "./labels.js";
 
 export type BuildSelection =
   | { kind: "growthPoint"; q: number; r: number }
@@ -34,13 +38,20 @@ function formatCost(cost: Partial<Record<ResourceId, number>>): string {
 }
 
 /** Installations construites + en file d'un type de zone (miroir du privé côté serveur). */
-function installationsOfZoneType(station: Station, zoneType: ZoneTypeId): number {
-  const built = (Object.entries(station.installations) as [InstallationId, number][]).reduce(
-    (sum, [id, count]) => sum + (INSTALLATIONS[id]?.zoneType === zoneType ? (count ?? 0) : 0),
+function installationsOfZoneType(
+  station: Station,
+  zoneType: ZoneTypeId,
+): number {
+  const built = (
+    Object.entries(station.installations) as [InstallationId, number][]
+  ).reduce(
+    (sum, [id, count]) =>
+      sum + (INSTALLATIONS[id]?.zoneType === zoneType ? (count ?? 0) : 0),
     0,
   );
   const queued = station.installQueue.filter(
-    (q) => INSTALLATIONS[q.installationId as InstallationId]?.zoneType === zoneType,
+    (q) =>
+      INSTALLATIONS[q.installationId as InstallationId]?.zoneType === zoneType,
   ).length;
   return built + queued;
 }
@@ -52,7 +63,12 @@ function installationsOfZoneType(station: Station, zoneType: ZoneTypeId): number
  * point de croissance propose les types de zone (26.7), une zone bâtie propose ses
  * installations valides (26.8).
  */
-export function StationBuildPicker({ station, effects, selection, send }: Props) {
+export function StationBuildPicker({
+  station,
+  effects,
+  selection,
+  send,
+}: Props) {
   if (!selection) {
     return (
       <Panel title="Construire">
@@ -87,7 +103,13 @@ export function StationBuildPicker({ station, effects, selection, send }: Props)
                       : `${formatCost(def.cost)} — ${formatDuration(def.buildMs)}`
                 }
                 onClick={() =>
-                  send({ type: "buildZone", stationId: station.id, zoneTypeId: id, q, r })
+                  send({
+                    type: "buildZone",
+                    stationId: station.id,
+                    zoneTypeId: id,
+                    q,
+                    r,
+                  })
                 }
               >
                 {ZONE_TYPE_LABELS[id].name}
@@ -101,12 +123,18 @@ export function StationBuildPicker({ station, effects, selection, send }: Props)
 
   const { zone } = selection;
   const zoneType = zone.zoneTypeId as ZoneTypeId;
-  const candidates = INSTALLATION_IDS.filter((id) => INSTALLATIONS[id].zoneType === zoneType);
-  const zoneSlots = station.zones.filter((z) => z.zoneTypeId === zoneType).length;
+  const candidates = INSTALLATION_IDS.filter(
+    (id) => INSTALLATIONS[id].zoneType === zoneType,
+  );
+  const zoneSlots = station.zones.filter(
+    (z) => z.zoneTypeId === zoneType,
+  ).length;
   const slotsFull = installationsOfZoneType(station, zoneType) >= zoneSlots;
 
   return (
-    <Panel title={`Installations — ${ZONE_TYPE_LABELS[zoneType]?.name ?? zoneType}`}>
+    <Panel
+      title={`Installations — ${ZONE_TYPE_LABELS[zoneType]?.name ?? zoneType}`}
+    >
       {candidates.length === 0 ? (
         <p className="muted small">Aucune installation pour ce type de zone.</p>
       ) : (
@@ -132,7 +160,11 @@ export function StationBuildPicker({ station, effects, selection, send }: Props)
                         : `${formatCost(def.cost)} — ${formatDuration(def.buildMs)}`
                 }
                 onClick={() =>
-                  send({ type: "buildInstallation", stationId: station.id, installationId: id })
+                  send({
+                    type: "buildInstallation",
+                    stationId: station.id,
+                    installationId: id,
+                  })
                 }
               >
                 {INSTALLATION_LABELS[id].name}

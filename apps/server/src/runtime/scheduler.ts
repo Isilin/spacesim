@@ -19,7 +19,9 @@ export class Scheduler {
   start(): void {
     if (this.interval) return;
     this.interval = setInterval(() => {
-      const missed = Math.floor((Date.now() - this.host.lastTickAt()) / TICK_MS);
+      const missed = Math.floor(
+        (Date.now() - this.host.lastTickAt()) / TICK_MS,
+      );
       if (missed > 0) this.host.advance(missed);
     }, TICK_MS);
   }

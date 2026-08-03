@@ -39,7 +39,9 @@ describe("GameEngine — empires PNJ (chantier 14)", () => {
     engine.ensureNpcPopulation(5);
     const after = summaries(engine).filter((e) => e.kind === "npc");
     expect(after).toHaveLength(5);
-    expect([...before].every((id) => after.some((e) => e.id === id))).toBe(true);
+    expect([...before].every((id) => after.some((e) => e.id === id))).toBe(
+      true,
+    );
   });
 
   it("un compte humain n'adopte jamais un empire PNJ (bug corrigé au chantier 14)", async () => {
@@ -93,7 +95,9 @@ describe("GameEngine — pilote économique PNJ (chantier 14)", () => {
       .contracts.filter((c) => c.issuerId === npcId);
     expect(npcContracts.length).toBeGreaterThan(0);
     // Publié pour un besoin réel (métaux/biens/composants : jamais produits localement).
-    expect(["metals", "goods", "components"]).toContain(npcContracts[0]!.resource);
+    expect(["metals", "goods", "components"]).toContain(
+      npcContracts[0]!.resource,
+    );
     expect(npcContracts[0]!.issuerColor).toBe(npc.color);
   });
 
@@ -102,7 +106,9 @@ describe("GameEngine — pilote économique PNJ (chantier 14)", () => {
     advanceTicks(engine, 350);
     // L'empire par défaut est humain : aucun contrat n'a dû être publié en son nom.
     expect(
-      engine.contracts.filter((c) => c.issuerId === engine.defaultEmpireForDev.id),
+      engine.contracts.filter(
+        (c) => c.issuerId === engine.defaultEmpireForDev.id,
+      ),
     ).toHaveLength(0);
   });
 });

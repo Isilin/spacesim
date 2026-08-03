@@ -36,7 +36,8 @@ export function hasResourceMarket(
   installations: Record<string, InstallationDef> = INSTALLATIONS,
 ): boolean {
   return Object.entries(station.installations as Record<string, number>).some(
-    ([id, count]) => (count ?? 0) > 0 && installations[id]?.grants === "resourceMarket",
+    ([id, count]) =>
+      (count ?? 0) > 0 && installations[id]?.grants === "resourceMarket",
   );
 }
 
@@ -46,7 +47,8 @@ export function hasBlueprintMarket(
   installations: Record<string, InstallationDef> = INSTALLATIONS,
 ): boolean {
   return Object.entries(station.installations as Record<string, number>).some(
-    ([id, count]) => (count ?? 0) > 0 && installations[id]?.grants === "blueprintMarket",
+    ([id, count]) =>
+      (count ?? 0) > 0 && installations[id]?.grants === "blueprintMarket",
   );
 }
 
@@ -120,7 +122,11 @@ export function resolveZoneQueue(station: Station, now: number): Station {
   if (done.length === 0) return station;
   const zones = [
     ...station.zones,
-    ...done.map((item) => ({ zoneTypeId: item.zoneTypeId, q: item.q, r: item.r })),
+    ...done.map((item) => ({
+      zoneTypeId: item.zoneTypeId,
+      q: item.q,
+      r: item.r,
+    })),
   ];
   return {
     ...station,

@@ -1242,7 +1242,10 @@ describe("/api/admin/content/installations", () => {
       method: "PUT",
       url: "/api/admin/content/installations/orbital_solar_array",
       headers: { authorization: `Bearer ${token}` },
-      payload: { ...VALID_INSTALLATION_BODY, requiresTech: "orbital_engineering" },
+      payload: {
+        ...VALID_INSTALLATION_BODY,
+        requiresTech: "orbital_engineering",
+      },
     });
     expect(res.statusCode).toBe(200);
     const updated = res

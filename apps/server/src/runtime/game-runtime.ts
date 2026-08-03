@@ -1,4 +1,9 @@
-import { allBelts, allPlanets, allTradingPosts, galaxyIndexOfId } from "@spacesim/shared";
+import {
+  allBelts,
+  allPlanets,
+  allTradingPosts,
+  galaxyIndexOfId,
+} from "@spacesim/shared";
 import type {
   AsteroidBelt,
   Contract,
@@ -88,7 +93,9 @@ export class GameRuntime {
   /** (Ré)indexe les entités d'univers — appelé à la construction et après chaque extension. */
   reindexUniverse(): void {
     this.planetsById = new Map(allPlanets(this.universe).map((p) => [p.id, p]));
-    this.tradingPostsById = new Map(allTradingPosts(this.universe).map((s) => [s.id, s]));
+    this.tradingPostsById = new Map(
+      allTradingPosts(this.universe).map((s) => [s.id, s]),
+    );
     this.beltsById = new Map(allBelts(this.universe).map((b) => [b.id, b]));
     // Index dérivé de l'ID de galaxie (« gal-7 » → 7), pas de la position du tableau :
     // l'ordre de chargement ne peut plus décaler les règles régionales (prix, péages).

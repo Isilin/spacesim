@@ -1,6 +1,13 @@
 import type { ResourceId } from "./resources.js";
 
-export const PLANET_TYPES = ["telluric", "oceanic", "volcanic", "frozen", "arid", "gas"] as const;
+export const PLANET_TYPES = [
+  "telluric",
+  "oceanic",
+  "volcanic",
+  "frozen",
+  "arid",
+  "gas",
+] as const;
 
 export type PlanetType = (typeof PLANET_TYPES)[number];
 

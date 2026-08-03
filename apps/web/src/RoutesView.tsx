@@ -55,13 +55,20 @@ export function RoutesView({
   const [ruleType, setRuleType] = useState<RuleType>("surplus");
   const [param1, setParam1] = useState("");
   const [param2, setParam2] = useState("");
-  const [shipCounts, setShipCounts] = useState<Partial<Record<ShipId, string>>>({});
+  const [shipCounts, setShipCounts] = useState<Partial<Record<ShipId, string>>>(
+    {},
+  );
 
   const belts = allBelts(universe);
-  const beltName = (beltId: string) => belts.find((b) => b.id === beltId)?.name ?? "Ceinture ?";
+  const beltName = (beltId: string) =>
+    belts.find((b) => b.id === beltId)?.name ?? "Ceinture ?";
 
   const sources = [
-    ...colonies.map((c) => ({ id: c.id, kind: "colony" as const, label: c.name })),
+    ...colonies.map((c) => ({
+      id: c.id,
+      kind: "colony" as const,
+      label: c.name,
+    })),
     ...outposts.map((o) => ({
       id: o.id,
       kind: "outpost" as const,
@@ -83,9 +90,14 @@ export function RoutesView({
     ...colonies
       .filter((c) => fromOutpost || c.id !== source?.id)
       .map((c) => ({ id: c.id, kind: "colony" as const, label: c.name })),
-    ...tradingPosts.map((s) => ({ id: s.id, kind: "tradingPost" as const, label: `⬡ ${s.name}` })),
+    ...tradingPosts.map((s) => ({
+      id: s.id,
+      kind: "tradingPost" as const,
+      label: `⬡ ${s.name}`,
+    })),
   ];
-  const destination = destinations.find((d) => d.id === toId) ?? destinations[0];
+  const destination =
+    destinations.find((d) => d.id === toId) ?? destinations[0];
   const toTradingPost = destination?.kind === "tradingPost";
 
   const availableResources = fromOutpost
@@ -93,11 +105,15 @@ export function RoutesView({
     : toTradingPost
       ? MARKET_RESOURCES
       : RESOURCES.filter((r) => r !== "credits" && r !== "science");
-  const effectiveResource = (availableResources as readonly string[]).includes(resource)
+  const effectiveResource = (availableResources as readonly string[]).includes(
+    resource,
+  )
     ? resource
     : (availableResources[0] as ResourceId);
 
-  const idle: Partial<Record<ShipId, number>> = owner ? idleShips(owner, routes) : {};
+  const idle: Partial<Record<ShipId, number>> = owner
+    ? idleShips(owner, routes)
+    : {};
   const ships: Partial<Record<ShipId, number>> = {};
   for (const shipId of SHIP_IDS) {
     const n = Math.floor(Number(shipCounts[shipId] ?? ""));
@@ -120,7 +136,10 @@ export function RoutesView({
         ? Number.isFinite(p1) && p1 > 0
           ? { type: "fixed", amount: p1 }
           : null
-        : { type: "surplus", keepAtSource: Number.isFinite(p1) && p1 > 0 ? p1 : 0 };
+        : {
+            type: "surplus",
+            keepAtSource: Number.isFinite(p1) && p1 > 0 ? p1 : 0,
+          };
 
   const canCreate = source && owner && destination && rule && capacity > 0;
 
@@ -132,7 +151,8 @@ export function RoutesView({
     const to =
       route.toKind === "colony"
         ? colonies.find((c) => c.id === route.toId)?.name
-        : allSystems(universe).find((s) => s.station?.id === route.toId)?.station?.name;
+        : allSystems(universe).find((s) => s.station?.id === route.toId)
+            ?.station?.name;
     return { from: from ?? "?", to: to ?? "?" };
   };
 
@@ -159,29 +179,44 @@ export function RoutesView({
                     <strong>
                       {names.from} → {names.to}
                     </strong>
-                    <Badge variant={route.paused ? "neutral" : "ok"}>{status}</Badge>
+                    <Badge variant={route.paused ? "neutral" : "ok"}>
+                      {status}
+                    </Badge>
                   </div>
                   <span className="small muted">
-                    {RESOURCE_LABELS[route.resource]} · {RULE_LABELS[route.rule.type]}
+                    {RESOURCE_LABELS[route.resource]} ·{" "}
+                    {RULE_LABELS[route.rule.type]}
                     {route.rule.type === "maintain" &&
                       ` (≥ ${route.rule.minAtDestination} dest., garde ${route.rule.keepAtSource})`}
-                    {route.rule.type === "fixed" && ` (${route.rule.amount}/cycle)`}
-                    {route.rule.type === "surplus" && ` (garde ${route.rule.keepAtSource})`}
+                    {route.rule.type === "fixed" &&
+                      ` (${route.rule.amount}/cycle)`}
+                    {route.rule.type === "surplus" &&
+                      ` (garde ${route.rule.keepAtSource})`}
                     {" · soute "}
                     {fleetCapacity(route.ships)}
                   </span>
                   <div className="route-actions">
                     <Button
                       onClick={() =>
-                        send({ type: "setRoutePaused", routeId: route.id, paused: !route.paused })
+                        send({
+                          type: "setRoutePaused",
+                          routeId: route.id,
+                          paused: !route.paused,
+                        })
                       }
                     >
                       {route.paused ? "Reprendre" : "Suspendre"}
                     </Button>
                     <Button
                       disabled={!!route.activeCycle}
-                      title={route.activeCycle ? "Attendez le retour du cycle en cours" : ""}
-                      onClick={() => send({ type: "deleteRoute", routeId: route.id })}
+                      title={
+                        route.activeCycle
+                          ? "Attendez le retour du cycle en cours"
+                          : ""
+                      }
+                      onClick={() =>
+                        send({ type: "deleteRoute", routeId: route.id })
+                      }
                     >
                       Supprimer
                     </Button>
@@ -273,10 +308,14 @@ export function RoutesView({
               max={idle[shipId] ?? 0}
               value={shipCounts[shipId] ?? ""}
               placeholder="0"
-              onChange={(e) => setShipCounts({ ...shipCounts, [shipId]: e.target.value })}
+              onChange={(e) =>
+                setShipCounts({ ...shipCounts, [shipId]: e.target.value })
+              }
             />
           ))}
-          {capacity > 0 && <span className="small ok">Soute totale : {capacity}</span>}
+          {capacity > 0 && (
+            <span className="small ok">Soute totale : {capacity}</span>
+          )}
           <Button
             disabled={!canCreate}
             onClick={() => {

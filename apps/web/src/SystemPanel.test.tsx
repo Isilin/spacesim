@@ -51,12 +51,21 @@ describe("SystemPanel — système non exploré", () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
-        <SystemPanel system={system} effects={computeEffects([])} portalLinks={[]} now={0} />
+        <SystemPanel
+          system={system}
+          effects={computeEffects([])}
+          portalLinks={[]}
+          now={0}
+        />
       </MemoryRouter>,
     );
 
     await user.click(screen.getByRole("button", { name: /Sonder/ }));
 
-    expect(send).toHaveBeenCalledWith({ type: "probe", colonyId: "c1", systemId: "sys-0" });
+    expect(send).toHaveBeenCalledWith({
+      type: "probe",
+      colonyId: "c1",
+      systemId: "sys-0",
+    });
   });
 });

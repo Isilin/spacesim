@@ -44,7 +44,10 @@ describe("influencePerTick", () => {
   it("population satisfaite + monuments − entretien des claims", () => {
     const colony = makeColony({ buildings: { monument: 2 } });
     const net = influencePerTick([colony], 3);
-    const expected = 100 * 0.8 * INFLUENCE_PER_COLONIST + 2 * MONUMENT_INFLUENCE - 3 * CLAIM_UPKEEP;
+    const expected =
+      100 * 0.8 * INFLUENCE_PER_COLONIST +
+      2 * MONUMENT_INFLUENCE -
+      3 * CLAIM_UPKEEP;
     expect(net).toBeCloseTo(expected);
   });
 

@@ -38,7 +38,9 @@ export function BlueprintMarket({
   send: (msg: ClientMessage) => void;
 }) {
   const idle = idleShips(activeColony, routes);
-  const idleShipEntries = Object.entries(activeColony.ships).filter(([, n]) => (n ?? 0) > 0);
+  const idleShipEntries = Object.entries(activeColony.ships).filter(
+    ([, n]) => (n ?? 0) > 0,
+  );
 
   return (
     <>
@@ -49,7 +51,9 @@ export function BlueprintMarket({
       </span>
       <ul className="building-list">
         {PRESETS.map((preset) => {
-          const price = Math.round(blueprintValue(resolveBlueprint(preset)) * BLUEPRINT_BUY_MARKUP);
+          const price = Math.round(
+            blueprintValue(resolveBlueprint(preset)) * BLUEPRINT_BUY_MARKUP,
+          );
           const affordable = activeColony.resources.credits >= price;
           return (
             <ListRow
@@ -82,7 +86,8 @@ export function BlueprintMarket({
       {blueprints.length > 0 && (
         <>
           <span className="muted small">
-            Revendre un plan (décote {Math.round((1 - BLUEPRINT_SELL_FRACTION) * 100)} %)
+            Revendre un plan (décote{" "}
+            {Math.round((1 - BLUEPRINT_SELL_FRACTION) * 100)} %)
           </span>
           <ul className="building-list">
             {blueprints.map((bp) => {
@@ -119,11 +124,15 @@ export function BlueprintMarket({
 
       {idleShipEntries.length > 0 && (
         <>
-          <span className="muted small">Vendre un vaisseau assemblé (désœuvré)</span>
+          <span className="muted small">
+            Vendre un vaisseau assemblé (désœuvré)
+          </span>
           <ul className="building-list">
             {idleShipEntries.map(([shipId, owned]) => {
               const dispo = Math.min(idle[shipId] ?? 0, owned ?? 0);
-              const name = blueprints.find((b) => b.id === shipId)?.name ?? shipLabel(shipId).name;
+              const name =
+                blueprints.find((b) => b.id === shipId)?.name ??
+                shipLabel(shipId).name;
               return (
                 <ListRow
                   key={shipId}

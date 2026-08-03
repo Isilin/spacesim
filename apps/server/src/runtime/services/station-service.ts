@@ -298,7 +298,12 @@ export class StationService {
       this.runtime.relationMap.get(relationKey(visitorEmpire.id, owner.id))
         ?.state ?? "neutral";
     if (
-      !canTradeAtStation(owner.id, visitorEmpire.id, station.marketAccess, relation)
+      !canTradeAtStation(
+        owner.id,
+        visitorEmpire.id,
+        station.marketAccess,
+        relation,
+      )
     ) {
       return {
         ok: false,
@@ -375,8 +380,13 @@ export class StationService {
     if (resources.credits < fee) return `Crédits insuffisants (frais : ${fee})`;
 
     const duration =
-      transferDurationMs(access.jumps, balance) * empire.effects.transferSpeedMult;
-    const reserved = this.reserveShip(empire, loaded, Date.now() + 2 * duration);
+      transferDurationMs(access.jumps, balance) *
+      empire.effects.transferSpeedMult;
+    const reserved = this.reserveShip(
+      empire,
+      loaded,
+      Date.now() + 2 * duration,
+    );
     if (!reserved) return "Aucun cargo disponible";
     const total = Object.values(cargo).reduce((s, n) => s + n, 0);
     if (total > reserved.capacity) {
@@ -422,8 +432,13 @@ export class StationService {
     }
 
     const duration =
-      transferDurationMs(access.jumps, balance) * empire.effects.transferSpeedMult;
-    const reserved = this.reserveShip(empire, colony, Date.now() + 2 * duration);
+      transferDurationMs(access.jumps, balance) *
+      empire.effects.transferSpeedMult;
+    const reserved = this.reserveShip(
+      empire,
+      colony,
+      Date.now() + 2 * duration,
+    );
     if (!reserved) return "Aucun cargo disponible";
 
     const resources = {
@@ -473,7 +488,11 @@ export class StationService {
     const found = this.findOwnedStation(stationId);
     if (!found) return null;
     const { empire: owner, station } = found;
-    const { station: next, bought, spent } = resolveStationPurchase(
+    const {
+      station: next,
+      bought,
+      spent,
+    } = resolveStationPurchase(
       station,
       resource,
       budget,

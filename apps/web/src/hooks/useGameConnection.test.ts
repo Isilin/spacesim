@@ -69,7 +69,11 @@ function helloMessage(universe: unknown): ServerMessage {
 }
 
 function tickMessage(extra: Record<string, unknown> = {}): ServerMessage {
-  return { type: "tick", ...emptySnapshot, ...extra } as unknown as ServerMessage;
+  return {
+    type: "tick",
+    ...emptySnapshot,
+    ...extra,
+  } as unknown as ServerMessage;
 }
 
 describe("useGameConnection", () => {

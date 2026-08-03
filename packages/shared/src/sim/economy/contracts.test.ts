@@ -53,11 +53,17 @@ describe("contractEscrow / contractPayout", () => {
 
 describe("isContractExpired", () => {
   it("pas expiré avant l'échéance", () => {
-    expect(isContractExpired(makeContract({ deadline: 1000 }), 999)).toBe(false);
+    expect(isContractExpired(makeContract({ deadline: 1000 }), 999)).toBe(
+      false,
+    );
   });
   it("expiré à l'échéance ou après", () => {
-    expect(isContractExpired(makeContract({ deadline: 1000 }), 1000)).toBe(true);
-    expect(isContractExpired(makeContract({ deadline: 1000 }), 1001)).toBe(true);
+    expect(isContractExpired(makeContract({ deadline: 1000 }), 1000)).toBe(
+      true,
+    );
+    expect(isContractExpired(makeContract({ deadline: 1000 }), 1001)).toBe(
+      true,
+    );
   });
 });
 
@@ -66,16 +72,22 @@ describe("contractAcceptable", () => {
     expect(contractAcceptable(makeContract(), 50, 0)).toBe(true);
   });
   it("refuse au-delà du reliquat", () => {
-    expect(contractAcceptable(makeContract({ remaining: 10 }), 50, 0)).toBe(false);
+    expect(contractAcceptable(makeContract({ remaining: 10 }), 50, 0)).toBe(
+      false,
+    );
   });
   it("refuse une quantité nulle ou négative", () => {
     expect(contractAcceptable(makeContract(), 0, 0)).toBe(false);
     expect(contractAcceptable(makeContract(), -5, 0)).toBe(false);
   });
   it("refuse un contrat non ouvert", () => {
-    expect(contractAcceptable(makeContract({ status: "fulfilled" }), 10, 0)).toBe(false);
+    expect(
+      contractAcceptable(makeContract({ status: "fulfilled" }), 10, 0),
+    ).toBe(false);
   });
   it("refuse un contrat expiré", () => {
-    expect(contractAcceptable(makeContract({ deadline: 100 }), 10, 200)).toBe(false);
+    expect(contractAcceptable(makeContract({ deadline: 100 }), 10, 200)).toBe(
+      false,
+    );
   });
 });

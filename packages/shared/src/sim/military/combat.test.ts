@@ -77,7 +77,9 @@ describe("resolveBattle", () => {
     const report = resolveBattle({ cruiser: 3 }, { cruiser: 3 }, focus, focus);
     expect(report.phases.length).toBeLessThanOrEqual(3);
     const phases = report.phases.map((p) => p.phase);
-    expect(phases).toEqual(([...phases] as CombatPhase[]).slice(0, phases.length));
+    expect(phases).toEqual(
+      ([...phases] as CombatPhase[]).slice(0, phases.length),
+    );
   });
 
   it("un réglage injecté (chantier 23.5) remplace le triangle par défaut", () => {
@@ -118,15 +120,25 @@ describe("resolveBattle", () => {
         category: "skirmisher",
       },
     };
-    const report = resolveBattle({ "custom-raider": 1 }, { fighter: 5 }, focus, focus, customDefs);
+    const report = resolveBattle(
+      { "custom-raider": 1 },
+      { fighter: 5 },
+      focus,
+      focus,
+      customDefs,
+    );
     expect(report.winner).toBe("attacker");
   });
 });
 
 describe("fleetPower", () => {
   it("croît avec la taille et le tonnage", () => {
-    expect(fleetPower({ cruiser: 1 })).toBeGreaterThan(fleetPower({ fighter: 1 }));
-    expect(fleetPower({ fighter: 4 })).toBeGreaterThan(fleetPower({ fighter: 2 }));
+    expect(fleetPower({ cruiser: 1 })).toBeGreaterThan(
+      fleetPower({ fighter: 1 }),
+    );
+    expect(fleetPower({ fighter: 4 })).toBeGreaterThan(
+      fleetPower({ fighter: 2 }),
+    );
     expect(fleetPower({})).toBe(0);
   });
 });

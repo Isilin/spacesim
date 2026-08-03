@@ -33,9 +33,15 @@ describe("GameEngine — état de faction (chantier 15)", () => {
 describe("GameEngine — humeurs de faction (chantier 15)", () => {
   /** Comptoir de la galaxie d'origine, révélé à l'empire (le brouillard initial ne
    * couvre qu'un système). */
-  const reachableTradingPost = (engine: GameEngine, empire: ReturnType<typeof empireFor>) => {
-    const comptoir = engine.universe.galaxies[0]!.systems.find((s) => s.station)?.station;
-    if (!comptoir) throw new Error("la galaxie d'origine a toujours au moins un comptoir");
+  const reachableTradingPost = (
+    engine: GameEngine,
+    empire: ReturnType<typeof empireFor>,
+  ) => {
+    const comptoir = engine.universe.galaxies[0]!.systems.find(
+      (s) => s.station,
+    )?.station;
+    if (!comptoir)
+      throw new Error("la galaxie d'origine a toujours au moins un comptoir");
     engine.devArmFleet(empire, comptoir.systemId, {});
     return comptoir;
   };
@@ -44,11 +50,15 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
     const engine = await GameEngine.loadOrBootstrap();
     const factionId = engine.factionStates[0]!.factionId;
     expect(engine.devSetFactionMood(factionId, "boom", 10_000)).toBe(true);
-    expect(engine.factionStates.find((s) => s.factionId === factionId)!.mood).toBe("boom");
+    expect(
+      engine.factionStates.find((s) => s.factionId === factionId)!.mood,
+    ).toBe("boom");
 
     advanceTicks(engine, 12); // dépasse largement les 10s réglées
 
-    expect(engine.factionStates.find((s) => s.factionId === factionId)!.mood).toBe("neutral");
+    expect(
+      engine.factionStates.find((s) => s.factionId === factionId)!.mood,
+    ).toBe("neutral");
   });
 
   it("devSetFactionMood refuse une faction inconnue", async () => {
@@ -64,12 +74,20 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
 
     expect(engine.devSetFactionMood(comptoir.factionId, "embargo")).toBe(true);
 
-    expect(engine.market.sellToTradingPost(empire, colony.id, comptoir.id, { ore: 10 })).toMatch(
-      /Embargo/,
-    );
-    expect(engine.market.buyFromTradingPost(empire, colony.id, comptoir.id, "ore", 10)).toMatch(
-      /Embargo/,
-    );
+    expect(
+      engine.market.sellToTradingPost(empire, colony.id, comptoir.id, {
+        ore: 10,
+      }),
+    ).toMatch(/Embargo/);
+    expect(
+      engine.market.buyFromTradingPost(
+        empire,
+        colony.id,
+        comptoir.id,
+        "ore",
+        10,
+      ),
+    ).toMatch(/Embargo/);
   });
 
   it("un partenaire établi (standing suffisant) échappe à l'embargo", async () => {
@@ -81,7 +99,11 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
 
     expect(engine.devSetFactionMood(comptoir.factionId, "embargo")).toBe(true);
 
-    expect(engine.market.sellToTradingPost(empire, colony.id, comptoir.id, { ore: 10 })).toBeNull();
+    expect(
+      engine.market.sellToTradingPost(empire, colony.id, comptoir.id, {
+        ore: 10,
+      }),
+    ).toBeNull();
   });
 
   it("les humeurs finissent par bouger au fil des ticks économiques", async () => {

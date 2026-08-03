@@ -8,7 +8,10 @@ import { WriteSet } from "./write-set.js";
 /** Silencieux : le Persister journalise un warn attendu au test d'échec. */
 const silentLogger = { info: () => {}, warn: () => {} };
 
-const objectiveRow = (id: string, overrides: Partial<Record<string, unknown>> = {}) => ({
+const objectiveRow = (
+  id: string,
+  overrides: Partial<Record<string, unknown>> = {},
+) => ({
   id,
   gameId: "g1",
   empireId: "e1",
@@ -23,7 +26,10 @@ const objectiveRow = (id: string, overrides: Partial<Record<string, unknown>> = 
 });
 
 const readObjective = async (id: string) => {
-  const rows = await db.select().from(schema.objectives).where(eq(schema.objectives.id, id));
+  const rows = await db
+    .select()
+    .from(schema.objectives)
+    .where(eq(schema.objectives.id, id));
   return rows[0];
 };
 
@@ -34,8 +40,16 @@ describe("Persister.flush", () => {
     const writeSet = new WriteSet();
     const persister = new Persister(writeSet, silentLogger);
 
-    writeSet.upsert("objectives", "obj-1", objectiveRow("obj-1", { reward: 1 }));
-    writeSet.upsert("objectives", "obj-1", objectiveRow("obj-1", { reward: 2 }));
+    writeSet.upsert(
+      "objectives",
+      "obj-1",
+      objectiveRow("obj-1", { reward: 1 }),
+    );
+    writeSet.upsert(
+      "objectives",
+      "obj-1",
+      objectiveRow("obj-1", { reward: 2 }),
+    );
     await persister.flush();
 
     expect((await readObjective("obj-1"))?.reward).toBe(2);
@@ -56,11 +70,19 @@ describe("Persister.flush", () => {
     const writeSet = new WriteSet();
     const persister = new Persister(writeSet, silentLogger);
     // Existe déjà en base depuis un flush précédent.
-    writeSet.upsert("objectives", "obj-3", objectiveRow("obj-3", { reward: 5 }));
+    writeSet.upsert(
+      "objectives",
+      "obj-3",
+      objectiveRow("obj-3", { reward: 5 }),
+    );
     await persister.flush();
 
     writeSet.delete("objectives", "obj-3");
-    writeSet.upsert("objectives", "obj-3", objectiveRow("obj-3", { reward: 9 }));
+    writeSet.upsert(
+      "objectives",
+      "obj-3",
+      objectiveRow("obj-3", { reward: 9 }),
+    );
     await persister.flush();
 
     expect((await readObjective("obj-3"))?.reward).toBe(9);
@@ -70,9 +92,17 @@ describe("Persister.flush", () => {
     const writeSet = new WriteSet();
     const persister = new Persister(writeSet, silentLogger);
 
-    writeSet.upsert("objectives", "obj-4", objectiveRow("obj-4", { status: "open" }));
+    writeSet.upsert(
+      "objectives",
+      "obj-4",
+      objectiveRow("obj-4", { status: "open" }),
+    );
     await persister.flush();
-    writeSet.upsert("objectives", "obj-4", objectiveRow("obj-4", { status: "done" }));
+    writeSet.upsert(
+      "objectives",
+      "obj-4",
+      objectiveRow("obj-4", { status: "done" }),
+    );
     await persister.flush();
 
     expect((await readObjective("obj-4"))?.status).toBe("done");
@@ -97,7 +127,11 @@ describe("Persister.flush", () => {
     expect(writeSet.isEmpty()).toBe(false); // l'entrée en échec est retournée au WriteSet.
 
     // Correction et nouvel essai : le flush suivant réussit.
-    writeSet.upsert("objectives", "obj-5", objectiveRow("obj-5", { reward: 42 }));
+    writeSet.upsert(
+      "objectives",
+      "obj-5",
+      objectiveRow("obj-5", { reward: 42 }),
+    );
     await persister.flush();
 
     expect(persister.lastFlushError).toBeNull();
@@ -115,11 +149,19 @@ describe("Persister.flush", () => {
     const writeSet = new WriteSet();
     const persister = new Persister(writeSet, silentLogger);
 
-    writeSet.upsert("objectives", "obj-6", objectiveRow("obj-6", { reward: 1 }));
+    writeSet.upsert(
+      "objectives",
+      "obj-6",
+      objectiveRow("obj-6", { reward: 1 }),
+    );
     const first = persister.flush();
     // Une seconde entrée arrive AVANT que le premier flush ne soit retombé — elle ne
     // doit pas être perdue (le flush en cours l'a déjà drainée sans elle).
-    writeSet.upsert("objectives", "obj-7", objectiveRow("obj-7", { reward: 7 }));
+    writeSet.upsert(
+      "objectives",
+      "obj-7",
+      objectiveRow("obj-7", { reward: 7 }),
+    );
     const second = persister.flush();
 
     await Promise.all([first, second]);

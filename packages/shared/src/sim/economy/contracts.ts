@@ -9,7 +9,10 @@ export const MAX_OPEN_CONTRACTS_PER_EMPIRE = 10;
 
 /** Ramène une durée demandée dans les bornes acceptées. */
 export function clampContractDuration(durationMs: number): number {
-  return Math.min(CONTRACT_MAX_DURATION_MS, Math.max(CONTRACT_MIN_DURATION_MS, durationMs));
+  return Math.min(
+    CONTRACT_MAX_DURATION_MS,
+    Math.max(CONTRACT_MIN_DURATION_MS, durationMs),
+  );
 }
 
 /** Crédits mis sous séquestre à la publication — libérés au fil des livraisons ou au remboursement. */
@@ -27,7 +30,11 @@ export function isContractExpired(contract: Contract, now: number): boolean {
  * dès l'acceptation (pas à la livraison) pour empêcher plusieurs convois de survendre le
  * même reliquat pendant leur trajet.
  */
-export function contractAcceptable(contract: Contract, quantity: number, now: number): boolean {
+export function contractAcceptable(
+  contract: Contract,
+  quantity: number,
+  now: number,
+): boolean {
   return (
     contract.status === "open" &&
     !isContractExpired(contract, now) &&

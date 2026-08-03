@@ -1,7 +1,12 @@
 import { z } from "zod";
 
 /** Rôles applicatifs, du moins au plus privilégié. Un compte a un seul rôle, par défaut "player". */
-export const ROLE_IDS = ["player", "moderator", "content_editor", "admin"] as const;
+export const ROLE_IDS = [
+  "player",
+  "moderator",
+  "content_editor",
+  "admin",
+] as const;
 export type RoleId = (typeof ROLE_IDS)[number];
 export const roleSchema = z.enum(ROLE_IDS);
 
@@ -98,7 +103,13 @@ export function hasPermission(role: RoleId, action: AdminActionId): boolean {
 // ── Sanctions (chantier 23.4) ────────────────────────────────────────────────
 
 /** Un événement de sanction ; `warn`/`unban` ne rendent jamais le compte inutilisable. */
-export const SANCTION_KINDS = ["warn", "suspend", "ban", "unban", "force_logout"] as const;
+export const SANCTION_KINDS = [
+  "warn",
+  "suspend",
+  "ban",
+  "unban",
+  "force_logout",
+] as const;
 export type SanctionKind = (typeof SANCTION_KINDS)[number];
 
 /** Corps de `POST /api/admin/accounts/:id/sanctions` — raison toujours obligatoire (audit). */

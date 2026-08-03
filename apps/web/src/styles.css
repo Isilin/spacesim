@@ -1417,6 +1417,10 @@
   pointer-events: none;
 }
 
+.station-zone-hit {
+  fill: transparent;
+}
+
 .station-zone.clickable {
   cursor: pointer;
 }

@@ -25,7 +25,7 @@ export type { RowHeaderProps } from "./components/list/RowHeader.js";
 export { Menu } from "./components/menu/Menu.js";
 export type { MenuItem, MenuProps } from "./components/menu/Menu.js";
 
-export { Modal } from "./components/modal/Modal.js";
+export { Modal, useModal, useModalContext } from "./components/modal/index.js";
 export type { ModalProps } from "./components/modal/Modal.js";
 
 export { Panel } from "./components/panel/Panel.js";
@@ -49,7 +49,11 @@ export { Table } from "./components/table/Table.js";
 export type { TableColumn, TableProps } from "./components/table/Table.js";
 
 export { TopBar } from "./components/topbar/TopBar.js";
-export type { TopBarNavItem, TopBarProps, TopBarStatus } from "./components/topbar/TopBar.js";
+export type {
+  TopBarNavItem,
+  TopBarProps,
+  TopBarStatus,
+} from "./components/topbar/TopBar.js";
 
 export { Tabs } from "./components/tabs/Tabs.js";
 export type { TabItem, TabsProps } from "./components/tabs/Tabs.js";
@@ -60,4 +64,7 @@ export { ToastStack } from "./components/toast/ToastStack.js";
 export type { ToastStackProps } from "./components/toast/ToastStack.js";
 
 export { ZoomableSvg } from "./components/zoomable-svg/ZoomableSvg.js";
-export type { ViewBox, ZoomableSvgProps } from "./components/zoomable-svg/ZoomableSvg.js";
+export type {
+  ViewBox,
+  ZoomableSvgProps,
+} from "./components/zoomable-svg/ZoomableSvg.js";

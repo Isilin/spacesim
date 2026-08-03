@@ -79,7 +79,8 @@ export function StationDiagram({
 
   const growthPoints = useMemo(() => computeGrowthPoints(station), [station]);
   const queuedByCell = useMemo(
-    () => new Map(station.zoneQueue.map((item) => [hexKey(item.q, item.r), item])),
+    () =>
+      new Map(station.zoneQueue.map((item) => [hexKey(item.q, item.r), item])),
     [station.zoneQueue],
   );
 
@@ -161,7 +162,8 @@ export function StationDiagram({
           const key = hexKey(z.q, z.r);
           const queued = queuedByCell.get(key);
           const clickable = !!onSelectZone;
-          const label = ZONE_TYPE_LABELS[z.zoneTypeId as ZoneTypeId]?.name ?? z.zoneTypeId;
+          const label =
+            ZONE_TYPE_LABELS[z.zoneTypeId as ZoneTypeId]?.name ?? z.zoneTypeId;
           return (
             <g
               key={key}
@@ -183,17 +185,25 @@ export function StationDiagram({
               }
             >
               <title>{label}</title>
-              <text textAnchor="middle" dominantBaseline="middle" className="station-zone-icon">
+              <circle r={18} className="station-zone-hit" />
+              <text
+                textAnchor="middle"
+                dominantBaseline="middle"
+                className="station-zone-icon"
+              >
                 {label.charAt(0).toUpperCase()}
               </text>
-              {queued && <circle r={16} className="station-zone-ring queued-ring" />}
+              {queued && (
+                <circle r={16} className="station-zone-ring queued-ring" />
+              )}
             </g>
           );
         })}
 
         {growthPoints.map((p) => {
           const pos = hexPixelPosition(p.q, p.r);
-          const selected = selectedGrowthPoint?.q === p.q && selectedGrowthPoint?.r === p.r;
+          const selected =
+            selectedGrowthPoint?.q === p.q && selectedGrowthPoint?.r === p.r;
           const clickable = !!onSelectGrowthPoint;
           return (
             <g
@@ -216,7 +226,10 @@ export function StationDiagram({
               }
             >
               <circle r={11} className="station-growth-point-hit" />
-              <path d="M-5,0 L5,0 M0,-5 L0,5" className="station-growth-point-cross" />
+              <path
+                d="M-5,0 L5,0 M0,-5 L0,5"
+                className="station-growth-point-cross"
+              />
             </g>
           );
         })}

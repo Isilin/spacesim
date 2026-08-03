@@ -42,7 +42,9 @@ export function withParentIndexes(universe: Universe): Universe {
 function galaxyRows(galaxy: Galaxy, gameId: string, now: number) {
   const index = galaxyIndexOfId(galaxy.id);
   if (index > 0 && galaxy.parentIndex === undefined) {
-    throw new Error(`Galaxie ${galaxy.id} sans parentIndex figé — voir withParentIndexes()`);
+    throw new Error(
+      `Galaxie ${galaxy.id} sans parentIndex figé — voir withParentIndexes()`,
+    );
   }
   return {
     galaxy: {
@@ -142,12 +144,19 @@ export async function appendGalaxies(
       const rows = galaxyRows(galaxy, gameId, now);
       await tx.insert(schema.universeGalaxies).values(rows.galaxy);
       await tx.insert(schema.universeSystems).values(rows.systems);
-      if (rows.bodies.length > 0) await tx.insert(schema.universeBodies).values(rows.bodies);
-      if (rows.belts.length > 0) await tx.insert(schema.universeBelts).values(rows.belts);
-      if (rows.comptoirs.length > 0) await tx.insert(schema.universeTradingPosts).values(rows.comptoirs);
-      if (rows.links.length > 0) await tx.insert(schema.universeLinks).values(rows.links);
+      if (rows.bodies.length > 0)
+        await tx.insert(schema.universeBodies).values(rows.bodies);
+      if (rows.belts.length > 0)
+        await tx.insert(schema.universeBelts).values(rows.belts);
+      if (rows.comptoirs.length > 0)
+        await tx.insert(schema.universeTradingPosts).values(rows.comptoirs);
+      if (rows.links.length > 0)
+        await tx.insert(schema.universeLinks).values(rows.links);
     }
-    await tx.update(schema.games).set({ galaxyCount }).where(eq(schema.games.id, gameId));
+    await tx
+      .update(schema.games)
+      .set({ galaxyCount })
+      .where(eq(schema.games.id, gameId));
   });
 }
 
@@ -170,10 +179,14 @@ export function stageGalaxies(
   for (const galaxy of galaxies) {
     const rows = galaxyRows(galaxy, gameId, now);
     writeSet.upsert("universeGalaxies", rows.galaxy.id, rows.galaxy);
-    for (const system of rows.systems) writeSet.upsert("universeSystems", system.id, system);
-    for (const body of rows.bodies) writeSet.upsert("universeBodies", body.id, body);
-    for (const belt of rows.belts) writeSet.upsert("universeBelts", belt.id, belt);
-    for (const comptoir of rows.comptoirs) writeSet.upsert("universeTradingPosts", comptoir.id, comptoir);
+    for (const system of rows.systems)
+      writeSet.upsert("universeSystems", system.id, system);
+    for (const body of rows.bodies)
+      writeSet.upsert("universeBodies", body.id, body);
+    for (const belt of rows.belts)
+      writeSet.upsert("universeBelts", belt.id, belt);
+    for (const comptoir of rows.comptoirs)
+      writeSet.upsert("universeTradingPosts", comptoir.id, comptoir);
     for (const link of rows.links) {
       writeSet.upsert("universeLinks", [link.aSystemId, link.bSystemId], link);
     }
@@ -193,7 +206,10 @@ export async function materializedGalaxyCount(gameId: string): Promise<number> {
  * Reconstruit l'univers depuis les tables (ordre garanti par les colonnes `*_index`).
  * Renvoie `null` si aucune galaxie n'est matérialisée.
  */
-export async function loadUniverse(gameId: string, seed: string): Promise<Universe | null> {
+export async function loadUniverse(
+  gameId: string,
+  seed: string,
+): Promise<Universe | null> {
   const galaxyRowsDb = (
     await db
       .select()
@@ -202,17 +218,20 @@ export async function loadUniverse(gameId: string, seed: string): Promise<Univer
   ).sort((a, b) => a.index - b.index);
   if (galaxyRowsDb.length === 0) return null;
 
-  const [systemRows, bodyRows, beltRows, tradingPostRows, linkRows] = await Promise.all([
-    db.select().from(schema.universeSystems),
-    db.select().from(schema.universeBodies),
-    db.select().from(schema.universeBelts),
-    db.select().from(schema.universeTradingPosts),
-    db.select().from(schema.universeLinks),
-  ]);
+  const [systemRows, bodyRows, beltRows, tradingPostRows, linkRows] =
+    await Promise.all([
+      db.select().from(schema.universeSystems),
+      db.select().from(schema.universeBodies),
+      db.select().from(schema.universeBelts),
+      db.select().from(schema.universeTradingPosts),
+      db.select().from(schema.universeLinks),
+    ]);
 
   const bodiesBySystem = groupBy(bodyRows, (r) => r.systemId);
   const beltsBySystem = groupBy(beltRows, (r) => r.systemId);
-  const tradingPostBySystem = new Map(tradingPostRows.map((r) => [r.systemId, r]));
+  const tradingPostBySystem = new Map(
+    tradingPostRows.map((r) => [r.systemId, r]),
+  );
   const systemsByGalaxy = groupBy(systemRows, (r) => r.galaxyId);
   const linksByGalaxy = groupBy(linkRows, (r) => r.galaxyId);
 
@@ -227,7 +246,9 @@ export async function loadUniverse(gameId: string, seed: string): Promise<Univer
             systemId: systemRow.id,
             name: body.name,
             kind: body.kind as Planet["kind"],
-            ...(body.parentPlanetId ? { parentPlanetId: body.parentPlanetId } : {}),
+            ...(body.parentPlanetId
+              ? { parentPlanetId: body.parentPlanetId }
+              : {}),
             type: body.type as PlanetType,
             habitability: body.habitability,
             slots: body.slots,

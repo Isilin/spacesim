@@ -1,5 +1,8 @@
-import { MAX_SHIP_QUEUE_LENGTH, SHIPS, type ShipDef } from "../../content/ships.js";
-import type { TechId } from "../../content/techs.js";
+import {
+  MAX_SHIP_QUEUE_LENGTH,
+  SHIPS,
+  type ShipDef,
+} from "../../content/ships.js";
 import { type Colony, type ShipId } from "../../model/industry.js";
 import type { ResourceId } from "../../model/resources.js";
 import type { Route } from "../../model/transport.js";
@@ -8,7 +11,10 @@ import { canAfford } from "./colony.js";
 import type { ShipStats } from "./design.js";
 
 /** Soute d'un id de vaisseau selon les classes historiques (défaut des providers). */
-export function legacyCapacity(id: string, ships: Record<string, ShipDef> = SHIPS): number {
+export function legacyCapacity(
+  id: string,
+  ships: Record<string, ShipDef> = SHIPS,
+): number {
   return ships[id]?.capacity ?? 0;
 }
 
@@ -16,7 +22,10 @@ export function legacyCapacity(id: string, ships: Record<string, ShipDef> = SHIP
  * Vaisseaux disponibles à la colonie : possédés − occupés − réservés aux routes.
  * Les clés sont dérivées des données de la colonie → compatible avec les ids de plan.
  */
-export function idleShips(colony: Colony, routes: readonly Route[]): Record<string, number> {
+export function idleShips(
+  colony: Colony,
+  routes: readonly Route[],
+): Record<string, number> {
   const idle: Record<string, number> = {};
   for (const [shipId, count] of Object.entries(colony.ships)) {
     idle[shipId] = (idle[shipId] ?? 0) + (count ?? 0);
@@ -55,7 +64,9 @@ export function pickShip(
 ): string | null {
   const available = Object.keys(idle).filter((id) => (idle[id] ?? 0) > 0);
   if (available.length === 0) return null;
-  return available.reduce((best, id) => (capacityOf(id) > capacityOf(best) ? id : best));
+  return available.reduce((best, id) =>
+    capacityOf(id) > capacityOf(best) ? id : best,
+  );
 }
 
 /** Soute du plus gros cargo disponible (0 si aucun) — borne des convois manuels. */
@@ -68,14 +79,16 @@ export function maxConvoyCapacity(
   return ship ? capacityOf(ship) : 0;
 }
 
-export type ShipEnqueueResult = { ok: true; colony: Colony } | { ok: false; reason: string };
+export type ShipEnqueueResult =
+  | { ok: true; colony: Colony }
+  | { ok: false; reason: string };
 
 /** Valide et paie la production d'un vaisseau au chantier naval (classes historiques). */
 export function enqueueShip(
   colony: Colony,
   shipId: ShipId,
   now: number,
-  researched: readonly TechId[],
+  researched: readonly string[],
   effects: EmpireEffects = NO_EFFECTS,
   ships: Record<string, ShipDef> = SHIPS,
 ): ShipEnqueueResult {
@@ -100,9 +113,19 @@ export function enqueueShipFromStats(
   effects: EmpireEffects = NO_EFFECTS,
 ): ShipEnqueueResult {
   if (stats.domain !== "colony") {
-    return { ok: false, reason: "Ce plan se produit en flotte, pas au chantier civil" };
+    return {
+      ok: false,
+      reason: "Ce plan se produit en flotte, pas au chantier civil",
+    };
   }
-  return enqueueBuild(colony, blueprintId, stats.cost, stats.buildMs, now, effects);
+  return enqueueBuild(
+    colony,
+    blueprintId,
+    stats.cost,
+    stats.buildMs,
+    now,
+    effects,
+  );
 }
 
 /** Cœur commun : chantier naval requis, file, coût, timer. */
@@ -120,7 +143,8 @@ function enqueueBuild(
   if (colony.shipQueue.length >= MAX_SHIP_QUEUE_LENGTH) {
     return { ok: false, reason: "File navale pleine" };
   }
-  if (!canAfford(colony, cost)) return { ok: false, reason: "Ressources insuffisantes" };
+  if (!canAfford(colony, cost))
+    return { ok: false, reason: "Ressources insuffisantes" };
 
   const resources = { ...colony.resources };
   for (const [res, amount] of Object.entries(cost) as [ResourceId, number][]) {
@@ -128,7 +152,8 @@ function enqueueBuild(
   }
   const lastFinish = colony.shipQueue.at(-1)?.finishesAt ?? now;
   const startedAt = Math.max(now, lastFinish);
-  const finishesAt = startedAt + Math.round(buildMs * effects.shipBuildSpeedMult);
+  const finishesAt =
+    startedAt + Math.round(buildMs * effects.shipBuildSpeedMult);
   return {
     ok: true,
     colony: {

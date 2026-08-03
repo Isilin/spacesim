@@ -27,18 +27,25 @@ export function galaxyIndexOfId(galaxyId: string): number {
  * doit croître avec la distance, sinon les anneaux lointains — plus riches — seraient
  * aussi accessibles que les proches.
  */
-export function gatewayCost(galaxyId: string): Partial<Record<ResourceId, number>> {
+export function gatewayCost(
+  galaxyId: string,
+): Partial<Record<ResourceId, number>> {
   const rings = Math.max(0, galaxyIndexOfId(galaxyId) - 1);
   const scale = 1 + GATEWAY_COST_PER_RING * rings;
   const cost: Partial<Record<ResourceId, number>> = {};
-  for (const [res, base] of Object.entries(GATEWAY_COST) as [ResourceId, number][]) {
+  for (const [res, base] of Object.entries(GATEWAY_COST) as [
+    ResourceId,
+    number,
+  ][]) {
     cost[res] = Math.round(base * scale);
   }
   return cost;
 }
 
 /** Ce qui reste à livrer par ressource. */
-export function gatewayRemaining(gateway: Gateway): Partial<Record<ResourceId, number>> {
+export function gatewayRemaining(
+  gateway: Gateway,
+): Partial<Record<ResourceId, number>> {
   const remaining: Partial<Record<ResourceId, number>> = {};
   for (const [res, total] of Object.entries(gatewayCost(gateway.galaxyId)) as [
     ResourceId,
@@ -77,9 +84,15 @@ export function gatewayProgressRatio(gateway: Gateway): number {
  * ainsi qu'un seul trou de ver vers sa voisine, et non vers toutes les autres — le
  * réseau se déploie de proche en proche, comme les liaisons entre systèmes.
  */
-export function galaxyParentIndex(universe: Universe, index: number): number | null {
+export function galaxyParentIndex(
+  universe: Universe,
+  index: number,
+): number | null {
   if (index <= 0 || index >= universe.galaxies.length) return null;
-  return universe.galaxies[index]!.parentIndex ?? computeGalaxyParentIndex(universe, index);
+  return (
+    universe.galaxies[index]!.parentIndex ??
+    computeGalaxyParentIndex(universe, index)
+  );
 }
 
 /**
@@ -87,7 +100,10 @@ export function galaxyParentIndex(universe: Universe, index: number): number | n
  * figer `Galaxy.parentIndex` à la matérialisation, et de repli pour un univers sorti
  * du générateur pur — ne pas l'appeler sur un univers chargé depuis la DB.
  */
-export function computeGalaxyParentIndex(universe: Universe, index: number): number | null {
+export function computeGalaxyParentIndex(
+  universe: Universe,
+  index: number,
+): number | null {
   if (index <= 0 || index >= universe.galaxies.length) return null;
   const g = universe.galaxies[index]!;
   let best = 0;
@@ -133,8 +149,13 @@ export function galaxyLinks(universe: Universe): GalaxyLink[] {
  * réseau de voyage épouse donc l'arbre de voisinage : atteindre une galaxie lointaine
  * exige que toute la chaîne de portails jusqu'à elle soit active.
  */
-export function gatewayLinks(universe: Universe, gateways: readonly Gateway[]): [string, string][] {
-  const indexById = new Map(universe.galaxies.map((g, i) => [g.id, i] as const));
+export function gatewayLinks(
+  universe: Universe,
+  gateways: readonly Gateway[],
+): [string, string][] {
+  const indexById = new Map(
+    universe.galaxies.map((g, i) => [g.id, i] as const),
+  );
   const links: [string, string][] = [];
   for (const gateway of gateways) {
     if (!gateway.active) continue;

@@ -13,10 +13,17 @@ export const PIRATE_SPAWN_CHANCE = 0.04;
 /** Crédits ponctionnés par tick à une colonie/avant-poste partageant le système d'un repaire. */
 export const PIRATE_TAX_PER_TICK = 0.15;
 
-const DIRECTIVE_POOL: CombatDirective[] = ["barrage", "shields", "evasive", "focus_fire"];
+const DIRECTIVE_POOL: CombatDirective[] = [
+  "barrage",
+  "shields",
+  "evasive",
+  "focus_fire",
+];
 
 /** Directives pirates seedées (mêmes trois phases que le joueur). */
-export function pirateDirectives(rng: Rng): Record<CombatPhase, CombatDirective> {
+export function pirateDirectives(
+  rng: Rng,
+): Record<CombatPhase, CombatDirective> {
   return {
     long: pick(rng, DIRECTIVE_POOL),
     medium: pick(rng, DIRECTIVE_POOL),

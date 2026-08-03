@@ -16,7 +16,12 @@ function fakeRng(values: number[]): Rng {
 }
 
 function makeState(overrides: Partial<FactionState> = {}): FactionState {
-  return { factionId: "ferride", mood: "neutral", moodUntil: null, ...overrides };
+  return {
+    factionId: "ferride",
+    mood: "neutral",
+    moodUntil: null,
+    ...overrides,
+  };
 }
 
 describe("factionTick", () => {
@@ -65,10 +70,14 @@ describe("moodRebateBonus", () => {
 
 describe("embargoBlocks", () => {
   it("bloque sous le seuil de standing pendant un embargo", () => {
-    expect(embargoBlocks("embargo", FACTION_EMBARGO_STANDING_THRESHOLD - 1)).toBe(true);
+    expect(
+      embargoBlocks("embargo", FACTION_EMBARGO_STANDING_THRESHOLD - 1),
+    ).toBe(true);
   });
   it("laisse passer un partenaire établi malgré l'embargo", () => {
-    expect(embargoBlocks("embargo", FACTION_EMBARGO_STANDING_THRESHOLD)).toBe(false);
+    expect(embargoBlocks("embargo", FACTION_EMBARGO_STANDING_THRESHOLD)).toBe(
+      false,
+    );
   });
   it("ne bloque jamais hors embargo", () => {
     expect(embargoBlocks("neutral", 0)).toBe(false);

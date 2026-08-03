@@ -23,7 +23,10 @@ export function systemNeighbors(galaxy: Galaxy, systemId: string): string[] {
  * revendiqué (territoire contigu). Un empire dispersé n'en tire aucun bonus ;
  * un bloc soudé les compte tous.
  */
-export function contiguousClaims(universe: Universe, claimed: readonly string[]): Set<string> {
+export function contiguousClaims(
+  universe: Universe,
+  claimed: readonly string[],
+): Set<string> {
   const claimedSet = new Set(claimed);
   const contiguous = new Set<string>();
   for (const galaxy of universe.galaxies) {

@@ -23,7 +23,12 @@ interface Props {
   send: (msg: ClientMessage) => void;
 }
 
-const BRANCHES: TechBranch[] = ["industry", "colonization", "society", "military"];
+const BRANCHES: TechBranch[] = [
+  "industry",
+  "colonization",
+  "society",
+  "military",
+];
 
 /** Géométrie du graphe : une colonne par profondeur, une bande par branche. */
 const COL_WIDTH = 210;
@@ -48,7 +53,10 @@ export function ResearchView({ game, colonies, now, send }: Props) {
     const layout = techLayout();
     const rowsPerBand = new Map<TechBranch, number>();
     for (const [, pos] of layout) {
-      rowsPerBand.set(pos.branch, Math.max(rowsPerBand.get(pos.branch) ?? 0, pos.row + 1));
+      rowsPerBand.set(
+        pos.branch,
+        Math.max(rowsPerBand.get(pos.branch) ?? 0, pos.row + 1),
+      );
     }
     const bandTop = new Map<TechBranch, number>();
     let y = MARGIN_Y;
@@ -56,7 +64,10 @@ export function ResearchView({ game, colonies, now, send }: Props) {
       bandTop.set(branch, y);
       y += (rowsPerBand.get(branch) ?? 1) * ROW_HEIGHT + BAND_PADDING;
     }
-    const nodes = new Map<TechId, { x: number; y: number; branch: TechBranch }>();
+    const nodes = new Map<
+      TechId,
+      { x: number; y: number; branch: TechBranch }
+    >();
     let maxDepth = 0;
     for (const [id, pos] of layout) {
       maxDepth = Math.max(maxDepth, pos.depth);
@@ -79,7 +90,10 @@ export function ResearchView({ game, colonies, now, send }: Props) {
     };
   }, []);
 
-  const home = useMemo<ViewBox>(() => ({ x: 0, y: 0, width, height }), [width, height]);
+  const home = useMemo<ViewBox>(
+    () => ({ x: 0, y: 0, width, height }),
+    [width, height],
+  );
 
   // Chaîne mise en valeur : celle du nœud survolé (ou sélectionné à défaut).
   const focus = hovered ?? selected;
@@ -88,7 +102,9 @@ export function ResearchView({ game, colonies, now, send }: Props) {
     return new Set<TechId>([...researchPath(focus, []), focus]);
   }, [focus]);
 
-  const stateOf = (id: TechId): "done" | "active" | "queued" | "available" | "locked" => {
+  const stateOf = (
+    id: TechId,
+  ): "done" | "active" | "queued" | "available" | "locked" => {
     if (researched.includes(id)) return "done";
     if (active?.techId === id) return "active";
     if (queue.includes(id)) return "queued";
@@ -105,7 +121,8 @@ export function ResearchView({ game, colonies, now, send }: Props) {
         <Badge>Science disponible : {Math.floor(totalScience)}</Badge>
         {active ? (
           <Badge variant="ok">
-            En cours : {TECH_LABELS[active.techId as TechId]?.name ?? active.techId} —{" "}
+            En cours :{" "}
+            {TECH_LABELS[active.techId as TechId]?.name ?? active.techId} —{" "}
             {formatDuration(active.finishesAt - now)}
           </Badge>
         ) : (
@@ -128,7 +145,11 @@ export function ResearchView({ game, colonies, now, send }: Props) {
 
       <div className="research-body">
         <div className="research-graph">
-          <ZoomableSvg className="tech-graph" home={home} ariaLabel="Arbre de recherche">
+          <ZoomableSvg
+            className="tech-graph"
+            home={home}
+            ariaLabel="Arbre de recherche"
+          >
             {bands.map((band) => (
               <g key={band.branch}>
                 <rect
@@ -188,7 +209,12 @@ export function ResearchView({ game, colonies, now, send }: Props) {
                   onMouseEnter={() => setHovered(id)}
                   onMouseLeave={() => setHovered(null)}
                 >
-                  <rect width={NODE_WIDTH} height={NODE_HEIGHT} rx={3} className="tech-box" />
+                  <rect
+                    width={NODE_WIDTH}
+                    height={NODE_HEIGHT}
+                    rx={3}
+                    className="tech-box"
+                  />
                   <text x={9} y={19} className="tech-node-name">
                     {TECH_LABELS[id].name}
                   </text>
@@ -200,7 +226,12 @@ export function ResearchView({ game, colonies, now, send }: Props) {
                         : `${TECHS[id].cost} science · ${formatDuration(TECHS[id].durationMs)}`}
                   </text>
                   {state === "queued" && (
-                    <text x={NODE_WIDTH - 9} y={19} textAnchor="end" className="tech-node-meta">
+                    <text
+                      x={NODE_WIDTH - 9}
+                      y={19}
+                      textAnchor="end"
+                      className="tech-node-meta"
+                    >
                       #{queue.indexOf(id) + 1}
                     </text>
                   )}
@@ -221,7 +252,8 @@ export function ResearchView({ game, colonies, now, send }: Props) {
               </p>
               {detail.requires.length > 0 && (
                 <p className="small muted">
-                  Requiert : {detail.requires.map((r) => TECH_LABELS[r].name).join(", ")}
+                  Requiert :{" "}
+                  {detail.requires.map((r) => TECH_LABELS[r].name).join(", ")}
                 </p>
               )}
 
@@ -229,7 +261,8 @@ export function ResearchView({ game, colonies, now, send }: Props) {
                 <p className="small ok">Technologie acquise.</p>
               ) : detailState === "active" ? (
                 <p className="small ok">
-                  Recherche en cours — {formatDuration(active!.finishesAt - now)}
+                  Recherche en cours —{" "}
+                  {formatDuration(active!.finishesAt - now)}
                 </p>
               ) : detailState === "available" ? (
                 <Button
@@ -248,17 +281,24 @@ export function ResearchView({ game, colonies, now, send }: Props) {
               ) : (
                 <>
                   <p className="small muted">
-                    Chaîne à parcourir : {detailPath.length} technologies · {pathCost(detailPath)}{" "}
-                    science au total.
+                    Chaîne à parcourir : {detailPath.length} technologies ·{" "}
+                    {pathCost(detailPath)} science au total.
                   </p>
                   <ol className="research-chain small">
                     {detailPath.map((id) => (
-                      <li key={id} className={queue.includes(id) ? "queued" : ""}>
+                      <li
+                        key={id}
+                        className={queue.includes(id) ? "queued" : ""}
+                      >
                         {TECH_LABELS[id].name}
                       </li>
                     ))}
                   </ol>
-                  <Button onClick={() => send({ type: "queueResearch", techId: selected })}>
+                  <Button
+                    onClick={() =>
+                      send({ type: "queueResearch", techId: selected })
+                    }
+                  >
                     Planifier la chaîne
                   </Button>
                 </>
@@ -266,8 +306,8 @@ export function ResearchView({ game, colonies, now, send }: Props) {
             </>
           ) : (
             <p className="muted small">
-              Sélectionnez une technologie pour voir son détail. Survolez un nœud pour éclairer sa
-              chaîne de prérequis.
+              Sélectionnez une technologie pour voir son détail. Survolez un
+              nœud pour éclairer sa chaîne de prérequis.
             </p>
           )}
         </aside>

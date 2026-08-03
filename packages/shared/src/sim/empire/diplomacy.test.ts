@@ -51,10 +51,14 @@ describe("proposeRelationReason", () => {
   });
   it("refuse de reproposer l'état déjà en vigueur", () => {
     expect(proposeRelationReason("nap", "nap")).toMatch(/Déjà en pacte/);
-    expect(proposeRelationReason("alliance", "alliance")).toMatch(/Déjà alliés/);
+    expect(proposeRelationReason("alliance", "alliance")).toMatch(
+      /Déjà alliés/,
+    );
   });
   it("refuse de rétrograder une alliance en NAP sans la rompre d'abord", () => {
-    expect(proposeRelationReason("alliance", "nap")).toMatch(/Rompez l'alliance/);
+    expect(proposeRelationReason("alliance", "nap")).toMatch(
+      /Rompez l'alliance/,
+    );
   });
   it("autorise neutre → nap/alliance, et nap → alliance", () => {
     expect(proposeRelationReason("neutral", "nap")).toBeNull();
@@ -98,13 +102,23 @@ describe("npcAcceptsProposal", () => {
   });
 
   it("refuse une alliance avec un partenaire beaucoup plus faible", () => {
-    expect(npcAcceptsProposal("alliance", 100, 100 * NPC_ALLIANCE_MIN_POWER_RATIO * 0.5)).toBe(
-      false,
-    );
+    expect(
+      npcAcceptsProposal(
+        "alliance",
+        100,
+        100 * NPC_ALLIANCE_MIN_POWER_RATIO * 0.5,
+      ),
+    ).toBe(false);
   });
 
   it("refuse une alliance avec un partenaire beaucoup plus fort", () => {
-    expect(npcAcceptsProposal("alliance", 100, 100 * NPC_ALLIANCE_MAX_POWER_RATIO * 2)).toBe(false);
+    expect(
+      npcAcceptsProposal(
+        "alliance",
+        100,
+        100 * NPC_ALLIANCE_MAX_POWER_RATIO * 2,
+      ),
+    ).toBe(false);
   });
 
   it("sans flotte connue d'un côté ou l'autre, accepte par défaut (pas de comparaison possible)", () => {

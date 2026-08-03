@@ -10,12 +10,18 @@ import { allSystems, type Universe } from "@spacesim/shared";
 export function formatDuration(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
   const m = Math.floor(s / 60);
-  if (m >= 60) return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
+  if (m >= 60)
+    return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
   if (m > 0) return `${m}m${String(s % 60).padStart(2, "0")}s`;
   return `${s}s`;
 }
 
 /** Système contenant un corps donné (utilitaire d'affichage partagé). */
-export function systemIdOf(universe: Universe, planetId: string): string | undefined {
-  return allSystems(universe).find((s) => s.planets.some((p) => p.id === planetId))?.id;
+export function systemIdOf(
+  universe: Universe,
+  planetId: string,
+): string | undefined {
+  return allSystems(universe).find((s) =>
+    s.planets.some((p) => p.id === planetId),
+  )?.id;
 }

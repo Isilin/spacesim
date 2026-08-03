@@ -1,4 +1,8 @@
-import { CHASSIS, type ChassisDef, type ShipDomain } from "../../content/chassis.js";
+import {
+  CHASSIS,
+  type ChassisDef,
+  type ShipDomain,
+} from "../../content/chassis.js";
 import {
   MODULES,
   SLOT_TYPES,
@@ -6,7 +10,11 @@ import {
   type ModuleId,
   type SlotType,
 } from "../../content/modules.js";
-import { COMBAT_PHASES, type CombatCategory, type CombatPhase } from "../../content/warships.js";
+import {
+  COMBAT_PHASES,
+  type CombatCategory,
+  type CombatPhase,
+} from "../../content/warships.js";
 import type { Blueprint } from "../../model/industry.js";
 import type { ResourceId } from "../../model/resources.js";
 import type { EmpireEffects } from "../empire/research.js";
@@ -46,7 +54,8 @@ export function categoryOf(stats: {
   fleetDamageBonus: number;
   weapons: Record<CombatPhase, number>;
 }): CombatCategory {
-  const firepower = stats.weapons.long + stats.weapons.medium + stats.weapons.short;
+  const firepower =
+    stats.weapons.long + stats.weapons.medium + stats.weapons.short;
   if (stats.fleetDamageBonus > 0 && firepower < 20) return "support";
   if (stats.hull >= 350) return "capital";
   if (stats.hull >= 140) return "line";
@@ -108,7 +117,8 @@ export function resolveBlueprint(
     const bonus = chassis.roleBonus?.[mod.role] ?? 1;
     const e = mod.effects;
     if (e.weapons) {
-      for (const phase of COMBAT_PHASES) weapons[phase] += (e.weapons[phase] ?? 0) * bonus;
+      for (const phase of COMBAT_PHASES)
+        weapons[phase] += (e.weapons[phase] ?? 0) * bonus;
     }
     stats.shield += (e.shield ?? 0) * bonus;
     stats.hull += (e.hullBonus ?? 0) * bonus;
@@ -119,7 +129,10 @@ export function resolveBlueprint(
     stats.miningYield += (e.miningYield ?? 0) * bonus;
     if (e.colonizer) stats.colonizer = true;
     stats.fleetDamageBonus += (e.fleetDamageBonus ?? 0) * bonus;
-    for (const [res, amount] of Object.entries(mod.cost) as [ResourceId, number][]) {
+    for (const [res, amount] of Object.entries(mod.cost) as [
+      ResourceId,
+      number,
+    ][]) {
       cost[res] = (cost[res] ?? 0) + amount;
     }
     stats.buildMs += mod.buildMs;
@@ -149,7 +162,12 @@ export function validateBlueprint(
     problems.push("Châssis non débloqué");
   }
 
-  const slotUsed: Record<SlotType, number> = { weapon: 0, defense: 0, propulsion: 0, utility: 0 };
+  const slotUsed: Record<SlotType, number> = {
+    weapon: 0,
+    defense: 0,
+    propulsion: 0,
+    utility: 0,
+  };
   let power = 0;
   let tonnage = 0;
   let calc = 0;
@@ -175,9 +193,12 @@ export function validateBlueprint(
       problems.push(`Trop de modules ${slot} (${slotUsed[slot]}/${offered})`);
     }
   }
-  if (power > chassis.power) problems.push(`Énergie insuffisante (${power}/${chassis.power})`);
-  if (tonnage > chassis.tonnage) problems.push(`Tonnage dépassé (${tonnage}/${chassis.tonnage})`);
-  if (calc > chassis.calc) problems.push(`Calcul dépassé (${calc}/${chassis.calc})`);
+  if (power > chassis.power)
+    problems.push(`Énergie insuffisante (${power}/${chassis.power})`);
+  if (tonnage > chassis.tonnage)
+    problems.push(`Tonnage dépassé (${tonnage}/${chassis.tonnage})`);
+  if (calc > chassis.calc)
+    problems.push(`Calcul dépassé (${calc}/${chassis.calc})`);
 
   return problems;
 }
@@ -206,12 +227,20 @@ export function blueprintLoad(bp: BlueprintShape): {
  * triangle de forces du combat quand les vaisseaux ne sont plus des classes figées.
  */
 export function dominantSlot(bp: BlueprintShape): SlotType {
-  const count: Record<SlotType, number> = { weapon: 0, defense: 0, propulsion: 0, utility: 0 };
+  const count: Record<SlotType, number> = {
+    weapon: 0,
+    defense: 0,
+    propulsion: 0,
+    utility: 0,
+  };
   for (const modId of bp.modules) {
     const mod = MODULES[modId as ModuleId];
     if (mod) count[mod.slot] += 1;
   }
-  return SLOT_TYPES.reduce((best, slot) => (count[slot] > count[best] ? slot : best), "weapon");
+  return SLOT_TYPES.reduce(
+    (best, slot) => (count[slot] > count[best] ? slot : best),
+    "weapon",
+  );
 }
 
 /** Convertit un plan complet (Blueprint) en sa forme nue pour le résolveur. */

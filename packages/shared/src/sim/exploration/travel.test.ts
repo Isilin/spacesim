@@ -14,13 +14,24 @@ import {
   transferDurationMs,
 } from "./travel.js";
 
-function makeGalaxy(id: string, systemIds: string[], links: [string, string][]): Galaxy {
+function makeGalaxy(
+  id: string,
+  systemIds: string[],
+  links: [string, string][],
+): Galaxy {
   return {
     id,
     name: id,
     x: 0,
     y: 0,
-    systems: systemIds.map((sid) => ({ id: sid, name: sid, x: 0, y: 0, planets: [], belts: [] })),
+    systems: systemIds.map((sid) => ({
+      id: sid,
+      name: sid,
+      x: 0,
+      y: 0,
+      planets: [],
+      belts: [],
+    })),
     links,
     anchorSystemId: systemIds[0]!,
     depositBonus: 1,
@@ -78,7 +89,9 @@ describe("jumpDistanceInUniverse", () => {
 describe("transferDurationMs", () => {
   it("croît avec la distance", () => {
     expect(transferDurationMs(0)).toBe(TRANSFER_BASE_MS);
-    expect(transferDurationMs(3)).toBe(TRANSFER_BASE_MS + 3 * TRANSFER_MS_PER_JUMP);
+    expect(transferDurationMs(3)).toBe(
+      TRANSFER_BASE_MS + 3 * TRANSFER_MS_PER_JUMP,
+    );
   });
 });
 
@@ -108,7 +121,9 @@ describe("convois (chantier 12)", () => {
   it("les péages de portail s'ajoutent aux frais de distance", () => {
     const sansPortail = convoyFees(5);
     expect(convoyFees(5, 1)).toBeGreaterThan(sansPortail);
-    expect(convoyFees(5, 2) - convoyFees(5, 1)).toBe(convoyFees(5, 1) - sansPortail);
+    expect(convoyFees(5, 2) - convoyFees(5, 1)).toBe(
+      convoyFees(5, 1) - sansPortail,
+    );
     expect(sansPortail).toBe(transferCostCredits(5));
   });
 
@@ -127,10 +142,15 @@ describe("convois (chantier 12)", () => {
   });
 
   it("accepte une table de vaisseaux injectée (chantier 23.8) — id inconnu de SHIPS", () => {
-    const customShips = { ...SHIPS, freshly_minted: { ...SHIPS.hauler, capacity: 9999 } };
+    const customShips = {
+      ...SHIPS,
+      freshly_minted: { ...SHIPS.hauler, capacity: 9999 },
+    };
     expect(legacyConvoyStat("freshly_minted", customShips).capacity).toBe(9999);
-    expect(convoyCapacity({ freshly_minted: 1 }, (id) => legacyConvoyStat(id, customShips))).toBe(
-      9999,
-    );
+    expect(
+      convoyCapacity({ freshly_minted: 1 }, (id) =>
+        legacyConvoyStat(id, customShips),
+      ),
+    ).toBe(9999);
   });
 });

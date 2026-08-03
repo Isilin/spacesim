@@ -1,6 +1,10 @@
 import type { Galaxy, Planet, StarSystem, Universe } from "@spacesim/shared";
 import { useParams } from "react-router-dom";
-import { findBodyById, findGalaxyById, findSystemById } from "../state/selectors.js";
+import {
+  findBodyById,
+  findGalaxyById,
+  findSystemById,
+} from "../state/selectors.js";
 
 export interface MapLevel {
   level: "universe" | "galaxy" | "system" | "body";
@@ -19,6 +23,12 @@ export function useMapLevel(universe: Universe): MapLevel {
   const galaxy = galaxyId ? findGalaxyById(universe, galaxyId) : null;
   const system = galaxy && systemId ? findSystemById(galaxy, systemId) : null;
   const body = system && bodyId ? findBodyById(system, bodyId) : null;
-  const level = body ? "body" : system ? "system" : galaxy ? "galaxy" : "universe";
+  const level = body
+    ? "body"
+    : system
+      ? "system"
+      : galaxy
+        ? "galaxy"
+        : "universe";
   return { level, galaxy, system, body };
 }

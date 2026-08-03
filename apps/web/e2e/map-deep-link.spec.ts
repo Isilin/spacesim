@@ -1,8 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { registerFreshEmpire } from "./helpers.js";
 
-test("navigation profonde vers une URL de carte survit au rechargement", async ({ page }) => {
-  await registerFreshEmpire(page, { prefix: "mapdeep", empireName: "Explorateurs E2E" });
+test("navigation profonde vers une URL de carte survit au rechargement", async ({
+  page,
+}) => {
+  await registerFreshEmpire(page, {
+    prefix: "mapdeep",
+    empireName: "Explorateurs E2E",
+  });
 
   await page.getByRole("link", { name: "Carte" }).click();
   await expect(page).toHaveURL(/\/map$/);

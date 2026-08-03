@@ -22,12 +22,18 @@ const GATEWAY_RESOURCES = Object.keys(GATEWAY_COST) as ResourceId[];
 
 export function GatewaysPanel({ now }: Props) {
   const [searchParams] = useSearchParams();
-  const activeColony = useGameStore(selectActiveColony(searchParams.get("colony")));
+  const activeColony = useGameStore(
+    selectActiveColony(searchParams.get("colony")),
+  );
   const { gateways, universe, routes, game, send } = useGameStore();
-  const [amounts, setAmounts] = useState<Record<string, Partial<Record<ResourceId, string>>>>({});
+  const [amounts, setAmounts] = useState<
+    Record<string, Partial<Record<ResourceId, string>>>
+  >({});
   const researched = game?.researched ?? [];
   const hasTech = researched.includes("gateway_engineering");
-  const convoyCapacity = activeColony ? maxConvoyCapacity(activeColony, routes) : 0;
+  const convoyCapacity = activeColony
+    ? maxConvoyCapacity(activeColony, routes)
+    : 0;
 
   if (!universe) return null;
 
@@ -74,16 +80,22 @@ export function GatewaysPanel({ now }: Props) {
                 <span className="small muted">
                   Reste :{" "}
                   {Object.entries(remaining)
-                    .map(([res, n]) => `${n} ${RESOURCE_LABELS[res as ResourceId]}`)
+                    .map(
+                      ([res, n]) =>
+                        `${n} ${RESOURCE_LABELS[res as ResourceId]}`,
+                    )
                     .join(" · ") || "rien"}
                 </span>
                 {/* Le coût croît avec l'éloignement : la richesse promise justifie l'effort. */}
                 <span className="small muted">
-                  Rang {galaxyIndexOfId(gateway.galaxyId)} · gisements ×{galaxy.depositBonus}
+                  Rang {galaxyIndexOfId(gateway.galaxyId)} · gisements ×
+                  {galaxy.depositBonus}
                 </span>
                 {hasTech && activeColony && (
                   <div className="form-stack">
-                    {GATEWAY_RESOURCES.filter((res) => (remaining[res] ?? 0) > 0).map((res) => (
+                    {GATEWAY_RESOURCES.filter(
+                      (res) => (remaining[res] ?? 0) > 0,
+                    ).map((res) => (
                       <NumberInput
                         key={res}
                         label={`${RESOURCE_LABELS[res]} (reste ${remaining[res]})`}
@@ -93,7 +105,10 @@ export function GatewaysPanel({ now }: Props) {
                         onChange={(e) =>
                           setAmounts({
                             ...amounts,
-                            [gateway.galaxyId]: { ...entry, [res]: e.target.value },
+                            [gateway.galaxyId]: {
+                              ...entry,
+                              [res]: e.target.value,
+                            },
                           })
                         }
                       />
@@ -122,7 +137,8 @@ export function GatewaysPanel({ now }: Props) {
             )}
             {gateway.active && (
               <span className="small muted">
-                Gisements ×{galaxy.depositBonus} — sondez et colonisez via l'ancrage.
+                Gisements ×{galaxy.depositBonus} — sondez et colonisez via
+                l'ancrage.
               </span>
             )}
           </div>

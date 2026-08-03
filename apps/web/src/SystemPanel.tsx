@@ -34,9 +34,17 @@ const OUTPOST_COST_TEXT = Object.entries(OUTPOST_COST)
   .map(([res, n]) => `${n} ${RESOURCE_LABELS[res as ResourceId]}`)
   .join(" · ");
 
-export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: Props) {
+export function SystemPanel({
+  system,
+  effects,
+  portalLinks,
+  now,
+  onOpenBody,
+}: Props) {
   const [searchParams] = useSearchParams();
-  const activeColony = useGameStore(selectActiveColony(searchParams.get("colony")));
+  const activeColony = useGameStore(
+    selectActiveColony(searchParams.get("colony")),
+  );
   const explored = useGameStore(selectExplored(system.id));
   const {
     colonies,
@@ -53,7 +61,9 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
     blueprints,
     send,
   } = useGameStore();
-  const probeMission = missions.find((m) => m.kind === "probe" && m.targetId === system.id);
+  const probeMission = missions.find(
+    (m) => m.kind === "probe" && m.targetId === system.id,
+  );
   const probeCost = Math.round(PROBE_COST_CREDITS * effects.probeCostMult);
 
   if (!universe || !game) return null;
@@ -68,10 +78,16 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
           </p>
         ) : (
           <Button
-            disabled={!activeColony || activeColony.resources.credits < probeCost}
+            disabled={
+              !activeColony || activeColony.resources.credits < probeCost
+            }
             onClick={() =>
               activeColony &&
-              send({ type: "probe", colonyId: activeColony.id, systemId: system.id })
+              send({
+                type: "probe",
+                colonyId: activeColony.id,
+                systemId: system.id,
+              })
             }
           >
             Sonder ({probeCost} crédits)
@@ -108,7 +124,10 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
           {Object.keys(p.deposits).length > 0 && (
             <span className="muted">
               {Object.entries(p.deposits)
-                .map(([res, mod]) => `${RESOURCE_LABELS[res as ResourceId]} ×${mod}`)
+                .map(
+                  ([res, mod]) =>
+                    `${RESOURCE_LABELS[res as ResourceId]} ×${mod}`,
+                )
                 .join(" · ")}
             </span>
           )}
@@ -132,7 +151,9 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
   const moonCount = system.planets.length - planets.length;
 
   const claimed = game.claimedSystemIds.includes(system.id);
-  const hasOwnColony = colonies.some((c) => system.planets.some((p) => p.id === c.planetId));
+  const hasOwnColony = colonies.some((c) =>
+    system.planets.some((p) => p.id === c.planetId),
+  );
 
   return (
     <>
@@ -146,7 +167,11 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
         {claimed ? (
           <p className="small claim-badge">
             ✦ Système revendiqué — production +15 %{" "}
-            <Button onClick={() => send({ type: "unclaimSystem", systemId: system.id })}>
+            <Button
+              onClick={() =>
+                send({ type: "unclaimSystem", systemId: system.id })
+              }
+            >
               Abandonner
             </Button>
           </p>
@@ -190,13 +215,19 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
                   ))}
                 </div>
                 {outpost ? (
-                  <p className={`small ${outpost.oreStock >= OUTPOST_STOCK_CAP ? "ko" : "ok"}`}>
-                    ⛏ Avant-poste — stock {Math.floor(outpost.oreStock)}/{OUTPOST_STOCK_CAP}
-                    {outpost.oreStock >= OUTPOST_STOCK_CAP ? " — PLEIN, extraction stoppée" : ""}
+                  <p
+                    className={`small ${outpost.oreStock >= OUTPOST_STOCK_CAP ? "ko" : "ok"}`}
+                  >
+                    ⛏ Avant-poste — stock {Math.floor(outpost.oreStock)}/
+                    {OUTPOST_STOCK_CAP}
+                    {outpost.oreStock >= OUTPOST_STOCK_CAP
+                      ? " — PLEIN, extraction stoppée"
+                      : ""}
                   </p>
                 ) : buildMission ? (
                   <p className="small ok">
-                    Chantier en route — {formatDuration(buildMission.arrivesAt - now)}
+                    Chantier en route —{" "}
+                    {formatDuration(buildMission.arrivesAt - now)}
                   </p>
                 ) : (
                   <Button
@@ -204,7 +235,11 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
                     title={`Coût : ${OUTPOST_COST_TEXT}`}
                     onClick={() =>
                       activeColony &&
-                      send({ type: "buildOutpost", colonyId: activeColony.id, beltId: belt.id })
+                      send({
+                        type: "buildOutpost",
+                        colonyId: activeColony.id,
+                        beltId: belt.id,
+                      })
                     }
                   >
                     Construire un avant-poste
@@ -216,7 +251,8 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
         </ul>
         {activeColony && (
           <p className="small muted">
-            Origine des missions : {activeColony.name}. Vaisseau colonial : {COLONY_SHIP_COST_TEXT}.
+            Origine des missions : {activeColony.name}. Vaisseau colonial :{" "}
+            {COLONY_SHIP_COST_TEXT}.
           </p>
         )}
       </Panel>
@@ -278,7 +314,9 @@ export function SystemPanel({ system, effects, portalLinks, now, onOpenBody }: P
             ownerName={s.ownerName}
             isOwn={false}
             viewerEmpireId={playerId}
-            relation={leaderboard.find((e) => e.id === s.ownerId)?.relation ?? "neutral"}
+            relation={
+              leaderboard.find((e) => e.id === s.ownerId)?.relation ?? "neutral"
+            }
             hasResourceMarket={s.market!.hasResourceMarket}
             hasBlueprintMarket={s.market!.hasBlueprintMarket}
             access={s.market!.access}

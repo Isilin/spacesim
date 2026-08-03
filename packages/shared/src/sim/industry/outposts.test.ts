@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { AsteroidBelt } from "../../model/universe.js";
 import { routeCargoQuantity } from "../economy/routes.js";
-import { beltRichness, MINING_RATE, OUTPOST_STOCK_CAP, outpostTick } from "./outposts.js";
+import {
+  beltRichness,
+  MINING_RATE,
+  OUTPOST_STOCK_CAP,
+  outpostTick,
+} from "./outposts.js";
 
 const belt: AsteroidBelt = {
   id: "b1",
@@ -33,7 +38,11 @@ describe("outpostTick", () => {
 describe("route depuis un avant-poste", () => {
   it("le surplus vide le stock local (borné par la soute)", () => {
     // Un avant-poste n'a pas besoin de garder de stock : keepAtSource 0.
-    expect(routeCargoQuantity({ type: "surplus", keepAtSource: 0 }, 1200, 0, 400)).toBe(400);
-    expect(routeCargoQuantity({ type: "surplus", keepAtSource: 0 }, 150, 0, 400)).toBe(150);
+    expect(
+      routeCargoQuantity({ type: "surplus", keepAtSource: 0 }, 1200, 0, 400),
+    ).toBe(400);
+    expect(
+      routeCargoQuantity({ type: "surplus", keepAtSource: 0 }, 150, 0, 400),
+    ).toBe(150);
   });
 });

@@ -78,24 +78,45 @@ export const PRESETS: PresetDef[] = [
     id: "prospector",
     name: "Foreuse",
     chassisId: "mining_barge",
-    modules: ["mining_laser", "mining_laser", "mining_laser", "ion_thruster", "armor_plating"],
+    modules: [
+      "mining_laser",
+      "mining_laser",
+      "mining_laser",
+      "ion_thruster",
+      "armor_plating",
+    ],
   },
   {
     id: "settler",
     name: "Vaisseau colonial",
     chassisId: "colony_ark",
-    modules: ["habitat_pod", "cargo_pod", "cargo_pod", "ion_thruster", "armor_plating"],
+    modules: [
+      "habitat_pod",
+      "cargo_pod",
+      "cargo_pod",
+      "ion_thruster",
+      "armor_plating",
+    ],
   },
   {
     id: "clipper",
     name: "Clipper lourd",
     chassisId: "heavy_freighter",
-    modules: ["cargo_hold_xl", "cargo_hold_xl", "cargo_pod", "cargo_pod", "ramscoop"],
+    modules: [
+      "cargo_hold_xl",
+      "cargo_hold_xl",
+      "cargo_pod",
+      "cargo_pod",
+      "ramscoop",
+    ],
   },
 ];
 
 /** Plans copiés dans un empire neuf (constructibles d'emblée). */
-export const STARTER_PRESET_IDS: readonly string[] = ["interceptor", "freighter_mk1"];
+export const STARTER_PRESET_IDS: readonly string[] = [
+  "interceptor",
+  "freighter_mk1",
+];
 
 export function presetById(id: string): PresetDef | undefined {
   return PRESETS.find((p) => p.id === id);

@@ -1,7 +1,8 @@
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 import styles from "./link.module.css";
 
-export interface LinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
+export interface LinkProps
+  extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
   variant?: "inline" | "nav" | "quiet";
   href?: string;
   active?: boolean;

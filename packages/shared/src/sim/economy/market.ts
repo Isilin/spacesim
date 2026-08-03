@@ -3,7 +3,14 @@ import type { Rng } from "../../rng.js";
 import type { ResourceId } from "../../model/resources.js";
 
 /** Ressources échangeables en comptoir (la science et les crédits restent hors marché). */
-export const MARKET_RESOURCES = ["ore", "energy", "food", "metals", "goods", "components"] as const;
+export const MARKET_RESOURCES = [
+  "ore",
+  "energy",
+  "food",
+  "metals",
+  "goods",
+  "components",
+] as const;
 
 export type MarketResource = (typeof MARKET_RESOURCES)[number];
 
@@ -73,8 +80,12 @@ function hash(text: string): number {
  * l'éloignement. Les anneaux lointains paient cher le manufacturé et bradent le brut —
  * c'est ce qui crée l'arbitrage entre galaxies.
  */
-export function regionalMultiplier(resource: MarketResource, ctx: PriceContext): number {
-  const local = 1 + (hash(`${ctx.venueId}:${resource}`) - 0.5) * 2 * LOCAL_SPREAD;
+export function regionalMultiplier(
+  resource: MarketResource,
+  ctx: PriceContext,
+): number {
+  const local =
+    1 + (hash(`${ctx.venueId}:${resource}`) - 0.5) * 2 * LOCAL_SPREAD;
   const distance = Math.min(DISTANCE_CAP, ctx.galaxyIndex * DISTANCE_STEP);
   const direction = RAW.includes(resource) ? -1 : 1;
   return Math.round(local * (1 + direction * distance) * 1000) / 1000;
@@ -138,11 +149,16 @@ export function resolveSale(
   const next = { ...stocks };
   let revenue = 0;
   for (const [res, amount] of Object.entries(cargo) as [ResourceId, number][]) {
-    if (!(MARKET_RESOURCES as readonly string[]).includes(res) || amount <= 0) continue;
+    if (!(MARKET_RESOURCES as readonly string[]).includes(res) || amount <= 0)
+      continue;
     const resource = res as MarketResource;
     // Prix moyen entre l'état avant et après livraison : borne le farm sur les gros lots.
     const before = tradingPostPrice(resource, next[resource], ctx);
-    const after = tradingPostPrice(resource, Math.min(MAX_STOCK, next[resource] + amount), ctx);
+    const after = tradingPostPrice(
+      resource,
+      Math.min(MAX_STOCK, next[resource] + amount),
+      ctx,
+    );
     revenue += amount * ((before + after) / 2);
     next[resource] = Math.min(MAX_STOCK, next[resource] + amount);
   }
@@ -157,7 +173,11 @@ function purchaseCost(
   ctx?: PriceContext,
 ): number {
   const before = tradingPostPrice(resource, stocks[resource], ctx);
-  const after = tradingPostPrice(resource, Math.max(1, stocks[resource] - qty), ctx);
+  const after = tradingPostPrice(
+    resource,
+    Math.max(1, stocks[resource] - qty),
+    ctx,
+  );
   return qty * ((before + after) / 2);
 }
 

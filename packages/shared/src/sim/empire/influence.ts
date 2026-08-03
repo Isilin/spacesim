@@ -38,7 +38,10 @@ export function repBonus(rep: number): number {
 /** Coût d'influence de la prochaine colonie (la première est gratuite). */
 export function colonizeInfluenceCost(existingColonies: number): number {
   if (existingColonies <= 0) return 0;
-  return Math.round(COLONIZE_INFLUENCE_BASE * COLONIZE_INFLUENCE_GROWTH ** (existingColonies - 1));
+  return Math.round(
+    COLONIZE_INFLUENCE_BASE *
+      COLONIZE_INFLUENCE_GROWTH ** (existingColonies - 1),
+  );
 }
 
 /**
@@ -52,7 +55,8 @@ export function influencePerTick(
 ): number {
   let influence = 0;
   for (const colony of colonies) {
-    influence += colony.population * (colony.satisfaction / 100) * INFLUENCE_PER_COLONIST;
+    influence +=
+      colony.population * (colony.satisfaction / 100) * INFLUENCE_PER_COLONIST;
     influence += (colony.buildings.monument ?? 0) * MONUMENT_INFLUENCE;
   }
   // L'entretien des revendications n'est pas allégé par la tech : seul le rayonnement l'est.

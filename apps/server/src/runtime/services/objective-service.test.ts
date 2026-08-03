@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { OBJECTIVE_DURATION_MS, OBJECTIVE_REWARD_CREDITS } from "@spacesim/shared";
+import {
+  OBJECTIVE_DURATION_MS,
+  OBJECTIVE_REWARD_CREDITS,
+} from "@spacesim/shared";
 import { GameEngine } from "../../game.js";
 import { resetDb, advanceTicks, summaries } from "../../test-harness.js";
 
@@ -18,7 +21,9 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
   it("un empire PNJ ne reçoit jamais d'objectif éphémère", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     engine.ensureNpcPopulation(1);
-    const npc = engine.empireById(summaries(engine).find((e) => e.kind === "npc")!.id)!;
+    const npc = engine.empireById(
+      summaries(engine).find((e) => e.kind === "npc")!.id,
+    )!;
     advanceTicks(engine, 100);
     expect(engine.snapshotForEmpire(npc).objectives).toHaveLength(0);
   });
@@ -58,7 +63,11 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
     const objective = engine.snapshotForEmpire(empire).objectives[0]!;
     // Seul empire de la partie : forcément en tête de population/influence, donc au moins
     // ces deux tirages se valident tout de suite (colonize_n_systems/hold_system, non).
-    if (objective.kind !== "lead_population" && objective.kind !== "lead_influence") return;
+    if (
+      objective.kind !== "lead_population" &&
+      objective.kind !== "lead_influence"
+    )
+      return;
 
     const creditsBefore = [...empire.colonyMap.values()][0]!.resources.credits;
     advanceTicks(engine, 2);
@@ -67,9 +76,9 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
       .snapshotForEmpire(empire)
       .objectives.find((o) => o.id === objective.id)!;
     expect(resolved.status).toBe("completed");
-    expect([...empire.colonyMap.values()][0]!.resources.credits).toBeGreaterThanOrEqual(
-      creditsBefore + OBJECTIVE_REWARD_CREDITS,
-    );
+    expect(
+      [...empire.colonyMap.values()][0]!.resources.credits,
+    ).toBeGreaterThanOrEqual(creditsBefore + OBJECTIVE_REWARD_CREDITS);
   });
 
   it("respecte un cooldown : pas de nouveau tirage juste après la résolution du précédent", async () => {
@@ -80,13 +89,17 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
     // Dépasse l'échéance : le premier objectif se résout (rempli ou expiré).
     advanceTicks(engine, Math.ceil(OBJECTIVE_DURATION_MS / 5000) + 5);
     expect(
-      engine.snapshotForEmpire(empire).objectives.find((o) => o.id === first.id)!.status,
+      engine
+        .snapshotForEmpire(empire)
+        .objectives.find((o) => o.id === first.id)!.status,
     ).not.toBe("open");
     // Un seul tick économique de plus ne suffit pas à retirer un objectif : le cooldown
     // (aligné sur OBJECTIVE_DURATION_MS) doit encore courir.
     advanceTicks(engine, 12);
-    expect(engine.snapshotForEmpire(empire).objectives.some((o) => o.status === "open")).toBe(
-      false,
-    );
+    expect(
+      engine
+        .snapshotForEmpire(empire)
+        .objectives.some((o) => o.status === "open"),
+    ).toBe(false);
   });
 });

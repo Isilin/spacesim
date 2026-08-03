@@ -2,7 +2,10 @@ import type { FastifyInstance } from "fastify";
 import type { GameEngine } from "../../game.js";
 
 /** Triches de dev : injection de ressources, avance rapide. Jamais en production. */
-export function registerDevRoutes(app: FastifyInstance, engine: GameEngine): void {
+export function registerDevRoutes(
+  app: FastifyInstance,
+  engine: GameEngine,
+): void {
   app.post("/dev/grant", (request) => {
     engine.devGrant((request.body ?? {}) as Record<string, number>);
     return { ok: true };
@@ -13,12 +16,18 @@ export function registerDevRoutes(app: FastifyInstance, engine: GameEngine): voi
     return { ok: true, tick: engine.game.tick };
   });
   app.post("/dev/fundgateway", (request) => {
-    const { galaxyId, leave } = (request.body ?? {}) as { galaxyId?: string; leave?: number };
+    const { galaxyId, leave } = (request.body ?? {}) as {
+      galaxyId?: string;
+      leave?: number;
+    };
     engine.devFundGateway(galaxyId ?? "", leave ?? 50);
     return { ok: true };
   });
   app.post("/dev/spawnpirate", (request) => {
-    const { systemId, threat } = (request.body ?? {}) as { systemId?: string; threat?: number };
+    const { systemId, threat } = (request.body ?? {}) as {
+      systemId?: string;
+      threat?: number;
+    };
     engine.devSpawnPirate(systemId ?? "", threat ?? 2);
     return { ok: true };
   });
@@ -43,7 +52,9 @@ export function registerDevRoutes(app: FastifyInstance, engine: GameEngine): voi
       durationMs?: number;
     };
     const eventId = engine.devTriggerWorldEvent(
-      (kind ?? "economic_crisis") as Parameters<typeof engine.devTriggerWorldEvent>[0],
+      (kind ?? "economic_crisis") as Parameters<
+        typeof engine.devTriggerWorldEvent
+      >[0],
       target ?? "",
       durationMs,
     );
@@ -67,7 +78,9 @@ export function registerDevRoutes(app: FastifyInstance, engine: GameEngine): voi
       systemId?: string;
       ships?: Record<string, number>;
     };
-    const empire = empireId ? engine.empireById(empireId) : engine.defaultEmpireForDev;
+    const empire = empireId
+      ? engine.empireById(empireId)
+      : engine.defaultEmpireForDev;
     if (!empire) return reply.code(404).send({ error: "Empire inconnu" });
     const fleetId = engine.devArmFleet(empire, systemId ?? "", ships ?? {});
     return { ok: true, fleetId };

@@ -42,7 +42,9 @@ describe("tradingPostPrice", () => {
   });
 
   it("baisse quand le stock monte, borné", () => {
-    expect(tradingPostPrice("goods", MAX_STOCK)).toBeLessThan(BASE_PRICES.goods);
+    expect(tradingPostPrice("goods", MAX_STOCK)).toBeLessThan(
+      BASE_PRICES.goods,
+    );
     expect(tradingPostPrice("goods", MAX_STOCK * 100)).toBe(
       Math.round(BASE_PRICES.goods * PRICE_MULT_MIN * 100) / 100,
     );
@@ -85,20 +87,26 @@ describe("marketTick", () => {
 
 describe("resolveSale", () => {
   it("crédite au prix moyen et augmente le stock", () => {
-    const { stocks, revenue } = resolveSale(stocksAt(TARGET_STOCK), { metals: 100 });
+    const { stocks, revenue } = resolveSale(stocksAt(TARGET_STOCK), {
+      metals: 100,
+    });
     expect(stocks.metals).toBe(TARGET_STOCK + 100);
     expect(revenue).toBeGreaterThan(0);
     expect(revenue).toBeLessThanOrEqual(100 * BASE_PRICES.metals);
   });
 
   it("vendre beaucoup rapporte moins par unité (anti-farm)", () => {
-    const small = resolveSale(stocksAt(TARGET_STOCK), { goods: 50 }).revenue / 50;
-    const big = resolveSale(stocksAt(TARGET_STOCK), { goods: 1200 }).revenue / 1200;
+    const small =
+      resolveSale(stocksAt(TARGET_STOCK), { goods: 50 }).revenue / 50;
+    const big =
+      resolveSale(stocksAt(TARGET_STOCK), { goods: 1200 }).revenue / 1200;
     expect(big).toBeLessThan(small);
   });
 
   it("ignore les ressources hors marché", () => {
-    const { stocks, revenue } = resolveSale(stocksAt(TARGET_STOCK), { science: 100 } as never);
+    const { stocks, revenue } = resolveSale(stocksAt(TARGET_STOCK), {
+      science: 100,
+    } as never);
     expect(revenue).toBe(0);
     expect(stocks).toEqual(stocksAt(TARGET_STOCK));
   });
@@ -106,7 +114,11 @@ describe("resolveSale", () => {
 
 describe("resolvePurchase", () => {
   it("achète le maximum dans le budget, décrémente le stock", () => {
-    const { stocks, bought, spent } = resolvePurchase(stocksAt(TARGET_STOCK), "ore", 200);
+    const { stocks, bought, spent } = resolvePurchase(
+      stocksAt(TARGET_STOCK),
+      "ore",
+      200,
+    );
     expect(bought).toBeGreaterThan(0);
     expect(spent).toBeLessThanOrEqual(200);
     expect(stocks.ore).toBe(TARGET_STOCK - bought);
@@ -140,20 +152,32 @@ describe("initialStocks", () => {
 });
 
 describe("prix régionaux (chantier 12)", () => {
-  const ctx = (venueId: string, galaxyIndex: number) => ({ venueId, galaxyIndex });
+  const ctx = (venueId: string, galaxyIndex: number) => ({
+    venueId,
+    galaxyIndex,
+  });
 
   it("sans contexte, le barème d'origine est inchangé", () => {
     expect(tradingPostPrice("metals", TARGET_STOCK)).toBe(BASE_PRICES.metals);
   });
 
   it("deux comptoirs n'affichent pas le même prix au même stock", () => {
-    const a = tradingPostPrice("metals", TARGET_STOCK, ctx("gal-0-sys-1-st", 0));
-    const b = tradingPostPrice("metals", TARGET_STOCK, ctx("gal-0-sys-7-st", 0));
+    const a = tradingPostPrice(
+      "metals",
+      TARGET_STOCK,
+      ctx("gal-0-sys-1-st", 0),
+    );
+    const b = tradingPostPrice(
+      "metals",
+      TARGET_STOCK,
+      ctx("gal-0-sys-7-st", 0),
+    );
     expect(a).not.toBe(b);
   });
 
   it("est déterministe : même comptoir, même prix", () => {
-    const price = () => tradingPostPrice("goods", 500, ctx("gal-2-sys-3-st", 2));
+    const price = () =>
+      tradingPostPrice("goods", 500, ctx("gal-2-sys-3-st", 2));
     expect(price()).toBe(price());
   });
 
@@ -177,7 +201,9 @@ describe("prix régionaux (chantier 12)", () => {
   it("le multiplicateur régional reste borné même très loin", () => {
     const mult = regionalMultiplier("components", ctx("comptoir", 500));
     expect(mult).toBeLessThan(2);
-    expect(regionalMultiplier("ore", ctx("comptoir", 500))).toBeGreaterThan(0.3);
+    expect(regionalMultiplier("ore", ctx("comptoir", 500))).toBeGreaterThan(
+      0.3,
+    );
   });
 
   it("ventes et achats appliquent le contexte régional", () => {
@@ -186,8 +212,20 @@ describe("prix régionaux (chantier 12)", () => {
     const distant = resolveSale(stocks, { components: 50 }, ctx("comptoir", 6));
     expect(distant.revenue).toBeGreaterThan(local.revenue);
 
-    const buyLocal = resolvePurchase(stocks, "components", 1000, Infinity, ctx("comptoir", 0));
-    const buyDistant = resolvePurchase(stocks, "components", 1000, Infinity, ctx("comptoir", 6));
+    const buyLocal = resolvePurchase(
+      stocks,
+      "components",
+      1000,
+      Infinity,
+      ctx("comptoir", 0),
+    );
+    const buyDistant = resolvePurchase(
+      stocks,
+      "components",
+      1000,
+      Infinity,
+      ctx("comptoir", 6),
+    );
     // Plus cher au loin : le même budget achète moins.
     expect(buyDistant.bought).toBeLessThan(buyLocal.bought);
   });

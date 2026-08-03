@@ -7,7 +7,14 @@ import {
   UNIVERSE_CENTER_Y,
 } from "./constants.js";
 import { FACTION_IDS } from "./content/factions.js";
-import { createRng, hashSeed, pick, pickWeighted, randInt, type Rng } from "./rng.js";
+import {
+  createRng,
+  hashSeed,
+  pick,
+  pickWeighted,
+  randInt,
+  type Rng,
+} from "./rng.js";
 import type {
   AsteroidBelt,
   Deposits,
@@ -96,7 +103,19 @@ const NAME_HEADS = [
   "Ely",
 ] as const;
 
-const NAME_JOINTS = ["", "d", "l", "n", "r", "s", "th", "v", "m", "st", "rn"] as const;
+const NAME_JOINTS = [
+  "",
+  "d",
+  "l",
+  "n",
+  "r",
+  "s",
+  "th",
+  "v",
+  "m",
+  "st",
+  "rn",
+] as const;
 
 const NAME_TAILS = [
   "a",
@@ -130,9 +149,13 @@ const NAME_STRIDE = 2117;
 function syllabicName(index: number): string {
   const n = ((index % NAME_SPACE) + NAME_SPACE) % NAME_SPACE;
   const head = NAME_HEADS[n % NAME_HEADS.length]!;
-  const joint = NAME_JOINTS[Math.floor(n / NAME_HEADS.length) % NAME_JOINTS.length]!;
+  const joint =
+    NAME_JOINTS[Math.floor(n / NAME_HEADS.length) % NAME_JOINTS.length]!;
   const tail =
-    NAME_TAILS[Math.floor(n / (NAME_HEADS.length * NAME_JOINTS.length)) % NAME_TAILS.length]!;
+    NAME_TAILS[
+      Math.floor(n / (NAME_HEADS.length * NAME_JOINTS.length)) %
+        NAME_TAILS.length
+    ]!;
   const name = `${head}${joint}${tail}`;
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
@@ -215,15 +238,23 @@ function generateDeposits(rng: Rng, type: PlanetType, bonus = 1): Deposits {
   const deposits: Deposits = {};
   for (const [resource, prob, min, max] of DEPOSIT_TENDENCIES[type]) {
     if (rng() < prob) {
-      deposits[resource] = Math.round((min + rng() * (max - min)) * bonus * 100) / 100;
+      deposits[resource] =
+        Math.round((min + rng() * (max - min)) * bonus * 100) / 100;
     }
   }
   return deposits;
 }
 
-function generateMoons(rng: Rng, planet: Planet, depositBonus: number): Planet[] {
+function generateMoons(
+  rng: Rng,
+  planet: Planet,
+  depositBonus: number,
+): Planet[] {
   const maxMoons = planet.type === "gas" ? 3 : 2;
-  const count = Math.max(0, randInt(rng, planet.type === "gas" ? 1 : -1, maxMoons));
+  const count = Math.max(
+    0,
+    randInt(rng, planet.type === "gas" ? 1 : -1, maxMoons),
+  );
   const moons: Planet[] = [];
   const letters = ["a", "b", "c"];
   for (let i = 0; i < count; i++) {
@@ -282,7 +313,9 @@ function generateBodies(
       systemId: system.id,
       name: `Ceinture ${system.name} ${romanNumeral(i)}`,
       orbitRadius: 70 + count * 55 + i * 40 + randInt(rng, -10, 10),
-      deposits: { ore: Math.round((1.2 + rng() * 0.8) * depositBonus * 100) / 100 },
+      deposits: {
+        ore: Math.round((1.2 + rng() * 0.8) * depositBonus * 100) / 100,
+      },
     });
   }
 
@@ -290,14 +323,19 @@ function generateBodies(
 }
 
 /** Positions avec distance minimale entre systèmes (rejection sampling déterministe). */
-function generatePositions(rng: Rng, count: number): { x: number; y: number }[] {
+function generatePositions(
+  rng: Rng,
+  count: number,
+): { x: number; y: number }[] {
   const margin = 60;
   const minDist = 90;
   const positions: { x: number; y: number }[] = [];
   while (positions.length < count) {
     const x = margin + rng() * (MAP_WIDTH - 2 * margin);
     const y = margin + rng() * (MAP_HEIGHT - 2 * margin);
-    const tooClose = positions.some((p) => Math.hypot(p.x - x, p.y - y) < minDist);
+    const tooClose = positions.some(
+      (p) => Math.hypot(p.x - x, p.y - y) < minDist,
+    );
     if (!tooClose) positions.push({ x: Math.round(x), y: Math.round(y) });
   }
   return positions;
@@ -307,7 +345,8 @@ function generatePositions(rng: Rng, count: number): { x: number; y: number }[] 
 function generateLinks(systems: StarSystem[]): [string, string][] {
   const links = new Set<string>();
   const key = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
-  const dist = (a: StarSystem, b: StarSystem) => Math.hypot(a.x - b.x, a.y - b.y);
+  const dist = (a: StarSystem, b: StarSystem) =>
+    Math.hypot(a.x - b.x, a.y - b.y);
 
   for (const sys of systems) {
     const neighbors = systems
@@ -385,8 +424,13 @@ export function galaxyDefAt(seed: string, index: number): GalaxyDef {
     x: Math.round(UNIVERSE_CENTER_X + Math.cos(angle) * radius),
     y: Math.round(UNIVERSE_CENTER_Y + Math.sin(angle) * radius),
     systems:
-      index === 0 ? HOME_GALAXY_SYSTEMS : randInt(createRng(`${seed}:galaxy-size:${index}`), 7, 13),
-    depositBonus: index === 0 ? 1 : Math.round(Math.min(3, 1 + 0.5 * Math.sqrt(index)) * 100) / 100,
+      index === 0
+        ? HOME_GALAXY_SYSTEMS
+        : randInt(createRng(`${seed}:galaxy-size:${index}`), 7, 13),
+    depositBonus:
+      index === 0
+        ? 1
+        : Math.round(Math.min(3, 1 + 0.5 * Math.sqrt(index)) * 100) / 100,
   };
 }
 
@@ -396,7 +440,10 @@ export function galaxyDefAt(seed: string, index: number): GalaxyDef {
  * l'univers à la demande sans régénérer (ni décaler) les galaxies existantes.
  */
 export function generateGalaxyAt(seed: string, index: number): Galaxy {
-  return generateGalaxy(createRng(`${seed}:galaxy:${index}`), galaxyDefAt(seed, index));
+  return generateGalaxy(
+    createRng(`${seed}:galaxy:${index}`),
+    galaxyDefAt(seed, index),
+  );
 }
 
 function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
@@ -407,7 +454,14 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
   const systems: StarSystem[] = positions.map((pos, i) => {
     const name = seriesName(nameOffset, i);
     const id = `${galaxyId}-sys-${i}`;
-    const system: StarSystem = { id, name, x: pos.x, y: pos.y, planets: [], belts: [] };
+    const system: StarSystem = {
+      id,
+      name,
+      x: pos.x,
+      y: pos.y,
+      planets: [],
+      belts: [],
+    };
     const bodies = generateBodies(rng, system, def.depositBonus);
     system.planets = bodies.planets;
     system.belts = bodies.belts;
@@ -427,7 +481,9 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
   const cx = systems.reduce((s, sys) => s + sys.x, 0) / systems.length;
   const cy = systems.reduce((s, sys) => s + sys.y, 0) / systems.length;
   const anchor = systems.reduce((best, sys) =>
-    Math.hypot(sys.x - cx, sys.y - cy) > Math.hypot(best.x - cx, best.y - cy) ? sys : best,
+    Math.hypot(sys.x - cx, sys.y - cy) > Math.hypot(best.x - cx, best.y - cy)
+      ? sys
+      : best,
   );
 
   return {
@@ -442,7 +498,10 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
   };
 }
 
-function makeTradingPost(rng: Rng, system: Pick<StarSystem, "id" | "name">): TradingPost {
+function makeTradingPost(
+  rng: Rng,
+  system: Pick<StarSystem, "id" | "name">,
+): TradingPost {
   return {
     id: `${system.id}-st`,
     systemId: system.id,
@@ -456,7 +515,10 @@ function makeTradingPost(rng: Rng, system: Pick<StarSystem, "id" | "name">): Tra
  * Étendre l'univers, c'est simplement générer les indices suivants : les précédents
  * sont inchangés (chaque galaxie a son propre RNG dérivé).
  */
-export function generateUniverse(seed: string, galaxyCount = INITIAL_GALAXIES): Universe {
+export function generateUniverse(
+  seed: string,
+  galaxyCount = INITIAL_GALAXIES,
+): Universe {
   const count = Math.max(1, Math.floor(galaxyCount));
   const galaxies: Galaxy[] = [];
   for (let i = 0; i < count; i++) galaxies.push(generateGalaxyAt(seed, i));
@@ -480,8 +542,13 @@ export function allPlanets(universe: Universe): Planet[] {
   return allSystems(universe).flatMap((s) => s.planets);
 }
 
-export function findGalaxyOfSystem(universe: Universe, systemId: string): Galaxy | undefined {
-  return universe.galaxies.find((g) => g.systems.some((s) => s.id === systemId));
+export function findGalaxyOfSystem(
+  universe: Universe,
+  systemId: string,
+): Galaxy | undefined {
+  return universe.galaxies.find((g) =>
+    g.systems.some((s) => s.id === systemId),
+  );
 }
 
 /** Toutes les ceintures d'astéroïdes de l'univers. */

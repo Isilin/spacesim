@@ -29,7 +29,9 @@ interface AuthPayload {
 }
 
 /** Lit le corps JSON d'une réponse ; retourne le message d'erreur français du serveur. */
-async function readJson<T>(response: Response): Promise<{ data: T } | { error: string }> {
+async function readJson<T>(
+  response: Response,
+): Promise<{ data: T } | { error: string }> {
   let body: unknown;
   try {
     body = await response.json();
@@ -71,7 +73,12 @@ export function useAdminAuth(): AdminAuth {
         if (cancelled) return;
         if ("error" in result) {
           localStorage.removeItem(SESSION_KEY);
-          setState({ status: "anonymous", token: null, email: null, role: null });
+          setState({
+            status: "anonymous",
+            token: null,
+            email: null,
+            role: null,
+          });
           return;
         }
         setState({
@@ -89,28 +96,31 @@ export function useAdminAuth(): AdminAuth {
     };
   }, []);
 
-  const login = useCallback(async (email: string, password: string): Promise<string | null> => {
-    let result: { data: AuthPayload } | { error: string };
-    try {
-      const response = await fetch("/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+  const login = useCallback(
+    async (email: string, password: string): Promise<string | null> => {
+      let result: { data: AuthPayload } | { error: string };
+      try {
+        const response = await fetch("/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        result = await readJson<AuthPayload>(response);
+      } catch {
+        return "Serveur injoignable";
+      }
+      if ("error" in result) return result.error;
+      localStorage.setItem(SESSION_KEY, result.data.token);
+      setState({
+        status: "authenticated",
+        token: result.data.token,
+        email: result.data.email,
+        role: result.data.role,
       });
-      result = await readJson<AuthPayload>(response);
-    } catch {
-      return "Serveur injoignable";
-    }
-    if ("error" in result) return result.error;
-    localStorage.setItem(SESSION_KEY, result.data.token);
-    setState({
-      status: "authenticated",
-      token: result.data.token,
-      email: result.data.email,
-      role: result.data.role,
-    });
-    return null;
-  }, []);
+      return null;
+    },
+    [],
+  );
 
   const logout = useCallback(async () => {
     const token = localStorage.getItem(SESSION_KEY);
@@ -127,6 +137,7 @@ export function useAdminAuth(): AdminAuth {
     ...state,
     login,
     logout,
-    insufficientRole: state.status === "authenticated" && state.role === "player",
+    insufficientRole:
+      state.status === "authenticated" && state.role === "player",
   };
 }

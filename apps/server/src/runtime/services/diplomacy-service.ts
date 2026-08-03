@@ -47,9 +47,18 @@ export class DiplomacyService {
     private readonly notify: () => void,
     private readonly logger: Logger,
   ) {
-    this.relationsRepo = new DiplomacyRepository(runtime.clock.id, runtime.writeSet);
-    this.worldEventRepo = new WorldEventRepository(runtime.clock.id, runtime.writeSet);
-    this.factionRepo = new FactionRepository(runtime.clock.id, runtime.writeSet);
+    this.relationsRepo = new DiplomacyRepository(
+      runtime.clock.id,
+      runtime.writeSet,
+    );
+    this.worldEventRepo = new WorldEventRepository(
+      runtime.clock.id,
+      runtime.writeSet,
+    );
+    this.factionRepo = new FactionRepository(
+      runtime.clock.id,
+      runtime.writeSet,
+    );
   }
 
   // ─────────────────────────── Diplomatie (chantier 16) ───────────────────────────
@@ -73,11 +82,22 @@ export class DiplomacyService {
   }
 
   /** Écrit une relation (créée ou mise à jour), symétrique et persistée. */
-  private setRelation(a: string, b: string, state: RelationState, until: number | null): void {
+  private setRelation(
+    a: string,
+    b: string,
+    state: RelationState,
+    until: number | null,
+  ): void {
     const key = relationKey(a, b);
     const existed = this.runtime.relationMap.has(key);
     const [empireA, empireB] = a < b ? [a, b] : [b, a];
-    const relation: Relation = { empireA, empireB, state, since: Date.now(), until };
+    const relation: Relation = {
+      empireA,
+      empireB,
+      state,
+      since: Date.now(),
+      until,
+    };
     this.runtime.relationMap.set(key, relation);
     if (existed) this.persistRelation(relation);
     else this.insertRelation(relation);
@@ -85,7 +105,10 @@ export class DiplomacyService {
 
   async loadRelations(): Promise<void> {
     for (const relation of await this.relationsRepo.loadRelations()) {
-      this.runtime.relationMap.set(relationKey(relation.empireA, relation.empireB), relation);
+      this.runtime.relationMap.set(
+        relationKey(relation.empireA, relation.empireB),
+        relation,
+      );
     }
   }
 
@@ -110,7 +133,9 @@ export class DiplomacyService {
     }
     empire.influence -= DECLARE_WAR_INFLUENCE_COST;
     this.setRelation(empire.id, targetEmpireId, "war", null);
-    this.logger.info(`[game] « ${empire.name} » déclare la guerre à « ${target.name} »`);
+    this.logger.info(
+      `[game] « ${empire.name} » déclare la guerre à « ${target.name} »`,
+    );
     this.notify();
     return null;
   }
@@ -121,7 +146,12 @@ export class DiplomacyService {
     const current = this.relationEntry(empire.id, targetEmpireId);
     const reason = makePeaceReason(current.state);
     if (reason) return reason;
-    this.setRelation(empire.id, targetEmpireId, "neutral", Date.now() + WAR_COOLDOWN_MS);
+    this.setRelation(
+      empire.id,
+      targetEmpireId,
+      "neutral",
+      Date.now() + WAR_COOLDOWN_MS,
+    );
     this.notify();
     return null;
   }
@@ -136,7 +166,11 @@ export class DiplomacyService {
   }
 
   /** Action joueur : proposer un pacte (NAP ou alliance) — exige le consentement de la cible. */
-  proposeRelation(empire: Empire, targetEmpireId: string, kind: ProposalKind): string | null {
+  proposeRelation(
+    empire: Empire,
+    targetEmpireId: string,
+    kind: ProposalKind,
+  ): string | null {
     if (targetEmpireId === empire.id) return "Cible invalide";
     const target = this.runtime.empires.get(targetEmpireId);
     if (!target) return "Empire inconnu";
@@ -147,7 +181,8 @@ export class DiplomacyService {
     const alreadyPending = [...this.runtime.proposalMap.values()].some(
       (p) => relationKey(p.fromEmpireId, p.toEmpireId) === key,
     );
-    if (alreadyPending) return "Une proposition est déjà en attente entre ces deux empires";
+    if (alreadyPending)
+      return "Une proposition est déjà en attente entre ces deux empires";
 
     const proposal: RelationProposal = {
       id: randomUUID(),
@@ -162,7 +197,11 @@ export class DiplomacyService {
     if (target.kind === "npc") {
       this.resolveProposal(
         proposal,
-        npcAcceptsProposal(kind, this.empireFleetPower(target), this.empireFleetPower(empire)),
+        npcAcceptsProposal(
+          kind,
+          this.empireFleetPower(target),
+          this.empireFleetPower(empire),
+        ),
       );
     }
     this.notify();
@@ -170,9 +209,14 @@ export class DiplomacyService {
   }
 
   /** Action joueur : répondre (accepter/refuser) une proposition qui lui est adressée. */
-  respondRelation(empire: Empire, proposalId: string, accept: boolean): string | null {
+  respondRelation(
+    empire: Empire,
+    proposalId: string,
+    accept: boolean,
+  ): string | null {
     const proposal = this.runtime.proposalMap.get(proposalId);
-    if (!proposal || proposal.toEmpireId !== empire.id) return "Proposition inconnue";
+    if (!proposal || proposal.toEmpireId !== empire.id)
+      return "Proposition inconnue";
     this.resolveProposal(proposal, accept);
     this.notify();
     return null;
@@ -181,7 +225,8 @@ export class DiplomacyService {
   /** Action joueur : retirer sa propre proposition avant qu'elle ne reçoive de réponse. */
   cancelProposal(empire: Empire, proposalId: string): string | null {
     const proposal = this.runtime.proposalMap.get(proposalId);
-    if (!proposal || proposal.fromEmpireId !== empire.id) return "Proposition inconnue";
+    if (!proposal || proposal.fromEmpireId !== empire.id)
+      return "Proposition inconnue";
     this.runtime.proposalMap.delete(proposalId);
     this.deleteProposal(proposalId);
     this.notify();
@@ -203,7 +248,13 @@ export class DiplomacyService {
   private resolveProposal(proposal: RelationProposal, accept: boolean): void {
     this.runtime.proposalMap.delete(proposal.id);
     this.deleteProposal(proposal.id);
-    if (accept) this.setRelation(proposal.fromEmpireId, proposal.toEmpireId, proposal.kind, null);
+    if (accept)
+      this.setRelation(
+        proposal.fromEmpireId,
+        proposal.toEmpireId,
+        proposal.kind,
+        null,
+      );
   }
 
   async loadProposals(): Promise<void> {
@@ -255,7 +306,9 @@ export class DiplomacyService {
 
   /** Tire un nouvel événement de monde et l'applique — cadence lente, un à la fois par cible. */
   worldEventTick(tickNumber: number, now: number): void {
-    const rng = createRng(`worldevent-${this.runtime.clock.seed}-${tickNumber}`);
+    const rng = createRng(
+      `worldevent-${this.runtime.clock.seed}-${tickNumber}`,
+    );
     const kind = rollWorldEvent(rng);
     if (!kind) return;
 
@@ -267,7 +320,13 @@ export class DiplomacyService {
       );
       if (alreadyActive) return;
       const expiresAt = now + WORLD_EVENT_DURATION_MS;
-      const event: WorldEvent = { id: randomUUID(), kind, factionId, createdAt: now, expiresAt };
+      const event: WorldEvent = {
+        id: randomUUID(),
+        kind,
+        factionId,
+        createdAt: now,
+        expiresAt,
+      };
       this.runtime.worldEventMap.set(event.id, event);
       this.insertWorldEvent(event);
       // Effet immédiat : force le boom, comme une pénurie de faction poste aussitôt un contrat.
@@ -281,8 +340,12 @@ export class DiplomacyService {
     // Les trois autres kinds ciblent une galaxie de l'univers déjà généré.
     if (this.runtime.universe.galaxies.length === 0) return;
     const galaxy =
-      this.runtime.universe.galaxies[Math.floor(rng() * this.runtime.universe.galaxies.length)]!;
-    const alreadyActive = this.worldEventKindsOnGalaxy(galaxy.id).includes(kind);
+      this.runtime.universe.galaxies[
+        Math.floor(rng() * this.runtime.universe.galaxies.length)
+      ]!;
+    const alreadyActive = this.worldEventKindsOnGalaxy(galaxy.id).includes(
+      kind,
+    );
     if (alreadyActive) return;
     const event: WorldEvent = {
       id: randomUUID(),
@@ -308,7 +371,11 @@ export class DiplomacyService {
   initFactionStates(): void {
     for (const factionId of this.factionIds()) {
       if (this.runtime.factionStateMap.has(factionId)) continue;
-      const state: FactionState = { factionId, mood: "neutral", moodUntil: null };
+      const state: FactionState = {
+        factionId,
+        mood: "neutral",
+        moodUntil: null,
+      };
       this.runtime.factionStateMap.set(factionId, state);
       this.insertFactionState(state);
     }
@@ -335,7 +402,11 @@ export class DiplomacyService {
     until: number | null,
   ): boolean {
     if (!this.runtime.factionStateMap.has(factionId)) return false;
-    const state: FactionState = { factionId, mood, moodUntil: mood === "neutral" ? null : until };
+    const state: FactionState = {
+      factionId,
+      mood,
+      moodUntil: mood === "neutral" ? null : until,
+    };
     this.runtime.factionStateMap.set(factionId, state);
     this.persistFactionState(state);
     return true;
@@ -352,7 +423,8 @@ export class DiplomacyService {
     durationMs: number,
     onShortage: (factionId: string) => void,
   ): boolean {
-    if (!this.setFactionMood(factionId, mood, Date.now() + durationMs)) return false;
+    if (!this.setFactionMood(factionId, mood, Date.now() + durationMs))
+      return false;
     if (mood === "shortage") onShortage(factionId);
     this.notify();
     return true;
@@ -363,13 +435,23 @@ export class DiplomacyService {
    * est un id de galaxie (economic_crisis/gold_rush/pirate_surge) ou de faction
    * (faction_boom) ; laissé vide, le premier de l'univers/des factions est pris.
    */
-  devTriggerWorldEvent(kind: WorldEventKind, target: string, durationMs: number): string | null {
+  devTriggerWorldEvent(
+    kind: WorldEventKind,
+    target: string,
+    durationMs: number,
+  ): string | null {
     const now = Date.now();
     const expiresAt = now + durationMs;
     if (kind === "faction_boom") {
       const factionId = target || this.factionIds()[0]!;
       if (!this.runtime.factionStateMap.has(factionId)) return null;
-      const event: WorldEvent = { id: randomUUID(), kind, factionId, createdAt: now, expiresAt };
+      const event: WorldEvent = {
+        id: randomUUID(),
+        kind,
+        factionId,
+        createdAt: now,
+        expiresAt,
+      };
       this.runtime.worldEventMap.set(event.id, event);
       this.insertWorldEvent(event);
       this.setFactionMood(factionId, "boom", expiresAt);
@@ -377,8 +459,18 @@ export class DiplomacyService {
       return event.id;
     }
     const galaxyId = target || this.runtime.universe.galaxies[0]?.id;
-    if (!galaxyId || !this.runtime.universe.galaxies.some((g) => g.id === galaxyId)) return null;
-    const event: WorldEvent = { id: randomUUID(), kind, galaxyId, createdAt: now, expiresAt };
+    if (
+      !galaxyId ||
+      !this.runtime.universe.galaxies.some((g) => g.id === galaxyId)
+    )
+      return null;
+    const event: WorldEvent = {
+      id: randomUUID(),
+      kind,
+      galaxyId,
+      createdAt: now,
+      expiresAt,
+    };
     this.runtime.worldEventMap.set(event.id, event);
     this.insertWorldEvent(event);
     this.notify();
@@ -393,7 +485,10 @@ export class DiplomacyService {
   shiftTime(deltaMs: number): void {
     for (const [id, state] of this.runtime.factionStateMap) {
       if (state.moodUntil === null) continue;
-      const next: FactionState = { ...state, moodUntil: state.moodUntil - deltaMs };
+      const next: FactionState = {
+        ...state,
+        moodUntil: state.moodUntil - deltaMs,
+      };
       this.runtime.factionStateMap.set(id, next);
       this.persistFactionState(next);
     }
@@ -404,7 +499,10 @@ export class DiplomacyService {
       this.persistRelation(next);
     }
     for (const [id, event] of this.runtime.worldEventMap) {
-      const next: WorldEvent = { ...event, expiresAt: event.expiresAt - deltaMs };
+      const next: WorldEvent = {
+        ...event,
+        expiresAt: event.expiresAt - deltaMs,
+      };
       this.runtime.worldEventMap.set(id, next);
       this.persistWorldEvent(next);
     }

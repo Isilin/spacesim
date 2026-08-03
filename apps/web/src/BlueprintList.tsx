@@ -41,7 +41,11 @@ export function BlueprintList({
   const [fleetChoice, setFleetChoice] = useState<Record<string, string>>({});
 
   if (blueprints.length === 0) {
-    return <p className="muted small">Aucun plan. Concevez votre premier vaisseau ci-contre.</p>;
+    return (
+      <p className="muted small">
+        Aucun plan. Concevez votre premier vaisseau ci-contre.
+      </p>
+    );
   }
 
   return (
@@ -50,13 +54,17 @@ export function BlueprintList({
         const stats = resolveBlueprint(bp);
         const chassis = CHASSIS[bp.chassisId as keyof typeof CHASSIS];
         const chassisName =
-          CHASSIS_LABELS[bp.chassisId as keyof typeof CHASSIS_LABELS]?.name ?? bp.chassisId;
+          CHASSIS_LABELS[bp.chassisId as keyof typeof CHASSIS_LABELS]?.name ??
+          bp.chassisId;
         const isColony = stats.domain === "colony";
         const targetFleetId = fleetChoice[bp.id] ?? fleets[0]?.id ?? "";
         const canBuildColony = isColony && !!activeColony;
         const canBuildFleet = !isColony && fleets.length > 0;
         return (
-          <li key={bp.id} className={`building ${editingId === bp.id ? "locked" : ""}`}>
+          <li
+            key={bp.id}
+            className={`building ${editingId === bp.id ? "locked" : ""}`}
+          >
             <ShipHullDiagram
               chassisId={bp.chassisId as keyof typeof CHASSIS}
               modules={bp.modules as ModuleId[]}
@@ -66,7 +74,9 @@ export function BlueprintList({
               <div className="building-head">
                 <strong>{bp.name}</strong>
                 <span className="level">{chassisName}</span>
-                <span className="muted small">{isColony ? "civil" : "flotte"}</span>
+                <span className="muted small">
+                  {isColony ? "civil" : "flotte"}
+                </span>
               </div>
               <span className="muted small">
                 {isColony
@@ -81,7 +91,9 @@ export function BlueprintList({
               {!isColony && (
                 <Select
                   value={targetFleetId}
-                  onChange={(e) => setFleetChoice((c) => ({ ...c, [bp.id]: e.target.value }))}
+                  onChange={(e) =>
+                    setFleetChoice((c) => ({ ...c, [bp.id]: e.target.value }))
+                  }
                   disabled={fleets.length === 0}
                   options={
                     fleets.length === 0
@@ -104,8 +116,16 @@ export function BlueprintList({
                 onClick={() =>
                   send(
                     isColony
-                      ? { type: "buildBlueprint", blueprintId: bp.id, colonyId: activeColony!.id }
-                      : { type: "buildBlueprint", blueprintId: bp.id, fleetId: targetFleetId },
+                      ? {
+                          type: "buildBlueprint",
+                          blueprintId: bp.id,
+                          colonyId: activeColony!.id,
+                        }
+                      : {
+                          type: "buildBlueprint",
+                          blueprintId: bp.id,
+                          fleetId: targetFleetId,
+                        },
                   )
                 }
               >
@@ -116,7 +136,9 @@ export function BlueprintList({
               </Button>
               <Button
                 variant="link"
-                onClick={() => send({ type: "deleteBlueprint", blueprintId: bp.id })}
+                onClick={() =>
+                  send({ type: "deleteBlueprint", blueprintId: bp.id })
+                }
               >
                 Supprimer
               </Button>

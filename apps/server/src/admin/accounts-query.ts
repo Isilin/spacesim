@@ -30,15 +30,24 @@ export interface AccountListResult {
   total: number;
 }
 
-function empireIdentity(engine: GameEngine, accountId: string): EmpireIdentity | null {
+function empireIdentity(
+  engine: GameEngine,
+  accountId: string,
+): EmpireIdentity | null {
   const empire = engine.empireForAccount(accountId);
-  return empire ? { id: empire.id, name: empire.name, color: empire.color } : null;
+  return empire
+    ? { id: empire.id, name: empire.name, color: empire.color }
+    : null;
 }
 
 /** Liste paginée des comptes, recherche par sous-chaîne d'e-mail (insensible à la casse). */
 export async function listAccounts(
   engine: GameEngine,
-  { query = "", limit = 50, offset = 0 }: { query?: string; limit?: number; offset?: number },
+  {
+    query = "",
+    limit = 50,
+    offset = 0,
+  }: { query?: string; limit?: number; offset?: number },
 ): Promise<AccountListResult> {
   const where = query ? ilike(schema.accounts.email, `%${query}%`) : undefined;
   const [rows, countRows] = await Promise.all([
@@ -49,7 +58,10 @@ export async function listAccounts(
       .orderBy(schema.accounts.createdAt)
       .limit(limit)
       .offset(offset),
-    db.select({ count: sql<number>`count(*)::int` }).from(schema.accounts).where(where),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(schema.accounts)
+      .where(where),
   ]);
   return {
     accounts: rows.map((row) => ({
@@ -77,7 +89,10 @@ export async function accountDetail(
   engine: GameEngine,
   accountId: string,
 ): Promise<AccountDetail | null> {
-  const rows = await db.select().from(schema.accounts).where(eq(schema.accounts.id, accountId));
+  const rows = await db
+    .select()
+    .from(schema.accounts)
+    .where(eq(schema.accounts.id, accountId));
   const row = rows[0];
   if (!row) return null;
   const history = await sanctionHistory(row.id);

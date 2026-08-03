@@ -28,7 +28,10 @@ export async function buildApp(
   await app.register(cors, { origin: config.corsOrigin });
   // Global généreux (config, défaut 100/min) ; `/auth/*` a sa propre limite plus stricte,
   // en plus (pas à la place) du blocage par IP déjà géré par `auth.ts` (isRateLimited).
-  await app.register(rateLimit, { max: config.rateLimitMax, timeWindow: "1 minute" });
+  await app.register(rateLimit, {
+    max: config.rateLimitMax,
+    timeWindow: "1 minute",
+  });
   // Le moteur journalise désormais via ce même logger (mêmes messages, même niveau).
   engine.setLogger(app.log);
 

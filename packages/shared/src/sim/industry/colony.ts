@@ -7,11 +7,16 @@ import type { Planet } from "../../model/universe.js";
 import { NO_EFFECTS, type EmpireEffects } from "../empire/research.js";
 
 export function emptyResources(): Record<ResourceId, number> {
-  return Object.fromEntries(RESOURCES.map((r) => [r, 0])) as Record<ResourceId, number>;
+  return Object.fromEntries(RESOURCES.map((r) => [r, 0])) as Record<
+    ResourceId,
+    number
+  >;
 }
 
 /** Coût plat par instance : pas de niveaux, on multiplie les bâtiments. */
-export function buildingCost(def: BuildingDef): Partial<Record<ResourceId, number>> {
+export function buildingCost(
+  def: BuildingDef,
+): Partial<Record<ResourceId, number>> {
   return def.cost;
 }
 
@@ -25,25 +30,35 @@ export function storageCap(
   effects: EmpireEffects = NO_EFFECTS,
   balance: BalanceConstants = DEFAULT_BALANCE,
 ): number {
-  if ((UNCAPPED_RESOURCES as readonly string[]).includes(resource)) return Infinity;
+  if ((UNCAPPED_RESOURCES as readonly string[]).includes(resource))
+    return Infinity;
   const base =
-    balance.baseStorage + (colony.buildings.storage_depot ?? 0) * balance.storagePerDepot;
+    balance.baseStorage +
+    (colony.buildings.storage_depot ?? 0) * balance.storagePerDepot;
   return Math.floor(base * effects.storageMult);
 }
 
 /** Instances construites + en file : consomme les emplacements de la planète. */
 export function usedSlots(colony: Colony): number {
-  const built = Object.values(colony.buildings).reduce((s, count) => s + (count ?? 0), 0);
+  const built = Object.values(colony.buildings).reduce(
+    (s, count) => s + (count ?? 0),
+    0,
+  );
   return built + colony.queue.length;
 }
 
-export function canAfford(colony: Colony, cost: Partial<Record<ResourceId, number>>): boolean {
+export function canAfford(
+  colony: Colony,
+  cost: Partial<Record<ResourceId, number>>,
+): boolean {
   return Object.entries(cost).every(
     ([res, amount]) => colony.resources[res as ResourceId] >= amount,
   );
 }
 
-export type EnqueueResult = { ok: true; colony: Colony } | { ok: false; reason: string };
+export type EnqueueResult =
+  | { ok: true; colony: Colony }
+  | { ok: false; reason: string };
 
 /** Valide et paie une construction, l'ajoute à la file (séquentielle). */
 export function enqueueBuilding(
@@ -67,7 +82,8 @@ export function enqueueBuilding(
     return { ok: false, reason: "Plus d'emplacements disponibles" };
 
   const cost = buildingCost(def);
-  if (!canAfford(colony, cost)) return { ok: false, reason: "Ressources insuffisantes" };
+  if (!canAfford(colony, cost))
+    return { ok: false, reason: "Ressources insuffisantes" };
 
   const resources = { ...colony.resources };
   for (const [res, amount] of Object.entries(cost)) {
@@ -76,7 +92,8 @@ export function enqueueBuilding(
 
   const lastFinish = colony.queue.at(-1)?.finishesAt ?? now;
   const startedAt = Math.max(now, lastFinish);
-  const finishesAt = startedAt + Math.round(buildingBuildMs(def) * effects.buildSpeedMult);
+  const finishesAt =
+    startedAt + Math.round(buildingBuildMs(def) * effects.buildSpeedMult);
 
   return {
     ok: true,
@@ -96,7 +113,11 @@ export function resolveQueue(colony: Colony, now: number): Colony {
   for (const item of done) {
     buildings[item.buildingId] = (buildings[item.buildingId] ?? 0) + 1;
   }
-  return { ...colony, buildings, queue: colony.queue.filter((q) => q.finishesAt > now) };
+  return {
+    ...colony,
+    buildings,
+    queue: colony.queue.filter((q) => q.finishesAt > now),
+  };
 }
 
 function depositModifier(
@@ -114,12 +135,17 @@ export function housing(
   balance: BalanceConstants = DEFAULT_BALANCE,
 ): number {
   return Math.floor(
-    (colony.buildings.habitat ?? 0) * balance.housingPerHabitat * effects.housingMult,
+    (colony.buildings.habitat ?? 0) *
+      balance.housingPerHabitat *
+      effects.housingMult,
   );
 }
 
 /** Habitabilité effective : celle de la planète + bonus de terraformation, plafonnée à 100. */
-export function effectiveHabitability(planet: Planet, effects: EmpireEffects = NO_EFFECTS): number {
+export function effectiveHabitability(
+  planet: Planet,
+  effects: EmpireEffects = NO_EFFECTS,
+): number {
   return Math.min(100, planet.habitability + effects.habitabilityBonus);
 }
 
@@ -131,7 +157,8 @@ export function popCap(
   balance: BalanceConstants = DEFAULT_BALANCE,
 ): number {
   return Math.floor(
-    housing(colony, effects, balance) * (effectiveHabitability(planet, effects) / 100),
+    housing(colony, effects, balance) *
+      (effectiveHabitability(planet, effects) / 100),
   );
 }
 
@@ -140,7 +167,10 @@ export function totalJobs(
   buildings: Record<string, BuildingDef> = BUILDINGS,
 ): number {
   let jobs = 0;
-  for (const [buildingId, level] of Object.entries(colony.buildings) as [BuildingId, number][]) {
+  for (const [buildingId, level] of Object.entries(colony.buildings) as [
+    BuildingId,
+    number,
+  ][]) {
     jobs += (buildings[buildingId]?.jobsPerInstance ?? 0) * (level ?? 0);
   }
   return jobs;
@@ -169,7 +199,9 @@ export function computeSatisfaction(
   balance: BalanceConstants = DEFAULT_BALANCE,
 ): number {
   const housingRatio =
-    colony.population <= 0 ? 1 : Math.min(1, housing(colony, effects, balance) / colony.population);
+    colony.population <= 0
+      ? 1
+      : Math.min(1, housing(colony, effects, balance) / colony.population);
   const value =
     40 * foodRatio +
     15 * goodsRatio +
@@ -192,7 +224,8 @@ function growPopulation(
 ): number {
   if (population <= 0) return 0;
   const drive =
-    (satisfaction - balance.satisfactionGrowthThreshold) / balance.satisfactionGrowthThreshold;
+    (satisfaction - balance.satisfactionGrowthThreshold) /
+    balance.satisfactionGrowthThreshold;
   if (drive >= 0) {
     const room = cap <= 0 ? 0 : Math.max(0, 1 - population / cap);
     return population * (1 + balance.popGrowthBase * growthMult * drive * room);
@@ -215,7 +248,10 @@ export function applyColonyTick(
   const resources = { ...colony.resources };
   const efficiency = workforceEfficiency(colony, buildings);
 
-  for (const [buildingId, level] of Object.entries(colony.buildings) as [BuildingId, number][]) {
+  for (const [buildingId, level] of Object.entries(colony.buildings) as [
+    BuildingId,
+    number,
+  ][]) {
     if (!level) continue;
     const def = buildings[buildingId];
     if (!def || (!def.outputs && !def.inputs)) continue;
@@ -223,33 +259,52 @@ export function applyColonyTick(
     if (staffing <= 0) continue;
 
     const inputs = Object.entries(def.inputs ?? {}) as [ResourceId, number][];
-    const canRun = inputs.every(([res, rate]) => resources[res] >= rate * level * staffing);
+    const canRun = inputs.every(
+      ([res, rate]) => resources[res] >= rate * level * staffing,
+    );
     if (!canRun) continue;
 
-    const outputBoost = (effects.outputMult[buildingId] ?? 1) * effects.outputMultAll;
+    const outputBoost =
+      (effects.outputMult[buildingId] ?? 1) * effects.outputMultAll;
     for (const [res, rate] of inputs) {
       resources[res] -= rate * level * staffing;
     }
-    for (const [res, rate] of Object.entries(def.outputs ?? {}) as [ResourceId, number][]) {
-      const modifier = def.depositScaled === res ? depositModifier(planet, res, balance) : 1;
+    for (const [res, rate] of Object.entries(def.outputs ?? {}) as [
+      ResourceId,
+      number,
+    ][]) {
+      const modifier =
+        def.depositScaled === res ? depositModifier(planet, res, balance) : 1;
       resources[res] += rate * level * modifier * staffing * outputBoost;
     }
   }
 
   // Besoins : la population mange et consomme des biens, paie l'impôt selon sa satisfaction.
-  const foodNeed = colony.population * balance.foodPerColonist * effects.foodNeedMult;
+  const foodNeed =
+    colony.population * balance.foodPerColonist * effects.foodNeedMult;
   const eaten = Math.min(foodNeed, resources.food);
   resources.food -= eaten;
   const foodRatio = foodNeed <= 0 ? 1 : eaten / foodNeed;
 
-  const goodsNeed = colony.population * balance.goodsPerColonist * effects.goodsNeedMult;
+  const goodsNeed =
+    colony.population * balance.goodsPerColonist * effects.goodsNeedMult;
   const consumed = Math.min(goodsNeed, resources.goods);
   resources.goods -= consumed;
   const goodsRatio = goodsNeed <= 0 ? 1 : consumed / goodsNeed;
 
-  const satisfaction = computeSatisfaction(colony, planet, foodRatio, goodsRatio, effects, balance);
+  const satisfaction = computeSatisfaction(
+    colony,
+    planet,
+    foodRatio,
+    goodsRatio,
+    effects,
+    balance,
+  );
   resources.credits +=
-    colony.population * balance.creditsPerColonist * (satisfaction / 100) * effects.creditsMult;
+    colony.population *
+    balance.creditsPerColonist *
+    (satisfaction / 100) *
+    effects.creditsMult;
 
   const population = growPopulation(
     colony.population,
@@ -260,7 +315,10 @@ export function applyColonyTick(
   );
 
   for (const res of RESOURCES) {
-    resources[res] = Math.min(resources[res], storageCap(colony, res, effects, balance));
+    resources[res] = Math.min(
+      resources[res],
+      storageCap(colony, res, effects, balance),
+    );
   }
 
   return { ...colony, resources, population, satisfaction };
@@ -279,22 +337,35 @@ export function colonyRates(
 ): Record<ResourceId, number> {
   const rates = emptyResources();
   const efficiency = workforceEfficiency(colony, buildings);
-  for (const [buildingId, level] of Object.entries(colony.buildings) as [BuildingId, number][]) {
+  for (const [buildingId, level] of Object.entries(colony.buildings) as [
+    BuildingId,
+    number,
+  ][]) {
     if (!level) continue;
     const def = buildings[buildingId];
     if (!def) continue;
     const staffing = def.jobsPerInstance ? efficiency : 1;
-    const outputBoost = (effects.outputMult[buildingId] ?? 1) * effects.outputMultAll;
-    for (const [res, rate] of Object.entries(def.inputs ?? {}) as [ResourceId, number][]) {
+    const outputBoost =
+      (effects.outputMult[buildingId] ?? 1) * effects.outputMultAll;
+    for (const [res, rate] of Object.entries(def.inputs ?? {}) as [
+      ResourceId,
+      number,
+    ][]) {
       rates[res] -= rate * level * staffing;
     }
-    for (const [res, rate] of Object.entries(def.outputs ?? {}) as [ResourceId, number][]) {
-      const modifier = def.depositScaled === res ? depositModifier(planet, res, balance) : 1;
+    for (const [res, rate] of Object.entries(def.outputs ?? {}) as [
+      ResourceId,
+      number,
+    ][]) {
+      const modifier =
+        def.depositScaled === res ? depositModifier(planet, res, balance) : 1;
       rates[res] += rate * level * modifier * staffing * outputBoost;
     }
   }
-  rates.food -= colony.population * balance.foodPerColonist * effects.foodNeedMult;
-  rates.goods -= colony.population * balance.goodsPerColonist * effects.goodsNeedMult;
+  rates.food -=
+    colony.population * balance.foodPerColonist * effects.foodNeedMult;
+  rates.goods -=
+    colony.population * balance.goodsPerColonist * effects.goodsNeedMult;
   rates.credits +=
     colony.population *
     balance.creditsPerColonist *
@@ -315,7 +386,10 @@ export function colonyShortages(
 ): Shortage[] {
   const shortages: Shortage[] = [];
   const efficiency = workforceEfficiency(colony, buildings);
-  for (const [buildingId, level] of Object.entries(colony.buildings) as [BuildingId, number][]) {
+  for (const [buildingId, level] of Object.entries(colony.buildings) as [
+    BuildingId,
+    number,
+  ][]) {
     if (!level) continue;
     const def = buildings[buildingId];
     if (!def?.inputs) continue;

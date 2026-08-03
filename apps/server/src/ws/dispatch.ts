@@ -32,7 +32,13 @@ export function dispatchClientMessage(
     case "foundStation":
       return engine.station.foundStation(empire, msg.colonyId, msg.bodyId);
     case "buildZone":
-      return engine.station.buildZone(empire, msg.stationId, msg.zoneTypeId, msg.q, msg.r);
+      return engine.station.buildZone(
+        empire,
+        msg.stationId,
+        msg.zoneTypeId,
+        msg.q,
+        msg.r,
+      );
     case "buildInstallation":
       return engine.station.buildInstallation(
         empire,

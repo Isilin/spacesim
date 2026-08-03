@@ -65,7 +65,11 @@ describe("computeEffects", () => {
   });
 
   it("les multiplicateurs de même nature se composent au lieu de s'écraser", () => {
-    const one = computeEffects(["metallurgy", "advanced_mining", "ore_processing"]);
+    const one = computeEffects([
+      "metallurgy",
+      "advanced_mining",
+      "ore_processing",
+    ]);
     const both = computeEffects([
       "metallurgy",
       "advanced_mining",
@@ -106,7 +110,11 @@ describe("canResearch", () => {
   it("accepte une table de techs injectée (chantier 23.9) — id inconnu de TECHS", () => {
     const customTechs = {
       ...TECHS,
-      freshly_minted: { ...TECHS.metallurgy, id: "freshly_minted", requires: [] },
+      freshly_minted: {
+        ...TECHS.metallurgy,
+        id: "freshly_minted",
+        requires: [],
+      },
     };
     expect(canResearch("freshly_minted", [], customTechs)).toBe(true);
     expect(canResearch("freshly_minted", [])).toBe(false);

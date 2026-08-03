@@ -5,7 +5,13 @@ import type { Route } from "../../model/transport.js";
 import { routeCargoQuantity } from "../economy/routes.js";
 import { emptyResources } from "./colony.js";
 import { emptyOrbital } from "./orbital.js";
-import { enqueueShip, fleetCapacity, idleShips, pickShip, resolveShips } from "./ships.js";
+import {
+  enqueueShip,
+  fleetCapacity,
+  idleShips,
+  pickShip,
+  resolveShips,
+} from "./ships.js";
 
 function makeColony(overrides: Partial<Colony> = {}): Colony {
   return {
@@ -48,7 +54,9 @@ describe("enqueueShip / resolveShips", () => {
     const colony = makeColony();
     const r = enqueueShip(colony, "cargo_small", 1000, []);
     if (!r.ok) throw new Error(r.reason);
-    expect(r.colony.resources.metals).toBe(500 - SHIPS.cargo_small.cost.metals!);
+    expect(r.colony.resources.metals).toBe(
+      500 - SHIPS.cargo_small.cost.metals!,
+    );
     const done = resolveShips(r.colony, 1000 + SHIPS.cargo_small.buildMs);
     expect(done.ships.cargo_small).toBe(1);
     expect(done.shipQueue).toHaveLength(0);
@@ -62,12 +70,19 @@ describe("enqueueShip / resolveShips", () => {
   it("cargo_large gaté par la tech logistique orbitale", () => {
     const colony = makeColony();
     expect(enqueueShip(colony, "cargo_large", 0, []).ok).toBe(false);
-    expect(enqueueShip(colony, "cargo_large", 0, ["orbital_logistics"]).ok).toBe(true);
+    expect(
+      enqueueShip(colony, "cargo_large", 0, ["orbital_logistics"]).ok,
+    ).toBe(true);
   });
 
   it("accepte une table de vaisseaux injectée (chantier 23.8) — coûts différents de SHIPS", () => {
-    const customShips = { ...SHIPS, cargo_small: { ...SHIPS.cargo_small, cost: { metals: 5 } } };
-    const colony = makeColony({ resources: { ...emptyResources(), metals: 10 } });
+    const customShips = {
+      ...SHIPS,
+      cargo_small: { ...SHIPS.cargo_small, cost: { metals: 5 } },
+    };
+    const colony = makeColony({
+      resources: { ...emptyResources(), metals: 10 },
+    });
     const r = enqueueShip(colony, "cargo_small", 0, [], undefined, customShips);
     if (!r.ok) throw new Error(r.reason);
     expect(r.colony.resources.metals).toBe(5);
@@ -114,7 +129,11 @@ describe("fleetCapacity / pickShip", () => {
 
 describe("routeCargoQuantity", () => {
   it("maintain : comble la destination sans vider la source", () => {
-    const rule = { type: "maintain", minAtDestination: 300, keepAtSource: 100 } as const;
+    const rule = {
+      type: "maintain",
+      minAtDestination: 300,
+      keepAtSource: 100,
+    } as const;
     expect(routeCargoQuantity(rule, 1000, 250, 200)).toBe(50);
     expect(routeCargoQuantity(rule, 1000, 300, 200)).toBe(0); // destination servie
     expect(routeCargoQuantity(rule, 120, 0, 200)).toBe(20); // garde 100 à la source
@@ -134,6 +153,8 @@ describe("routeCargoQuantity", () => {
   });
 
   it("capacité nulle : jamais de départ", () => {
-    expect(routeCargoQuantity({ type: "surplus", keepAtSource: 0 }, 1000, 0, 0)).toBe(0);
+    expect(
+      routeCargoQuantity({ type: "surplus", keepAtSource: 0 }, 1000, 0, 0),
+    ).toBe(0);
   });
 });

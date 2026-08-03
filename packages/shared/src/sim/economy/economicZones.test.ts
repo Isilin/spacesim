@@ -27,7 +27,10 @@ function makeContract(overrides: Partial<Contract> = {}): Contract {
 
 describe("galaxyActivity", () => {
   it("ignore les contrats non ouverts", () => {
-    const contracts = [makeContract({ status: "fulfilled" }), makeContract({ status: "expired" })];
+    const contracts = [
+      makeContract({ status: "fulfilled" }),
+      makeContract({ status: "expired" }),
+    ];
     expect(galaxyActivity(contracts, universe).size).toBe(0);
   });
 
@@ -35,7 +38,12 @@ describe("galaxyActivity", () => {
     const galaxy0System = universe.galaxies[0]!.systems[0]!.id;
     const contracts = [
       makeContract({ systemId: galaxy0System, remaining: 10, pricePerUnit: 5 }),
-      makeContract({ id: "c2", systemId: galaxy0System, remaining: 4, pricePerUnit: 2 }),
+      makeContract({
+        id: "c2",
+        systemId: galaxy0System,
+        remaining: 4,
+        pricePerUnit: 2,
+      }),
     ];
     const activity = galaxyActivity(contracts, universe);
     expect(activity.get(universe.galaxies[0]!.id)).toBe(10 * 5 + 4 * 2);

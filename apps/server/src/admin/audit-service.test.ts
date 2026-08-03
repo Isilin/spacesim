@@ -43,11 +43,19 @@ describe("audit-service", () => {
 
   it("les entrées les plus récentes arrivent en premier", async () => {
     await recordAuditEntry(
-      { actorAccountId: "acc-1", actorEmail: "a@exemple.fr", action: "audit.read" },
+      {
+        actorAccountId: "acc-1",
+        actorEmail: "a@exemple.fr",
+        action: "audit.read",
+      },
       1000,
     );
     await recordAuditEntry(
-      { actorAccountId: "acc-1", actorEmail: "a@exemple.fr", action: "audit.read" },
+      {
+        actorAccountId: "acc-1",
+        actorEmail: "a@exemple.fr",
+        action: "audit.read",
+      },
       2000,
     );
     const entries = await listAuditEntries();
@@ -57,7 +65,11 @@ describe("audit-service", () => {
   it("respecte la limite passée", async () => {
     for (let i = 0; i < 5; i++) {
       await recordAuditEntry(
-        { actorAccountId: "acc-1", actorEmail: "a@exemple.fr", action: "audit.read" },
+        {
+          actorAccountId: "acc-1",
+          actorEmail: "a@exemple.fr",
+          action: "audit.read",
+        },
         i,
       );
     }

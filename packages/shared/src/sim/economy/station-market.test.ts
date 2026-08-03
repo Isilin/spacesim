@@ -33,7 +33,9 @@ describe("canTradeAtStation", () => {
 
   it("le propriétaire a toujours accès, même en guerre ou station fermée", () => {
     for (const relation of RELATIONS) {
-      expect(canTradeAtStation("owner", "owner", "closed", relation)).toBe(true);
+      expect(canTradeAtStation("owner", "owner", "closed", relation)).toBe(
+        true,
+      );
     }
   });
 
@@ -46,14 +48,22 @@ describe("canTradeAtStation", () => {
   it("« closed » refuse tout visiteur hors guerre", () => {
     for (const relation of RELATIONS) {
       if (relation === "war") continue;
-      expect(canTradeAtStation("owner", "visitor", "closed", relation)).toBe(false);
+      expect(canTradeAtStation("owner", "visitor", "closed", relation)).toBe(
+        false,
+      );
     }
   });
 
   it("« alliance » n'accepte que les alliés", () => {
-    expect(canTradeAtStation("owner", "visitor", "alliance", "alliance")).toBe(true);
-    expect(canTradeAtStation("owner", "visitor", "alliance", "nap")).toBe(false);
-    expect(canTradeAtStation("owner", "visitor", "alliance", "neutral")).toBe(false);
+    expect(canTradeAtStation("owner", "visitor", "alliance", "alliance")).toBe(
+      true,
+    );
+    expect(canTradeAtStation("owner", "visitor", "alliance", "nap")).toBe(
+      false,
+    );
+    expect(canTradeAtStation("owner", "visitor", "alliance", "neutral")).toBe(
+      false,
+    );
   });
 
   it("« nap » accepte alliés et partenaires de pacte, pas les neutres", () => {
@@ -63,9 +73,13 @@ describe("canTradeAtStation", () => {
   });
 
   it("« public » accepte tout le monde sauf en guerre", () => {
-    expect(canTradeAtStation("owner", "visitor", "public", "neutral")).toBe(true);
+    expect(canTradeAtStation("owner", "visitor", "public", "neutral")).toBe(
+      true,
+    );
     expect(canTradeAtStation("owner", "visitor", "public", "nap")).toBe(true);
-    expect(canTradeAtStation("owner", "visitor", "public", "alliance")).toBe(true);
+    expect(canTradeAtStation("owner", "visitor", "public", "alliance")).toBe(
+      true,
+    );
     expect(canTradeAtStation("owner", "visitor", "public", "war")).toBe(false);
   });
 });
@@ -102,7 +116,11 @@ describe("applyStationCredits", () => {
 describe("resolveStationSale", () => {
   it("à taxe nulle, le vendeur reçoit exactement le revenu brut (cohérent avec resolveSale)", () => {
     const station = makeStation({
-      resources: { ...emptyStationResources(), credits: 100_000, metals: TARGET_STOCK },
+      resources: {
+        ...emptyStationResources(),
+        credits: 100_000,
+        metals: TARGET_STOCK,
+      },
     });
     const cargo = { metals: 50 };
     const raw = resolveSale(station.resources, cargo);
@@ -114,7 +132,11 @@ describe("resolveStationSale", () => {
 
   it("une taxe réduit ce que touche le vendeur, le reste reste en station", () => {
     const station = makeStation({
-      resources: { ...emptyStationResources(), credits: 100_000, metals: TARGET_STOCK },
+      resources: {
+        ...emptyStationResources(),
+        credits: 100_000,
+        metals: TARGET_STOCK,
+      },
     });
     const cargo = { metals: 50 };
     const raw = resolveSale(station.resources, cargo);
@@ -125,9 +147,17 @@ describe("resolveStationSale", () => {
 
   it("plafonne le paiement aux crédits réellement disponibles côté station", () => {
     const station = makeStation({
-      resources: { ...emptyStationResources(), credits: 5, metals: TARGET_STOCK },
+      resources: {
+        ...emptyStationResources(),
+        credits: 5,
+        metals: TARGET_STOCK,
+      },
     });
-    const { station: next, revenue } = resolveStationSale(station, { metals: 50 }, 0);
+    const { station: next, revenue } = resolveStationSale(
+      station,
+      { metals: 50 },
+      0,
+    );
     expect(revenue).toBe(5);
     expect(next.resources.credits).toBe(0);
   });
@@ -136,16 +166,18 @@ describe("resolveStationSale", () => {
 describe("resolveStationPurchase", () => {
   it("à taxe nulle, cohérent avec resolvePurchase brut", () => {
     const station = makeStation({
-      resources: { ...emptyStationResources(), credits: 0, metals: TARGET_STOCK },
+      resources: {
+        ...emptyStationResources(),
+        credits: 0,
+        metals: TARGET_STOCK,
+      },
     });
     const raw = resolvePurchase(station.resources, "metals", 500, Infinity);
-    const { station: next, bought, spent } = resolveStationPurchase(
-      station,
-      "metals",
-      500,
-      Infinity,
-      0,
-    );
+    const {
+      station: next,
+      bought,
+      spent,
+    } = resolveStationPurchase(station, "metals", 500, Infinity, 0);
     expect(bought).toBe(raw.bought);
     expect(spent).toBe(raw.spent);
     expect(next.resources.credits).toBe(spent);
@@ -153,17 +185,37 @@ describe("resolveStationPurchase", () => {
 
   it("une taxe réduit la quantité achetable pour un même budget brut", () => {
     const station = makeStation({
-      resources: { ...emptyStationResources(), credits: 0, metals: TARGET_STOCK },
+      resources: {
+        ...emptyStationResources(),
+        credits: 0,
+        metals: TARGET_STOCK,
+      },
     });
-    const withoutTax = resolveStationPurchase(station, "metals", 500, Infinity, 0);
-    const withTax = resolveStationPurchase(station, "metals", 500, Infinity, 0.2);
+    const withoutTax = resolveStationPurchase(
+      station,
+      "metals",
+      500,
+      Infinity,
+      0,
+    );
+    const withTax = resolveStationPurchase(
+      station,
+      "metals",
+      500,
+      Infinity,
+      0.2,
+    );
     expect(withTax.bought).toBeLessThanOrEqual(withoutTax.bought);
     expect(withTax.spent).toBeLessThanOrEqual(500);
   });
 
   it("tout le crédit payé par le visiteur (marché + taxe) est déposé en station", () => {
     const station = makeStation({
-      resources: { ...emptyStationResources(), credits: 1000, metals: TARGET_STOCK },
+      resources: {
+        ...emptyStationResources(),
+        credits: 1000,
+        metals: TARGET_STOCK,
+      },
     });
     const { station: next, spent } = resolveStationPurchase(
       station,

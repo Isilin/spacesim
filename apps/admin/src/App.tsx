@@ -1,5 +1,11 @@
 import { Button, TopBar } from "@spacesim/ui";
-import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { AccountDetailView } from "./AccountDetailView.js";
 import { AccountsListView } from "./AccountsListView.js";
 import { AuditLogView } from "./AuditLogView.js";
@@ -54,22 +60,58 @@ export function App({ auth }: Props) {
       <div className="content">
         <Routes>
           <Route path="/" element={<Navigate to="/accounts" replace />} />
-          <Route path="/accounts" element={<AccountsListView token={auth.token!} />} />
-          <Route path="/accounts/:id" element={<AccountDetailView token={auth.token!} />} />
+          <Route
+            path="/accounts"
+            element={<AccountsListView token={auth.token!} />}
+          />
+          <Route
+            path="/accounts/:id"
+            element={<AccountDetailView token={auth.token!} />}
+          />
           <Route path="/content" element={<ContentLayout />}>
             <Route index element={<Navigate to="warships" replace />} />
-            <Route path="warships" element={<WarshipsView token={auth.token!} />} />
-            <Route path="factions" element={<FactionsView token={auth.token!} />} />
-            <Route path="buildings" element={<BuildingsView token={auth.token!} />} />
+            <Route
+              path="warships"
+              element={<WarshipsView token={auth.token!} />}
+            />
+            <Route
+              path="factions"
+              element={<FactionsView token={auth.token!} />}
+            />
+            <Route
+              path="buildings"
+              element={<BuildingsView token={auth.token!} />}
+            />
             <Route path="ships" element={<ShipsView token={auth.token!} />} />
-            <Route path="constants" element={<ConstantsView token={auth.token!} />} />
+            <Route
+              path="constants"
+              element={<ConstantsView token={auth.token!} />}
+            />
             <Route path="techs" element={<TechsView token={auth.token!} />} />
-            <Route path="chassis" element={<ChassisView token={auth.token!} />} />
-            <Route path="modules" element={<ModulesView token={auth.token!} />} />
-            <Route path="presets" element={<PresetsView token={auth.token!} />} />
-            <Route path="milestones" element={<MilestonesView token={auth.token!} />} />
-            <Route path="zone-types" element={<ZoneTypesView token={auth.token!} />} />
-            <Route path="installations" element={<InstallationsView token={auth.token!} />} />
+            <Route
+              path="chassis"
+              element={<ChassisView token={auth.token!} />}
+            />
+            <Route
+              path="modules"
+              element={<ModulesView token={auth.token!} />}
+            />
+            <Route
+              path="presets"
+              element={<PresetsView token={auth.token!} />}
+            />
+            <Route
+              path="milestones"
+              element={<MilestonesView token={auth.token!} />}
+            />
+            <Route
+              path="zone-types"
+              element={<ZoneTypesView token={auth.token!} />}
+            />
+            <Route
+              path="installations"
+              element={<InstallationsView token={auth.token!} />}
+            />
           </Route>
           <Route path="/ops" element={<OpsView token={auth.token!} />} />
           <Route path="/audit" element={<AuditLogView token={auth.token!} />} />

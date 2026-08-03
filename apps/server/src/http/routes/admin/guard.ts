@@ -20,8 +20,13 @@ declare module "fastify" {
  * déclarée par la route (`config.adminAction`). Fail-closed : une route sans `adminAction`
  * déclaré est refusée, jamais laissée passer par oubli.
  */
-export async function adminGuard(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const account = await resolveSession(bearerToken(request.headers.authorization));
+export async function adminGuard(
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<void> {
+  const account = await resolveSession(
+    bearerToken(request.headers.authorization),
+  );
   if (!account) {
     reply.code(401).send({ error: "Session invalide" });
     return;

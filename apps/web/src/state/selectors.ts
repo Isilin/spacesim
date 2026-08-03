@@ -1,4 +1,10 @@
-import type { Colony, Galaxy, Planet, StarSystem, Universe } from "@spacesim/shared";
+import type {
+  Colony,
+  Galaxy,
+  Planet,
+  StarSystem,
+  Universe,
+} from "@spacesim/shared";
 import type { GameStoreState } from "./game-store.js";
 
 // ── Résolution des niveaux de carte (route-couplée : consommée par useMapLevel). ──
@@ -27,5 +33,6 @@ export function selectActiveColony(colonyId: string | null) {
 
 /** Un système est exploré s'il figure dans `exploredSystemIds`. */
 export function selectExplored(systemId: string) {
-  return (state: GameStoreState): boolean => state.exploredSystemIds.includes(systemId);
+  return (state: GameStoreState): boolean =>
+    state.exploredSystemIds.includes(systemId);
 }

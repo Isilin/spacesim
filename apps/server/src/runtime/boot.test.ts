@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { GameEngine } from "../game.js";
-import { resetDb, WARSHIP, advanceTicks, empireFor, summaries } from "../test-harness.js";
+import {
+  resetDb,
+  WARSHIP,
+  advanceTicks,
+  empireFor,
+  summaries,
+} from "../test-harness.js";
 
 beforeEach(() => resetDb());
 
@@ -14,7 +20,9 @@ describe("GameEngine — harnais & socle (Sprint 0)", () => {
     expect(empires[0]!.isDefault).toBe(true);
     expect(empires[0]!.colonies).toHaveLength(1);
     // La colonie mère révèle son système (brouillard initial).
-    expect([...engine.defaultEmpireForDev.explored]).toEqual([empires[0]!.exploredSystemIds[0]]);
+    expect([...engine.defaultEmpireForDev.explored]).toEqual([
+      empires[0]!.exploredSystemIds[0],
+    ]);
   });
 
   it("le tick est déterministe : N ticks avancent l'horloge d'exactement N", async () => {
@@ -26,9 +34,11 @@ describe("GameEngine — harnais & socle (Sprint 0)", () => {
 
   it("le tick produit : les ressources de la colonie évoluent", async () => {
     const engine = await GameEngine.loadOrBootstrap();
-    const before = [...engine.defaultEmpireForDev.colonyMap.values()][0]!.resources;
+    const before = [...engine.defaultEmpireForDev.colonyMap.values()][0]!
+      .resources;
     advanceTicks(engine, 20);
-    const after = [...engine.defaultEmpireForDev.colonyMap.values()][0]!.resources;
+    const after = [...engine.defaultEmpireForDev.colonyMap.values()][0]!
+      .resources;
     // Mine + centrale + ferme produisent : au moins une ressource a bougé.
     expect(after).not.toEqual(before);
   });
@@ -77,7 +87,8 @@ describe("GameEngine — isolation multi-empire (Sprint 0)", () => {
 });
 describe("GameEngine — chargement multi-empire (Phase A)", () => {
   it("recharge tous les empires, entités routées par propriétaire", async () => {
-    const key = (c: { systemId: string; name: string }) => `${c.systemId}/${c.name}`;
+    const key = (c: { systemId: string; name: string }) =>
+      `${c.systemId}/${c.name}`;
     const e1 = await GameEngine.loadOrBootstrap();
     const defBefore = summaries(e1)[0]!;
     const defaultId = defBefore.id;
@@ -85,7 +96,9 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(spawnedId).not.toBeNull();
     const colBefore = summaries(e1).find((e) => e.id === spawnedId)!;
     // Les deux colonies mères sont sur des planètes distinctes (clé système/nom).
-    expect(defBefore.colonies.map(key)).not.toEqual(colBefore.colonies.map(key));
+    expect(defBefore.colonies.map(key)).not.toEqual(
+      colBefore.colonies.map(key),
+    );
     // `devSpawnEmpire` est un appel direct (pas une commande WS ni un tick) : rien ne
     // déclenche le flush automatiquement (chantier 20.2) — on l'attend explicitement
     // avant de simuler un reboot, sous peine de « perdre » cet empire au rechargement.
@@ -144,10 +157,14 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     expect(snapAlice.colonies).toHaveLength(1);
     expect(snapDefault.colonies).toHaveLength(1);
     const aliceColonyIds = new Set(snapAlice.colonies.map((c) => c.id));
-    expect(snapDefault.colonies.some((c) => aliceColonyIds.has(c.id))).toBe(false);
+    expect(snapDefault.colonies.some((c) => aliceColonyIds.has(c.id))).toBe(
+      false,
+    );
     // Brouillards (systèmes explorés) disjoints.
     const aliceFog = new Set(snapAlice.exploredSystemIds);
-    expect(snapDefault.exploredSystemIds.some((s) => aliceFog.has(s))).toBe(false);
+    expect(snapDefault.exploredSystemIds.some((s) => aliceFog.has(s))).toBe(
+      false,
+    );
   });
 
   it("une action ne s'applique qu'aux entités de l'empire agissant (Phase C)", async () => {
@@ -158,15 +175,25 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const aliceColonyId = engine.snapshotForEmpire(alice).colonies[0]!.id;
 
     // Colonie possédée : l'action passe la validation de propriété (pas d'erreur « inconnue »).
-    expect(engine.industry.build(alice, aliceColonyId, "mine")).not.toBe("Colonie inconnue");
+    expect(engine.industry.build(alice, aliceColonyId, "mine")).not.toBe(
+      "Colonie inconnue",
+    );
     // Colonie d'un autre empire : rejetée dans les deux sens.
-    expect(engine.industry.build(alice, defColonyId, "mine")).toBe("Colonie inconnue");
-    expect(engine.industry.build(def, aliceColonyId, "mine")).toBe("Colonie inconnue");
+    expect(engine.industry.build(alice, defColonyId, "mine")).toBe(
+      "Colonie inconnue",
+    );
+    expect(engine.industry.build(def, aliceColonyId, "mine")).toBe(
+      "Colonie inconnue",
+    );
 
     // Flotte : alice en crée une ; l'empire par défaut ne peut pas la piloter.
-    expect(engine.fleetService.createFleet(alice, aliceColonyId, "Garde")).toBeNull();
+    expect(
+      engine.fleetService.createFleet(alice, aliceColonyId, "Garde"),
+    ).toBeNull();
     const aliceFleetId = engine.snapshotForEmpire(alice).fleets[0]!.id;
-    expect(engine.fleetService.moveFleet(def, aliceFleetId, "gal-0-sys-0")).toBe("Flotte inconnue");
+    expect(
+      engine.fleetService.moveFleet(def, aliceFleetId, "gal-0-sys-0"),
+    ).toBe("Flotte inconnue");
     expect(engine.snapshotForEmpire(def).fleets).toHaveLength(0);
   });
 
@@ -180,13 +207,19 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const fb = engine.devArmFleet(b, sys, { [WARSHIP]: 1 });
 
     // En paix par défaut : l'attaque est refusée tant que la guerre n'est pas déclarée.
-    expect(engine.fleetService.attackFleet(a, fa, fb)).toBe("En paix — déclarez la guerre d'abord");
+    expect(engine.fleetService.attackFleet(a, fa, fb)).toBe(
+      "En paix — déclarez la guerre d'abord",
+    );
     expect(engine.diplomacy.declareWar(a, b.id)).toBeNull();
     expect(engine.fleetService.attackFleet(a, fa, fb)).toBeNull();
     // La flotte faible du défenseur est anéantie (retirée de son empire).
-    expect(engine.snapshotForEmpire(b).fleets.some((f) => f.id === fb)).toBe(false);
+    expect(engine.snapshotForEmpire(b).fleets.some((f) => f.id === fb)).toBe(
+      false,
+    );
     // L'attaquant garde une flotte, une bataille est journalisée.
-    expect(engine.snapshotForEmpire(a).fleets.some((f) => f.id === fa)).toBe(true);
+    expect(engine.snapshotForEmpire(a).fleets.some((f) => f.id === fa)).toBe(
+      true,
+    );
     expect(engine.snapshotForEmpire(a).battles.length).toBeGreaterThan(0);
   });
 
@@ -199,7 +232,9 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const fb = engine.devArmFleet(b, "gal-0-sys-1", { [WARSHIP]: 5 });
     const fa2 = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
     engine.diplomacy.declareWar(a, b.id);
-    expect(engine.fleetService.attackFleet(a, fa, fb)).toBe("Cible hors de portée");
+    expect(engine.fleetService.attackFleet(a, fa, fb)).toBe(
+      "Cible hors de portée",
+    );
     expect(engine.fleetService.attackFleet(a, fa, fa2)).toBe("Cible inconnue"); // amie
   });
 
@@ -227,7 +262,9 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const a = empireFor(engine, "alpha");
     const own = engine.snapshotForEmpire(a).colonies[0]!;
     const fa = engine.devArmFleet(a, "gal-0-sys-0", { [WARSHIP]: 5 });
-    expect(engine.fleetService.attackColony(a, fa, own.id)).toBe("Colonie cible inconnue");
+    expect(engine.fleetService.attackColony(a, fa, own.id)).toBe(
+      "Colonie cible inconnue",
+    );
   });
 
   it("diplomatie : declareWar/makePeace basculent l'état, reflété dans le classement", async () => {
@@ -235,13 +272,16 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     a.influence = 1000; // déclarer la guerre coûte de l'influence (chantier 16)
-    const rowB = () => engine.snapshotForEmpire(a).leaderboard.find((e) => e.id === b.id)!;
+    const rowB = () =>
+      engine.snapshotForEmpire(a).leaderboard.find((e) => e.id === b.id)!;
 
     expect(rowB().relation).toBe("neutral");
     expect(engine.diplomacy.declareWar(a, b.id)).toBeNull();
     expect(rowB().relation).toBe("war");
     // La relation est symétrique : b voit aussi la guerre.
-    const rowAfromB = engine.snapshotForEmpire(b).leaderboard.find((e) => e.id === a.id)!;
+    const rowAfromB = engine
+      .snapshotForEmpire(b)
+      .leaderboard.find((e) => e.id === a.id)!;
     expect(rowAfromB.relation).toBe("war");
     expect(engine.diplomacy.declareWar(a, b.id)).toBe("Déjà en guerre");
     expect(engine.diplomacy.makePeace(a, b.id)).toBeNull();

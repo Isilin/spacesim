@@ -6,8 +6,10 @@ beforeEach(() => resetDb());
 
 describe("GameEngine — logistique orbitale (chantier 12)", () => {
   /** Colonie mère de l'empire, relue depuis le snapshot. */
-  const homeColony = (engine: GameEngine, empire: ReturnType<typeof empireFor>) =>
-    engine.snapshotForEmpire(empire).colonies[0]!;
+  const homeColony = (
+    engine: GameEngine,
+    empire: ReturnType<typeof empireFor>,
+  ) => engine.snapshotForEmpire(empire).colonies[0]!;
 
   it("la colonie mère naît avec un dock et une soute orbitale", async () => {
     const engine = await GameEngine.loadOrBootstrap();
@@ -32,9 +34,15 @@ describe("GameEngine — logistique orbitale (chantier 12)", () => {
    * ne couvre qu'un système : sans cette révélation, le test se sauterait au hasard des
    * seeds au lieu de vérifier quoi que ce soit.
    */
-  const reachableTradingPost = (engine: GameEngine, empire: ReturnType<typeof empireFor>) => {
-    const comptoir = engine.universe.galaxies[0]!.systems.find((s) => s.station)?.station;
-    if (!comptoir) throw new Error("la galaxie d'origine a toujours au moins un comptoir");
+  const reachableTradingPost = (
+    engine: GameEngine,
+    empire: ReturnType<typeof empireFor>,
+  ) => {
+    const comptoir = engine.universe.galaxies[0]!.systems.find(
+      (s) => s.station,
+    )?.station;
+    if (!comptoir)
+      throw new Error("la galaxie d'origine a toujours au moins un comptoir");
     engine.devArmFleet(empire, comptoir.systemId, {}); // révèle le système
     return comptoir;
   };
@@ -49,7 +57,11 @@ describe("GameEngine — logistique orbitale (chantier 12)", () => {
 
     const orbitBefore = colony.orbitalResources.ore;
     const groundBefore = colony.resources.ore;
-    expect(engine.market.sellToTradingPost(empire, colony.id, comptoir.id, { ore: 10 })).toBeNull();
+    expect(
+      engine.market.sellToTradingPost(empire, colony.id, comptoir.id, {
+        ore: 10,
+      }),
+    ).toBeNull();
 
     const after = homeColony(engine, empire);
     expect(after.orbitalResources.ore).toBe(orbitBefore - 10);
@@ -64,9 +76,13 @@ describe("GameEngine — logistique orbitale (chantier 12)", () => {
     const comptoir = reachableTradingPost(engine, empire);
 
     // Bien plus que l'orbite, mais couvert par le sol : doit être refusé quand même.
-    const tooMuch = Math.floor(colony.orbitalResources.ore + colony.resources.ore);
-    expect(engine.market.sellToTradingPost(empire, colony.id, comptoir.id, { ore: tooMuch })).toMatch(
-      /Stock orbital insuffisant/,
+    const tooMuch = Math.floor(
+      colony.orbitalResources.ore + colony.resources.ore,
     );
+    expect(
+      engine.market.sellToTradingPost(empire, colony.id, comptoir.id, {
+        ore: tooMuch,
+      }),
+    ).toMatch(/Stock orbital insuffisant/);
   });
 });

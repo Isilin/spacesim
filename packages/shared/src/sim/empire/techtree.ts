@@ -33,7 +33,9 @@ export function techDepth(id: TechId): number {
   // contenu venait à être mal saisi (validateTree signale le problème par ailleurs).
   depthCache.set(id, 0);
   const depth =
-    tech.requires.length === 0 ? 0 : Math.max(...tech.requires.map((r) => techDepth(r) + 1));
+    tech.requires.length === 0
+      ? 0
+      : Math.max(...tech.requires.map((r) => techDepth(r) + 1));
   depthCache.set(id, depth);
   return depth;
 }
@@ -58,7 +60,10 @@ export function techLayout(): Map<TechId, TechPosition> {
 }
 
 /** Prérequis directs manquants pour lancer une tech. */
-export function missingPrereqs(id: TechId, researched: readonly TechId[]): TechId[] {
+export function missingPrereqs(
+  id: TechId,
+  researched: readonly TechId[],
+): TechId[] {
   return (TECHS[id]?.requires ?? []).filter((r) => !researched.includes(r));
 }
 
@@ -68,6 +73,16 @@ export function missingPrereqs(id: TechId, researched: readonly TechId[]): TechI
  * verrouillée et de planifier tout ce qui y mène. `techs` injecté (chantier 23.9,
  * DB-backed) : défaut la table statique.
  */
+export function researchPath(
+  target: TechId,
+  researched: readonly TechId[],
+  techs?: typeof TECHS,
+): TechId[];
+export function researchPath(
+  target: string,
+  researched: readonly string[],
+  techs: Record<string, TechDef>,
+): string[];
 export function researchPath(
   target: string,
   researched: readonly string[],
@@ -104,7 +119,8 @@ export function pathDurationMs(path: readonly TechId[]): number {
 export function descendants(id: TechId): TechId[] {
   const out: TechId[] = [];
   for (const candidate of TECH_IDS) {
-    if (candidate !== id && researchPath(candidate, []).includes(id)) out.push(candidate);
+    if (candidate !== id && researchPath(candidate, []).includes(id))
+      out.push(candidate);
   }
   return out;
 }

@@ -781,7 +781,12 @@ export class LogisticsService {
     durationMs: number,
     extras: Pick<
       Mission,
-      "cargo" | "budget" | "buyResource" | "capacity" | "contractId" | "venueKind"
+      | "cargo"
+      | "budget"
+      | "buyResource"
+      | "capacity"
+      | "contractId"
+      | "venueKind"
     > = {},
     departedAt = Date.now(),
   ): void {
@@ -870,7 +875,10 @@ export class LogisticsService {
           const toStation = mission.venueKind === "station";
           const result = mission.cargo
             ? toStation
-              ? this.station.resolveStationSaleAt(mission.targetId, mission.cargo)
+              ? this.station.resolveStationSaleAt(
+                  mission.targetId,
+                  mission.cargo,
+                )
               : this.market.resolveSaleAt(mission.targetId, mission.cargo)
             : null;
           if (result && colony) {
@@ -880,10 +888,18 @@ export class LogisticsService {
               ? result.revenue
               : Math.floor(
                   result.revenue *
-                    (1 + this.market.tradingPostRepBonus(empire, mission.targetId)),
+                    (1 +
+                      this.market.tradingPostRepBonus(
+                        empire,
+                        mission.targetId,
+                      )),
                 );
             if (!toStation) {
-              this.market.addFactionRep(empire, mission.targetId, result.revenue);
+              this.market.addFactionRep(
+                empire,
+                mission.targetId,
+                result.revenue,
+              );
             }
             const resources = {
               ...colony.resources,
@@ -920,7 +936,11 @@ export class LogisticsService {
                       this.market.tradingPostRepBonus(empire, mission.targetId),
                   );
               if (!toStation) {
-                this.market.addFactionRep(empire, mission.targetId, result.spent);
+                this.market.addFactionRep(
+                  empire,
+                  mission.targetId,
+                  result.spent,
+                );
               }
               // Trajet retour, chargé + reliquat de budget (et remise) à rembourser.
               this.insertMission(

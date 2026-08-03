@@ -14,7 +14,12 @@ const combatPhaseWeaponsSchema = z.object({
   short: z.number().nonnegative(),
 });
 
-export const WARSHIP_CATEGORIES = ["skirmisher", "line", "capital", "support"] as const;
+export const WARSHIP_CATEGORIES = [
+  "skirmisher",
+  "line",
+  "capital",
+  "support",
+] as const;
 export const warshipCategorySchema = z.enum(WARSHIP_CATEGORIES);
 
 export const upsertWarshipSchema = z.object({
@@ -131,7 +136,12 @@ const techEffectsSchema = z.object({
   tradeMargin: z.number().optional(),
 });
 
-export const TECH_BRANCHES = ["industry", "colonization", "society", "military"] as const;
+export const TECH_BRANCHES = [
+  "industry",
+  "colonization",
+  "society",
+  "military",
+] as const;
 export const techBranchSchema = z.enum(TECH_BRANCHES);
 
 export const upsertTechSchema = z.object({
@@ -152,7 +162,12 @@ export type UpsertTechInput = z.infer<typeof upsertTechSchema>;
  * `sim/industry/design.ts` (`resolveBlueprint`/`validateBlueprint`) n'avait aucune
  * injection avant ce chantier — c'est le domaine le plus risqué de la vague.
  */
-export const SLOT_TYPES = ["weapon", "defense", "propulsion", "utility"] as const;
+export const SLOT_TYPES = [
+  "weapon",
+  "defense",
+  "propulsion",
+  "utility",
+] as const;
 export const slotTypeSchema = z.enum(SLOT_TYPES);
 
 const slotCountsSchema = z.object({
@@ -253,7 +268,12 @@ export const upsertPresetSchema = z.object({
 });
 export type UpsertPresetInput = z.infer<typeof upsertPresetSchema>;
 
-export const MILESTONE_METRICS = ["population", "colonies", "explored", "techs"] as const;
+export const MILESTONE_METRICS = [
+  "population",
+  "colonies",
+  "explored",
+  "techs",
+] as const;
 export const milestoneMetricSchema = z.enum(MILESTONE_METRICS);
 
 export const upsertMilestoneSchema = z.object({
@@ -290,6 +310,9 @@ export const upsertInstallationSchema = z.object({
   requiresTech: z.string().trim().min(1).nullable(),
   /** Capacité de marché conférée (chantier 25) ; null/absent = aucune — défaut permissif
    * pour ne pas casser un client (admin ou test) écrit avant l'ajout de ce champ. */
-  grants: z.enum(["resourceMarket", "blueprintMarket"]).nullable().default(null),
+  grants: z
+    .enum(["resourceMarket", "blueprintMarket"])
+    .nullable()
+    .default(null),
 });
 export type UpsertInstallationInput = z.infer<typeof upsertInstallationSchema>;

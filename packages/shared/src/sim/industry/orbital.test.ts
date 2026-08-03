@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_BALANCE } from "../../balance.js";
-import { LIFT_ENERGY_PER_UNIT, LIFT_PER_DOCK, ORBITAL_CAP_PER_DOCK } from "../../constants.js";
+import {
+  LIFT_ENERGY_PER_UNIT,
+  LIFT_PER_DOCK,
+  ORBITAL_CAP_PER_DOCK,
+} from "../../constants.js";
 import type { Colony } from "../../model/industry.js";
 import type { ResourceId } from "../../model/resources.js";
 import { computeEffects } from "../empire/research.js";
@@ -36,7 +40,10 @@ function colony(over: Partial<Colony> = {}): Colony {
 
 describe("capacité et débit", () => {
   it("sans dock, rien n'est entreposable ni déplaçable", () => {
-    const c = colony({ buildings: {}, liftRules: { ore: { keepGround: 0, direction: "up" } } });
+    const c = colony({
+      buildings: {},
+      liftRules: { ore: { keepGround: 0, direction: "up" } },
+    });
     expect(orbitalCap(c)).toBe(0);
     expect(liftThroughput(c)).toBe(0);
     // Même avec une consigne d'ascension, sans dock la colonie reste clouée au sol.
@@ -44,8 +51,12 @@ describe("capacité et débit", () => {
   });
 
   it("chaque dock ajoute capacité et débit", () => {
-    expect(orbitalCap(colony({ buildings: { orbital_dock: 3 } }))).toBe(ORBITAL_CAP_PER_DOCK * 3);
-    expect(liftThroughput(colony({ buildings: { orbital_dock: 3 } }))).toBe(LIFT_PER_DOCK * 3);
+    expect(orbitalCap(colony({ buildings: { orbital_dock: 3 } }))).toBe(
+      ORBITAL_CAP_PER_DOCK * 3,
+    );
+    expect(liftThroughput(colony({ buildings: { orbital_dock: 3 } }))).toBe(
+      LIFT_PER_DOCK * 3,
+    );
   });
 
   it("les techs d'ascenseur augmentent capacité et débit", () => {
@@ -67,16 +78,23 @@ describe("capacité et débit", () => {
 
 describe("applyLift", () => {
   it("monte le surplus au-delà de ce qu'on garde au sol, et paie l'énergie", () => {
-    const before = colony({ liftRules: { ore: { keepGround: 400, direction: "up" } } });
+    const before = colony({
+      liftRules: { ore: { keepGround: 400, direction: "up" } },
+    });
     const after = applyLift(before);
     // Surplus de 100, mais le débit d'un dock plafonne à LIFT_PER_DOCK.
     expect(after.orbitalResources.ore).toBe(LIFT_PER_DOCK);
     expect(after.resources.ore).toBe(500 - LIFT_PER_DOCK);
-    expect(after.resources.energy).toBeCloseTo(500 - LIFT_PER_DOCK * LIFT_ENERGY_PER_UNIT, 5);
+    expect(after.resources.energy).toBeCloseTo(
+      500 - LIFT_PER_DOCK * LIFT_ENERGY_PER_UNIT,
+      5,
+    );
   });
 
   it("ne touche pas à ce qui est sous le seuil de conservation", () => {
-    const before = colony({ liftRules: { ore: { keepGround: 900, direction: "up" } } });
+    const before = colony({
+      liftRules: { ore: { keepGround: 900, direction: "up" } },
+    });
     expect(applyLift(before)).toEqual(before);
   });
 
@@ -142,9 +160,9 @@ describe("chargement et livraison", () => {
 
   it("livrer remplit l'orbite dans la limite de la capacité", () => {
     const c = colony({ buildings: { orbital_dock: 1 } });
-    const full = deliverToOrbit(c, { metals: ORBITAL_CAP_PER_DOCK + 500 } as Partial<
-      Record<ResourceId, number>
-    >);
+    const full = deliverToOrbit(c, {
+      metals: ORBITAL_CAP_PER_DOCK + 500,
+    } as Partial<Record<ResourceId, number>>);
     expect(orbitalUsed(full)).toBe(ORBITAL_CAP_PER_DOCK);
   });
 });
@@ -152,7 +170,11 @@ describe("chargement et livraison", () => {
 describe("scalaires d'équilibrage injectés (chantier 23.8)", () => {
   it("orbitalCap/liftThroughput suivent un bundle de constantes différent des défauts", () => {
     const c = colony({ buildings: { orbital_dock: 1 } });
-    const customBalance = { ...DEFAULT_BALANCE, orbitalCapPerDock: 9999, liftPerDock: 42 };
+    const customBalance = {
+      ...DEFAULT_BALANCE,
+      orbitalCapPerDock: 9999,
+      liftPerDock: 42,
+    };
     expect(orbitalCap(c, undefined, customBalance)).toBe(9999);
     expect(liftThroughput(c, undefined, customBalance)).toBe(42);
   });

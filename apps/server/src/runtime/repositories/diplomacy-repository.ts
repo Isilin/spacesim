@@ -1,4 +1,9 @@
-import type { ProposalKind, Relation, RelationProposal, RelationState } from "@spacesim/shared";
+import type {
+  ProposalKind,
+  Relation,
+  RelationProposal,
+  RelationState,
+} from "@spacesim/shared";
 import { db, schema } from "../../db/index.js";
 import type { WriteSet } from "../persistence/write-set.js";
 

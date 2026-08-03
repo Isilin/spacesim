@@ -26,11 +26,20 @@ beforeEach(async () => {
   for (const table of UNIVERSE_TABLES) await db.delete(table);
   await db
     .insert(schema.games)
-    .values({ id: GAME_ID, seed: SEED, lastTickAt: 0, createdAt: 0, galaxyCount: 0 });
+    .values({
+      id: GAME_ID,
+      seed: SEED,
+      lastTickAt: 0,
+      createdAt: 0,
+      galaxyCount: 0,
+    });
 });
 
 const galaxyCount = async () => {
-  const rows = await db.select().from(schema.games).where(eq(schema.games.id, GAME_ID));
+  const rows = await db
+    .select()
+    .from(schema.games)
+    .where(eq(schema.games.id, GAME_ID));
   return rows[0]!.galaxyCount;
 };
 
@@ -80,7 +89,9 @@ describe("universe-store", () => {
 
   it("refuse une galaxie non-mère sans parentIndex figé", async () => {
     const galaxy = generateGalaxyAt(SEED, 1);
-    await expect(appendGalaxies(GAME_ID, [galaxy], 2)).rejects.toThrow(/parentIndex/);
+    await expect(appendGalaxies(GAME_ID, [galaxy], 2)).rejects.toThrow(
+      /parentIndex/,
+    );
     // La transaction a tout annulé : rien n'est matérialisé.
     expect(await materializedGalaxyCount(GAME_ID)).toBe(0);
   });

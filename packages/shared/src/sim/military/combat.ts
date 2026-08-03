@@ -37,22 +37,23 @@ export interface CombatDef {
 }
 
 /** Table de combat des classes historiques : sert de défaut et couvre les PNJ pirates. */
-export const WARSHIP_COMBAT_DEFS: Record<string, CombatDef> = Object.fromEntries(
-  WARSHIP_IDS.map((id) => {
-    const def = WARSHIPS[id];
-    return [
-      id,
-      {
-        hull: def.hull,
-        shield: def.shield,
-        weapons: def.weapons,
-        initiative: def.initiative,
-        fleetDamageBonus: def.fleetDamageBonus ?? 0,
-        category: WARSHIP_CATEGORY[id],
-      } satisfies CombatDef,
-    ];
-  }),
-);
+export const WARSHIP_COMBAT_DEFS: Record<string, CombatDef> =
+  Object.fromEntries(
+    WARSHIP_IDS.map((id) => {
+      const def = WARSHIPS[id];
+      return [
+        id,
+        {
+          hull: def.hull,
+          shield: def.shield,
+          weapons: def.weapons,
+          initiative: def.initiative,
+          fleetDamageBonus: def.fleetDamageBonus ?? 0,
+          category: WARSHIP_CATEGORY[id],
+        } satisfies CombatDef,
+      ];
+    }),
+  );
 
 /**
  * Réglages de combat au-delà des stats par vaisseau (chantier 23.5) : triangle de
@@ -60,7 +61,10 @@ export const WARSHIP_COMBAT_DEFS: Record<string, CombatDef> = Object.fromEntries
  * historiques ; le serveur y injecte le contenu édité en admin.
  */
 export interface CombatTuning {
-  categoryAdvantage: Record<CombatCategory, Partial<Record<CombatCategory, number>>>;
+  categoryAdvantage: Record<
+    CombatCategory,
+    Partial<Record<CombatCategory, number>>
+  >;
   directives: Record<CombatDirective, DirectiveDef>;
   directiveCounter: Record<CombatDirective, CombatDirective | null>;
   counterBonus: number;
@@ -113,13 +117,21 @@ export interface BattleReport {
   defenderLosses: FleetComposition;
 }
 
-function expand(composition: FleetComposition, defs: Record<string, CombatDef>): ShipInstance[] {
+function expand(
+  composition: FleetComposition,
+  defs: Record<string, CombatDef>,
+): ShipInstance[] {
   const ships: ShipInstance[] = [];
   for (const [id, count] of Object.entries(composition)) {
     const def = defs[id];
     if (!def) continue;
     for (let i = 0; i < (count ?? 0); i++) {
-      ships.push({ id, hull: def.hull, maxShield: def.shield, shield: def.shield });
+      ships.push({
+        id,
+        hull: def.hull,
+        maxShield: def.shield,
+        shield: def.shield,
+      });
     }
   }
   return ships;
@@ -134,7 +146,10 @@ function collapse(ships: ShipInstance[]): FleetComposition {
 }
 
 /** Somme des bonus de dégâts de flotte apportés par les vaisseaux de soutien vivants. */
-function supportBonus(ships: ShipInstance[], defs: Record<string, CombatDef>): number {
+function supportBonus(
+  ships: ShipInstance[],
+  defs: Record<string, CombatDef>,
+): number {
   let bonus = 0;
   for (const ship of ships) {
     if (ship.hull > 0) bonus += defs[ship.id]?.fleetDamageBonus ?? 0;
@@ -162,7 +177,9 @@ function directiveMultiplier(
   tuning: CombatTuning,
 ): number {
   const base = tuning.directives[own].damageMult;
-  return tuning.directiveCounter[own] === enemy ? base * tuning.counterBonus : base;
+  return tuning.directiveCounter[own] === enemy
+    ? base * tuning.counterBonus
+    : base;
 }
 
 /**
@@ -199,7 +216,8 @@ function applyDamage(
       const n = count ?? 0;
       const atkCat = defs[atkId]?.category;
       total += n;
-      weighted += n * (atkCat ? (tuning.categoryAdvantage[atkCat]?.[targetCat] ?? 1) : 1);
+      weighted +=
+        n * (atkCat ? (tuning.categoryAdvantage[atkCat]?.[targetCat] ?? 1) : 1);
     }
     return total > 0 ? weighted / total : 1;
   };
@@ -248,11 +266,15 @@ export function resolveBattle(
     // Régénération des boucliers (modulée par la directive).
     for (const ship of atk) {
       if (ship.hull > 0)
-        ship.shield = ship.maxShield * tuning.directives[attackerDirectives[phase]].shieldMult;
+        ship.shield =
+          ship.maxShield *
+          tuning.directives[attackerDirectives[phase]].shieldMult;
     }
     for (const ship of def) {
       if (ship.hull > 0)
-        ship.shield = ship.maxShield * tuning.directives[defenderDirectives[phase]].shieldMult;
+        ship.shield =
+          ship.maxShield *
+          tuning.directives[defenderDirectives[phase]].shieldMult;
     }
 
     const atkDir = attackerDirectives[phase];
@@ -267,8 +289,12 @@ export function resolveBattle(
       if (alive(atk).length === 0 || alive(def).length === 0) break;
       const atkMix = collapse(alive(atk));
       const defMix = collapse(alive(def));
-      const atkDamage = firepower(atk, phase, defs) * directiveMultiplier(atkDir, defDir, tuning);
-      const defDamage = firepower(def, phase, defs) * directiveMultiplier(defDir, atkDir, tuning);
+      const atkDamage =
+        firepower(atk, phase, defs) *
+        directiveMultiplier(atkDir, defDir, tuning);
+      const defDamage =
+        firepower(def, phase, defs) *
+        directiveMultiplier(defDir, atkDir, tuning);
       atkDamageTotal += atkDamage;
       defDamageTotal += defDamage;
       // Tirs simultanés : on fige les compositions avant d'appliquer.
@@ -335,7 +361,10 @@ function totalHull(ships: ShipInstance[]): number {
   return ships.reduce((s, ship) => s + Math.max(0, ship.hull), 0);
 }
 
-function diff(before: FleetComposition, after: FleetComposition): FleetComposition {
+function diff(
+  before: FleetComposition,
+  after: FleetComposition,
+): FleetComposition {
   const losses: FleetComposition = {};
   for (const id of Object.keys(before)) {
     const lost = (before[id] ?? 0) - (after[id] ?? 0);
@@ -353,7 +382,8 @@ export function fleetPower(
   for (const [id, count] of Object.entries(composition)) {
     const def = defs[id];
     if (!def) continue;
-    const avgWeapon = (def.weapons.long + def.weapons.medium + def.weapons.short) / 3;
+    const avgWeapon =
+      (def.weapons.long + def.weapons.medium + def.weapons.short) / 3;
     power += (count ?? 0) * (def.hull + def.shield + avgWeapon * 4);
   }
   return Math.round(power);

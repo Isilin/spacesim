@@ -2,7 +2,13 @@ import { createRng, type Rng } from "../../rng.js";
 import type { Planet, PlanetType } from "../../model/universe.js";
 
 /** Type d'atmosphère, du vide au voile écrasant. */
-export const ATMOSPHERES = ["none", "thin", "breathable", "toxic", "dense"] as const;
+export const ATMOSPHERES = [
+  "none",
+  "thin",
+  "breathable",
+  "toxic",
+  "dense",
+] as const;
 
 export type Atmosphere = (typeof ATMOSPHERES)[number];
 
@@ -57,7 +63,10 @@ const BASE_TEMP: Record<PlanetType, number> = {
 };
 
 /** Atmosphères plausibles par type, pondérées. */
-const ATMOSPHERE_WEIGHTS: Record<PlanetType, readonly (readonly [Atmosphere, number])[]> = {
+const ATMOSPHERE_WEIGHTS: Record<
+  PlanetType,
+  readonly (readonly [Atmosphere, number])[]
+> = {
   telluric: [
     ["breathable", 5],
     ["thin", 3],
@@ -108,11 +117,16 @@ function range(rng: Rng, [min, max]: [number, number]): number {
  * un monde très habitable respire, un monde hostile étouffe. Sans ce lien, la fiche
  * contredisait la donnée de jeu (planète à 90 d'habitabilité annoncée « toxique »).
  */
-function pickAtmosphere(rng: Rng, type: PlanetType, habitability: number): Atmosphere {
+function pickAtmosphere(
+  rng: Rng,
+  type: PlanetType,
+  habitability: number,
+): Atmosphere {
   const bias = Math.max(0.2, habitability / 50);
   const entries = ATMOSPHERE_WEIGHTS[type].map(([value, weight]) => {
     if (value === "breathable") return [value, weight * bias * bias] as const;
-    if (value === "none" || value === "toxic") return [value, weight / bias] as const;
+    if (value === "none" || value === "toxic")
+      return [value, weight / bias] as const;
     return [value, weight] as const;
   });
   const total = entries.reduce((s, [, w]) => s + w, 0);
@@ -132,13 +146,18 @@ function pickAtmosphere(rng: Rng, type: PlanetType, habitability: number): Atmos
  * l'équilibre radiatif) ; une lune hérite du rayon orbital de sa planète, transmis
  * par `parentOrbitRadius`.
  */
-export function bodyPhysicals(planet: Planet, parentOrbitRadius?: number): BodyPhysicals {
+export function bodyPhysicals(
+  planet: Planet,
+  parentOrbitRadius?: number,
+): BodyPhysicals {
   const rng = createRng(`body:${planet.id}`);
   const isMoon = planet.kind === "moon";
 
   // Une lune est un corps réduit : rayon et gravité à l'échelle d'un satellite.
   const moonScale = isMoon ? 0.28 : 1;
-  const radiusKm = Math.round(range(rng, RADIUS_RANGE[planet.type]) * moonScale);
+  const radiusKm = Math.round(
+    range(rng, RADIUS_RANGE[planet.type]) * moonScale,
+  );
   const density = range(rng, DENSITY_RANGE[planet.type]);
   // g ∝ densité × rayon (à densité égale, un corps deux fois plus gros pèse deux fois plus).
   const gravityG = Math.round(density * (radiusKm / 6371) * 100) / 100;
@@ -152,29 +171,40 @@ export function bodyPhysicals(planet: Planet, parentOrbitRadius?: number): BodyP
   // renverser la nature du corps.
   const distanceOffset =
     TEMP_DISTANCE_SPREAD *
-    Math.max(-1, Math.min(1, Math.log(REFERENCE_ORBIT / starDistance) / Math.log(4)));
+    Math.max(
+      -1,
+      Math.min(1, Math.log(REFERENCE_ORBIT / starDistance) / Math.log(4)),
+    );
   const raw = BASE_TEMP[planet.type] + distanceOffset + range(rng, [-8, 8]);
   // Un monde très habitable est forcément tempéré : la fiche doit corroborer la donnée
   // de jeu, pas la contredire.
   const temperatePull = (planet.habitability / 100) ** 2 * 0.7;
-  const meanTempC = Math.round(raw * (1 - temperatePull) + TEMPERATE_C * temperatePull);
+  const meanTempC = Math.round(
+    raw * (1 - temperatePull) + TEMPERATE_C * temperatePull,
+  );
 
   return {
     radiusKm,
     gravityG,
     meanTempC,
     atmosphere: pickAtmosphere(rng, planet.type, planet.habitability),
-    dayLengthHours: Math.round(range(rng, isMoon ? [40, 700] : [8, 90]) * 10) / 10,
+    dayLengthHours:
+      Math.round(range(rng, isMoon ? [40, 700] : [8, 90]) * 10) / 10,
     // Période orbitale : loi de Kepler (T ∝ r^1.5) autour du corps parent.
     orbitPeriodDays:
-      Math.round(((planet.orbitRadius / (isMoon ? 4 : 40)) ** 1.5 + range(rng, [0.2, 2])) * 10) /
-      10,
+      Math.round(
+        ((planet.orbitRadius / (isMoon ? 4 : 40)) ** 1.5 +
+          range(rng, [0.2, 2])) *
+          10,
+      ) / 10,
   };
 }
 
 /** Le corps est-il vivable sans combinaison ? (habillage : croisé avec l'habitabilité) */
 export function isBreathable(physicals: BodyPhysicals): boolean {
   return (
-    physicals.atmosphere === "breathable" && physicals.meanTempC > -20 && physicals.meanTempC < 55
+    physicals.atmosphere === "breathable" &&
+    physicals.meanTempC > -20 &&
+    physicals.meanTempC < 55
   );
 }

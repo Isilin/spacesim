@@ -30,7 +30,10 @@ describe("/api/admin", () => {
 
   it("laisse passer un compte admin (200) et renvoie le journal", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "admin@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "admin@exemple.fr",
+    );
     await setTestRole(accountId, "admin");
     const res = await app.inject({
       method: "GET",
@@ -43,7 +46,10 @@ describe("/api/admin", () => {
 
   it("un rôle sans permission déclarée sur cette action reste refusé (moderator, 403)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "mod@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "mod@exemple.fr",
+    );
     await setTestRole(accountId, "moderator");
     const res = await app.inject({
       method: "GET",
@@ -57,7 +63,10 @@ describe("/api/admin", () => {
 describe("/api/admin/ops (chantier 23.12)", () => {
   it("un compte admin voit la santé du moteur", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "admin@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "admin@exemple.fr",
+    );
     await setTestRole(accountId, "admin");
     const res = await app.inject({
       method: "GET",
@@ -73,7 +82,10 @@ describe("/api/admin/ops (chantier 23.12)", () => {
 
   it("un compte admin liste les empires", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "admin@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "admin@exemple.fr",
+    );
     await setTestRole(accountId, "admin");
     const res = await app.inject({
       method: "GET",
@@ -86,7 +98,10 @@ describe("/api/admin/ops (chantier 23.12)", () => {
 
   it("un moderator n'a pas accès aux ops (403)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "mod@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "mod@exemple.fr",
+    );
     await setTestRole(accountId, "moderator");
     const res = await app.inject({
       method: "GET",

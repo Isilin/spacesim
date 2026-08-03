@@ -57,7 +57,9 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     engine.diplomacy.proposeRelation(a, b.id, "nap");
     const proposalId = engine.snapshotForEmpire(b).proposals[0]!.id;
 
-    expect(engine.diplomacy.respondRelation(a, proposalId, true)).toBe("Proposition inconnue");
+    expect(engine.diplomacy.respondRelation(a, proposalId, true)).toBe(
+      "Proposition inconnue",
+    );
   });
 
   it("proposeRelation : refuse un doublon tant qu'une proposition est en attente", async () => {
@@ -65,9 +67,13 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     const a = empireFor(engine, "alpha");
     const b = empireFor(engine, "bravo");
     expect(engine.diplomacy.proposeRelation(a, b.id, "nap")).toBeNull();
-    expect(engine.diplomacy.proposeRelation(a, b.id, "alliance")).toMatch(/déjà en attente/);
+    expect(engine.diplomacy.proposeRelation(a, b.id, "alliance")).toMatch(
+      /déjà en attente/,
+    );
     // Même dans l'autre sens : la clé de proposition est canonique.
-    expect(engine.diplomacy.proposeRelation(b, a.id, "nap")).toMatch(/déjà en attente/);
+    expect(engine.diplomacy.proposeRelation(b, a.id, "nap")).toMatch(
+      /déjà en attente/,
+    );
   });
 
   it("cancelProposal : seul l'émetteur peut retirer sa propre proposition", async () => {
@@ -77,7 +83,9 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     engine.diplomacy.proposeRelation(a, b.id, "nap");
     const proposalId = engine.snapshotForEmpire(a).proposals[0]!.id;
 
-    expect(engine.diplomacy.cancelProposal(b, proposalId)).toBe("Proposition inconnue");
+    expect(engine.diplomacy.cancelProposal(b, proposalId)).toBe(
+      "Proposition inconnue",
+    );
     expect(engine.diplomacy.cancelProposal(a, proposalId)).toBeNull();
     expect(engine.snapshotForEmpire(a).proposals).toHaveLength(0);
   });
@@ -89,7 +97,11 @@ describe("GameEngine — propositions de pacte (chantier 16)", () => {
     expect(engine.diplomacy.breakRelation(a, b.id)).toMatch(/Aucun pacte/);
 
     engine.diplomacy.proposeRelation(a, b.id, "alliance");
-    engine.diplomacy.respondRelation(b, engine.snapshotForEmpire(b).proposals[0]!.id, true);
+    engine.diplomacy.respondRelation(
+      b,
+      engine.snapshotForEmpire(b).proposals[0]!.id,
+      true,
+    );
     expect(engine.diplomacy.breakRelation(a, b.id)).toBeNull();
     const relation = engine
       .snapshotForEmpire(a)

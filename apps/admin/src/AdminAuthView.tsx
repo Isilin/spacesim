@@ -27,7 +27,9 @@ export function AdminAuthView({ auth }: Props) {
     <div className="auth-screen">
       <form className="auth-panel" onSubmit={submit}>
         <h1 className="auth-brand">SPACESIM ADMIN</h1>
-        <p className="muted small auth-tagline">Connexion réservée aux comptes habilités.</p>
+        <p className="muted small auth-tagline">
+          Connexion réservée aux comptes habilités.
+        </p>
 
         <Field
           label="Adresse e-mail"

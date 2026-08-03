@@ -7,7 +7,14 @@
   background: var(--panel);
   border: 1px solid var(--border);
   padding: 10px 12px;
-  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  clip-path: polygon(
+    6px 0,
+    100% 0,
+    100% calc(100% - 6px),
+    calc(100% - 6px) 100%,
+    0 100%,
+    0 6px
+  );
   transition: border-color var(--motion-fast);
 }
 .row:hover {

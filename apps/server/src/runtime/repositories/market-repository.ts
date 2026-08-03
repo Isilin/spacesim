@@ -17,14 +17,26 @@ export class MarketRepository {
   }
 
   private toRow(tradingPostId: string, stocks: Stocks) {
-    return { tradingPostId, gameId: this.gameId, stocks: JSON.stringify(stocks) };
+    return {
+      tradingPostId,
+      gameId: this.gameId,
+      stocks: JSON.stringify(stocks),
+    };
   }
 
   insert(tradingPostId: string, stocks: Stocks): void {
-    this.writeSet.upsert("tradingPostStates", tradingPostId, this.toRow(tradingPostId, stocks));
+    this.writeSet.upsert(
+      "tradingPostStates",
+      tradingPostId,
+      this.toRow(tradingPostId, stocks),
+    );
   }
 
   save(tradingPostId: string, stocks: Stocks): void {
-    this.writeSet.upsert("tradingPostStates", tradingPostId, this.toRow(tradingPostId, stocks));
+    this.writeSet.upsert(
+      "tradingPostStates",
+      tradingPostId,
+      this.toRow(tradingPostId, stocks),
+    );
   }
 }

@@ -1,4 +1,8 @@
-import type { Station, StationZone, ZoneQueueItem } from "../../model/industry.js";
+import type {
+  Station,
+  StationZone,
+  ZoneQueueItem,
+} from "../../model/industry.js";
 
 /** Coordonnées axiales sur la grille hexagonale d'une station (chantier 26). */
 export interface HexCoord {
@@ -23,7 +27,9 @@ export function hexKey(q: number, r: number): string {
  *  les zones bâties ET en file — une position se réserve dès la mise en file, pas
  *  seulement à la résolution, sinon deux constructions simultanées pourraient viser la
  *  même cellule. */
-function occupiedHexes(station: Pick<Station, "zones" | "zoneQueue">): Set<string> {
+function occupiedHexes(
+  station: Pick<Station, "zones" | "zoneQueue">,
+): Set<string> {
   const occupied = new Set<string>([hexKey(0, 0)]);
   for (const zone of station.zones) occupied.add(hexKey(zone.q, zone.r));
   for (const item of station.zoneQueue) occupied.add(hexKey(item.q, item.r));
@@ -64,7 +70,10 @@ export function isValidGrowthPoint(
 
 /** Nombre de zones bâties d'un type donné — remplace l'ancien `zones[zoneType] ?? 0`
  *  maintenant que `zones` est une liste d'instances positionnées. */
-export function zoneCount(station: Pick<Station, "zones">, zoneTypeId: string): number {
+export function zoneCount(
+  station: Pick<Station, "zones">,
+  zoneTypeId: string,
+): number {
   return station.zones.filter((z) => z.zoneTypeId === zoneTypeId).length;
 }
 
@@ -98,16 +107,34 @@ export function migrateLegacyZoneQueue(
   raw: unknown,
   zones: StationZone[],
 ): ZoneQueueItem[] {
-  const items = raw as Array<Partial<ZoneQueueItem> & { zoneTypeId: string; startedAt: number; finishesAt: number }>;
+  const items = raw as Array<
+    Partial<ZoneQueueItem> & {
+      zoneTypeId: string;
+      startedAt: number;
+      finishesAt: number;
+    }
+  >;
   const migrated: ZoneQueueItem[] = [];
   for (const item of items) {
     if (typeof item.q === "number" && typeof item.r === "number") {
-      migrated.push({ zoneTypeId: item.zoneTypeId, q: item.q, r: item.r, startedAt: item.startedAt, finishesAt: item.finishesAt });
+      migrated.push({
+        zoneTypeId: item.zoneTypeId,
+        q: item.q,
+        r: item.r,
+        startedAt: item.startedAt,
+        finishesAt: item.finishesAt,
+      });
       continue;
     }
     const pos = computeGrowthPoints({ zones, zoneQueue: migrated })[0];
     if (!pos) throw new Error("Aucun point de croissance disponible");
-    migrated.push({ zoneTypeId: item.zoneTypeId, q: pos.q, r: pos.r, startedAt: item.startedAt, finishesAt: item.finishesAt });
+    migrated.push({
+      zoneTypeId: item.zoneTypeId,
+      q: pos.q,
+      r: pos.r,
+      startedAt: item.startedAt,
+      finishesAt: item.finishesAt,
+    });
   }
   return migrated;
 }

@@ -4,7 +4,11 @@ import type { Galaxy, Universe } from "../../model/universe.js";
 import { findGalaxyOfSystem } from "../../universe.js";
 
 /** Distance en sauts entre deux systèmes d'une galaxie (BFS), -1 si inaccessible. */
-export function jumpDistance(galaxy: Galaxy, fromSystemId: string, toSystemId: string): number {
+export function jumpDistance(
+  galaxy: Galaxy,
+  fromSystemId: string,
+  toSystemId: string,
+): number {
   if (fromSystemId === toSystemId) return 0;
   const adjacency = new Map<string, string[]>();
   for (const [a, b] of galaxy.links) {
@@ -105,7 +109,10 @@ export interface ConvoyStat {
 }
 
 /** Provider par défaut : stats des classes civiles historiques (chantier 13 : plans → override). */
-export function legacyConvoyStat(id: string, ships: Record<string, ShipDef> = SHIPS): ConvoyStat {
+export function legacyConvoyStat(
+  id: string,
+  ships: Record<string, ShipDef> = SHIPS,
+): ConvoyStat {
   const def = ships[id];
   return {
     speedMult: def?.speedMult ?? 1,
@@ -115,7 +122,10 @@ export function legacyConvoyStat(id: string, ships: Record<string, ShipDef> = SH
 }
 
 function convoyEntries(ships: ConvoyShips): [string, number][] {
-  return Object.entries(ships).filter(([, n]) => (n ?? 0) > 0) as [string, number][];
+  return Object.entries(ships).filter(([, n]) => (n ?? 0) > 0) as [
+    string,
+    number,
+  ][];
 }
 
 /**
@@ -129,7 +139,10 @@ export function convoyDurationMs(
   balance: BalanceConstants = DEFAULT_BALANCE,
 ): number {
   const entries = convoyEntries(ships);
-  const slowest = entries.reduce((max, [id]) => Math.max(max, statsOf(id).speedMult), 0);
+  const slowest = entries.reduce(
+    (max, [id]) => Math.max(max, statsOf(id).speedMult),
+    0,
+  );
   return transferDurationMs(jumps, balance) * (slowest || 1);
 }
 
@@ -162,7 +175,10 @@ export function convoyFees(
   portalsCrossed = 0,
   balance: BalanceConstants = DEFAULT_BALANCE,
 ): number {
-  return transferCostCredits(jumps, balance) + portalsCrossed * balance.gatewayTollCredits;
+  return (
+    transferCostCredits(jumps, balance) +
+    portalsCrossed * balance.gatewayTollCredits
+  );
 }
 
 /** Capacité totale d'un convoi. */
@@ -170,5 +186,8 @@ export function convoyCapacity(
   ships: ConvoyShips,
   statsOf: (id: string) => ConvoyStat = legacyConvoyStat,
 ): number {
-  return convoyEntries(ships).reduce((sum, [id, count]) => sum + statsOf(id).capacity * count, 0);
+  return convoyEntries(ships).reduce(
+    (sum, [id, count]) => sum + statsOf(id).capacity * count,
+    0,
+  );
 }

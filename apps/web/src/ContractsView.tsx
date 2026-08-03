@@ -34,15 +34,25 @@ const STATUS_LABELS: Record<Contract["status"], string> = {
   cancelled: "annulé",
 };
 
-export function ContractsView({ contracts, colony, playerId, now, send }: Props) {
+export function ContractsView({
+  contracts,
+  colony,
+  playerId,
+  now,
+  send,
+}: Props) {
   const [resource, setResource] = useState<MarketResource>("metals");
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
   const [durationMs, setDurationMs] = useState<number>(3_600_000);
-  const [acceptAmounts, setAcceptAmounts] = useState<Record<string, string>>({});
+  const [acceptAmounts, setAcceptAmounts] = useState<Record<string, string>>(
+    {},
+  );
 
   const mine = contracts.filter((c) => c.issuerId === playerId);
-  const available = contracts.filter((c) => c.issuerId !== playerId && c.status === "open");
+  const available = contracts.filter(
+    (c) => c.issuerId !== playerId && c.status === "open",
+  );
 
   const qty = Math.floor(Number(quantity));
   const unitPrice = Number(price);
@@ -62,8 +72,8 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
               <li key={c.id} className="route-item">
                 <div className="queue-head">
                   <strong>
-                    {RESOURCE_LABELS[c.resource]} — {c.remaining} / {c.quantity} à {c.pricePerUnit}{" "}
-                    cr/u
+                    {RESOURCE_LABELS[c.resource]} — {c.remaining} / {c.quantity}{" "}
+                    à {c.pricePerUnit} cr/u
                   </strong>
                   <Badge variant={c.status === "open" ? "ok" : "neutral"}>
                     {STATUS_LABELS[c.status]}
@@ -71,11 +81,16 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
                 </div>
                 <span className="small muted">
                   {c.colonyName}
-                  {c.status === "open" && ` · échéance ${formatDuration(c.deadline - now)}`}
+                  {c.status === "open" &&
+                    ` · échéance ${formatDuration(c.deadline - now)}`}
                 </span>
                 {c.status === "open" && (
                   <div className="route-actions">
-                    <Button onClick={() => send({ type: "cancelContract", contractId: c.id })}>
+                    <Button
+                      onClick={() =>
+                        send({ type: "cancelContract", contractId: c.id })
+                      }
+                    >
                       Annuler
                     </Button>
                   </div>
@@ -94,16 +109,21 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
             {available.map((c) => {
               const entry = acceptAmounts[c.id] ?? "";
               const wanted = Math.floor(Number(entry));
-              const validWanted = Number.isFinite(wanted) && wanted > 0 && wanted <= c.remaining;
+              const validWanted =
+                Number.isFinite(wanted) && wanted > 0 && wanted <= c.remaining;
               return (
                 <li key={c.id} className="route-item">
                   <div className="queue-head">
-                    <strong style={{ color: c.issuerColor }}>{c.issuerName}</strong>
-                    <span className="small muted">échéance {formatDuration(c.deadline - now)}</span>
+                    <strong style={{ color: c.issuerColor }}>
+                      {c.issuerName}
+                    </strong>
+                    <span className="small muted">
+                      échéance {formatDuration(c.deadline - now)}
+                    </span>
                   </div>
                   <span className="small muted">
-                    Demande {c.remaining} {RESOURCE_LABELS[c.resource]} à {c.colonyName}, payé{" "}
-                    {c.pricePerUnit} cr/u
+                    Demande {c.remaining} {RESOURCE_LABELS[c.resource]} à{" "}
+                    {c.colonyName}, payé {c.pricePerUnit} cr/u
                   </span>
                   <div className="form-stack">
                     <NumberInput
@@ -113,7 +133,10 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
                       value={entry}
                       placeholder="0"
                       onChange={(e) =>
-                        setAcceptAmounts({ ...acceptAmounts, [c.id]: e.target.value })
+                        setAcceptAmounts({
+                          ...acceptAmounts,
+                          [c.id]: e.target.value,
+                        })
                       }
                     />
                     <Button
@@ -147,7 +170,10 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
               label="Ressource"
               value={resource}
               onChange={(e) => setResource(e.target.value as MarketResource)}
-              options={MARKET_RESOURCES.map((res) => ({ value: res, label: RESOURCE_LABELS[res] }))}
+              options={MARKET_RESOURCES.map((res) => ({
+                value: res,
+                label: RESOURCE_LABELS[res],
+              }))}
             />
             <NumberInput
               label="Quantité"
@@ -165,11 +191,15 @@ export function ContractsView({ contracts, colony, playerId, now, send }: Props)
               label="Échéance"
               value={durationMs}
               onChange={(e) => setDurationMs(Number(e.target.value))}
-              options={DURATION_OPTIONS.map((opt) => ({ value: String(opt.ms), label: opt.label }))}
+              options={DURATION_OPTIONS.map((opt) => ({
+                value: String(opt.ms),
+                label: opt.label,
+              }))}
             />
             {escrow > 0 && (
               <span className="small muted">
-                Séquestre : {escrow} crédits (soldée dispo : {Math.floor(colony.resources.credits)})
+                Séquestre : {escrow} crédits (soldée dispo :{" "}
+                {Math.floor(colony.resources.credits)})
               </span>
             )}
             <Button

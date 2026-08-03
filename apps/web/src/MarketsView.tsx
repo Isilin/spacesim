@@ -72,19 +72,28 @@ export function MarketsView({
 
   const fromSystem = useMemo(() => {
     if (!activeColony) return undefined;
-    return allSystems(universe).find((s) => s.planets.some((p) => p.id === activeColony.planetId))
-      ?.id;
+    return allSystems(universe).find((s) =>
+      s.planets.some((p) => p.id === activeColony.planetId),
+    )?.id;
   }, [universe, activeColony]);
 
   const venues = useMemo(() => {
     const explored = new Set(exploredSystemIds);
     const marketById = new Map(markets.map((m) => [m.tradingPostId, m]));
-    const tradingPostVenues: { venue: MarketVenue; stock: number }[] = allTradingPosts(universe)
-      .filter((post) => explored.has(post.systemId) && marketById.has(post.id))
-      .map((post) => ({
-        venue: { id: post.id, name: post.name, systemId: post.systemId, factionId: post.factionId },
-        stock: marketById.get(post.id)!.stocks[resource],
-      }));
+    const tradingPostVenues: { venue: MarketVenue; stock: number }[] =
+      allTradingPosts(universe)
+        .filter(
+          (post) => explored.has(post.systemId) && marketById.has(post.id),
+        )
+        .map((post) => ({
+          venue: {
+            id: post.id,
+            name: post.name,
+            systemId: post.systemId,
+            factionId: post.factionId,
+          },
+          stock: marketById.get(post.id)!.stocks[resource],
+        }));
 
     const ownStationVenues: { venue: MarketVenue; stock: number }[] = stations
       .filter((s) => hasResourceMarket(s))
@@ -93,39 +102,71 @@ export function MarketsView({
         stock: s.resources[resource],
       }));
 
-    const foreignStationVenues: { venue: MarketVenue; stock: number }[] = foreignStations
-      .filter((s) => {
-        if (!s.market?.hasResourceMarket) return false;
-        const relation = leaderboard.find((e) => e.id === s.ownerId)?.relation ?? "neutral";
-        return canTradeAtStation(s.ownerId, playerId ?? "", s.market.access, relation);
-      })
-      .map((s) => ({
-        venue: { id: s.id, name: `${s.name} (${s.ownerName})`, systemId: s.systemId },
-        stock: s.market!.tradableStocks[resource] ?? 0,
-      }));
+    const foreignStationVenues: { venue: MarketVenue; stock: number }[] =
+      foreignStations
+        .filter((s) => {
+          if (!s.market?.hasResourceMarket) return false;
+          const relation =
+            leaderboard.find((e) => e.id === s.ownerId)?.relation ?? "neutral";
+          return canTradeAtStation(
+            s.ownerId,
+            playerId ?? "",
+            s.market.access,
+            relation,
+          );
+        })
+        .map((s) => ({
+          venue: {
+            id: s.id,
+            name: `${s.name} (${s.ownerName})`,
+            systemId: s.systemId,
+          },
+          stock: s.market!.tradableStocks[resource] ?? 0,
+        }));
 
     return [...tradingPostVenues, ...ownStationVenues, ...foreignStationVenues];
-  }, [universe, markets, stations, foreignStations, leaderboard, playerId, exploredSystemIds, resource]);
+  }, [
+    universe,
+    markets,
+    stations,
+    foreignStations,
+    leaderboard,
+    playerId,
+    exploredSystemIds,
+    resource,
+  ]);
 
   const rows = useMemo(() => {
     return venues
       .map(({ venue, stock }) => {
         const galaxy = findGalaxyOfSystem(universe, venue.systemId);
-        const galaxyIndex = universe.galaxies.findIndex((g) => g.id === galaxy?.id);
+        const galaxyIndex = universe.galaxies.findIndex(
+          (g) => g.id === galaxy?.id,
+        );
         const price = tradingPostPrice(resource, stock, {
           venueId: venue.id,
           galaxyIndex,
           factionId: venue.factionId,
         });
         const jumps = fromSystem
-          ? jumpDistanceInUniverse(universe, fromSystem, venue.systemId, portalLinks)
+          ? jumpDistanceInUniverse(
+              universe,
+              fromSystem,
+              venue.systemId,
+              portalLinks,
+            )
           : -1;
         const portals =
-          galaxyIndex > 0 && fromSystem && !fromSystem.startsWith(`${galaxy?.id}-`) ? 1 : 0;
+          galaxyIndex > 0 &&
+          fromSystem &&
+          !fromSystem.startsWith(`${galaxy?.id}-`)
+            ? 1
+            : 0;
         // Marge d'un lot de référence, nette des frais et du carburant du voyage.
         const gross = price * REFERENCE_LOT;
         const fees = jumps >= 0 ? convoyFees(jumps, portals) : 0;
-        const fuel = jumps >= 0 ? convoyFuel(jumps, REFERENCE_CONVOY, REFERENCE_LOT) : 0;
+        const fuel =
+          jumps >= 0 ? convoyFuel(jumps, REFERENCE_CONVOY, REFERENCE_LOT) : 0;
         return {
           venue,
           galaxyName: galaxy?.name ?? "?",
@@ -148,33 +189,45 @@ export function MarketsView({
     {
       key: "venue",
       label: "Comptoir / station",
-      render: (_, row) => (row.venue.id === best?.venue.id ? `★ ${row.venue.name}` : row.venue.name),
+      render: (_, row) =>
+        row.venue.id === best?.venue.id
+          ? `★ ${row.venue.name}`
+          : row.venue.name,
     },
     { key: "galaxyName", label: "Galaxie" },
-    { key: "stock", label: "Stock", align: "right", render: (_, row) => Math.floor(row.stock) },
+    {
+      key: "stock",
+      label: "Stock",
+      align: "right",
+      render: (_, row) => Math.floor(row.stock),
+    },
     {
       key: "price",
       label: "Prix",
       align: "right",
       render: (_, row) => row.price.toFixed(2),
-      trend: (row) => (gapOf(row) > 0.15 ? "up" : gapOf(row) < -0.15 ? "down" : undefined),
+      trend: (row) =>
+        gapOf(row) > 0.15 ? "up" : gapOf(row) < -0.15 ? "down" : undefined,
     },
     {
       key: "gap",
       label: "Écart",
       align: "right",
-      render: (_, row) => `${gapOf(row) >= 0 ? "+" : ""}${Math.round(gapOf(row) * 100)} %`,
+      render: (_, row) =>
+        `${gapOf(row) >= 0 ? "+" : ""}${Math.round(gapOf(row) * 100)} %`,
       trend: (row) => (gapOf(row) >= 0 ? "up" : "down"),
     },
     {
       key: "jumps",
       label: "Distance",
-      render: (_, row) => (row.jumps >= 0 ? `${row.jumps} sauts` : "hors portée"),
+      render: (_, row) =>
+        row.jumps >= 0 ? `${row.jumps} sauts` : "hors portée",
     },
     {
       key: "fees",
       label: "Frais + carburant",
-      render: (_, row) => (row.jumps >= 0 ? `${row.fees} cr · ${row.fuel} én.` : "—"),
+      render: (_, row) =>
+        row.jumps >= 0 ? `${row.fees} cr · ${row.fuel} én.` : "—",
     },
     {
       key: "net",
@@ -191,7 +244,10 @@ export function MarketsView({
           label="Ressource"
           value={resource}
           onChange={(e) => setResource(e.target.value as MarketResource)}
-          options={MARKET_RESOURCES.map((res) => ({ value: res, label: RESOURCE_LABELS[res] }))}
+          options={MARKET_RESOURCES.map((res) => ({
+            value: res,
+            label: RESOURCE_LABELS[res],
+          }))}
         />
         <Stat label="Prix de référence" value={BASE_PRICES[resource]} />
         {activeColony && <Stat label="Depuis" value={activeColony.name} />}
@@ -199,19 +255,20 @@ export function MarketsView({
 
       {rows.length === 0 ? (
         <p className="muted">
-          Aucun comptoir ni station commerciale découvert. Explorez des systèmes pour comparer les
-          marchés.
+          Aucun comptoir ni station commerciale découvert. Explorez des systèmes
+          pour comparer les marchés.
         </p>
       ) : (
         <Table columns={columns} rows={rows} />
       )}
 
       <p className="small muted">
-        Le prix d'un lieu de marché dépend de son stock, de son biais local et de l'éloignement de
-        sa galaxie : les anneaux lointains paient cher le manufacturé et bradent le brut. Les
-        stations commerciales de joueurs n'apparaissent ici que si leur marché de ressources est
-        construit et leur politique d'accès vous autorise. La colonne « net » retranche les frais
-        du voyage pour un cargo léger plein.
+        Le prix d'un lieu de marché dépend de son stock, de son biais local et
+        de l'éloignement de sa galaxie : les anneaux lointains paient cher le
+        manufacturé et bradent le brut. Les stations commerciales de joueurs
+        n'apparaissent ici que si leur marché de ressources est construit et
+        leur politique d'accès vous autorise. La colonne « net » retranche les
+        frais du voyage pour un cargo léger plein.
       </p>
     </Panel>
   );

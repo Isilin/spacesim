@@ -45,7 +45,8 @@ export function generateObjectiveSpec(
     spec.targetCount = colonyCount + 1 + Math.floor(rng() * 2); // +1 ou +2 colonies de plus qu'aujourd'hui
   }
   if (kind === "hold_system") {
-    spec.targetSystemId = claimedSystemIds[Math.floor(rng() * claimedSystemIds.length)];
+    spec.targetSystemId =
+      claimedSystemIds[Math.floor(rng() * claimedSystemIds.length)];
   }
   return spec;
 }
@@ -71,7 +72,8 @@ export function objectiveMet(
       return progress.colonyCount >= (spec.targetCount ?? Infinity);
     case "hold_system":
       return (
-        spec.targetSystemId !== undefined && progress.claimedSystemIds.includes(spec.targetSystemId)
+        spec.targetSystemId !== undefined &&
+        progress.claimedSystemIds.includes(spec.targetSystemId)
       );
     case "lead_population":
       return progress.leadsPopulation;

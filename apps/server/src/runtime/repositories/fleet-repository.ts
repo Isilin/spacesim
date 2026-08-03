@@ -49,7 +49,12 @@ export class FleetRepository {
     await db
       .update(schema.fleets)
       .set({ ownerId })
-      .where(and(eq(schema.fleets.gameId, this.gameId), isNull(schema.fleets.ownerId)));
+      .where(
+        and(
+          eq(schema.fleets.gameId, this.gameId),
+          isNull(schema.fleets.ownerId),
+        ),
+      );
   }
 
   async loadLairs(): Promise<PirateLair[]> {

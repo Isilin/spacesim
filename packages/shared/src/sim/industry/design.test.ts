@@ -4,7 +4,11 @@ import { MODULES } from "../../content/modules.js";
 import { PRESETS, presetById } from "../../content/presets.js";
 import { TECH_IDS, type TechId } from "../../content/techs.js";
 import { computeEffects, NO_EFFECTS } from "../empire/research.js";
-import { blueprintLoad, resolveBlueprint, validateBlueprint } from "./design.js";
+import {
+  blueprintLoad,
+  resolveBlueprint,
+  validateBlueprint,
+} from "./design.js";
 
 const ALL = computeEffects(TECH_IDS as unknown as TechId[]);
 
@@ -47,11 +51,14 @@ describe("validateBlueprint", () => {
   });
 
   it("signale châssis et module inconnus", () => {
-    expect(validateBlueprint({ chassisId: "nope", modules: [] }, ALL)[0]).toContain("inconnu");
     expect(
-      validateBlueprint({ chassisId: "scout_frame", modules: ["nope"] }, ALL).some((p) =>
-        p.includes("inconnu"),
-      ),
+      validateBlueprint({ chassisId: "nope", modules: [] }, ALL)[0],
+    ).toContain("inconnu");
+    expect(
+      validateBlueprint(
+        { chassisId: "scout_frame", modules: ["nope"] },
+        ALL,
+      ).some((p) => p.includes("inconnu")),
     ).toBe(true);
   });
 
@@ -63,7 +70,10 @@ describe("validateBlueprint", () => {
     // Inconnu de la table statique → "inconnu" ; connu de la table injectée → pas "inconnu"
     // (juste "non débloqué", NO_EFFECTS n'ayant jamais entendu parler de cet id).
     expect(
-      validateBlueprint({ chassisId: "freshly_minted", modules: [] }, NO_EFFECTS)[0],
+      validateBlueprint(
+        { chassisId: "freshly_minted", modules: [] },
+        NO_EFFECTS,
+      )[0],
     ).toContain("inconnu");
     const problems = validateBlueprint(
       { chassisId: "freshly_minted", modules: [] },
@@ -94,7 +104,9 @@ describe("resolveBlueprint", () => {
   it("le bonus de rôle du châssis majore l'effet (soute)", () => {
     // light_freighter roleBonus cargo 1.2 : 2 pods de 150 → 360.
     const s = resolveBlueprint(presetById("freighter_mk1")!);
-    expect(s.capacity).toBeCloseTo(2 * MODULES.cargo_pod.effects.capacity! * 1.2);
+    expect(s.capacity).toBeCloseTo(
+      2 * MODULES.cargo_pod.effects.capacity! * 1.2,
+    );
   });
 
   it("le châssis lourd a plus de coque que le léger", () => {
@@ -114,18 +126,31 @@ describe("resolveBlueprint", () => {
   });
 
   it("le coût agrège châssis et modules", () => {
-    const s = resolveBlueprint({ chassisId: "scout_frame", modules: ["cargo_pod"] });
-    expect(s.cost.metals).toBe(CHASSIS.scout_frame.cost.metals! + MODULES.cargo_pod.cost.metals!);
+    const s = resolveBlueprint({
+      chassisId: "scout_frame",
+      modules: ["cargo_pod"],
+    });
+    expect(s.cost.metals).toBe(
+      CHASSIS.scout_frame.cost.metals! + MODULES.cargo_pod.cost.metals!,
+    );
   });
 
   it("accepte des tables de châssis/modules injectées (chantier 23.10) — id inconnu des tables statiques", () => {
     const customChassis = {
       ...CHASSIS,
-      freshly_minted: { ...CHASSIS.scout_frame, id: "freshly_minted", hull: 9999 },
+      freshly_minted: {
+        ...CHASSIS.scout_frame,
+        id: "freshly_minted",
+        hull: 9999,
+      },
     };
     const customModules = {
       ...MODULES,
-      also_new: { ...MODULES.cargo_pod, id: "also_new", effects: { capacity: 500 } },
+      also_new: {
+        ...MODULES.cargo_pod,
+        id: "also_new",
+        effects: { capacity: 500 },
+      },
     };
     const s = resolveBlueprint(
       { chassisId: "freshly_minted", modules: ["also_new"] },
@@ -135,15 +160,24 @@ describe("resolveBlueprint", () => {
     expect(s.hull).toBe(9999);
     expect(s.capacity).toBe(500);
     // Sans les tables injectées, ces ids n'existent pas.
-    expect(resolveBlueprint({ chassisId: "freshly_minted", modules: [] }).hull).toBe(0);
+    expect(
+      resolveBlueprint({ chassisId: "freshly_minted", modules: [] }).hull,
+    ).toBe(0);
   });
 });
 
 describe("blueprintLoad", () => {
   it("somme les budgets consommés", () => {
-    const load = blueprintLoad({ chassisId: "scout_frame", modules: ["laser_pulse", "cargo_pod"] });
-    expect(load.power).toBe(MODULES.laser_pulse.power + MODULES.cargo_pod.power);
-    expect(load.tonnage).toBe(MODULES.laser_pulse.tonnage + MODULES.cargo_pod.tonnage);
+    const load = blueprintLoad({
+      chassisId: "scout_frame",
+      modules: ["laser_pulse", "cargo_pod"],
+    });
+    expect(load.power).toBe(
+      MODULES.laser_pulse.power + MODULES.cargo_pod.power,
+    );
+    expect(load.tonnage).toBe(
+      MODULES.laser_pulse.tonnage + MODULES.cargo_pod.tonnage,
+    );
   });
 });
 
@@ -156,7 +190,10 @@ describe("déblocage par la recherche", () => {
   });
 
   it("rechercher la tech débloque son châssis/module", () => {
-    const e = computeEffects(["military_doctrine", "capital_ships"] as TechId[]);
+    const e = computeEffects([
+      "military_doctrine",
+      "capital_ships",
+    ] as TechId[]);
     expect(e.unlockedChassis.has("warframe")).toBe(true);
     expect(e.unlockedChassis.has("battlecruiser")).toBe(true);
     expect(e.unlockedModules.has("railgun")).toBe(true);
@@ -166,12 +203,22 @@ describe("déblocage par la recherche", () => {
   it("accepte des tables de châssis/modules injectées (chantier 23.10)", () => {
     const customChassis = {
       ...CHASSIS,
-      freshly_minted: { ...CHASSIS.scout_frame, id: "freshly_minted", requiresTech: "metallurgy" },
+      freshly_minted: {
+        ...CHASSIS.scout_frame,
+        id: "freshly_minted",
+        requiresTech: "metallurgy",
+      },
     };
-    const withTech = computeEffects(["metallurgy"] as TechId[], undefined, customChassis);
-    expect(withTech.unlockedChassis.has("freshly_minted")).toBe(true);
-    expect(computeEffects(["metallurgy"] as TechId[]).unlockedChassis.has("freshly_minted")).toBe(
-      false,
+    const withTech = computeEffects(
+      ["metallurgy"] as TechId[],
+      undefined,
+      customChassis,
     );
+    expect(withTech.unlockedChassis.has("freshly_minted")).toBe(true);
+    expect(
+      computeEffects(["metallurgy"] as TechId[]).unlockedChassis.has(
+        "freshly_minted",
+      ),
+    ).toBe(false);
   });
 });

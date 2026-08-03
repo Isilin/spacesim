@@ -1,4 +1,10 @@
-import type { Colony, Galaxy, Planet, StarSystem, Universe } from "@spacesim/shared";
+import type {
+  Colony,
+  Galaxy,
+  Planet,
+  StarSystem,
+  Universe,
+} from "@spacesim/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useGameStore } from "./game-store.js";
 import {
@@ -24,7 +30,10 @@ function colony(id: string): Colony {
 
 describe("findGalaxyById / findSystemById / findBodyById", () => {
   const universe = {
-    galaxies: [galaxy("gal-0", [system("sys-0", [planet("p-0")])]), galaxy("gal-1")],
+    galaxies: [
+      galaxy("gal-0", [system("sys-0", [planet("p-0")])]),
+      galaxy("gal-1"),
+    ],
   } as unknown as Universe;
 
   it("trouve une galaxie/un système/un corps existant", () => {
@@ -53,7 +62,9 @@ describe("selectActiveColony", () => {
   it("retombe sur la première colonie si l'id ne correspond à rien", () => {
     useGameStore.setState({ colonies: [colony("c1"), colony("c2")] });
     expect(selectActiveColony(null)(useGameStore.getState())?.id).toBe("c1");
-    expect(selectActiveColony("c-inconnue")(useGameStore.getState())?.id).toBe("c1");
+    expect(selectActiveColony("c-inconnue")(useGameStore.getState())?.id).toBe(
+      "c1",
+    );
   });
 
   it("renvoie null sans aucune colonie", () => {

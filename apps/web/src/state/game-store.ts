@@ -1,4 +1,8 @@
-import type { ClientMessage, EmpireSnapshot, ServerMessage } from "@spacesim/protocol";
+import type {
+  ClientMessage,
+  EmpireSnapshot,
+  ServerMessage,
+} from "@spacesim/protocol";
 import type {
   Blueprint,
   Contract,

@@ -9,13 +9,19 @@ import type { ResourceId } from "../model/resources.js";
  * Hybride : `kind` "generic" = polyvalent, sans bonus ; les autres sont spécialisés
  * (slots orientés + `roleBonus` sur leur rôle de prédilection).
  */
-export type ChassisKind = "generic" | "military" | "freighter" | "miner" | "colonizer" | "explorer";
+export type ChassisKind =
+  | "generic"
+  | "military"
+  | "freighter"
+  | "miner"
+  | "colonizer"
+  | "explorer";
 
 /** Où vit et se produit un vaisseau bâti : flotte (combat/mouvement) ou pool de colonie. */
 export type ShipDomain = "fleet" | "colony";
 
 export interface ChassisDef {
-  id: ChassisId;
+  id: string;
   kind: ChassisKind;
   domain: ShipDomain;
   /** Coque de base (avant modules). */
@@ -36,7 +42,7 @@ export interface ChassisDef {
   cost: Partial<Record<ResourceId, number>>;
   buildMs: number;
   /** Tech requise ; absente = disponible d'emblée (voir BASE_CHASSIS). */
-  requiresTech?: TechId;
+  requiresTech?: string;
 }
 
 export const CHASSIS_IDS = [
@@ -53,7 +59,12 @@ export const CHASSIS_IDS = [
 
 export type ChassisId = (typeof CHASSIS_IDS)[number];
 
-export const CHASSIS: Record<ChassisId, ChassisDef> = {
+export interface StaticChassisDef extends ChassisDef {
+  id: ChassisId;
+  requiresTech?: TechId;
+}
+
+export const CHASSIS: Record<ChassisId, StaticChassisDef> = {
   // ─── Génériques ───
   scout_frame: {
     id: "scout_frame",
@@ -209,4 +220,8 @@ export const CHASSIS: Record<ChassisId, ChassisDef> = {
 };
 
 /** Châssis disponibles sans recherche (le reste est débloqué par sa `requiresTech`). */
-export const BASE_CHASSIS: ChassisId[] = ["scout_frame", "standard_hull", "light_freighter"];
+export const BASE_CHASSIS: ChassisId[] = [
+  "scout_frame",
+  "standard_hull",
+  "light_freighter",
+];

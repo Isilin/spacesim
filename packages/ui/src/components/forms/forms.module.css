@@ -18,7 +18,14 @@
   color: var(--text);
   padding: 8px 10px;
   width: 100%;
-  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+  clip-path: polygon(
+    5px 0,
+    100% 0,
+    100% calc(100% - 5px),
+    calc(100% - 5px) 100%,
+    0 100%,
+    0 5px
+  );
 }
 .input:focus,
 .select:focus {

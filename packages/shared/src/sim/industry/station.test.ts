@@ -62,7 +62,14 @@ describe("enqueueZone", () => {
       resources: { ...emptyStationResources(), metals: 500, components: 200 },
     });
     const { q, r } = firstGrowthPoint(station);
-    const result = enqueueZone(station, "industrial_zone", q, r, 1000, baseEffects);
+    const result = enqueueZone(
+      station,
+      "industrial_zone",
+      q,
+      r,
+      1000,
+      baseEffects,
+    );
     if (!result.ok) throw new Error(result.reason);
     expect(result.station.resources.metals).toBe(
       500 - ZONE_TYPES.industrial_zone.cost.metals!,
@@ -91,7 +98,14 @@ describe("enqueueZone", () => {
       resources: { ...emptyStationResources(), metals: 10 },
     });
     const { q, r } = firstGrowthPoint(station);
-    const result = enqueueZone(station, "industrial_zone", q, r, 0, baseEffects);
+    const result = enqueueZone(
+      station,
+      "industrial_zone",
+      q,
+      r,
+      0,
+      baseEffects,
+    );
     expect(result.ok).toBe(false);
   });
 
@@ -100,19 +114,37 @@ describe("enqueueZone", () => {
       resources: { ...emptyStationResources(), metals: 500, components: 200 },
     });
     // Le hub (0,0) n'est jamais un point de croissance valide.
-    const result = enqueueZone(station, "industrial_zone", 0, 0, 0, baseEffects);
+    const result = enqueueZone(
+      station,
+      "industrial_zone",
+      0,
+      0,
+      0,
+      baseEffects,
+    );
     expect(result.ok).toBe(false);
   });
 
   it("refuse de viser deux fois la même cellule (déjà réservée en file)", () => {
     let station = makeStation({
-      resources: { ...emptyStationResources(), metals: 100_000, components: 100_000 },
+      resources: {
+        ...emptyStationResources(),
+        metals: 100_000,
+        components: 100_000,
+      },
     });
     const { q, r } = firstGrowthPoint(station);
     const first = enqueueZone(station, "industrial_zone", q, r, 0, baseEffects);
     if (!first.ok) throw new Error(first.reason);
     station = first.station;
-    const second = enqueueZone(station, "industrial_zone", q, r, 0, baseEffects);
+    const second = enqueueZone(
+      station,
+      "industrial_zone",
+      q,
+      r,
+      0,
+      baseEffects,
+    );
     expect(second.ok).toBe(false);
   });
 
@@ -126,7 +158,14 @@ describe("enqueueZone", () => {
     });
     for (let i = 0; i < 10; i++) {
       const { q, r } = firstGrowthPoint(station);
-      const result = enqueueZone(station, "industrial_zone", q, r, 0, baseEffects);
+      const result = enqueueZone(
+        station,
+        "industrial_zone",
+        q,
+        r,
+        0,
+        baseEffects,
+      );
       if (!result.ok) throw new Error(result.reason);
       station = result.station;
     }
@@ -138,18 +177,32 @@ describe("resolveZoneQueue", () => {
   it("convertit les zones terminées en instances positionnées", () => {
     const station = makeStation({
       zoneQueue: [
-        { zoneTypeId: "industrial_zone", q: 1, r: 0, startedAt: 0, finishesAt: 1000 },
+        {
+          zoneTypeId: "industrial_zone",
+          q: 1,
+          r: 0,
+          startedAt: 0,
+          finishesAt: 1000,
+        },
       ],
     });
     const resolved = resolveZoneQueue(station, 1000);
-    expect(resolved.zones).toEqual([{ zoneTypeId: "industrial_zone", q: 1, r: 0 }]);
+    expect(resolved.zones).toEqual([
+      { zoneTypeId: "industrial_zone", q: 1, r: 0 },
+    ]);
     expect(resolved.zoneQueue).toHaveLength(0);
   });
 
   it("laisse en file ce qui n'est pas encore terminé", () => {
     const station = makeStation({
       zoneQueue: [
-        { zoneTypeId: "industrial_zone", q: 1, r: 0, startedAt: 0, finishesAt: 2000 },
+        {
+          zoneTypeId: "industrial_zone",
+          q: 1,
+          r: 0,
+          startedAt: 0,
+          finishesAt: 2000,
+        },
       ],
     });
     const resolved = resolveZoneQueue(station, 1000);

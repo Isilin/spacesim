@@ -28,43 +28,82 @@ async function sanction(
 describe("/api/admin/accounts/:id/sanctions", () => {
   it("un compte joueur ne peut pas sanctionner (403)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token: playerToken } = await registerTestAccount(app, "joueur@exemple.fr");
-    const { accountId: targetId } = await registerTestAccount(app, "cible@exemple.fr");
-    const res = await sanction(app, playerToken, targetId, { kind: "warn", reason: "test" });
+    const { token: playerToken } = await registerTestAccount(
+      app,
+      "joueur@exemple.fr",
+    );
+    const { accountId: targetId } = await registerTestAccount(
+      app,
+      "cible@exemple.fr",
+    );
+    const res = await sanction(app, playerToken, targetId, {
+      kind: "warn",
+      reason: "test",
+    });
     expect(res.statusCode).toBe(403);
   });
 
   it("un id de compte inconnu renvoie 404", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "mod@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "mod@exemple.fr",
+    );
     await setTestRole(accountId, "moderator");
-    const res = await sanction(app, token, "id-inconnu", { kind: "warn", reason: "test" });
+    const res = await sanction(app, token, "id-inconnu", {
+      kind: "warn",
+      reason: "test",
+    });
     expect(res.statusCode).toBe(404);
   });
 
   it("une raison vide est refusée (400)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "mod@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "mod@exemple.fr",
+    );
     await setTestRole(accountId, "moderator");
-    const { accountId: targetId } = await registerTestAccount(app, "cible@exemple.fr");
-    const res = await sanction(app, token, targetId, { kind: "warn", reason: "" });
+    const { accountId: targetId } = await registerTestAccount(
+      app,
+      "cible@exemple.fr",
+    );
+    const res = await sanction(app, token, targetId, {
+      kind: "warn",
+      reason: "",
+    });
     expect(res.statusCode).toBe(400);
   });
 
   it("une suspension sans durationMs est refusée (400)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "mod@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "mod@exemple.fr",
+    );
     await setTestRole(accountId, "moderator");
-    const { accountId: targetId } = await registerTestAccount(app, "cible@exemple.fr");
-    const res = await sanction(app, token, targetId, { kind: "suspend", reason: "spam" });
+    const { accountId: targetId } = await registerTestAccount(
+      app,
+      "cible@exemple.fr",
+    );
+    const res = await sanction(app, token, targetId, {
+      kind: "suspend",
+      reason: "spam",
+    });
     expect(res.statusCode).toBe(400);
   });
 
   it("un avertissement journalise mais ne bloque pas la connexion", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "mod@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "mod@exemple.fr",
+    );
     await setTestRole(accountId, "moderator");
-    const { accountId: targetId } = await registerTestAccount(app, "cible@exemple.fr");
+    const { accountId: targetId } = await registerTestAccount(
+      app,
+      "cible@exemple.fr",
+    );
     const res = await sanction(app, token, targetId, {
       kind: "warn",
       reason: "comportement limite",
@@ -84,11 +123,20 @@ describe("/api/admin/accounts/:id/sanctions", () => {
 
   it("un ban journalise, déconnecte, et bloque la connexion avec un message explicite", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "mod@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "mod@exemple.fr",
+    );
     await setTestRole(accountId, "moderator");
-    const { accountId: targetId } = await registerTestAccount(app, "cible@exemple.fr");
+    const { accountId: targetId } = await registerTestAccount(
+      app,
+      "cible@exemple.fr",
+    );
 
-    const res = await sanction(app, token, targetId, { kind: "ban", reason: "triche avérée" });
+    const res = await sanction(app, token, targetId, {
+      kind: "ban",
+      reason: "triche avérée",
+    });
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.sanctionStatus).toEqual({
@@ -110,9 +158,15 @@ describe("/api/admin/accounts/:id/sanctions", () => {
 
   it("une suspension expire d'elle-même : bloque puis autorise à nouveau après l'échéance", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "mod@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "mod@exemple.fr",
+    );
     await setTestRole(accountId, "moderator");
-    const { accountId: targetId } = await registerTestAccount(app, "cible@exemple.fr");
+    const { accountId: targetId } = await registerTestAccount(
+      app,
+      "cible@exemple.fr",
+    );
 
     // Marge large (pas 50/100ms) : le boot charge désormais aussi le contenu de jeu
     // (chantier 23.5, requêtes DB supplémentaires) — une fenêtre trop courte rendait ce
@@ -143,12 +197,24 @@ describe("/api/admin/accounts/:id/sanctions", () => {
 
   it("unban lève un ban : la connexion redevient possible", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "mod@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "mod@exemple.fr",
+    );
     await setTestRole(accountId, "moderator");
-    const { accountId: targetId } = await registerTestAccount(app, "cible@exemple.fr");
+    const { accountId: targetId } = await registerTestAccount(
+      app,
+      "cible@exemple.fr",
+    );
 
-    await sanction(app, token, targetId, { kind: "ban", reason: "erreur de modération" });
-    const unban = await sanction(app, token, targetId, { kind: "unban", reason: "levée d'erreur" });
+    await sanction(app, token, targetId, {
+      kind: "ban",
+      reason: "erreur de modération",
+    });
+    const unban = await sanction(app, token, targetId, {
+      kind: "unban",
+      reason: "levée d'erreur",
+    });
     expect(unban.json().sanctionStatus.active).toBe(false);
 
     const login = await app.inject({
@@ -161,9 +227,15 @@ describe("/api/admin/accounts/:id/sanctions", () => {
 
   it("force_logout révoque les sessions sans changer le statut de sanction", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "mod@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "mod@exemple.fr",
+    );
     await setTestRole(accountId, "moderator");
-    const { accountId: targetId } = await registerTestAccount(app, "cible@exemple.fr");
+    const { accountId: targetId } = await registerTestAccount(
+      app,
+      "cible@exemple.fr",
+    );
 
     const res = await sanction(app, token, targetId, {
       kind: "force_logout",
@@ -177,11 +249,20 @@ describe("/api/admin/accounts/:id/sanctions", () => {
 
   it("chaque sanction est journalisée dans le journal d'audit", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "mod@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "mod@exemple.fr",
+    );
     await setTestRole(accountId, "moderator");
-    const { accountId: targetId } = await registerTestAccount(app, "cible@exemple.fr");
+    const { accountId: targetId } = await registerTestAccount(
+      app,
+      "cible@exemple.fr",
+    );
 
-    await sanction(app, token, targetId, { kind: "warn", reason: "premier avertissement" });
+    await sanction(app, token, targetId, {
+      kind: "warn",
+      reason: "premier avertissement",
+    });
 
     // Le journal d'audit lui-même n'est lisible que par "admin" (moderator ne l'a pas) —
     // second compte pour cette seule vérification.

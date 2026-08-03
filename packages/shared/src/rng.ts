@@ -34,7 +34,10 @@ export function pick<T>(rng: Rng, arr: readonly T[]): T {
   return item;
 }
 
-export function pickWeighted<T>(rng: Rng, entries: readonly (readonly [T, number])[]): T {
+export function pickWeighted<T>(
+  rng: Rng,
+  entries: readonly (readonly [T, number])[],
+): T {
   const total = entries.reduce((s, [, w]) => s + w, 0);
   let r = rng() * total;
   for (const [value, weight] of entries) {

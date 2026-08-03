@@ -26,9 +26,14 @@ const COLUMNS: TableColumn<AuditEntry>[] = [
   {
     key: "targetType",
     label: "Cible",
-    render: (_value, row) => (row.targetType ? `${row.targetType}:${row.targetId}` : "—"),
+    render: (_value, row) =>
+      row.targetType ? `${row.targetType}:${row.targetId}` : "—",
   },
-  { key: "reason", label: "Raison", render: (value) => (value as string | null) ?? "—" },
+  {
+    key: "reason",
+    label: "Raison",
+    render: (value) => (value as string | null) ?? "—",
+  },
 ];
 
 /**
@@ -63,8 +68,12 @@ export function AuditLogView({ token }: Props) {
     <Panel title="Journal d'audit">
       {error && <p className="auth-error">{error}</p>}
       {!error && entries === null && <p className="muted">Chargement…</p>}
-      {!error && entries?.length === 0 && <EmptyState>Aucune action journalisée.</EmptyState>}
-      {!error && entries && entries.length > 0 && <Table columns={COLUMNS} rows={entries} />}
+      {!error && entries?.length === 0 && (
+        <EmptyState>Aucune action journalisée.</EmptyState>
+      )}
+      {!error && entries && entries.length > 0 && (
+        <Table columns={COLUMNS} rows={entries} />
+      )}
     </Panel>
   );
 }

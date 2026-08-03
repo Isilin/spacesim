@@ -33,5 +33,8 @@ export function outpostTick(
   yieldMult = 1,
 ): number {
   if (!upkeepPaid) return oreStock;
-  return Math.min(OUTPOST_STOCK_CAP, oreStock + MINING_RATE * richness * yieldMult);
+  return Math.min(
+    OUTPOST_STOCK_CAP,
+    oreStock + MINING_RATE * richness * yieldMult,
+  );
 }

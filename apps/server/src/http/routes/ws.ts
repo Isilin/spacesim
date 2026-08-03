@@ -8,16 +8,23 @@ import { dispatchClientMessage } from "../../ws/dispatch.js";
 /** Fermeture WS : session absente/expirée (le client renvoie alors vers l'écran de connexion). */
 const WS_UNAUTHORIZED = 4001;
 
-export function registerWsRoutes(app: FastifyInstance, engine: GameEngine): void {
+export function registerWsRoutes(
+  app: FastifyInstance,
+  engine: GameEngine,
+): void {
   app.get("/ws", { websocket: true }, async (socket, request) => {
     const send = (msg: ServerMessage) => socket.send(JSON.stringify(msg));
     // Identité de connexion (chantier 8) : jeton de session `?session=` → compte → empire.
-    const account = await resolveSession((request.query as { session?: string }).session);
+    const account = await resolveSession(
+      (request.query as { session?: string }).session,
+    );
     if (!account) {
       socket.close(WS_UNAUTHORIZED, "Session invalide");
       return;
     }
-    const empire = engine.empireForAccount(account.id) ?? engine.createEmpireForAccount(account.id);
+    const empire =
+      engine.empireForAccount(account.id) ??
+      engine.createEmpireForAccount(account.id);
     if (!empire) {
       socket.close(WS_UNAUTHORIZED, "Aucun empire pour ce compte");
       return;

@@ -50,13 +50,18 @@ interface Props {
 }
 
 /** Détail affiché sous le libellé d'un objectif (chantier 17.4). */
-function objectiveDetail(o: Objective, universe: Universe, colonyCount: number): string {
+function objectiveDetail(
+  o: Objective,
+  universe: Universe,
+  colonyCount: number,
+): string {
   switch (o.kind) {
     case "colonize_n_systems":
       return `${colonyCount}/${o.targetCount ?? "?"} colonies`;
     case "hold_system": {
       const name =
-        allSystems(universe).find((s) => s.id === o.targetSystemId)?.name ?? o.targetSystemId;
+        allSystems(universe).find((s) => s.id === o.targetSystemId)?.name ??
+        o.targetSystemId;
       return `Conserver la revendication sur ${name}`;
     }
     case "lead_population":
@@ -70,8 +75,12 @@ function objectiveDetail(o: Objective, universe: Universe, colonyCount: number):
 
 /** Lieu touché par un événement de monde (galaxie ou faction, selon le genre). */
 function worldEventLocation(e: WorldEvent, universe: Universe): string {
-  if (e.galaxyId) return universe.galaxies.find((g) => g.id === e.galaxyId)?.name ?? e.galaxyId;
-  if (e.factionId) return FACTIONS[e.factionId as FactionId]?.name ?? e.factionId;
+  if (e.galaxyId)
+    return (
+      universe.galaxies.find((g) => g.id === e.galaxyId)?.name ?? e.galaxyId
+    );
+  if (e.factionId)
+    return FACTIONS[e.factionId as FactionId]?.name ?? e.factionId;
   return "";
 }
 
@@ -119,19 +128,29 @@ export function EmpireView({
           <div className="resource-cell">
             <span className="resource-name">Univers</span>
             <span className="resource-stock">
-              {universe.galaxies.length} galaxies · {allSystems(universe).length} systèmes
+              {universe.galaxies.length} galaxies ·{" "}
+              {allSystems(universe).length} systèmes
             </span>
           </div>
           <div className="resource-cell">
             <span className="resource-name">Influence</span>
-            <span className="resource-stock">✦ {Math.floor(game.influence)}</span>
+            <span className="resource-stock">
+              ✦ {Math.floor(game.influence)}
+            </span>
             <span className="resource-rate ok">
-              {(influencePerTick(colonies, game.claimedSystemIds.length, effects.influenceMult) >= 0
+              {(influencePerTick(
+                colonies,
+                game.claimedSystemIds.length,
+                effects.influenceMult,
+              ) >= 0
                 ? "+"
                 : "") +
                 Math.round(
-                  influencePerTick(colonies, game.claimedSystemIds.length, effects.influenceMult) *
-                    1000,
+                  influencePerTick(
+                    colonies,
+                    game.claimedSystemIds.length,
+                    effects.influenceMult,
+                  ) * 1000,
                 ) /
                   1000}
               /tick
@@ -139,10 +158,15 @@ export function EmpireView({
           </div>
           <div className="resource-cell">
             <span className="resource-name">Systèmes revendiqués</span>
-            <span className="resource-stock">{game.claimedSystemIds.length}</span>
+            <span className="resource-stock">
+              {game.claimedSystemIds.length}
+            </span>
             <span className="resource-rate muted">
               {game.claimedSystemIds
-                .map((id) => allSystems(universe).find((s) => s.id === id)?.name ?? id)
+                .map(
+                  (id) =>
+                    allSystems(universe).find((s) => s.id === id)?.name ?? id,
+                )
                 .join(", ") || "aucun"}
             </span>
           </div>
@@ -157,10 +181,13 @@ export function EmpireView({
               <li key={o.id} className="milestone">
                 <div className="queue-head">
                   <span>🎯 {OBJECTIVE_KIND_LABELS[o.kind]}</span>
-                  <span className="muted small">{formatDuration(o.deadline - now)}</span>
+                  <span className="muted small">
+                    {formatDuration(o.deadline - now)}
+                  </span>
                 </div>
                 <span className="small muted">
-                  {objectiveDetail(o, universe, colonies.length)} · récompense {o.reward} crédits
+                  {objectiveDetail(o, universe, colonies.length)} · récompense{" "}
+                  {o.reward} crédits
                 </span>
               </li>
             ))}
@@ -168,11 +195,14 @@ export function EmpireView({
             <li key={e.id} className="milestone">
               <div className="queue-head">
                 <span className={WORLD_EVENT_LABELS[e.kind].tone}>
-                  {WORLD_EVENT_LABELS[e.kind].icon} {WORLD_EVENT_LABELS[e.kind].name}
+                  {WORLD_EVENT_LABELS[e.kind].icon}{" "}
+                  {WORLD_EVENT_LABELS[e.kind].name}
                   {" — "}
                   {worldEventLocation(e, universe)}
                 </span>
-                <span className="muted small">{formatDuration(e.expiresAt - now)}</span>
+                <span className="muted small">
+                  {formatDuration(e.expiresAt - now)}
+                </span>
               </div>
             </li>
           ))}
@@ -183,7 +213,8 @@ export function EmpireView({
                 <div className="queue-head">
                   <span>
                     ☠ Repaire pirate —{" "}
-                    {allSystems(universe).find((s) => s.id === l.systemId)?.name ?? l.systemId}
+                    {allSystems(universe).find((s) => s.id === l.systemId)
+                      ?.name ?? l.systemId}
                   </span>
                   <span className="muted small">prime {l.bounty} crédits</span>
                 </div>
@@ -192,7 +223,9 @@ export function EmpireView({
           {objectives.filter((o) => o.status === "open").length === 0 &&
             worldEvents.length === 0 &&
             pirateLairs.filter((l) => l.bounty > 0).length === 0 && (
-              <li className="small muted">Calme plat — rien à signaler pour l'instant.</li>
+              <li className="small muted">
+                Calme plat — rien à signaler pour l'instant.
+              </li>
             )}
         </ul>
       </Panel>
@@ -210,24 +243,35 @@ export function EmpireView({
                 (p) => p.fromEmpireId === playerId && p.toEmpireId === e.id,
               );
               return (
-                <li key={e.id} className={`milestone ${e.id === playerId ? "reached" : ""}`}>
+                <li
+                  key={e.id}
+                  className={`milestone ${e.id === playerId ? "reached" : ""}`}
+                >
                   <div className="queue-head">
                     <span>
-                      <span style={{ color: e.color }}>◆</span> #{i + 1} {e.name}
-                      {e.id === playerId ? " (vous)" : RELATION_BADGES[e.relation]}
+                      <span style={{ color: e.color }}>◆</span> #{i + 1}{" "}
+                      {e.name}
+                      {e.id === playerId
+                        ? " (vous)"
+                        : RELATION_BADGES[e.relation]}
                     </span>
                     <span className="muted small">score {e.score}</span>
                   </div>
                   <span className="small muted">
-                    {e.colonies} colonie{e.colonies > 1 ? "s" : ""} · {e.claimed} système
-                    {e.claimed > 1 ? "s" : ""} · ✦ {e.influence} · pop {e.population}
+                    {e.colonies} colonie{e.colonies > 1 ? "s" : ""} ·{" "}
+                    {e.claimed} système
+                    {e.claimed > 1 ? "s" : ""} · ✦ {e.influence} · pop{" "}
+                    {e.population}
                   </span>
                   {e.id !== playerId && (
                     <div className="route-actions">
                       {incoming ? (
                         <>
                           <span className="small muted">
-                            Propose {incoming.kind === "nap" ? "un pacte" : "une alliance"}
+                            Propose{" "}
+                            {incoming.kind === "nap"
+                              ? "un pacte"
+                              : "une alliance"}
                           </span>
                           <Button
                             size="sm"
@@ -257,12 +301,16 @@ export function EmpireView({
                       ) : outgoing ? (
                         <>
                           <span className="small muted">
-                            Proposition envoyée ({outgoing.kind === "nap" ? "pacte" : "alliance"})
+                            Proposition envoyée (
+                            {outgoing.kind === "nap" ? "pacte" : "alliance"})
                           </span>
                           <Button
                             size="sm"
                             onClick={() =>
-                              send({ type: "cancelProposal", proposalId: outgoing.id })
+                              send({
+                                type: "cancelProposal",
+                                proposalId: outgoing.id,
+                              })
                             }
                           >
                             Annuler
@@ -271,29 +319,44 @@ export function EmpireView({
                       ) : e.relation === "war" ? (
                         <Button
                           size="sm"
-                          onClick={() => send({ type: "makePeace", targetEmpireId: e.id })}
+                          onClick={() =>
+                            send({ type: "makePeace", targetEmpireId: e.id })
+                          }
                         >
                           Faire la paix
                         </Button>
                       ) : e.relation === "alliance" || e.relation === "nap" ? (
                         <Button
                           size="sm"
-                          onClick={() => send({ type: "breakRelation", targetEmpireId: e.id })}
+                          onClick={() =>
+                            send({
+                              type: "breakRelation",
+                              targetEmpireId: e.id,
+                            })
+                          }
                         >
-                          {e.relation === "alliance" ? "Rompre l'alliance" : "Rompre le pacte"}
+                          {e.relation === "alliance"
+                            ? "Rompre l'alliance"
+                            : "Rompre le pacte"}
                         </Button>
                       ) : (
                         <>
                           <Button
                             size="sm"
-                            onClick={() => send({ type: "declareWar", targetEmpireId: e.id })}
+                            onClick={() =>
+                              send({ type: "declareWar", targetEmpireId: e.id })
+                            }
                           >
                             Déclarer la guerre
                           </Button>
                           <Button
                             size="sm"
                             onClick={() =>
-                              send({ type: "proposeRelation", targetEmpireId: e.id, kind: "nap" })
+                              send({
+                                type: "proposeRelation",
+                                targetEmpireId: e.id,
+                                kind: "nap",
+                              })
                             }
                           >
                             Proposer un pacte
@@ -333,7 +396,10 @@ export function EmpireView({
               (c) => c.issuerId === factionId && c.status === "open",
             );
             return (
-              <li key={factionId} className={`milestone ${!nextTier ? "reached" : ""}`}>
+              <li
+                key={factionId}
+                className={`milestone ${!nextTier ? "reached" : ""}`}
+              >
                 <div className="queue-head">
                   <span>
                     {FACTIONS[factionId].name} — {repTierName(rep)}
@@ -352,8 +418,10 @@ export function EmpireView({
                 {openContract && (
                   <span className="small muted">
                     {" · "}
-                    Demande {openContract.remaining} {RESOURCE_LABELS[openContract.resource]} à{" "}
-                    {openContract.pricePerUnit} cr/u — voir Logistique › Contrats
+                    Demande {openContract.remaining}{" "}
+                    {RESOURCE_LABELS[openContract.resource]} à{" "}
+                    {openContract.pricePerUnit} cr/u — voir Logistique ›
+                    Contrats
                   </span>
                 )}
               </li>
@@ -369,7 +437,10 @@ export function EmpireView({
             const reached = value >= m.threshold;
             const progress = Math.min(1, value / m.threshold);
             return (
-              <li key={m.id} className={`milestone ${reached ? "reached" : ""}`}>
+              <li
+                key={m.id}
+                className={`milestone ${reached ? "reached" : ""}`}
+              >
                 <div className="queue-head">
                   <span>
                     {reached ? "✓ " : ""}
@@ -379,7 +450,11 @@ export function EmpireView({
                     {Math.min(value, m.threshold)}/{m.threshold}
                   </span>
                 </div>
-                <ProgressBar value={progress * 100} max={100} status={reached ? "ok" : "default"} />
+                <ProgressBar
+                  value={progress * 100}
+                  max={100}
+                  status={reached ? "ok" : "default"}
+                />
               </li>
             );
           })}

@@ -8,7 +8,8 @@
   min-height: 56px;
   background: linear-gradient(180deg, var(--panel-2), var(--panel));
   border-bottom: 1px solid var(--border-bright);
-  box-shadow: 0 1px 0 0 color-mix(in oklch, var(--cyan) 20%, transparent), var(--shadow-panel);
+  box-shadow: 0 1px 0 0 color-mix(in oklch, var(--cyan) 20%, transparent),
+    var(--shadow-panel);
 }
 .topbar::before,
 .topbar::after {

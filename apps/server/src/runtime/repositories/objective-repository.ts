@@ -15,7 +15,9 @@ export class ObjectiveRepository {
       empireId: row.empireId,
       kind: row.kind as ObjectiveKind,
       ...(row.targetCount !== null ? { targetCount: row.targetCount } : {}),
-      ...(row.targetSystemId !== null ? { targetSystemId: row.targetSystemId } : {}),
+      ...(row.targetSystemId !== null
+        ? { targetSystemId: row.targetSystemId }
+        : {}),
       reward: row.reward,
       createdAt: row.createdAt,
       deadline: row.deadline,

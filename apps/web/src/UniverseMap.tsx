@@ -99,7 +99,10 @@ export function UniverseMap({
   const colonyPlanetIds = new Set(colonies.map((c) => c.planetId));
 
   const links = useMemo(() => galaxyLinks(universe), [universe]);
-  const gatewayByGalaxy = useMemo(() => new Map(gateways.map((g) => [g.galaxyId, g])), [gateways]);
+  const gatewayByGalaxy = useMemo(
+    () => new Map(gateways.map((g) => [g.galaxyId, g])),
+    [gateways],
+  );
   // Zones d'activité économique (chantier 17.3) : dérivées des contrats ouverts, jamais
   // stockées — juste une lecture de « où le monde bat » au moment du rendu.
   const activity = useMemo(
@@ -137,7 +140,10 @@ export function UniverseMap({
     const maxX = Math.max(...xs) + PADDING;
     const minY = Math.min(...ys) - PADDING;
     const maxY = Math.max(...ys) + PADDING;
-    const width = Math.max(maxX - minX, ((maxY - minY) * MAP_WIDTH) / MAP_HEIGHT);
+    const width = Math.max(
+      maxX - minX,
+      ((maxY - minY) * MAP_WIDTH) / MAP_HEIGHT,
+    );
     const height = (width * MAP_HEIGHT) / MAP_WIDTH;
     return {
       x: (minX + maxX) / 2 - width / 2,
@@ -184,9 +190,16 @@ export function UniverseMap({
       {links.map((link) => {
         const gw = gatewayByGalaxy.get(link.child.id);
         const discovered =
-          !!gw?.active && reachable.has(link.parentIndex) && reachable.has(link.childIndex);
-        const building = !discovered && reachable.has(link.parentIndex) && !!gw && !gw.active;
-        const cls = discovered ? "discovered" : building ? "building" : "potential";
+          !!gw?.active &&
+          reachable.has(link.parentIndex) &&
+          reachable.has(link.childIndex);
+        const building =
+          !discovered && reachable.has(link.parentIndex) && !!gw && !gw.active;
+        const cls = discovered
+          ? "discovered"
+          : building
+            ? "building"
+            : "potential";
         const mx = (link.parent.x + link.child.x) / 2;
         const my = (link.parent.y + link.child.y) / 2;
         return (
@@ -198,9 +211,16 @@ export function UniverseMap({
               y2={link.child.y}
               className={`wormhole ${cls}`}
             />
-            {discovered && <circle cx={mx} cy={my} r={4} className="wormhole-node" />}
+            {discovered && (
+              <circle cx={mx} cy={my} r={4} className="wormhole-node" />
+            )}
             {building && showStats && (
-              <text x={mx} y={my - 8} textAnchor="middle" className="galaxy-sub muted">
+              <text
+                x={mx}
+                y={my - 8}
+                textAnchor="middle"
+                className="galaxy-sub muted"
+              >
                 {gw!.activatesAt
                   ? "chantier final…"
                   : `${Math.round(gatewayProgressRatio(gw!) * 100)} %`}
@@ -212,7 +232,9 @@ export function UniverseMap({
 
       {visible.map((galaxy) => {
         const gi = universe.galaxies.indexOf(galaxy);
-        const exploredCount = galaxy.systems.filter((s) => explored.has(s.id)).length;
+        const exploredCount = galaxy.systems.filter((s) =>
+          explored.has(s.id),
+        ).length;
         const colonyCount = galaxy.systems
           .flatMap((s) => s.planets)
           .filter((p) => colonyPlanetIds.has(p.id)).length;
@@ -260,13 +282,22 @@ export function UniverseMap({
                 style={{ fill: `hsl(${glyph.hue} 60% 52%)` }}
               />
               {glyph.dots.map((d, i) => (
-                <circle key={i} cx={d.x} cy={d.y} r={d.r} fill={dotColor} opacity={d.o} />
+                <circle
+                  key={i}
+                  cx={d.x}
+                  cy={d.y}
+                  r={d.r}
+                  fill={dotColor}
+                  opacity={d.o}
+                />
               ))}
             </g>
             {/* Cœur lumineux, non incliné pour rester net au centre. */}
             <circle r={20} fill="url(#galaxy-core)" />
 
-            {colonyCount > 0 && <circle r={DISC + 10} className="galaxy-owned" />}
+            {colonyCount > 0 && (
+              <circle r={DISC + 10} className="galaxy-owned" />
+            )}
 
             {showLabels && (
               <text y={-DISC - 16} textAnchor="middle" className="galaxy-label">
@@ -280,7 +311,11 @@ export function UniverseMap({
               </text>
             )}
             {showStats && isReachable && gi > 0 && (
-              <text y={DISC + 42} textAnchor="middle" className="galaxy-sub gateway-active">
+              <text
+                y={DISC + 42}
+                textAnchor="middle"
+                className="galaxy-sub gateway-active"
+              >
                 ◈ Relié — gisements ×{galaxy.depositBonus}
               </text>
             )}

@@ -17,7 +17,9 @@ function fakeRng(values: number[]): Rng {
 
 describe("rollWorldEvent", () => {
   it("ne déclenche rien si le tirage dépasse la chance de déclenchement", () => {
-    expect(rollWorldEvent(fakeRng([WORLD_EVENT_TRIGGER_CHANCE + 0.01]))).toBeNull();
+    expect(
+      rollWorldEvent(fakeRng([WORLD_EVENT_TRIGGER_CHANCE + 0.01])),
+    ).toBeNull();
   });
 
   it("déclenche un des types connus si le tirage passe sous la chance", () => {
@@ -27,7 +29,9 @@ describe("rollWorldEvent", () => {
   });
 
   it("déterministe : même rng = même résultat", () => {
-    expect(rollWorldEvent(fakeRng([0.01, 0.5]))).toBe(rollWorldEvent(fakeRng([0.01, 0.5])));
+    expect(rollWorldEvent(fakeRng([0.01, 0.5]))).toBe(
+      rollWorldEvent(fakeRng([0.01, 0.5])),
+    );
   });
 });
 
@@ -38,7 +42,9 @@ describe("worldEventPriceBonus", () => {
 
   it("positif sous une ruée, négatif sous une crise", () => {
     expect(worldEventPriceBonus(["gold_rush"])).toBe(WORLD_EVENT_PRICE_BONUS);
-    expect(worldEventPriceBonus(["economic_crisis"])).toBe(-WORLD_EVENT_PRICE_PENALTY);
+    expect(worldEventPriceBonus(["economic_crisis"])).toBe(
+      -WORLD_EVENT_PRICE_PENALTY,
+    );
   });
 
   it("les autres types n'affectent pas les prix", () => {
@@ -47,6 +53,8 @@ describe("worldEventPriceBonus", () => {
   });
 
   it("cumule plusieurs événements simultanés", () => {
-    expect(worldEventPriceBonus(["gold_rush", "gold_rush"])).toBe(2 * WORLD_EVENT_PRICE_BONUS);
+    expect(worldEventPriceBonus(["gold_rush", "gold_rush"])).toBe(
+      2 * WORLD_EVENT_PRICE_BONUS,
+    );
   });
 });

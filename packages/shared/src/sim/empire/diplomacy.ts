@@ -21,8 +21,10 @@ export function declareWarReason(
   cooldownUntil: number | null,
 ): string | null {
   if (current === "war") return "Déjà en guerre";
-  if (current === "alliance") return "Rompez l'alliance avant de déclarer la guerre";
-  if (cooldownUntil !== null && now < cooldownUntil) return "Cooldown de guerre en cours";
+  if (current === "alliance")
+    return "Rompez l'alliance avant de déclarer la guerre";
+  if (cooldownUntil !== null && now < cooldownUntil)
+    return "Cooldown de guerre en cours";
   return null;
 }
 
@@ -38,14 +40,17 @@ export function proposeRelationReason(
 ): string | null {
   if (current === "war") return "En guerre — faites la paix d'abord";
   if (current === proposed)
-    return proposed === "nap" ? "Déjà en pacte de non-agression" : "Déjà alliés";
+    return proposed === "nap"
+      ? "Déjà en pacte de non-agression"
+      : "Déjà alliés";
   if (current === "alliance" && proposed === "nap")
     return "Rompez l'alliance avant de repasser au pacte";
   return null;
 }
 
 export function breakRelationReason(current: RelationState): string | null {
-  if (current !== "nap" && current !== "alliance") return "Aucun pacte à rompre";
+  if (current !== "nap" && current !== "alliance")
+    return "Aucun pacte à rompre";
   return null;
 }
 
@@ -67,5 +72,8 @@ export function npcAcceptsProposal(
   if (kind === "nap") return true;
   if (npcPower <= 0 || proposerPower <= 0) return true;
   const ratio = proposerPower / npcPower;
-  return ratio >= NPC_ALLIANCE_MIN_POWER_RATIO && ratio <= NPC_ALLIANCE_MAX_POWER_RATIO;
+  return (
+    ratio >= NPC_ALLIANCE_MIN_POWER_RATIO &&
+    ratio <= NPC_ALLIANCE_MAX_POWER_RATIO
+  );
 }

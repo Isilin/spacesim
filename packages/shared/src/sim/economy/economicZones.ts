@@ -23,7 +23,9 @@ export function galaxyActivity(
 }
 
 /** Normalise une carte d'activité en intensité 0–1 (0 = rien, 1 = la galaxie la plus active). */
-export function normalizedActivity(activity: ReadonlyMap<string, number>): Map<string, number> {
+export function normalizedActivity(
+  activity: ReadonlyMap<string, number>,
+): Map<string, number> {
   let max = 0;
   for (const value of activity.values()) max = Math.max(max, value);
   if (max <= 0) return new Map();

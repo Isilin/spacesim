@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { generateUniverse } from "../../universe.js";
-import { contiguousClaims, isFrontierSystem, systemNeighbors } from "./territory.js";
+import {
+  contiguousClaims,
+  isFrontierSystem,
+  systemNeighbors,
+} from "./territory.js";
 
 describe("territoire — adjacence & contiguïté", () => {
   const universe = generateUniverse("terr-seed");
@@ -22,7 +26,8 @@ describe("territoire — adjacence & contiguïté", () => {
     expect(contiguous.has(b)).toBe(true);
     // `isolated` n'est contigu que s'il jouxte par hasard a ou b ; sinon exclu.
     const neighborsOfIsolated = systemNeighbors(galaxy, isolated);
-    const touchesClaim = neighborsOfIsolated.includes(a) || neighborsOfIsolated.includes(b);
+    const touchesClaim =
+      neighborsOfIsolated.includes(a) || neighborsOfIsolated.includes(b);
     expect(contiguous.has(isolated)).toBe(touchesClaim);
   });
 
@@ -32,7 +37,9 @@ describe("territoire — adjacence & contiguïté", () => {
   });
 
   it("un système revendiqué au bord du territoire est une frontière", () => {
-    const only = galaxy.systems.find((s) => systemNeighbors(galaxy, s.id).length > 0)!.id;
+    const only = galaxy.systems.find(
+      (s) => systemNeighbors(galaxy, s.id).length > 0,
+    )!.id;
     // Revendiqué seul → tous ses voisins sont non-revendiqués → frontière.
     expect(isFrontierSystem(universe, [only], only)).toBe(true);
   });

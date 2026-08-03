@@ -61,7 +61,9 @@ export class MarketService {
     private readonly logger: Logger,
     private readonly persistColony: (colony: Colony) => void,
     private readonly persistFactionState: (state: FactionState) => void,
-    private readonly worldEventKindsOnGalaxy: (galaxyId: string) => WorldEventKind[],
+    private readonly worldEventKindsOnGalaxy: (
+      galaxyId: string,
+    ) => WorldEventKind[],
     private readonly reserveShip: (
       empire: Empire,
       colony: Colony,
@@ -90,7 +92,9 @@ export class MarketService {
   }
 
   private get portalLinks(): [string, string][] {
-    return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
+    return gatewayLinks(this.runtime.universe, [
+      ...this.runtime.gatewayMap.values(),
+    ]);
   }
 
   /** Scalaires d'équilibrage (DB-backed, chantier 23.8). */
@@ -113,13 +117,20 @@ export class MarketService {
   }
 
   /** Réputation gagnée auprès de la faction de la comptoir, au volume de crédits échangé. */
-  addFactionRep(empire: Empire, tradingPostId: string, creditsExchanged: number): void {
+  addFactionRep(
+    empire: Empire,
+    tradingPostId: string,
+    creditsExchanged: number,
+  ): void {
     const comptoir = this.runtime.tradingPostsById.get(tradingPostId);
     if (!comptoir || creditsExchanged <= 0) return;
     const factionRep = { ...empire.factionRep };
     factionRep[comptoir.factionId] =
-      Math.round(((factionRep[comptoir.factionId] ?? 0) + creditsExchanged * REP_PER_CREDIT) * 10) /
-      10;
+      Math.round(
+        ((factionRep[comptoir.factionId] ?? 0) +
+          creditsExchanged * REP_PER_CREDIT) *
+          10,
+      ) / 10;
     empire.factionRep = factionRep;
   }
 
@@ -131,24 +142,34 @@ export class MarketService {
    */
   tradingPostRepBonus(empire: Empire, tradingPostId: string): number {
     const comptoir = this.runtime.tradingPostsById.get(tradingPostId);
-    const rep = comptoir ? repBonus(empire.factionRep[comptoir.factionId] ?? 0) : 0;
+    const rep = comptoir
+      ? repBonus(empire.factionRep[comptoir.factionId] ?? 0)
+      : 0;
     const mood = comptoir
-      ? (this.runtime.factionStateMap.get(comptoir.factionId)?.mood ?? "neutral")
+      ? (this.runtime.factionStateMap.get(comptoir.factionId)?.mood ??
+        "neutral")
       : "neutral";
     const galaxyIndex = comptoir
       ? this.runtime.galaxyIndexOfSystem.get(comptoir.systemId)
       : undefined;
     const galaxyId =
-      galaxyIndex !== undefined ? this.runtime.universe.galaxies[galaxyIndex]?.id : undefined;
-    const eventBonus = galaxyId ? worldEventPriceBonus(this.worldEventKindsOnGalaxy(galaxyId)) : 0;
-    return rep + empire.effects.tradeMargin + moodRebateBonus(mood) + eventBonus;
+      galaxyIndex !== undefined
+        ? this.runtime.universe.galaxies[galaxyIndex]?.id
+        : undefined;
+    const eventBonus = galaxyId
+      ? worldEventPriceBonus(this.worldEventKindsOnGalaxy(galaxyId))
+      : 0;
+    return (
+      rep + empire.effects.tradeMargin + moodRebateBonus(mood) + eventBonus
+    );
   }
 
   /** Un embargo de faction ferme la comptoir aux empires qui n'ont pas encore fait leurs preuves. */
   tradingPostEmbargoed(empire: Empire, tradingPostId: string): boolean {
     const comptoir = this.runtime.tradingPostsById.get(tradingPostId);
     if (!comptoir) return false;
-    const mood = this.runtime.factionStateMap.get(comptoir.factionId)?.mood ?? "neutral";
+    const mood =
+      this.runtime.factionStateMap.get(comptoir.factionId)?.mood ?? "neutral";
     return embargoBlocks(mood, empire.factionRep[comptoir.factionId] ?? 0);
   }
 
@@ -163,8 +184,10 @@ export class MarketService {
     if (!colony) return "Colonie inconnue";
     const comptoir = this.runtime.tradingPostsById.get(tradingPostId);
     if (!comptoir) return "Comptoir inconnu";
-    if (!empire.explored.has(comptoir.systemId)) return "Comptoir non découvert";
-    if (this.tradingPostEmbargoed(empire, tradingPostId)) return "Embargo de faction — commerce refusé";
+    if (!empire.explored.has(comptoir.systemId))
+      return "Comptoir non découvert";
+    if (this.tradingPostEmbargoed(empire, tradingPostId))
+      return "Embargo de faction — commerce refusé";
 
     const cargo: Partial<Record<ResourceId, number>> = {};
     for (const [res, raw] of Object.entries(wanted) as [ResourceId, number][]) {
@@ -200,8 +223,13 @@ export class MarketService {
     const resources = { ...loaded.resources };
     if (resources.credits < fee) return `Crédits insuffisants (frais : ${fee})`;
 
-    const duration = transferDurationMs(jumps, balance) * empire.effects.transferSpeedMult;
-    const reserved = this.reserveShip(empire, loaded, Date.now() + 2 * duration);
+    const duration =
+      transferDurationMs(jumps, balance) * empire.effects.transferSpeedMult;
+    const reserved = this.reserveShip(
+      empire,
+      loaded,
+      Date.now() + 2 * duration,
+    );
     if (!reserved) return "Aucun cargo disponible";
     const total = Object.values(cargo).reduce((s, n) => s + n, 0);
     if (total > reserved.capacity) {
@@ -211,7 +239,9 @@ export class MarketService {
     resources.credits -= fee;
     empire.colonyMap.set(colony.id, { ...reserved.colony, resources });
     this.persistColony(empire.colonyMap.get(colony.id)!);
-    this.insertMission(empire, "sell", colonyId, tradingPostId, duration, { cargo });
+    this.insertMission(empire, "sell", colonyId, tradingPostId, duration, {
+      cargo,
+    });
     this.notify();
     return null;
   }
@@ -228,8 +258,10 @@ export class MarketService {
     if (!colony) return "Colonie inconnue";
     const comptoir = this.runtime.tradingPostsById.get(tradingPostId);
     if (!comptoir) return "Comptoir inconnu";
-    if (!empire.explored.has(comptoir.systemId)) return "Comptoir non découvert";
-    if (this.tradingPostEmbargoed(empire, tradingPostId)) return "Embargo de faction — commerce refusé";
+    if (!empire.explored.has(comptoir.systemId))
+      return "Comptoir non découvert";
+    if (this.tradingPostEmbargoed(empire, tradingPostId))
+      return "Embargo de faction — commerce refusé";
     if (!(MARKET_RESOURCES as readonly string[]).includes(resource)) {
       return `Ressource non échangeable : ${resource}`;
     }
@@ -252,11 +284,19 @@ export class MarketService {
       return `Crédits insuffisants (budget ${budget} + frais ${fee})`;
     }
 
-    const duration = transferDurationMs(jumps, balance) * empire.effects.transferSpeedMult;
-    const reserved = this.reserveShip(empire, colony, Date.now() + 2 * duration);
+    const duration =
+      transferDurationMs(jumps, balance) * empire.effects.transferSpeedMult;
+    const reserved = this.reserveShip(
+      empire,
+      colony,
+      Date.now() + 2 * duration,
+    );
     if (!reserved) return "Aucun cargo disponible";
 
-    const resources = { ...colony.resources, credits: colony.resources.credits - budget - fee };
+    const resources = {
+      ...colony.resources,
+      credits: colony.resources.credits - budget - fee,
+    };
     empire.colonyMap.set(colony.id, { ...reserved.colony, resources });
     this.persistColony(empire.colonyMap.get(colony.id)!);
     // La capacité du cargo réservé borne l'achat à l'arrivée.
@@ -277,7 +317,10 @@ export class MarketService {
     let best: TradingPost | null = null;
     let bestJumps = Infinity;
     for (const comptoir of this.runtime.tradingPostsById.values()) {
-      if (this.runtime.galaxyIndexOfSystem.get(comptoir.systemId) !== galaxyIndex) continue;
+      if (
+        this.runtime.galaxyIndexOfSystem.get(comptoir.systemId) !== galaxyIndex
+      )
+        continue;
       const jumps = jumpDistanceInUniverse(
         this.runtime.universe,
         systemId,
@@ -310,12 +353,19 @@ export class MarketService {
     if (!stocks) return;
     const loaded = takeFromOrbit(colony, { [resource]: quantity });
     if (!loaded) return;
-    const result = resolveSale(stocks, { [resource]: quantity }, this.priceContextOf(comptoir.id));
+    const result = resolveSale(
+      stocks,
+      { [resource]: quantity },
+      this.priceContextOf(comptoir.id),
+    );
     this.runtime.marketMap.set(comptoir.id, result.stocks);
     this.persistMarket(comptoir.id);
     const updated: Colony = {
       ...loaded,
-      resources: { ...loaded.resources, credits: loaded.resources.credits + result.revenue },
+      resources: {
+        ...loaded.resources,
+        credits: loaded.resources.credits + result.revenue,
+      },
     };
     empire.colonyMap.set(colony.id, updated);
     this.persistColony(updated);
@@ -340,7 +390,9 @@ export class MarketService {
     if (alreadyOpen) return;
     const planet = this.runtime.planetsById.get(colony.planetId);
     const comptoir = planet ? this.nearestTradingPost(planet.systemId) : null;
-    const stocks = comptoir ? this.runtime.marketMap.get(comptoir.id) : undefined;
+    const stocks = comptoir
+      ? this.runtime.marketMap.get(comptoir.id)
+      : undefined;
     const price =
       Math.round(
         tradingPostPrice(
@@ -351,13 +403,22 @@ export class MarketService {
           NPC_CONTRACT_PRICE_MULT *
           100,
       ) / 100;
-    this.postContract(empire, colony.id, resource, quantity, price, NPC_CONTRACT_DURATION_MS);
+    this.postContract(
+      empire,
+      colony.id,
+      resource,
+      quantity,
+      price,
+      NPC_CONTRACT_DURATION_MS,
+    );
   }
 
   /** Fait évoluer l'humeur de chaque faction à un tick économique (chantier 15). */
   factionMoodTick(now: number, tickNumber: number): void {
     for (const [factionId, state] of this.runtime.factionStateMap) {
-      const rng = createRng(`faction-${this.runtime.clock.seed}-${factionId}-${tickNumber}`);
+      const rng = createRng(
+        `faction-${this.runtime.clock.seed}-${factionId}-${tickNumber}`,
+      );
       const next = factionTick(state, rng, now);
       if (next === state) continue;
       this.runtime.factionStateMap.set(factionId, next);
@@ -365,7 +426,8 @@ export class MarketService {
       const name = this.runtime.content.factions[factionId]?.name ?? factionId;
       this.logger.info(`[game] humeur de ${name} : ${next.mood}`);
       // La pénurie se traduit en demande concrète : un contrat qu'un joueur peut honorer.
-      if (next.mood === "shortage") this.factionPostShortageContract(factionId, rng);
+      if (next.mood === "shortage")
+        this.factionPostShortageContract(factionId, rng);
     }
   }
 
@@ -383,7 +445,9 @@ export class MarketService {
       (c) => c.issuerId === factionId && c.status === "open",
     );
     if (alreadyOpen) return;
-    const comptoir = [...this.runtime.tradingPostsById.values()].find((s) => s.factionId === factionId);
+    const comptoir = [...this.runtime.tradingPostsById.values()].find(
+      (s) => s.factionId === factionId,
+    );
     if (!comptoir) return;
 
     const resource = consumed[Math.floor(rng() * consumed.length)]!;
@@ -398,7 +462,11 @@ export class MarketService {
           FACTION_CONTRACT_PRICE_MULT *
           100,
       ) / 100;
-    const quantity = randInt(rng, FACTION_CONTRACT_QUANTITY_MIN, FACTION_CONTRACT_QUANTITY_MAX);
+    const quantity = randInt(
+      rng,
+      FACTION_CONTRACT_QUANTITY_MIN,
+      FACTION_CONTRACT_QUANTITY_MAX,
+    );
 
     const now = Date.now();
     const contract: Contract = {
@@ -419,7 +487,9 @@ export class MarketService {
     };
     this.runtime.contractMap.set(contract.id, contract);
     this.insertContract(contract);
-    this.logger.info(`[game] ${def.name} publie un contrat de pénurie : ${quantity} ${resource}`);
+    this.logger.info(
+      `[game] ${def.name} publie un contrat de pénurie : ${quantity} ${resource}`,
+    );
     this.notify();
   }
 
@@ -431,7 +501,12 @@ export class MarketService {
         if (intent.kind === "sell") {
           this.npcSellSurplus(empire, colony, intent.resource, intent.quantity);
         } else {
-          this.npcPostContract(empire, colony, intent.resource, intent.quantity);
+          this.npcPostContract(
+            empire,
+            colony,
+            intent.resource,
+            intent.quantity,
+          );
         }
       }
     }
@@ -445,7 +520,9 @@ export class MarketService {
   initMarkets(): void {
     for (const comptoir of this.runtime.tradingPostsById.values()) {
       if (this.runtime.marketMap.has(comptoir.id)) continue;
-      const stocks = initialStocks(createRng(`${this.runtime.clock.seed}-comptoir-${comptoir.id}`));
+      const stocks = initialStocks(
+        createRng(`${this.runtime.clock.seed}-comptoir-${comptoir.id}`),
+      );
       this.runtime.marketMap.set(comptoir.id, stocks);
       this.repo.insert(comptoir.id, stocks);
     }
@@ -470,7 +547,9 @@ export class MarketService {
       if (!stocks) continue;
       const faction = this.runtime.content.factions[comptoir.factionId];
       if (!faction) continue;
-      const rng = createRng(`${this.runtime.clock.seed}-mkt-${comptoir.id}-${tickNumber}`);
+      const rng = createRng(
+        `${this.runtime.clock.seed}-mkt-${comptoir.id}-${tickNumber}`,
+      );
       this.runtime.marketMap.set(comptoir.id, marketTick(stocks, faction, rng));
       this.persistMarket(comptoir.id);
     }
@@ -504,7 +583,11 @@ export class MarketService {
   ): { revenue: number } | null {
     const stocks = this.runtime.marketMap.get(tradingPostId);
     if (!stocks) return null;
-    const result = resolveSale(stocks, cargo, this.priceContextOf(tradingPostId));
+    const result = resolveSale(
+      stocks,
+      cargo,
+      this.priceContextOf(tradingPostId),
+    );
     this.runtime.marketMap.set(tradingPostId, result.stocks);
     this.persistMarket(tradingPostId);
     return { revenue: result.revenue };

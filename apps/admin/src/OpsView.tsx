@@ -36,12 +36,17 @@ const KIND_LABELS: Record<string, string> = { human: "Joueur", npc: "PNJ" };
 
 const EMPIRE_COLUMNS: TableColumn<EmpireSummary>[] = [
   { key: "name", label: "Empire" },
-  { key: "kind", label: "Type", render: (v) => KIND_LABELS[v as string] ?? (v as string) },
+  {
+    key: "kind",
+    label: "Type",
+    render: (v) => KIND_LABELS[v as string] ?? (v as string),
+  },
   {
     key: "population",
     label: "Population",
     align: "right",
-    render: (_v, row) => Math.round(row.colonies.reduce((s, c) => s + c.population, 0)),
+    render: (_v, row) =>
+      Math.round(row.colonies.reduce((s, c) => s + c.population, 0)),
   },
   {
     key: "colonyCount",
@@ -106,11 +111,14 @@ export function OpsView({ token }: Props) {
             />
           </div>
           {health.lastFlushError && (
-            <p className="auth-error">Échec d'écriture : {health.lastFlushError}</p>
+            <p className="auth-error">
+              Échec d'écriture : {health.lastFlushError}
+            </p>
           )}
           <p className="muted small">
-            Croissance de l'univers — {health.galaxyCount} / {health.maxGalaxies} galaxies (
-            {health.frontierGalaxies} maintenues vierges devant les joueurs)
+            Croissance de l'univers — {health.galaxyCount} /{" "}
+            {health.maxGalaxies} galaxies ({health.frontierGalaxies} maintenues
+            vierges devant les joueurs)
           </p>
           <Gauge value={health.galaxyCount} capacity={health.maxGalaxies} />
         </Panel>

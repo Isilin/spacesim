@@ -23,9 +23,22 @@ import {
 } from "@spacesim/shared";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Badge, Button, EmptyState, ListRow, Panel, ProgressBar, RowHeader } from "@spacesim/ui";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  ListRow,
+  Panel,
+  ProgressBar,
+  RowHeader,
+} from "@spacesim/ui";
 import { formatDuration } from "./format.js";
-import { BUILDING_LABELS, PLANET_TYPE_LABELS, RESOURCE_LABELS, TECH_LABELS } from "./labels.js";
+import {
+  BUILDING_LABELS,
+  PLANET_TYPE_LABELS,
+  RESOURCE_LABELS,
+  TECH_LABELS,
+} from "./labels.js";
 
 import { ShipyardPanel } from "./ShipyardPanel.js";
 import { useGameStore } from "./state/game-store.js";
@@ -38,7 +51,8 @@ interface Props {
 /** Tech qui débloque un bâtiment (pour l'affichage des verrous). */
 function unlockingTech(buildingId: string): TechId | null {
   for (const tech of Object.values(TECHS)) {
-    if (tech.effects.unlockBuildings?.includes(buildingId as never)) return tech.id;
+    if (tech.effects.unlockBuildings?.includes(buildingId as never))
+      return tech.id;
   }
   return null;
 }
@@ -72,7 +86,9 @@ function useNow(): number {
 
 export function ColonyView({ effects }: Props) {
   const [searchParams] = useSearchParams();
-  const activeColony = useGameStore(selectActiveColony(searchParams.get("colony")));
+  const activeColony = useGameStore(
+    selectActiveColony(searchParams.get("colony")),
+  );
   const { universe, game, routes, send } = useGameStore();
   const now = useNow();
   const planet =
@@ -99,8 +115,8 @@ export function ColonyView({ effects }: Props) {
       <div className="colony-header">
         <h2>{colony.name}</h2>
         <span className="muted">
-          {planet.name} — {PLANET_TYPE_LABELS[planet.type]} · Habitabilité {planet.habitability} ·{" "}
-          Emplacements {slots}/{planet.slots}
+          {planet.name} — {PLANET_TYPE_LABELS[planet.type]} · Habitabilité{" "}
+          {planet.habitability} · Emplacements {slots}/{planet.slots}
         </span>
       </div>
 
@@ -111,7 +127,9 @@ export function ColonyView({ effects }: Props) {
             {pop}
             <span className="muted"> / {cap}</span>
           </span>
-          <span className={`resource-rate ${colony.satisfaction >= 50 ? "ok" : "ko"}`}>
+          <span
+            className={`resource-rate ${colony.satisfaction >= 50 ? "ok" : "ko"}`}
+          >
             Satisfaction {Math.round(colony.satisfaction)}
           </span>
         </div>
@@ -128,7 +146,9 @@ export function ColonyView({ effects }: Props) {
         <div className="resource-cell">
           <span className="resource-name">Logements</span>
           <span className="resource-stock">{housing(colony, effects)}</span>
-          <span className={`resource-rate ${housing(colony, effects) >= pop ? "ok" : "ko"}`}>
+          <span
+            className={`resource-rate ${housing(colony, effects) >= pop ? "ok" : "ko"}`}
+          >
             {housing(colony, effects) >= pop ? "suffisants" : "surpeuplés"}
           </span>
         </div>
@@ -140,9 +160,13 @@ export function ColonyView({ effects }: Props) {
               <span className="resource-name">{RESOURCE_LABELS[res]}</span>
               <span className="resource-stock">
                 {Math.floor(colony.resources[res])}
-                {Number.isFinite(cap) && <span className="muted"> / {cap}</span>}
+                {Number.isFinite(cap) && (
+                  <span className="muted"> / {cap}</span>
+                )}
               </span>
-              <span className={`resource-rate ${rate > 0 ? "ok" : rate < 0 ? "ko" : "muted"}`}>
+              <span
+                className={`resource-rate ${rate > 0 ? "ok" : rate < 0 ? "ko" : "muted"}`}
+              >
                 {rate >= 0 ? "+" : ""}
                 {Math.round(rate * 100) / 100}/tick
               </span>
@@ -168,10 +192,13 @@ export function ColonyView({ effects }: Props) {
                 );
               }
               const count = colony.buildings[id] ?? 0;
-              const queued = colony.queue.filter((q) => q.buildingId === id).length;
+              const queued = colony.queue.filter(
+                (q) => q.buildingId === id,
+              ).length;
               const cost = buildingCost(def);
               const affordable = canAfford(colony, cost);
-              const queueFull = colony.queue.length >= MAX_QUEUE_LENGTH + effects.queueBonus;
+              const queueFull =
+                colony.queue.length >= MAX_QUEUE_LENGTH + effects.queueBonus;
               const slotsFull = slots >= planet.slots;
               const disabled = !affordable || queueFull || slotsFull;
               const hasShortage = shortages.some((s) => s.buildingId === id);
@@ -184,7 +211,10 @@ export function ColonyView({ effects }: Props) {
                   right={
                     <>
                       {hasShortage && (
-                        <Badge variant="ko" title="Intrants manquants : bâtiment à l'arrêt">
+                        <Badge
+                          variant="ko"
+                          title="Intrants manquants : bâtiment à l'arrêt"
+                        >
                           ⚠ pénurie
                         </Badge>
                       )}
@@ -200,7 +230,13 @@ export function ColonyView({ effects }: Props) {
                                 ? "Ressources insuffisantes"
                                 : ""
                         }
-                        onClick={() => send({ type: "build", colonyId: colony.id, buildingId: id })}
+                        onClick={() =>
+                          send({
+                            type: "build",
+                            colonyId: colony.id,
+                            buildingId: id,
+                          })
+                        }
                       >
                         Construire
                       </Button>
@@ -222,9 +258,14 @@ export function ColonyView({ effects }: Props) {
               {colony.queue.map((item, i) => {
                 const total = item.finishesAt - item.startedAt;
                 const progress =
-                  now < item.startedAt ? 0 : Math.min(1, (now - item.startedAt) / total);
+                  now < item.startedAt
+                    ? 0
+                    : Math.min(1, (now - item.startedAt) / total);
                 return (
-                  <li key={`${item.buildingId}-${item.startedAt}`} className="queue-item">
+                  <li
+                    key={`${item.buildingId}-${item.startedAt}`}
+                    className="queue-item"
+                  >
                     <RowHeader
                       label={BUILDING_LABELS[item.buildingId].name}
                       value={
@@ -251,8 +292,9 @@ export function ColonyView({ effects }: Props) {
           {/* Convois, ascenseur orbital et marchés vivent dans l'onglet Logistique
               (chantier 12D) : cette vue reste centrée sur la production au sol. */}
           <p className="small muted colony-logistics-hint">
-            Soute orbitale : {Math.floor(orbitalUsed(colony))}/{orbitalCap(colony, effects)} —
-            réglages et convois dans l'onglet Logistique.
+            Soute orbitale : {Math.floor(orbitalUsed(colony))}/
+            {orbitalCap(colony, effects)} — réglages et convois dans l'onglet
+            Logistique.
           </p>
         </Panel>
       </div>

@@ -17,14 +17,22 @@ export const FACTION_BOOM_REBATE = 0.15;
 /** Sous ce standing, un embargo ferme le commerce — les partenaires établis y échappent. */
 export const FACTION_EMBARGO_STANDING_THRESHOLD = 100;
 
-const TRIGGERABLE_MOODS: readonly FactionMood[] = ["boom", "shortage", "embargo"];
+const TRIGGERABLE_MOODS: readonly FactionMood[] = [
+  "boom",
+  "shortage",
+  "embargo",
+];
 
 /**
  * Fait évoluer l'humeur d'une faction à un tick économique : neutre → bascule aléatoire
  * vers boom/pénurie/embargo pour une durée fixe, puis retour à neutre à l'échéance. Pur et
  * déterministe pour un rng donné (dérivé du tick côté serveur, comme les repaires pirates).
  */
-export function factionTick(state: FactionState, rng: Rng, now: number): FactionState {
+export function factionTick(
+  state: FactionState,
+  rng: Rng,
+  now: number,
+): FactionState {
   if (state.mood !== "neutral") {
     if (state.moodUntil !== null && now >= state.moodUntil) {
       return { ...state, mood: "neutral", moodUntil: null };

@@ -19,7 +19,7 @@ import {
   ZONE_TYPES,
   type ZoneTypeDef,
 } from "../../content/zone-types.js";
-import type { BuildingId } from "../../model/industry.js";
+import { BUILDING_IDS, type BuildingId } from "../../model/industry.js";
 
 /** Effets d'empire agrégés depuis les techs recherchées. */
 export interface EmpireEffects {
@@ -125,7 +125,11 @@ export function computeEffects(
         effects.unlockedInstallations.add(iid);
     }
     const e = tech.effects;
-    for (const b of e.unlockBuildings ?? []) effects.unlockedBuildings.add(b);
+    for (const b of e.unlockBuildings ?? []) {
+      if (BUILDING_IDS.includes(b as BuildingId)) {
+        effects.unlockedBuildings.add(b as BuildingId);
+      }
+    }
     for (const [building, mult] of Object.entries(e.outputMult ?? {}) as [
       BuildingId,
       number,

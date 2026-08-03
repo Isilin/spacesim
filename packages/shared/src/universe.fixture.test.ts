@@ -15,11 +15,17 @@ import { GENERATOR_VERSION, generateUniverse } from "./universe.js";
 describe("fixture gelée du générateur", () => {
   it("generateUniverse produit exactement le flux gelé", async () => {
     const universe = generateUniverse("fixture-seed", 3);
-    const snapshot = JSON.stringify({ generatorVersion: GENERATOR_VERSION, universe }, null, 2);
+    const snapshot = JSON.stringify(
+      { generatorVersion: GENERATOR_VERSION, universe },
+      null,
+      2,
+    );
     await expect(snapshot).toMatchFileSnapshot("./universe.fixture.json");
   });
 
   it("le générateur est déterministe (deux appels, même sortie)", () => {
-    expect(generateUniverse("fixture-seed", 3)).toEqual(generateUniverse("fixture-seed", 3));
+    expect(generateUniverse("fixture-seed", 3)).toEqual(
+      generateUniverse("fixture-seed", 3),
+    );
   });
 });

@@ -7,7 +7,14 @@ export interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string;
 }
 
-export function Field({ label, hint, error, className, id, ...inputProps }: FieldProps) {
+export function Field({
+  label,
+  hint,
+  error,
+  className,
+  id,
+  ...inputProps
+}: FieldProps) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
   return (

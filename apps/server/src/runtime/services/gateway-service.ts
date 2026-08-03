@@ -44,14 +44,19 @@ export class GatewayService {
       fromColonyId: string,
       targetId: string,
       durationMs: number,
-      extras?: Pick<Mission, "cargo" | "budget" | "buyResource" | "capacity" | "contractId">,
+      extras?: Pick<
+        Mission,
+        "cargo" | "budget" | "buyResource" | "capacity" | "contractId"
+      >,
     ) => void,
   ) {
     this.repo = new GatewayRepository(runtime.clock.id, runtime.writeSet);
   }
 
   private get portalLinks(): [string, string][] {
-    return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
+    return gatewayLinks(this.runtime.universe, [
+      ...this.runtime.gatewayMap.values(),
+    ]);
   }
 
   /** Scalaires d'équilibrage (DB-backed, chantier 23.8). */
@@ -84,14 +89,17 @@ export class GatewayService {
       if (!(res in GATEWAY_COST)) return `Le chantier ne demande pas de ${res}`;
       cargo[res] = Math.min(amount, remaining[res] ?? 0);
     }
-    if (Object.values(cargo).every((n) => !n)) return "Cargaison vide (ou déjà couverte)";
+    if (Object.values(cargo).every((n) => !n))
+      return "Cargaison vide (ou déjà couverte)";
 
     const fromPlanet = this.runtime.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
     // Le chantier se mène depuis l'ancrage de la galaxie PARENTE (le versant proche du
     // trou de ver) : on ne peut donc financer un portail que si l'on atteint déjà sa
     // voisine — l'expansion se fait de proche en proche.
-    const childIndex = this.runtime.universe.galaxies.findIndex((g) => g.id === galaxyId);
+    const childIndex = this.runtime.universe.galaxies.findIndex(
+      (g) => g.id === galaxyId,
+    );
     const parentIndex = galaxyParentIndex(this.runtime.universe, childIndex);
     const anchorId =
       parentIndex === null
@@ -111,12 +119,20 @@ export class GatewayService {
     if (resources.credits < fee + (cargo.credits ?? 0)) {
       return `Crédits insuffisants (cargaison + frais ${fee})`;
     }
-    for (const [res, amount] of Object.entries(cargo) as [ResourceId, number][]) {
+    for (const [res, amount] of Object.entries(cargo) as [
+      ResourceId,
+      number,
+    ][]) {
       if (resources[res] < amount) return `Stock insuffisant : ${res}`;
     }
 
-    const duration = transferDurationMs(jumps, balance) * empire.effects.transferSpeedMult;
-    const reserved = this.reserveShip(empire, colony, Date.now() + 2 * duration);
+    const duration =
+      transferDurationMs(jumps, balance) * empire.effects.transferSpeedMult;
+    const reserved = this.reserveShip(
+      empire,
+      colony,
+      Date.now() + 2 * duration,
+    );
     if (!reserved) return "Aucun cargo disponible";
     const physical = Object.entries(cargo)
       .filter(([res]) => res !== "credits")
@@ -126,12 +142,22 @@ export class GatewayService {
     }
 
     resources.credits -= fee;
-    for (const [res, amount] of Object.entries(cargo) as [ResourceId, number][]) {
+    for (const [res, amount] of Object.entries(cargo) as [
+      ResourceId,
+      number,
+    ][]) {
       resources[res] -= amount;
     }
     empire.colonyMap.set(colony.id, { ...reserved.colony, resources });
     this.persistColony(empire.colonyMap.get(colony.id)!);
-    this.insertMission(empire, "contribute_gateway", colonyId, galaxyId, duration, { cargo });
+    this.insertMission(
+      empire,
+      "contribute_gateway",
+      colonyId,
+      galaxyId,
+      duration,
+      { cargo },
+    );
     this.notify();
     return null;
   }
@@ -167,7 +193,8 @@ export class GatewayService {
   /** Active les portails dont le chantier final est terminé. */
   resolveGateways(t: number): void {
     for (const [id, gateway] of this.runtime.gatewayMap) {
-      if (gateway.active || !gateway.activatesAt || gateway.activatesAt > t) continue;
+      if (gateway.active || !gateway.activatesAt || gateway.activatesAt > t)
+        continue;
       this.runtime.gatewayMap.set(id, { ...gateway, active: true });
       this.persistGateway(this.runtime.gatewayMap.get(id)!);
       this.logger.info(`[game] portail actif vers ${id}`);
@@ -178,7 +205,10 @@ export class GatewayService {
   shiftTime(deltaMs: number): void {
     for (const [id, gateway] of this.runtime.gatewayMap) {
       if (gateway.activatesAt === null) continue;
-      this.runtime.gatewayMap.set(id, { ...gateway, activatesAt: gateway.activatesAt - deltaMs });
+      this.runtime.gatewayMap.set(id, {
+        ...gateway,
+        activatesAt: gateway.activatesAt - deltaMs,
+      });
       this.persistGateway(this.runtime.gatewayMap.get(id)!);
     }
   }

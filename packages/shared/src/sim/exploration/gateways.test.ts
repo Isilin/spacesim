@@ -12,7 +12,13 @@ import {
 } from "./gateways.js";
 
 function makeGateway(overrides: Partial<Gateway> = {}): Gateway {
-  return { galaxyId: "gal-1", progress: {}, activatesAt: null, active: false, ...overrides };
+  return {
+    galaxyId: "gal-1",
+    progress: {},
+    activatesAt: null,
+    active: false,
+    ...overrides,
+  };
 }
 
 describe("gatewayRemaining / gatewayCovered", () => {
@@ -80,17 +86,29 @@ describe("gatewayLinks", () => {
     expect(gatewayLinks(universe, [inactive])).toEqual([]);
 
     // Galaxie 1 : sa parente est forcément la mère (seul index inférieur).
-    const active1 = makeGateway({ galaxyId: universe.galaxies[1]!.id, active: true });
+    const active1 = makeGateway({
+      galaxyId: universe.galaxies[1]!.id,
+      active: true,
+    });
     expect(gatewayLinks(universe, [active1])).toEqual([
-      [universe.galaxies[0]!.anchorSystemId, universe.galaxies[1]!.anchorSystemId],
+      [
+        universe.galaxies[0]!.anchorSystemId,
+        universe.galaxies[1]!.anchorSystemId,
+      ],
     ]);
 
     // Une galaxie plus lointaine relie sa propre parente, pas nécessairement la mère.
     const far = 4;
     const parent = galaxyParentIndex(universe, far)!;
-    const active = makeGateway({ galaxyId: universe.galaxies[far]!.id, active: true });
+    const active = makeGateway({
+      galaxyId: universe.galaxies[far]!.id,
+      active: true,
+    });
     expect(gatewayLinks(universe, [active])).toEqual([
-      [universe.galaxies[parent]!.anchorSystemId, universe.galaxies[far]!.anchorSystemId],
+      [
+        universe.galaxies[parent]!.anchorSystemId,
+        universe.galaxies[far]!.anchorSystemId,
+      ],
     ]);
   });
 });
@@ -113,7 +131,9 @@ describe("génération — galaxies lointaines plus riches", () => {
   it("chaque galaxie a un ancrage valide", () => {
     const universe = generateUniverse("anchor");
     for (const galaxy of universe.galaxies) {
-      expect(galaxy.systems.some((s) => s.id === galaxy.anchorSystemId)).toBe(true);
+      expect(galaxy.systems.some((s) => s.id === galaxy.anchorSystemId)).toBe(
+        true,
+      );
     }
   });
 });

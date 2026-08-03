@@ -60,13 +60,17 @@ export function MapNav({
         target: { kind: "galaxy", galaxyId: galaxy.id },
       });
       for (const system of galaxy.systems) {
-        const colony = system.planets.map((p) => colonyByPlanet.get(p.id)).find(Boolean);
+        const colony = system.planets
+          .map((p) => colonyByPlanet.get(p.id))
+          .find(Boolean);
         if (!explored.has(system.id) && !colony) continue;
         // Le nom d'une colonie contient déjà celui de son corps : ne pas le répéter.
         items.push({
           key: `s:${system.id}`,
           label: colony ? colony.name : system.name,
-          hint: colony ? `Colonie · ${system.name} · ${galaxy.name}` : `Système · ${galaxy.name}`,
+          hint: colony
+            ? `Colonie · ${system.name} · ${galaxy.name}`
+            : `Système · ${galaxy.name}`,
           target: { kind: "system", galaxyId: galaxy.id, systemId: system.id },
         });
       }
@@ -76,7 +80,9 @@ export function MapNav({
 
   const trimmed = query.trim().toLowerCase();
   const matches = trimmed
-    ? index.filter((item) => item.label.toLowerCase().includes(trimmed)).slice(0, MAX_SUGGESTIONS)
+    ? index
+        .filter((item) => item.label.toLowerCase().includes(trimmed))
+        .slice(0, MAX_SUGGESTIONS)
     : [];
 
   const go = (target: NavTarget) => {
@@ -98,7 +104,8 @@ export function MapNav({
       .filter((v): v is { galaxy: string; system: string } => v !== undefined);
   }, [universe, colonies]);
 
-  const homeTarget = colonySystems.find((s) => s.system === homeSystemId) ?? colonySystems[0];
+  const homeTarget =
+    colonySystems.find((s) => s.system === homeSystemId) ?? colonySystems[0];
   const fleetTarget = universe.galaxies.flatMap((g) =>
     g.systems
       .filter((s) => fleetSystemIds.includes(s.id))
@@ -141,7 +148,9 @@ export function MapNav({
         )}
         {trimmed && matches.length === 0 && (
           <ul className="map-suggestions">
-            <li className="muted small map-no-match">Aucun lieu connu ne correspond.</li>
+            <li className="muted small map-no-match">
+              Aucun lieu connu ne correspond.
+            </li>
           </ul>
         )}
       </div>
@@ -151,7 +160,11 @@ export function MapNav({
           disabled={!homeTarget}
           onClick={() =>
             homeTarget &&
-            go({ kind: "system", galaxyId: homeTarget.galaxy, systemId: homeTarget.system })
+            go({
+              kind: "system",
+              galaxyId: homeTarget.galaxy,
+              systemId: homeTarget.system,
+            })
           }
         >
           Ma capitale
@@ -161,7 +174,11 @@ export function MapNav({
           title={fleetTarget ? "" : "Aucune flotte en service"}
           onClick={() =>
             fleetTarget &&
-            go({ kind: "system", galaxyId: fleetTarget.galaxy, systemId: fleetTarget.system })
+            go({
+              kind: "system",
+              galaxyId: fleetTarget.galaxy,
+              systemId: fleetTarget.system,
+            })
           }
         >
           Mes flottes

@@ -37,7 +37,13 @@ describe("computeGrowthPoints", () => {
 
   it("une zone en file (non résolue) compte déjà comme occupée", () => {
     const zoneQueue = [
-      { zoneTypeId: "industrial_zone", q: 1, r: 0, startedAt: 0, finishesAt: 1000 },
+      {
+        zoneTypeId: "industrial_zone",
+        q: 1,
+        r: 0,
+        startedAt: 0,
+        finishesAt: 1000,
+      },
     ];
     const points = computeGrowthPoints({ zones: [], zoneQueue });
     expect(points.some((p) => p.q === 1 && p.r === 0)).toBe(false);
@@ -73,7 +79,10 @@ describe("migrateLegacyZones", () => {
   });
 
   it("convertit une ancienne carte de comptes en amas connexe de zones positionnées", () => {
-    const migrated = migrateLegacyZones({ industrial_zone: 2, science_zone: 1 });
+    const migrated = migrateLegacyZones({
+      industrial_zone: 2,
+      science_zone: 1,
+    });
     expect(migrated).toHaveLength(3);
 
     const keys = migrated.map((z) => hexKey(z.q, z.r));
@@ -93,7 +102,13 @@ describe("migrateLegacyZones", () => {
 describe("migrateLegacyZoneQueue", () => {
   it("laisse les entrées déjà positionnées inchangées", () => {
     const raw = [
-      { zoneTypeId: "industrial_zone", q: 1, r: 0, startedAt: 0, finishesAt: 1000 },
+      {
+        zoneTypeId: "industrial_zone",
+        q: 1,
+        r: 0,
+        startedAt: 0,
+        finishesAt: 1000,
+      },
     ];
     expect(migrateLegacyZoneQueue(raw, [])).toEqual(raw);
   });

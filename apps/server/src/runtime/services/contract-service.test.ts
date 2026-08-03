@@ -16,10 +16,14 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     const colony = homeColony(engine, empire);
     const creditsBefore = colony.resources.credits;
 
-    expect(engine.contract.postContract(empire, colony.id, "ore", 10, 1, 3_600_000)).toBeNull();
+    expect(
+      engine.contract.postContract(empire, colony.id, "ore", 10, 1, 3_600_000),
+    ).toBeNull();
 
     // Séquestre = quantité × prix, prélevé au sol (les crédits ne sont pas orbitaux).
-    expect(homeColony(engine, empire).resources.credits).toBe(creditsBefore - 10);
+    expect(homeColony(engine, empire).resources.credits).toBe(
+      creditsBefore - 10,
+    );
 
     const contract = engine.contracts[0]!;
     expect(contract.resource).toBe("ore");
@@ -36,7 +40,9 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     // l'émetteur, jamais interagi avec lui.
     const bystander = engine.empireById(engine.devSpawnEmpire("Spectateur")!)!;
 
-    expect(engine.contract.postContract(empire, colony.id, "ore", 10, 1, 3_600_000)).toBeNull();
+    expect(
+      engine.contract.postContract(empire, colony.id, "ore", 10, 1, 3_600_000),
+    ).toBeNull();
     const contractId = engine.contracts[0]!.id;
 
     // Comme leaderboard/gateways : diffusé en entier, à la différence de markets/territories
@@ -53,18 +59,32 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = homeColony(engine, empire);
-    expect(engine.contract.postContract(empire, colony.id, "credits", 10, 1, 3_600_000)).toMatch(
-      /non contractualisable/,
-    );
+    expect(
+      engine.contract.postContract(
+        empire,
+        colony.id,
+        "credits",
+        10,
+        1,
+        3_600_000,
+      ),
+    ).toMatch(/non contractualisable/);
   });
 
   it("postContract : refuse si le séquestre dépasse les crédits disponibles", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const empire = engine.defaultEmpireForDev;
     const colony = homeColony(engine, empire);
-    expect(engine.contract.postContract(empire, colony.id, "ore", 10_000, 1, 3_600_000)).toMatch(
-      /Crédits insuffisants/,
-    );
+    expect(
+      engine.contract.postContract(
+        empire,
+        colony.id,
+        "ore",
+        10_000,
+        1,
+        3_600_000,
+      ),
+    ).toMatch(/Crédits insuffisants/);
   });
 
   it("cancelContract : rembourse le séquestre et clôt le contrat", async () => {
@@ -90,7 +110,9 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     // libre, ce qui en ferait le même empire que l'émetteur au lieu d'un tiers.
     const other = engine.empireById(engine.devSpawnEmpire("Curieux")!)!;
 
-    expect(engine.contract.cancelContract(other, contractId)).toMatch(/Seul l'émetteur/);
+    expect(engine.contract.cancelContract(other, contractId)).toMatch(
+      /Seul l'émetteur/,
+    );
   });
 
   it("un contrat non honoré expire et rembourse le séquestre restant", async () => {
@@ -108,7 +130,9 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     expect(engine.contracts[0]!.status).toBe("expired");
     expect(engine.contracts[0]!.remaining).toBe(1000); // rien n'a été livré
     // Le séquestre (1000) revient, à la production organique de la fenêtre près.
-    expect(homeColony(engine, empire).resources.credits).toBeGreaterThan(creditsAfterGrant - 50);
+    expect(homeColony(engine, empire).resources.credits).toBeGreaterThan(
+      creditsAfterGrant - 50,
+    );
   });
 
   it("acceptContract : livre la cargaison à l'émetteur (autre empire) et paie l'accepteur", async () => {
@@ -126,7 +150,14 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     // Nourriture, pas minerai : le minerai a une consigne d'ascension par défaut (colonie
     // mère) qui ferait dériver l'orbite toute seule sur la longue avance de temps ci-dessous.
     expect(
-      engine.contract.postContract(issuer, issuerColony.id, "food", 10, 2, 3_600_000),
+      engine.contract.postContract(
+        issuer,
+        issuerColony.id,
+        "food",
+        10,
+        2,
+        3_600_000,
+      ),
     ).toBeNull();
     const contractId = engine.contracts[0]!.id;
 
@@ -143,13 +174,22 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     const beforeAccept = homeColony(engine, accepter);
     const orbitalFoodBefore = beforeAccept.orbitalResources.food;
 
-    expect(engine.contract.acceptContract(accepter, accepterColony.id, contractId, 10)).toBeNull();
+    expect(
+      engine.contract.acceptContract(
+        accepter,
+        accepterColony.id,
+        contractId,
+        10,
+      ),
+    ).toBeNull();
 
     const afterAccept = homeColony(engine, accepter);
     expect(afterAccept.orbitalResources.food).toBe(orbitalFoodBefore - 10);
 
     // Décompté à l'acceptation, pas à la livraison — anti-survente.
-    const accepted = engine.snapshotForEmpire(issuer).contracts.find((c) => c.id === contractId)!;
+    const accepted = engine
+      .snapshotForEmpire(issuer)
+      .contracts.find((c) => c.id === contractId)!;
     expect(accepted.remaining).toBe(0);
     expect(accepted.status).toBe("fulfilled");
     const mission = engine
@@ -158,11 +198,14 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     expect(mission).toBeDefined();
 
     const issuerFoodBefore = homeColony(engine, issuer).orbitalResources.food;
-    const accepterCreditsBeforeDelivery = homeColony(engine, accepter).resources.credits;
+    const accepterCreditsBeforeDelivery = homeColony(engine, accepter).resources
+      .credits;
 
     // Juste assez pour faire arriver CE convoi précis (le nombre de sauts, donc la durée,
     // dépend de la seed — pas une avance à l'aveugle).
-    const durationS = Math.ceil((mission!.arrivesAt - mission!.departedAt) / 1000);
+    const durationS = Math.ceil(
+      (mission!.arrivesAt - mission!.departedAt) / 1000,
+    );
     const ticksElapsed = Math.ceil((durationS + 5) / 5);
     advanceTicks(engine, ticksElapsed);
 
@@ -175,7 +218,9 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     // verserait sa récompense dans la même fenêtre — un aléa hors de portée du test.
     const creditsAfterDelivery = homeColony(engine, accepter).resources.credits;
     const organicTolerance = ticksElapsed * 2 + 5 + OBJECTIVE_REWARD_CREDITS;
-    expect(creditsAfterDelivery).toBeGreaterThanOrEqual(accepterCreditsBeforeDelivery + 20);
+    expect(creditsAfterDelivery).toBeGreaterThanOrEqual(
+      accepterCreditsBeforeDelivery + 20,
+    );
     expect(creditsAfterDelivery).toBeLessThan(
       accepterCreditsBeforeDelivery + 20 + organicTolerance,
     );
@@ -188,9 +233,9 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     const colony = homeColony(engine, empire);
     engine.contract.postContract(empire, colony.id, "ore", 10, 1, 3_600_000);
     const contractId = engine.contracts[0]!.id;
-    expect(engine.contract.acceptContract(empire, colony.id, contractId, 10)).toMatch(
-      /propre contrat/,
-    );
+    expect(
+      engine.contract.acceptContract(empire, colony.id, contractId, 10),
+    ).toMatch(/propre contrat/);
   });
 
   it("acceptContract : refuse une quantité au-delà du reliquat", async () => {
@@ -201,16 +246,17 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     const contractId = engine.contracts[0]!.id;
     const other = engine.empireById(engine.devSpawnEmpire("Voisin")!)!;
     const otherColony = homeColony(engine, other);
-    expect(engine.contract.acceptContract(other, otherColony.id, contractId, 999)).toMatch(
-      /indisponible/,
-    );
+    expect(
+      engine.contract.acceptContract(other, otherColony.id, contractId, 999),
+    ).toMatch(/indisponible/);
   });
 });
 describe("GameEngine — contrats de faction (chantier 15)", () => {
   /** Faction d'un comptoir de la galaxie d'origine : garantit que le contrat de pénurie
    * déclenché cible un comptoir à portée (pas de portail requis pour l'atteindre). */
   const homeGalaxyFactionId = (engine: GameEngine) =>
-    engine.universe.galaxies[0]!.systems.find((s) => s.station)!.station!.factionId;
+    engine.universe.galaxies[0]!.systems.find((s) => s.station)!.station!
+      .factionId;
 
   it("une pénurie publie un contrat pour un besoin réel, sans séquestre prélevé", async () => {
     const engine = await GameEngine.loadOrBootstrap();
@@ -220,10 +266,12 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
     const contract = engine.contracts.find((c) => c.issuerId === factionId);
     expect(contract).toBeDefined();
     expect(contract!.status).toBe("open");
-    expect(contract!.issuerName).toBe(FACTIONS[factionId as keyof typeof FACTIONS].name);
-    expect(Object.keys(FACTIONS[factionId as keyof typeof FACTIONS].consumes)).toContain(
-      contract!.resource,
+    expect(contract!.issuerName).toBe(
+      FACTIONS[factionId as keyof typeof FACTIONS].name,
     );
+    expect(
+      Object.keys(FACTIONS[factionId as keyof typeof FACTIONS].consumes),
+    ).toContain(contract!.resource);
   });
 
   it("ne double jamais un contrat de pénurie tant qu'un autre est ouvert", async () => {
@@ -234,7 +282,9 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
     engine.devSetFactionMood(factionId, "shortage");
 
     expect(
-      engine.contracts.filter((c) => c.issuerId === factionId && c.status === "open"),
+      engine.contracts.filter(
+        (c) => c.issuerId === factionId && c.status === "open",
+      ),
     ).toHaveLength(1);
   });
 
@@ -254,7 +304,10 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
     // (RESOURCES itère l'énergie en premier), donc lever les deux à la fois affamerait
     // la cargaison derrière l'énergie.
     engine.devGrant({ energy: 200, credits: 500 });
-    engine.logistics.setLiftRule(empire, colony.id, "energy", { keepGround: 0, direction: "up" });
+    engine.logistics.setLiftRule(empire, colony.id, "energy", {
+      keepGround: 0,
+      direction: "up",
+    });
     advanceTicks(engine, 15);
     engine.logistics.setLiftRule(empire, colony.id, "energy", null);
 
@@ -271,7 +324,12 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
 
     const repBefore = empire.factionRep[factionId] ?? 0;
     expect(
-      engine.contract.acceptContract(empire, colony.id, contract.id, contract.quantity),
+      engine.contract.acceptContract(
+        empire,
+        colony.id,
+        contract.id,
+        contract.quantity,
+      ),
     ).toBeNull();
 
     const mission = engine
@@ -280,28 +338,37 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
     expect(mission).toBeDefined();
     const creditsBeforeDelivery = homeColony(engine, empire).resources.credits;
 
-    const durationS = Math.ceil((mission.arrivesAt - mission.departedAt) / 1000);
+    const durationS = Math.ceil(
+      (mission.arrivesAt - mission.departedAt) / 1000,
+    );
     advanceTicks(engine, Math.ceil((durationS + 5) / 5));
 
     // Payé au prix fixé du contrat, standing crédité — même mécanique qu'un empire émetteur.
     expect(homeColony(engine, empire).resources.credits).toBeGreaterThanOrEqual(
-      creditsBeforeDelivery + Math.floor(contract.quantity * contract.pricePerUnit),
+      creditsBeforeDelivery +
+        Math.floor(contract.quantity * contract.pricePerUnit),
     );
     expect(empire.factionRep[factionId] ?? 0).toBeGreaterThan(repBefore);
     expect(engine.snapshotForEmpire(empire).missions).toHaveLength(0);
-    expect(engine.contracts.find((c) => c.id === contract.id)!.status).toBe("fulfilled");
+    expect(engine.contracts.find((c) => c.id === contract.id)!.status).toBe(
+      "fulfilled",
+    );
   });
 
   it("un contrat de faction expiré sans être honoré n'entraîne aucun remboursement", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     const factionId = homeGalaxyFactionId(engine);
     expect(engine.devSetFactionMood(factionId, "shortage")).toBe(true);
-    const contractId = engine.contracts.find((c) => c.issuerId === factionId)!.id;
+    const contractId = engine.contracts.find(
+      (c) => c.issuerId === factionId,
+    )!.id;
 
     // Échéance du contrat = FACTION_CONTRACT_DURATION_MS (1800 s = 360 ticks), indépendante
     // de la durée d'humeur passée à devSetFactionMood — marge large pour la dépasser.
     advanceTicks(engine, 370);
 
-    expect(engine.contracts.find((c) => c.id === contractId)!.status).toBe("expired");
+    expect(engine.contracts.find((c) => c.id === contractId)!.status).toBe(
+      "expired",
+    );
   });
 });

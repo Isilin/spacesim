@@ -24,7 +24,10 @@ describe("/api/admin/accounts", () => {
 
   it("un moderator liste les comptes inscrits, avec leur empire", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "mod@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "mod@exemple.fr",
+    );
     await setTestRole(accountId, "moderator");
     await registerTestAccount(app, "pilote@exemple.fr");
     const res = await app.inject({
@@ -35,14 +38,19 @@ describe("/api/admin/accounts", () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.total).toBe(2);
-    const pilote = body.accounts.find((a: { email: string }) => a.email === "pilote@exemple.fr");
+    const pilote = body.accounts.find(
+      (a: { email: string }) => a.email === "pilote@exemple.fr",
+    );
     expect(pilote.role).toBe("player");
     expect(pilote.empire).not.toBeNull();
   });
 
   it("la recherche filtre par sous-chaîne d'e-mail", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "admin@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "admin@exemple.fr",
+    );
     await setTestRole(accountId, "admin");
     await registerTestAccount(app, "alice@exemple.fr");
     await registerTestAccount(app, "bob@exemple.fr");
@@ -58,9 +66,15 @@ describe("/api/admin/accounts", () => {
 
   it("le détail d'un compte inclut le résumé de son empire", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "admin@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "admin@exemple.fr",
+    );
     await setTestRole(accountId, "admin");
-    const { accountId: pilotId } = await registerTestAccount(app, "pilote@exemple.fr");
+    const { accountId: pilotId } = await registerTestAccount(
+      app,
+      "pilote@exemple.fr",
+    );
     const res = await app.inject({
       method: "GET",
       url: `/api/admin/accounts/${pilotId}`,
@@ -76,7 +90,10 @@ describe("/api/admin/accounts", () => {
 
   it("un id de compte inconnu renvoie 404", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
-    const { token, accountId } = await registerTestAccount(app, "admin@exemple.fr");
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "admin@exemple.fr",
+    );
     await setTestRole(accountId, "admin");
     const res = await app.inject({
       method: "GET",

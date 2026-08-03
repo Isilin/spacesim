@@ -43,7 +43,9 @@ describe("ensureContentSeeded", () => {
   it("peuple les vaisseaux de guerre et le réglage de combat depuis les tables historiques", async () => {
     await ensureContentSeeded();
     const bundle = await loadContentBundle();
-    expect(Object.keys(bundle.warships).sort()).toEqual([...WARSHIP_IDS].sort());
+    expect(Object.keys(bundle.warships).sort()).toEqual(
+      [...WARSHIP_IDS].sort(),
+    );
     expect(bundle.warships.fighter?.nameFr).toBe("Chasseur");
     expect(bundle.combatTuning.counterBonus).toBeGreaterThan(1);
   });
@@ -51,7 +53,9 @@ describe("ensureContentSeeded", () => {
   it("peuple les factions depuis packages/shared/src/content/factions.ts", async () => {
     await ensureContentSeeded();
     const bundle = await loadContentBundle();
-    expect(Object.keys(bundle.factions).sort()).toEqual([...FACTION_IDS].sort());
+    expect(Object.keys(bundle.factions).sort()).toEqual(
+      [...FACTION_IDS].sort(),
+    );
     expect(bundle.factions.ferride?.name).toBe("Consortium Ferride");
     expect(bundle.factions.ferride?.produces.metals).toBeGreaterThan(0);
   });
@@ -59,7 +63,9 @@ describe("ensureContentSeeded", () => {
   it("peuple les bâtiments depuis packages/shared/src/content/buildings.ts", async () => {
     await ensureContentSeeded();
     const bundle = await loadContentBundle();
-    expect(Object.keys(bundle.buildings).sort()).toEqual([...BUILDING_IDS].sort());
+    expect(Object.keys(bundle.buildings).sort()).toEqual(
+      [...BUILDING_IDS].sort(),
+    );
     expect(bundle.buildings.mine?.nameFr).toBe("Mine");
     expect(bundle.buildings.mine?.depositScaled).toBe("ore");
   });
@@ -75,8 +81,12 @@ describe("ensureContentSeeded", () => {
   it("peuple les constantes depuis packages/shared/src/balance.ts", async () => {
     await ensureContentSeeded();
     const bundle = await loadContentBundle();
-    expect(Object.keys(bundle.constants).sort()).toEqual(Object.keys(DEFAULT_BALANCE).sort());
-    expect(bundle.constants.raidFraction?.value).toBe(DEFAULT_BALANCE.raidFraction);
+    expect(Object.keys(bundle.constants).sort()).toEqual(
+      Object.keys(DEFAULT_BALANCE).sort(),
+    );
+    expect(bundle.constants.raidFraction?.value).toBe(
+      DEFAULT_BALANCE.raidFraction,
+    );
     expect(bundle.constants.raidFraction?.descriptionFr).toBeTruthy();
   });
 
@@ -100,12 +110,18 @@ describe("ensureContentSeeded", () => {
   it("peuple presets et jalons depuis packages/shared/src/content/presets.ts et milestones.ts", async () => {
     await ensureContentSeeded();
     const bundle = await loadContentBundle();
-    expect(Object.keys(bundle.presets).sort()).toEqual(PRESETS.map((p) => p.id).sort());
-    expect(Object.keys(bundle.milestones).sort()).toEqual(MILESTONES.map((m) => m.id).sort());
+    expect(Object.keys(bundle.presets).sort()).toEqual(
+      PRESETS.map((p) => p.id).sort(),
+    );
+    expect(Object.keys(bundle.milestones).sort()).toEqual(
+      MILESTONES.map((m) => m.id).sort(),
+    );
     expect(bundle.presets.interceptor?.nameFr).toBe("Intercepteur");
     // `starter` reprend STARTER_PRESET_IDS.
     for (const p of Object.values(bundle.presets)) {
-      expect(p.starter).toBe((STARTER_PRESET_IDS as readonly string[]).includes(p.id));
+      expect(p.starter).toBe(
+        (STARTER_PRESET_IDS as readonly string[]).includes(p.id),
+      );
     }
     expect(bundle.milestones["pop-25"]?.metric).toBe("population");
   });

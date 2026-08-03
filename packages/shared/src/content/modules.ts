@@ -7,7 +7,12 @@ import type { ResourceId } from "../model/resources.js";
  * garni de **modules**. Chaque module occupe un emplacement typé et consomme des budgets
  * (énergie / tonnage / calcul) — modèle EVE-like : slots fixes + budgets partagés.
  */
-export const SLOT_TYPES = ["weapon", "defense", "propulsion", "utility"] as const;
+export const SLOT_TYPES = [
+  "weapon",
+  "defense",
+  "propulsion",
+  "utility",
+] as const;
 
 export type SlotType = (typeof SLOT_TYPES)[number];
 
@@ -83,7 +88,7 @@ export const MODULE_IDS = [
 export type ModuleId = (typeof MODULE_IDS)[number];
 
 export interface ModuleDef {
-  id: ModuleId;
+  id: string;
   slot: SlotType;
   role: ModuleRole;
   /** Budgets consommés. */
@@ -95,11 +100,16 @@ export interface ModuleDef {
   /** Temps de production ajouté au châssis (ms). */
   buildMs: number;
   /** Tech requise ; absente = disponible d'emblée (voir BASE_MODULES). */
-  requiresTech?: TechId;
+  requiresTech?: string;
   effects: ModuleEffects;
 }
 
-export const MODULES: Record<ModuleId, ModuleDef> = {
+export interface StaticModuleDef extends ModuleDef {
+  id: ModuleId;
+  requiresTech?: TechId;
+}
+
+export const MODULES: Record<ModuleId, StaticModuleDef> = {
   // ─── Armes ───
   laser_pulse: {
     id: "laser_pulse",

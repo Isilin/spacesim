@@ -19,8 +19,12 @@ export interface ApplySanctionInput {
  * compte inutilisable (`ban`/`suspend`/`force_logout`) — `revokeAllSessions` déjà prêt côté
  * `auth.ts` (chantier 8). `warn`/`unban` ne déconnectent jamais.
  */
-export async function applySanction(input: ApplySanctionInput, now = Date.now()): Promise<void> {
-  const expiresAt = input.kind === "suspend" ? now + (input.durationMs ?? 0) : null;
+export async function applySanction(
+  input: ApplySanctionInput,
+  now = Date.now(),
+): Promise<void> {
+  const expiresAt =
+    input.kind === "suspend" ? now + (input.durationMs ?? 0) : null;
   await db.insert(schema.accountSanctions).values({
     id: randomUUID(),
     accountId: input.accountId,
@@ -31,7 +35,11 @@ export async function applySanction(input: ApplySanctionInput, now = Date.now())
     createdAt: now,
     expiresAt,
   });
-  if (input.kind === "ban" || input.kind === "suspend" || input.kind === "force_logout") {
+  if (
+    input.kind === "ban" ||
+    input.kind === "suspend" ||
+    input.kind === "force_logout"
+  ) {
     await revokeAllSessions(input.accountId);
   }
 }

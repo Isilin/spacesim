@@ -13,7 +13,9 @@ describe("GameEngine — événements de monde (chantier 17)", () => {
     const eventId = engine.devTriggerWorldEvent("economic_crisis", galaxyId);
     expect(eventId).not.toBeNull();
 
-    const mine = engine.snapshotForEmpire(engine.defaultEmpireForDev).worldEvents;
+    const mine = engine.snapshotForEmpire(
+      engine.defaultEmpireForDev,
+    ).worldEvents;
     const theirs = engine.snapshotForEmpire(other).worldEvents;
     expect(mine.some((e) => e.id === eventId)).toBe(true);
     expect(theirs.some((e) => e.id === eventId)).toBe(true);
@@ -25,13 +27,17 @@ describe("GameEngine — événements de monde (chantier 17)", () => {
 
     const eventId = engine.devTriggerWorldEvent("faction_boom", factionId);
     expect(eventId).not.toBeNull();
-    expect(engine.factionStates.find((s) => s.factionId === factionId)!.mood).toBe("boom");
+    expect(
+      engine.factionStates.find((s) => s.factionId === factionId)!.mood,
+    ).toBe("boom");
   });
 
   it("devTriggerWorldEvent refuse une cible inconnue", async () => {
     const engine = await GameEngine.loadOrBootstrap();
     expect(engine.devTriggerWorldEvent("faction_boom", "inconnue")).toBeNull();
-    expect(engine.devTriggerWorldEvent("economic_crisis", "gal-inconnue")).toBeNull();
+    expect(
+      engine.devTriggerWorldEvent("economic_crisis", "gal-inconnue"),
+    ).toBeNull();
   });
 
   it("un événement de monde expire et disparaît du flux", async () => {
@@ -53,7 +59,9 @@ describe("GameEngine — événements de monde (chantier 17)", () => {
     let sawEvent = false;
     for (let i = 0; i < 300 && !sawEvent; i++) {
       advanceTicks(engine, 12); // un tick économique par itération
-      sawEvent = engine.snapshotForEmpire(engine.defaultEmpireForDev).worldEvents.length > 0;
+      sawEvent =
+        engine.snapshotForEmpire(engine.defaultEmpireForDev).worldEvents
+          .length > 0;
     }
     // Chance de déclenchement 5 %/tick éco : probabilité d'échec sur 300 essais ~2e-7 —
     // marge large (le module pur est déjà testé en détail, ceci ne vérifie que le câblage).

@@ -1,7 +1,13 @@
 import { PGlite } from "@electric-sql/pglite";
-import { drizzle as drizzlePglite, type PgliteDatabase } from "drizzle-orm/pglite";
+import {
+  drizzle as drizzlePglite,
+  type PgliteDatabase,
+} from "drizzle-orm/pglite";
 import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
-import { drizzle as drizzlePg, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import {
+  drizzle as drizzlePg,
+  type NodePgDatabase,
+} from "drizzle-orm/node-postgres";
 import { migrate as migratePg } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import { fileURLToPath } from "node:url";
@@ -12,7 +18,12 @@ import * as schema from "./schema.js";
 type Schema = typeof schema;
 export type Db = NodePgDatabase<Schema> | PgliteDatabase<Schema>;
 
-const migrationsFolder = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "drizzle");
+const migrationsFolder = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "drizzle",
+);
 
 /** `postgres://…`/`postgresql://…` → vrai serveur ; tout le reste → PGlite (chantier 20.3). */
 function isPostgresUrl(url: string): boolean {
@@ -29,7 +40,9 @@ export function createDb(url: string): Db {
   if (isPostgresUrl(url)) {
     return drizzlePg(new Pool({ connectionString: url }), { schema });
   }
-  return drizzlePglite(new PGlite(url === ":memory:" ? undefined : url), { schema });
+  return drizzlePglite(new PGlite(url === ":memory:" ? undefined : url), {
+    schema,
+  });
 }
 
 /**
@@ -42,7 +55,9 @@ export async function runMigrations(url: string, database: Db): Promise<void> {
   if (isPostgresUrl(url)) {
     await migratePg(database as NodePgDatabase<Schema>, { migrationsFolder });
   } else {
-    await migratePglite(database as PgliteDatabase<Schema>, { migrationsFolder });
+    await migratePglite(database as PgliteDatabase<Schema>, {
+      migrationsFolder,
+    });
   }
 }
 

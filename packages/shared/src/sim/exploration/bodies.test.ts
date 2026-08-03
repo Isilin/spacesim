@@ -4,7 +4,9 @@ import type { Planet, PlanetType } from "../../model/universe.js";
 import { ATMOSPHERES, bodyPhysicals, isBreathable } from "./bodies.js";
 
 /** Corps de test : seul l'id, le type et l'orbite influent sur la fiche. */
-function body(over: Partial<Planet> & { id: string; type: PlanetType }): Planet {
+function body(
+  over: Partial<Planet> & { id: string; type: PlanetType },
+): Planet {
   return {
     systemId: "gal-0-sys-0",
     name: "Test",
@@ -45,8 +47,12 @@ describe("bodyPhysicals", () => {
   });
 
   it("la température décroît avec l'éloignement de l'étoile", () => {
-    const near = bodyPhysicals(body({ id: "x", type: "telluric", orbitRadius: 80 }));
-    const far = bodyPhysicals(body({ id: "x", type: "telluric", orbitRadius: 600 }));
+    const near = bodyPhysicals(
+      body({ id: "x", type: "telluric", orbitRadius: 80 }),
+    );
+    const far = bodyPhysicals(
+      body({ id: "x", type: "telluric", orbitRadius: 600 }),
+    );
     expect(near.meanTempC).toBeGreaterThan(far.meanTempC);
   });
 
@@ -55,10 +61,14 @@ describe("bodyPhysicals", () => {
     // sinon la carte afficherait des mondes gelés à 40 °C.
     for (const orbitRadius of [40, 70, 180, 400, 900]) {
       expect(
-        bodyPhysicals(body({ id: `f${orbitRadius}`, type: "frozen", orbitRadius })).meanTempC,
+        bodyPhysicals(
+          body({ id: `f${orbitRadius}`, type: "frozen", orbitRadius }),
+        ).meanTempC,
       ).toBeLessThan(0);
       expect(
-        bodyPhysicals(body({ id: `v${orbitRadius}`, type: "volcanic", orbitRadius })).meanTempC,
+        bodyPhysicals(
+          body({ id: `v${orbitRadius}`, type: "volcanic", orbitRadius }),
+        ).meanTempC,
       ).toBeGreaterThan(100);
       const telluric = bodyPhysicals(
         body({ id: `t${orbitRadius}`, type: "telluric", orbitRadius }),
@@ -70,12 +80,17 @@ describe("bodyPhysicals", () => {
 
   it("une lune est plus petite que la planète de même type et suit l'orbite de sa parente", () => {
     const planet = bodyPhysicals(body({ id: "p", type: "arid" }));
-    const moon = bodyPhysicals(body({ id: "m", type: "arid", kind: "moon", orbitRadius: 20 }));
+    const moon = bodyPhysicals(
+      body({ id: "m", type: "arid", kind: "moon", orbitRadius: 20 }),
+    );
     expect(moon.radiusKm).toBeLessThan(planet.radiusKm);
     expect(moon.gravityG).toBeLessThan(planet.gravityG);
     // Sans orbite parente connue, la lune retombe sur l'orbite de référence ; avec,
     // elle suit la température de sa planète.
-    const cold = bodyPhysicals(body({ id: "m", type: "arid", kind: "moon", orbitRadius: 20 }), 900);
+    const cold = bodyPhysicals(
+      body({ id: "m", type: "arid", kind: "moon", orbitRadius: 20 }),
+      900,
+    );
     expect(cold.meanTempC).toBeLessThan(moon.meanTempC);
   });
 
@@ -96,10 +111,14 @@ describe("bodyPhysicals", () => {
   it("la fiche corrobore l'habitabilité au lieu de la contredire", () => {
     // Un monde très habitable respire et reste tempéré ; un monde hostile, non.
     const accueillant = Array.from({ length: 12 }, (_, i) =>
-      bodyPhysicals(body({ id: `hab${i}`, type: "telluric", habitability: 90 })),
+      bodyPhysicals(
+        body({ id: `hab${i}`, type: "telluric", habitability: 90 }),
+      ),
     );
     const hostile = Array.from({ length: 12 }, (_, i) =>
-      bodyPhysicals(body({ id: `hab${i}`, type: "telluric", habitability: 10 })),
+      bodyPhysicals(
+        body({ id: `hab${i}`, type: "telluric", habitability: 10 }),
+      ),
     );
     const respirables = (list: typeof accueillant) =>
       list.filter((p) => p.atmosphere === "breathable").length;
@@ -112,9 +131,17 @@ describe("bodyPhysicals", () => {
 
   it("isBreathable exige une atmosphère respirable ET une température vivable", () => {
     const base = bodyPhysicals(body({ id: "b", type: "telluric" }));
-    expect(isBreathable({ ...base, atmosphere: "breathable", meanTempC: 18 })).toBe(true);
-    expect(isBreathable({ ...base, atmosphere: "toxic", meanTempC: 18 })).toBe(false);
-    expect(isBreathable({ ...base, atmosphere: "breathable", meanTempC: 90 })).toBe(false);
-    expect(isBreathable({ ...base, atmosphere: "breathable", meanTempC: -60 })).toBe(false);
+    expect(
+      isBreathable({ ...base, atmosphere: "breathable", meanTempC: 18 }),
+    ).toBe(true);
+    expect(isBreathable({ ...base, atmosphere: "toxic", meanTempC: 18 })).toBe(
+      false,
+    );
+    expect(
+      isBreathable({ ...base, atmosphere: "breathable", meanTempC: 90 }),
+    ).toBe(false);
+    expect(
+      isBreathable({ ...base, atmosphere: "breathable", meanTempC: -60 }),
+    ).toBe(false);
   });
 });

@@ -1,4 +1,8 @@
-import { SYSTEM_VIEW_SIZE, type Planet, type StarSystem } from "@spacesim/shared";
+import {
+  SYSTEM_VIEW_SIZE,
+  type Planet,
+  type StarSystem,
+} from "@spacesim/shared";
 import { useMemo } from "react";
 import { ZoomableSvg, type ViewBox } from "@spacesim/ui";
 import { useGameStore } from "./state/game-store.js";
@@ -30,7 +34,12 @@ const PLANET_RADIUS: Record<string, number> = {
 };
 
 /** Niveau système : étoile au centre, orbites, planètes, lunes, ceintures. */
-export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }: Props) {
+export function SystemView({
+  system,
+  selectedBodyId,
+  onSelectBody,
+  onOpenBody,
+}: Props) {
   const explored = useGameStore(selectExplored(system.id));
   const { colonies, stations, foreignStations } = useGameStore();
   const c = SYSTEM_VIEW_SIZE / 2;
@@ -47,7 +56,9 @@ export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }:
   );
   const planets = system.planets.filter((p) => p.kind === "planet");
   const moonsOf = (planetId: string) =>
-    system.planets.filter((p) => p.kind === "moon" && p.parentPlanetId === planetId);
+    system.planets.filter(
+      (p) => p.kind === "moon" && p.parentPlanetId === planetId,
+    );
 
   // Échelle : la plus grande orbite (planète ou ceinture) tient dans la vue.
   const maxOrbit = Math.max(
@@ -63,14 +74,21 @@ export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }:
   });
 
   return (
-    <ZoomableSvg className="galaxy-map" home={home} ariaLabel={`Système ${system.name}`}>
+    <ZoomableSvg
+      className="galaxy-map"
+      home={home}
+      ariaLabel={`Système ${system.name}`}
+    >
       <circle cx={c} cy={c} r={18} className="star-core" />
       <text x={c} y={c - 28} textAnchor="middle" className="system-label">
         {system.name}
       </text>
 
       {system.station && (
-        <g className="trading-post-marker" transform={`translate(${c + 46}, ${c - 46})`}>
+        <g
+          className="trading-post-marker"
+          transform={`translate(${c + 46}, ${c - 46})`}
+        >
           <rect
             x={-7}
             y={-7}
@@ -92,7 +110,13 @@ export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }:
       )}
 
       {system.belts.map((belt) => (
-        <circle key={belt.id} cx={c} cy={c} r={belt.orbitRadius * scale} className="belt-ring" />
+        <circle
+          key={belt.id}
+          cx={c}
+          cy={c}
+          r={belt.orbitRadius * scale}
+          className="belt-ring"
+        />
       ))}
 
       {planets.map((planet) => {
@@ -101,7 +125,12 @@ export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }:
         const radius = PLANET_RADIUS[planet.type] ?? 8;
         return (
           <g key={planet.id}>
-            <circle cx={c} cy={c} r={planet.orbitRadius * scale} className="orbit-ring" />
+            <circle
+              cx={c}
+              cy={c}
+              r={planet.orbitRadius * scale}
+              className="orbit-ring"
+            />
             {moons.map((moon) => {
               // Orbite de lune : rayon fixe à l'écran (lisible quel que soit le zoom système).
               const moonScreenRadius = 14 + (moon.orbitRadius - 16);
@@ -126,7 +155,12 @@ export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }:
                       else onSelectBody(moon);
                     }}
                   >
-                    <circle cx={mpos.x} cy={mpos.y} r={8} className="body-hit" />
+                    <circle
+                      cx={mpos.x}
+                      cy={mpos.y}
+                      r={8}
+                      className="body-hit"
+                    />
                     <circle
                       cx={mpos.x}
                       cy={mpos.y}
@@ -135,10 +169,20 @@ export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }:
                       className="body-dot"
                     />
                     {colonyPlanetIds.has(moon.id) && (
-                      <circle cx={mpos.x} cy={mpos.y} r={6.5} className="colony-ring" />
+                      <circle
+                        cx={mpos.x}
+                        cy={mpos.y}
+                        r={6.5}
+                        className="colony-ring"
+                      />
                     )}
                     {stationBodyIds.has(moon.id) && (
-                      <circle cx={mpos.x} cy={mpos.y} r={9} className="station-ring" />
+                      <circle
+                        cx={mpos.x}
+                        cy={mpos.y}
+                        r={9}
+                        className="station-ring"
+                      />
                     )}
                     {foreignStationColorByBodyId.has(moon.id) && (
                       <circle
@@ -146,7 +190,9 @@ export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }:
                         cy={mpos.y}
                         r={11}
                         className="foreign-station-ring"
-                        style={{ stroke: foreignStationColorByBodyId.get(moon.id) }}
+                        style={{
+                          stroke: foreignStationColorByBodyId.get(moon.id),
+                        }}
                       />
                     )}
                   </g>
@@ -171,10 +217,20 @@ export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }:
                 className="body-dot"
               />
               {colonyPlanetIds.has(planet.id) && (
-                <circle cx={pos.x} cy={pos.y} r={radius + 5} className="colony-ring" />
+                <circle
+                  cx={pos.x}
+                  cy={pos.y}
+                  r={radius + 5}
+                  className="colony-ring"
+                />
               )}
               {stationBodyIds.has(planet.id) && (
-                <circle cx={pos.x} cy={pos.y} r={radius + 9} className="station-ring" />
+                <circle
+                  cx={pos.x}
+                  cy={pos.y}
+                  r={radius + 9}
+                  className="station-ring"
+                />
               )}
               {foreignStationColorByBodyId.has(planet.id) && (
                 <circle
@@ -185,7 +241,12 @@ export function SystemView({ system, selectedBodyId, onSelectBody, onOpenBody }:
                   style={{ stroke: foreignStationColorByBodyId.get(planet.id) }}
                 />
               )}
-              <text x={pos.x} y={pos.y - radius - 8} textAnchor="middle" className="body-label">
+              <text
+                x={pos.x}
+                y={pos.y - radius - 8}
+                textAnchor="middle"
+                className="body-label"
+              >
                 {planet.name}
               </text>
             </g>

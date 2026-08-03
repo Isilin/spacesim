@@ -6,7 +6,19 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   solid?: boolean;
 }
 
-export function Badge({ variant = "neutral", solid = false, className, ...props }: BadgeProps) {
+export function Badge({
+  variant = "neutral",
+  solid = false,
+  className,
+  ...props
+}: BadgeProps) {
   const cls = [styles.badge, className].filter(Boolean).join(" ");
-  return <span className={cls} data-variant={variant} data-solid={solid} {...props} />;
+  return (
+    <span
+      className={cls}
+      data-variant={variant}
+      data-solid={solid}
+      {...props}
+    />
+  );
 }

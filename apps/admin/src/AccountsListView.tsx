@@ -20,10 +20,16 @@ const COLUMNS: TableColumn<AccountRow>[] = [
   {
     key: "email",
     label: "E-mail",
-    render: (value, row) => <Link to={`/accounts/${row.id}`}>{value as string}</Link>,
+    render: (value, row) => (
+      <Link to={`/accounts/${row.id}`}>{value as string}</Link>
+    ),
   },
   { key: "role", label: "Rôle" },
-  { key: "empire", label: "Empire", render: (_v, row) => row.empire?.name ?? "—" },
+  {
+    key: "empire",
+    label: "Empire",
+    render: (_v, row) => row.empire?.name ?? "—",
+  },
   {
     key: "createdAt",
     label: "Inscrit le",
@@ -32,7 +38,8 @@ const COLUMNS: TableColumn<AccountRow>[] = [
   {
     key: "lastLoginAt",
     label: "Dernière connexion",
-    render: (value) => (value ? new Date(value as number).toLocaleString("fr-FR") : "—"),
+    render: (value) =>
+      value ? new Date(value as number).toLocaleString("fr-FR") : "—",
   },
 ];
 
@@ -47,17 +54,21 @@ export function AccountsListView({ token }: Props) {
     let cancelled = false;
     const params = new URLSearchParams();
     if (query) params.set("query", query);
-    fetch(`/api/admin/accounts?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`/api/admin/accounts?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
-      .then((body: { accounts?: AccountRow[]; total?: number; error?: string }) => {
-        if (cancelled) return;
-        if (body.error) {
-          setError(body.error);
-          return;
-        }
-        setAccounts(body.accounts ?? []);
-        setTotal(body.total ?? 0);
-      })
+      .then(
+        (body: { accounts?: AccountRow[]; total?: number; error?: string }) => {
+          if (cancelled) return;
+          if (body.error) {
+            setError(body.error);
+            return;
+          }
+          setAccounts(body.accounts ?? []);
+          setTotal(body.total ?? 0);
+        },
+      )
       .catch(() => {
         if (!cancelled) setError("Serveur injoignable");
       });

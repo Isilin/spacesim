@@ -1,7 +1,8 @@
 import { useId, type InputHTMLAttributes } from "react";
 import styles from "./forms.module.css";
 
-export interface NumberInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"> {
+export interface NumberInputProps
+  extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"> {
   label?: string;
   unit?: string;
   hint?: string;

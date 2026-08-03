@@ -12,7 +12,12 @@ import {
   upsertWarshipSchema,
   upsertZoneTypeSchema,
 } from "@spacesim/protocol";
-import { BUILDING_IDS, DEFAULT_BALANCE, validateTree, type BuildingId } from "@spacesim/shared";
+import {
+  BUILDING_IDS,
+  DEFAULT_BALANCE,
+  validateTree,
+  type BuildingId,
+} from "@spacesim/shared";
 import type { FastifyInstance } from "fastify";
 import { recordAuditEntry } from "../../../admin/audit-service.js";
 import type { GameEngine } from "../../../game.js";
@@ -42,10 +47,17 @@ const repo = new ContentRepository();
  * chaîne lisible, pas un UUID serveur) — permet de créer une entrée neuve sans mécanique
  * dédiée (chantier 23, « conséquence assumée » de la décision 1).
  */
-export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine): void {
-  admin.get("/content/warships", { config: { adminAction: "content.warships.read" } }, () => ({
-    warships: Object.values(engine.content.warships),
-  }));
+export function registerContentRoutes(
+  admin: FastifyInstance,
+  engine: GameEngine,
+): void {
+  admin.get(
+    "/content/warships",
+    { config: { adminAction: "content.warships.read" } },
+    () => ({
+      warships: Object.values(engine.content.warships),
+    }),
+  );
 
   // Réglages de combat au-delà des stats par vaisseau (chantier 23.5) : exposé en
   // lecture pour l'instant, l'édition (matrice de triangle + directives) reste hors
@@ -65,7 +77,9 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
       if (!parsed.success) {
         return reply
           .code(400)
-          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+          .send({
+            error: parsed.error.issues[0]?.message ?? "Requête invalide",
+          });
       }
       const isNew = !(id in engine.content.warships);
       const warship: ContentWarship = { id, ...parsed.data };
@@ -86,9 +100,13 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
   );
 
   // Factions (chantier 23.6) : même recette que les vaisseaux de guerre.
-  admin.get("/content/factions", { config: { adminAction: "content.factions.read" } }, () => ({
-    factions: Object.values(engine.content.factions),
-  }));
+  admin.get(
+    "/content/factions",
+    { config: { adminAction: "content.factions.read" } },
+    () => ({
+      factions: Object.values(engine.content.factions),
+    }),
+  );
 
   admin.put(
     "/content/factions/:id",
@@ -99,7 +117,9 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
       if (!parsed.success) {
         return reply
           .code(400)
-          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+          .send({
+            error: parsed.error.issues[0]?.message ?? "Requête invalide",
+          });
       }
       const isNew = !(id in engine.content.factions);
       const faction: ContentFaction = { id, ...parsed.data };
@@ -122,9 +142,13 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
   // Bâtiments (chantier 23.7) : même recette, sauf l'id — `BUILDING_IDS` reste un tuple
   // fermé pour cette passe (voir packages/protocol/src/content.ts), la route refuse donc
   // un id qui n'en fait pas partie plutôt que de créer une entrée inutilisable en jeu.
-  admin.get("/content/buildings", { config: { adminAction: "content.buildings.read" } }, () => ({
-    buildings: Object.values(engine.content.buildings),
-  }));
+  admin.get(
+    "/content/buildings",
+    { config: { adminAction: "content.buildings.read" } },
+    () => ({
+      buildings: Object.values(engine.content.buildings),
+    }),
+  );
 
   admin.put(
     "/content/buildings/:id",
@@ -133,16 +157,22 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
       const { id } = request.params as { id: string };
       if (!(BUILDING_IDS as readonly string[]).includes(id)) {
         return reply.code(400).send({
-          error: "Id de bâtiment inconnu — la création n'est pas prise en charge pour ce domaine",
+          error:
+            "Id de bâtiment inconnu — la création n'est pas prise en charge pour ce domaine",
         });
       }
       const parsed = upsertBuildingSchema.safeParse(request.body);
       if (!parsed.success) {
         return reply
           .code(400)
-          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+          .send({
+            error: parsed.error.issues[0]?.message ?? "Requête invalide",
+          });
       }
-      const building: ContentBuilding = { id: id as BuildingId, ...parsed.data };
+      const building: ContentBuilding = {
+        id: id as BuildingId,
+        ...parsed.data,
+      };
       await repo.saveBuilding(building);
       await engine.loadContent();
 
@@ -161,9 +191,13 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
 
   // Vaisseaux civils historiques (chantier 23.8) : même recette que les vaisseaux de
   // guerre/factions (id libre, id-minting).
-  admin.get("/content/ships", { config: { adminAction: "content.ships.read" } }, () => ({
-    ships: Object.values(engine.content.ships),
-  }));
+  admin.get(
+    "/content/ships",
+    { config: { adminAction: "content.ships.read" } },
+    () => ({
+      ships: Object.values(engine.content.ships),
+    }),
+  );
 
   admin.put(
     "/content/ships/:id",
@@ -174,7 +208,9 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
       if (!parsed.success) {
         return reply
           .code(400)
-          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+          .send({
+            error: parsed.error.issues[0]?.message ?? "Requête invalide",
+          });
       }
       const isNew = !(id in engine.content.ships);
       const ship: ContentShip = { id, ...parsed.data };
@@ -196,9 +232,13 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
 
   // Constantes d'équilibrage (chantier 23.8) : même recette que les bâtiments — la clé
   // doit être un des champs de BalanceConstants, pas un id libre (pas d'id-minting).
-  admin.get("/content/constants", { config: { adminAction: "content.constants.read" } }, () => ({
-    constants: Object.values(engine.content.constants),
-  }));
+  admin.get(
+    "/content/constants",
+    { config: { adminAction: "content.constants.read" } },
+    () => ({
+      constants: Object.values(engine.content.constants),
+    }),
+  );
 
   admin.put(
     "/content/constants/:key",
@@ -215,7 +255,9 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
       if (!parsed.success) {
         return reply
           .code(400)
-          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+          .send({
+            error: parsed.error.issues[0]?.message ?? "Requête invalide",
+          });
       }
       const constant: ContentConstant = { key, ...parsed.data };
       await repo.saveConstant(constant);
@@ -237,9 +279,13 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
   // Arbre de recherche (chantier 23.9) : id libre (id-minting), mais chaque écriture
   // rejoue `validateTree` sur la table candidate (prérequis inconnus, cycles) — le même
   // garde-fou que le contrôle d'intégrité en CI, appliqué ici à l'admin en direct.
-  admin.get("/content/techs", { config: { adminAction: "content.techs.read" } }, () => ({
-    techs: Object.values(engine.content.techs),
-  }));
+  admin.get(
+    "/content/techs",
+    { config: { adminAction: "content.techs.read" } },
+    () => ({
+      techs: Object.values(engine.content.techs),
+    }),
+  );
 
   admin.put(
     "/content/techs/:id",
@@ -250,7 +296,9 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
       if (!parsed.success) {
         return reply
           .code(400)
-          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+          .send({
+            error: parsed.error.issues[0]?.message ?? "Requête invalide",
+          });
       }
       const isNew = !(id in engine.content.techs);
       const tech: ContentTech = { id, ...parsed.data };
@@ -278,9 +326,13 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
   // Châssis + modules (chantier 23.10) : id libre (id-minting), même recette que les
   // vaisseaux/techs. Domaine le plus risqué de la vague — `sim/industry/design.ts`
   // n'avait aucune injection avant ce chantier.
-  admin.get("/content/chassis", { config: { adminAction: "content.chassis.read" } }, () => ({
-    chassis: Object.values(engine.content.chassis),
-  }));
+  admin.get(
+    "/content/chassis",
+    { config: { adminAction: "content.chassis.read" } },
+    () => ({
+      chassis: Object.values(engine.content.chassis),
+    }),
+  );
 
   admin.put(
     "/content/chassis/:id",
@@ -291,7 +343,9 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
       if (!parsed.success) {
         return reply
           .code(400)
-          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+          .send({
+            error: parsed.error.issues[0]?.message ?? "Requête invalide",
+          });
       }
       const isNew = !(id in engine.content.chassis);
       const chassis: ContentChassis = { id, ...parsed.data };
@@ -311,9 +365,13 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
     },
   );
 
-  admin.get("/content/modules", { config: { adminAction: "content.modules.read" } }, () => ({
-    modules: Object.values(engine.content.modules),
-  }));
+  admin.get(
+    "/content/modules",
+    { config: { adminAction: "content.modules.read" } },
+    () => ({
+      modules: Object.values(engine.content.modules),
+    }),
+  );
 
   admin.put(
     "/content/modules/:id",
@@ -324,7 +382,9 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
       if (!parsed.success) {
         return reply
           .code(400)
-          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+          .send({
+            error: parsed.error.issues[0]?.message ?? "Requête invalide",
+          });
       }
       const isNew = !(id in engine.content.modules);
       const module: ContentModule = { id, ...parsed.data };
@@ -346,9 +406,13 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
 
   // Presets (chantier 23.11) : id libre, un preset n'est qu'un couple châssis/modules déjà
   // validé par les tables injectables de 23.10 — pas de garde-fou dédié à rejouer ici.
-  admin.get("/content/presets", { config: { adminAction: "content.presets.read" } }, () => ({
-    presets: Object.values(engine.content.presets),
-  }));
+  admin.get(
+    "/content/presets",
+    { config: { adminAction: "content.presets.read" } },
+    () => ({
+      presets: Object.values(engine.content.presets),
+    }),
+  );
 
   admin.put(
     "/content/presets/:id",
@@ -359,7 +423,9 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
       if (!parsed.success) {
         return reply
           .code(400)
-          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+          .send({
+            error: parsed.error.issues[0]?.message ?? "Requête invalide",
+          });
       }
       const isNew = !(id in engine.content.presets);
       const preset: ContentPreset = { id, ...parsed.data };
@@ -381,9 +447,13 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
 
   // Jalons (chantier 23.11) : id libre, mais `metric` reste un enum fermé (voir
   // packages/protocol/src/content.ts) — dernier domaine de la première vague de contenu.
-  admin.get("/content/milestones", { config: { adminAction: "content.milestones.read" } }, () => ({
-    milestones: Object.values(engine.content.milestones),
-  }));
+  admin.get(
+    "/content/milestones",
+    { config: { adminAction: "content.milestones.read" } },
+    () => ({
+      milestones: Object.values(engine.content.milestones),
+    }),
+  );
 
   admin.put(
     "/content/milestones/:id",
@@ -394,7 +464,9 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
       if (!parsed.success) {
         return reply
           .code(400)
-          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+          .send({
+            error: parsed.error.issues[0]?.message ?? "Requête invalide",
+          });
       }
       const isNew = !(id in engine.content.milestones);
       const milestone: ContentMilestone = { id, ...parsed.data };
@@ -416,9 +488,13 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
 
   // Types de zone de station orbitale (chantier 24.7) : id libre, même recette que
   // châssis/modules.
-  admin.get("/content/zone-types", { config: { adminAction: "content.zoneTypes.read" } }, () => ({
-    zoneTypes: Object.values(engine.content.zoneTypes),
-  }));
+  admin.get(
+    "/content/zone-types",
+    { config: { adminAction: "content.zoneTypes.read" } },
+    () => ({
+      zoneTypes: Object.values(engine.content.zoneTypes),
+    }),
+  );
 
   admin.put(
     "/content/zone-types/:id",
@@ -429,7 +505,9 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
       if (!parsed.success) {
         return reply
           .code(400)
-          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+          .send({
+            error: parsed.error.issues[0]?.message ?? "Requête invalide",
+          });
       }
       const isNew = !(id in engine.content.zoneTypes);
       const zoneType: ContentZoneType = { id, ...parsed.data };
@@ -468,7 +546,9 @@ export function registerContentRoutes(admin: FastifyInstance, engine: GameEngine
       if (!parsed.success) {
         return reply
           .code(400)
-          .send({ error: parsed.error.issues[0]?.message ?? "Requête invalide" });
+          .send({
+            error: parsed.error.issues[0]?.message ?? "Requête invalide",
+          });
       }
       const isNew = !(id in engine.content.installations);
       const installation: ContentInstallation = { id, ...parsed.data };

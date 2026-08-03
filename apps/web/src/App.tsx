@@ -105,7 +105,12 @@ function MapPage({
 }: MapPageProps) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { level, galaxy: viewGalaxy, system: viewSystem, body: viewBody } = useMapLevel(universe);
+  const {
+    level,
+    galaxy: viewGalaxy,
+    system: viewSystem,
+    body: viewBody,
+  } = useMapLevel(universe);
   const focus = searchParams.get("focus");
 
   /** Sélection secondaire (survol/clic sans ouvrir) : un id par niveau, jamais empilé. */
@@ -131,7 +136,9 @@ function MapPage({
   const openSystem = (system: StarSystem) => {
     const galaxy = findGalaxyOfSystem(universe, system.id);
     if (!galaxy) return;
-    navigate(`/map/galaxy/${galaxy.id}/system/${system.id}${colonyOnlySearch()}`);
+    navigate(
+      `/map/galaxy/${galaxy.id}/system/${system.id}${colonyOnlySearch()}`,
+    );
   };
 
   /** Ouvre la fiche d'un corps (chantier 10) : niveau de carte à part entière. */
@@ -177,24 +184,31 @@ function MapPage({
           fleetSystemIds={fleetSystemIds}
           homeSystemId={
             colony
-              ? (allPlanets(universe).find((p) => p.id === colony.planetId)?.systemId ?? null)
+              ? (allPlanets(universe).find((p) => p.id === colony.planetId)
+                  ?.systemId ?? null)
               : null
           }
           onGo={goTo}
         />
         <nav className="breadcrumb">
-          <button onClick={() => navigate(`/map${colonyOnlySearch()}`)}>Univers</button>
+          <button onClick={() => navigate(`/map${colonyOnlySearch()}`)}>
+            Univers
+          </button>
           {viewGalaxy && (
             <>
               <span className="muted">/</span>
-              <button onClick={() => openGalaxy(viewGalaxy.id)}>{viewGalaxy.name}</button>
+              <button onClick={() => openGalaxy(viewGalaxy.id)}>
+                {viewGalaxy.name}
+              </button>
             </>
           )}
           {viewSystem && (
             <>
               <span className="muted">/</span>
               {viewBody ? (
-                <button onClick={() => openSystem(viewSystem)}>{viewSystem.name}</button>
+                <button onClick={() => openSystem(viewSystem)}>
+                  {viewSystem.name}
+                </button>
               ) : (
                 <span className="breadcrumb-current">{viewSystem.name}</span>
               )}
@@ -269,12 +283,16 @@ function MapPage({
               now={now}
               onOpenBody={openBody}
             />
-            <Button onClick={() => openSystem(focusedSystem)}>Ouvrir la vue système</Button>
+            <Button onClick={() => openSystem(focusedSystem)}>
+              Ouvrir la vue système
+            </Button>
           </>
         ) : level === "universe" ? (
           <GatewaysPanel now={now} />
         ) : (
-          <p className="muted">Sélectionnez un système (double-clic : vue système).</p>
+          <p className="muted">
+            Sélectionnez un système (double-clic : vue système).
+          </p>
         )}
       </aside>
     </main>
@@ -358,14 +376,18 @@ export function App({ auth }: Props) {
     { value: "research", label: "Recherche" },
     { value: "empire", label: "Empire" },
   ].map((t) => ({ ...t, href: `/${t.value}${location.search}` }));
-  const activeTab = routeTabs.find((t) => location.pathname.startsWith(`/${t.value}`))?.value;
+  const activeTab = routeTabs.find((t) =>
+    location.pathname.startsWith(`/${t.value}`),
+  )?.value;
 
   return (
     <div className="layout">
       <TopBar
         items={routeTabs}
         active={activeTab}
-        onNavChange={(value) => navigate({ pathname: `/${value}`, search: location.search })}
+        onNavChange={(value) =>
+          navigate({ pathname: `/${value}`, search: location.search })
+        }
         status={{
           label: connected ? "● LIAISON ÉTABLIE" : "○ LIAISON PERDUE",
           tone: connected ? "ok" : "ko",
@@ -413,7 +435,12 @@ export function App({ auth }: Props) {
       <Routes>
         <Route
           path="/"
-          element={<Navigate to={{ pathname: "/colony", search: location.search }} replace />}
+          element={
+            <Navigate
+              to={{ pathname: "/colony", search: location.search }}
+              replace
+            />
+          }
         />
         <Route
           path="/colony"
@@ -427,7 +454,11 @@ export function App({ auth }: Props) {
           path="/stations"
           element={
             <main className="content-single">
-              <StationsView effects={effects} universe={universe} portalLinks={portalLinks} />
+              <StationsView
+                effects={effects}
+                universe={universe}
+                portalLinks={portalLinks}
+              />
             </main>
           }
         />
@@ -435,7 +466,11 @@ export function App({ auth }: Props) {
           path="/logistics"
           element={
             <main className="content-single">
-              <LogisticsView effects={effects} portalLinks={portalLinks} now={now} />
+              <LogisticsView
+                effects={effects}
+                portalLinks={portalLinks}
+                now={now}
+              />
             </main>
           }
         />
@@ -471,7 +506,12 @@ export function App({ auth }: Props) {
           path="/research"
           element={
             <main className="content-single">
-              <ResearchView game={game} colonies={colonies} now={now} send={send} />
+              <ResearchView
+                game={game}
+                colonies={colonies}
+                now={now}
+                send={send}
+              />
             </main>
           }
         />

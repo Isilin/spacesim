@@ -11,7 +11,10 @@ const WS_UNAUTHORIZED = 4001;
  * `sessionToken` = jeton d'authentification (chantier 8) ; `onUnauthorized` est appelé
  * quand le serveur le rejette, pour renvoyer à l'écran de connexion.
  */
-export function useGameConnection(sessionToken: string, onUnauthorized: () => void): void {
+export function useGameConnection(
+  sessionToken: string,
+  onUnauthorized: () => void,
+): void {
   useEffect(() => {
     const store = useGameStore.getState();
     // Un store Zustand est un singleton de module : contrairement à `useState`, il ne se
@@ -44,7 +47,10 @@ export function useGameConnection(sessionToken: string, onUnauthorized: () => vo
         } else if (msg.type === "actionError") {
           useGameStore.getState().setActionError(msg.message);
           window.clearTimeout(errorTimer);
-          errorTimer = window.setTimeout(() => useGameStore.getState().setActionError(null), 4000);
+          errorTimer = window.setTimeout(
+            () => useGameStore.getState().setActionError(null),
+            4000,
+          );
         }
       };
       socket.onclose = (event) => {
@@ -62,7 +68,8 @@ export function useGameConnection(sessionToken: string, onUnauthorized: () => vo
     };
 
     const send = (msg: ClientMessage) => {
-      if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(msg));
+      if (socket?.readyState === WebSocket.OPEN)
+        socket.send(JSON.stringify(msg));
     };
     store.setSend(send);
 

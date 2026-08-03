@@ -22,7 +22,15 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
-import { Button, NumberInput, Panel, SectionTitle, Select, Table, type TableColumn } from "@spacesim/ui";
+import {
+  Button,
+  NumberInput,
+  Panel,
+  SectionTitle,
+  Select,
+  Table,
+  type TableColumn,
+} from "@spacesim/ui";
 import { BlueprintMarket } from "./BlueprintMarket.js";
 import { formatDuration, systemIdOf } from "./format.js";
 import { FACTION_LABELS, RESOURCE_LABELS, repTierName } from "./labels.js";
@@ -57,7 +65,9 @@ export function TradingPostPanel({
   now,
   send,
 }: Props) {
-  const [sellAmounts, setSellAmounts] = useState<Partial<Record<ResourceId, string>>>({});
+  const [sellAmounts, setSellAmounts] = useState<
+    Partial<Record<ResourceId, string>>
+  >({});
   const [buyResource, setBuyResource] = useState<MarketResource>("metals");
   const [buyBudget, setBuyBudget] = useState("");
   const faction = FACTION_LABELS[tradingPost.factionId as FactionId];
@@ -72,9 +82,16 @@ export function TradingPostPanel({
     factionId: tradingPost.factionId,
   };
 
-  const fromSystem = activeColony ? systemIdOf(universe, activeColony.planetId) : undefined;
+  const fromSystem = activeColony
+    ? systemIdOf(universe, activeColony.planetId)
+    : undefined;
   const jumps = fromSystem
-    ? jumpDistanceInUniverse(universe, fromSystem, tradingPost.systemId, portalLinks)
+    ? jumpDistanceInUniverse(
+        universe,
+        fromSystem,
+        tradingPost.systemId,
+        portalLinks,
+      )
     : -1;
   const fee = jumps >= 0 ? transferCostCredits(jumps) : 0;
   const eta = jumps >= 0 ? transferDurationMs(jumps) * transferSpeedMult : 0;
@@ -92,16 +109,26 @@ export function TradingPostPanel({
   }
   const hasCargo = Object.keys(cargo).length > 0;
   const totalCargo = Object.values(cargo).reduce((s, n) => s + n, 0);
-  const convoyCapacity = activeColony ? maxConvoyCapacity(activeColony, routes) : 0;
+  const convoyCapacity = activeColony
+    ? maxConvoyCapacity(activeColony, routes)
+    : 0;
   const overCapacity = totalCargo > convoyCapacity;
   const estimatedRevenue =
-    market && hasCargo ? resolveSale(market.stocks, cargo, priceContext).revenue : 0;
+    market && hasCargo
+      ? resolveSale(market.stocks, cargo, priceContext).revenue
+      : 0;
 
   const budget = Math.floor(Number(buyBudget));
   const validBudget = Number.isFinite(budget) && budget > 0;
   const estimatedPurchase =
     market && validBudget
-      ? resolvePurchase(market.stocks, buyResource, budget, Infinity, priceContext)
+      ? resolvePurchase(
+          market.stocks,
+          buyResource,
+          budget,
+          Infinity,
+          priceContext,
+        )
       : null;
 
   const canTrade = activeColony && jumps >= 0;
@@ -113,8 +140,8 @@ export function TradingPostPanel({
       </p>
       {jumps >= 0 && (
         <p className="small muted">
-          {jumps} saut{jumps > 1 ? "s" : ""} — {formatDuration(eta)} — frais {fee} crédits par
-          convoi
+          {jumps} saut{jumps > 1 ? "s" : ""} — {formatDuration(eta)} — frais{" "}
+          {fee} crédits par convoi
         </p>
       )}
       {(() => {
@@ -138,7 +165,11 @@ export function TradingPostPanel({
         <Table
           columns={
             [
-              { key: "res", label: "Ressource", render: (_, res) => RESOURCE_LABELS[res] },
+              {
+                key: "res",
+                label: "Ressource",
+                render: (_, res) => RESOURCE_LABELS[res],
+              },
               {
                 key: "stock",
                 label: "Stock",
@@ -151,11 +182,17 @@ export function TradingPostPanel({
                 align: "right",
                 trend: (res) => {
                   const gap =
-                    tradingPostPrice(res, market.stocks[res], priceContext) / BASE_PRICES[res] - 1;
+                    tradingPostPrice(res, market.stocks[res], priceContext) /
+                      BASE_PRICES[res] -
+                    1;
                   return gap > 0.15 ? "up" : gap < -0.15 ? "down" : undefined;
                 },
                 render: (_, res) => {
-                  const price = tradingPostPrice(res, market.stocks[res], priceContext);
+                  const price = tradingPostPrice(
+                    res,
+                    market.stocks[res],
+                    priceContext,
+                  );
                   const gap = price / BASE_PRICES[res] - 1;
                   return `${price.toFixed(2)} (${gap >= 0 ? "+" : ""}${Math.round(gap * 100)} %)`;
                 },
@@ -180,7 +217,9 @@ export function TradingPostPanel({
                       ? "Achat (aller)"
                       : "Achat (retour)"}
                 </span>
-                <span className="muted">{formatDuration(m.arrivesAt - now)}</span>
+                <span className="muted">
+                  {formatDuration(m.arrivesAt - now)}
+                </span>
               </div>
             </li>
           ))}
@@ -200,7 +239,9 @@ export function TradingPostPanel({
                 max={Math.floor(activeColony.orbitalResources[res] ?? 0)}
                 value={sellAmounts[res] ?? ""}
                 placeholder="0"
-                onChange={(e) => setSellAmounts({ ...sellAmounts, [res]: e.target.value })}
+                onChange={(e) =>
+                  setSellAmounts({ ...sellAmounts, [res]: e.target.value })
+                }
               />
             ))}
             <span className={`small ${overCapacity ? "ko" : "muted"}`}>
@@ -235,7 +276,10 @@ export function TradingPostPanel({
               label="Ressource"
               value={buyResource}
               onChange={(e) => setBuyResource(e.target.value as MarketResource)}
-              options={MARKET_RESOURCES.map((res) => ({ value: res, label: RESOURCE_LABELS[res] }))}
+              options={MARKET_RESOURCES.map((res) => ({
+                value: res,
+                label: RESOURCE_LABELS[res],
+              }))}
             />
             <NumberInput
               label="Budget (crédits)"
@@ -251,7 +295,9 @@ export function TradingPostPanel({
               </span>
             )}
             <Button
-              disabled={!validBudget || activeColony.resources.credits < budget + fee}
+              disabled={
+                !validBudget || activeColony.resources.credits < budget + fee
+              }
               title={
                 activeColony.resources.credits < budget + fee
                   ? "Crédits insuffisants (budget + frais)"

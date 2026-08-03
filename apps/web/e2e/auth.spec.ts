@@ -1,14 +1,24 @@
 import { expect, test } from "@playwright/test";
 import { registerFreshEmpire } from "./helpers.js";
 
-test("inscription : crée le compte et l'empire, atterrit sur la colonie", async ({ page }) => {
-  await registerFreshEmpire(page, { prefix: "register", empireName: "Consortium E2E" });
+test("inscription : crée le compte et l'empire, atterrit sur la colonie", async ({
+  page,
+}) => {
+  await registerFreshEmpire(page, {
+    prefix: "register",
+    empireName: "Consortium E2E",
+  });
 
   await expect(page).toHaveURL(/\/colony$/);
-  await expect(page.getByRole("link", { name: "Colonie" })).toHaveAttribute("data-active", "true");
+  await expect(page.getByRole("link", { name: "Colonie" })).toHaveAttribute(
+    "data-active",
+    "true",
+  );
 });
 
-test("connexion : un compte existant se reconnecte à son empire", async ({ page }) => {
+test("connexion : un compte existant se reconnecte à son empire", async ({
+  page,
+}) => {
   const email = `login-${Date.now()}@example.test`;
 
   await page.goto("/");

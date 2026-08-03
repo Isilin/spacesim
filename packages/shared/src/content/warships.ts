@@ -120,7 +120,12 @@ export const WARSHIPS: Record<WarshipId, WarshipDef> = {
  * plus des classes figées mais des plans ; le triangle de forces s'exprime donc entre
  * **catégories** (dérivées du plan, cf. sim/design) plutôt qu'entre ids précis.
  */
-export const COMBAT_CATEGORIES = ["skirmisher", "line", "capital", "support"] as const;
+export const COMBAT_CATEGORIES = [
+  "skirmisher",
+  "line",
+  "capital",
+  "support",
+] as const;
 
 export type CombatCategory = (typeof COMBAT_CATEGORIES)[number];
 
@@ -128,7 +133,10 @@ export type CombatCategory = (typeof COMBAT_CATEGORIES)[number];
  * Triangle de forces (à la Endless Space) : escarmoucheur > capital > ligne > escarmoucheur.
  * Le soutien est neutre. Multiplicateur des dégâts infligés par [attaquant][défenseur].
  */
-export const CATEGORY_ADVANTAGE: Record<CombatCategory, Partial<Record<CombatCategory, number>>> = {
+export const CATEGORY_ADVANTAGE: Record<
+  CombatCategory,
+  Partial<Record<CombatCategory, number>>
+> = {
   skirmisher: { capital: 1.5, line: 0.7 },
   line: { skirmisher: 1.5, capital: 0.7 },
   capital: { line: 1.5, skirmisher: 0.7 },
@@ -146,7 +154,12 @@ export const WARSHIP_CATEGORY: Record<WarshipId, CombatCategory> = {
   support: "support",
 };
 
-export const COMBAT_DIRECTIVES = ["barrage", "shields", "evasive", "focus_fire"] as const;
+export const COMBAT_DIRECTIVES = [
+  "barrage",
+  "shields",
+  "evasive",
+  "focus_fire",
+] as const;
 
 export type CombatDirective = (typeof COMBAT_DIRECTIVES)[number];
 
@@ -171,7 +184,10 @@ export const DIRECTIVES: Record<CombatDirective, DirectiveDef> = {
  * « contre » celle de l'adversaire. barrage < shields < evasive < barrage ;
  * focus_fire est neutre mais concentre le feu (voir sim/combat).
  */
-export const DIRECTIVE_COUNTER: Record<CombatDirective, CombatDirective | null> = {
+export const DIRECTIVE_COUNTER: Record<
+  CombatDirective,
+  CombatDirective | null
+> = {
   barrage: "evasive", // le barrage écrase l'évitement
   evasive: "shields", // l'évitement déborde les boucliers
   shields: "barrage", // les boucliers encaissent le barrage

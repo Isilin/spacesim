@@ -16,7 +16,11 @@ import {
 import { useSearchParams } from "react-router-dom";
 import { Panel } from "@spacesim/ui";
 import { BodyActions } from "./BodyActions.js";
-import { BUILDING_LABELS, PLANET_TYPE_LABELS, RESOURCE_LABELS } from "./labels.js";
+import {
+  BUILDING_LABELS,
+  PLANET_TYPE_LABELS,
+  RESOURCE_LABELS,
+} from "./labels.js";
 import { useGameStore } from "./state/game-store.js";
 import { selectActiveColony, selectExplored } from "./state/selectors.js";
 
@@ -62,7 +66,9 @@ export function BodyView({
   onOpenBody,
 }: Props) {
   const [searchParams] = useSearchParams();
-  const activeColony = useGameStore(selectActiveColony(searchParams.get("colony")));
+  const activeColony = useGameStore(
+    selectActiveColony(searchParams.get("colony")),
+  );
   const explored = useGameStore(selectExplored(system.id));
   const { colonies, missions, stations, game, send } = useGameStore();
   const parent = body.parentPlanetId
@@ -89,7 +95,9 @@ export function BodyView({
           <p className="muted">
             {body.kind === "moon" ? "Lune" : "Planète"}{" "}
             {PLANET_TYPE_LABELS[body.type].toLowerCase()}
-            {parent ? ` · en orbite autour de ${parent.name}` : ` · système ${system.name}`}
+            {parent
+              ? ` · en orbite autour de ${parent.name}`
+              : ` · système ${system.name}`}
           </p>
         </div>
         <BodyActions
@@ -107,7 +115,8 @@ export function BodyView({
 
       {!explored && (
         <p className="small muted">
-          Système non exploré — les relevés proviennent de l'observation à distance.
+          Système non exploré — les relevés proviennent de l'observation à
+          distance.
         </p>
       )}
 
@@ -120,10 +129,24 @@ export function BodyView({
         >
           {/* Orbites des lunes, puis les lunes elles-mêmes (cliquables). */}
           {moons.map((moon, i) => (
-            <circle key={`o-${moon.id}`} cx={c} cy={c} r={moonOrbit(i)} className="orbit-ring" />
+            <circle
+              key={`o-${moon.id}`}
+              cx={c}
+              cy={c}
+              r={moonOrbit(i)}
+              className="orbit-ring"
+            />
           ))}
-          <circle cx={c} cy={c} r={bodyRadius} fill={color} className="body-dot" />
-          {colony && <circle cx={c} cy={c} r={bodyRadius + 7} className="colony-ring" />}
+          <circle
+            cx={c}
+            cy={c}
+            r={bodyRadius}
+            fill={color}
+            className="body-dot"
+          />
+          {colony && (
+            <circle cx={c} cy={c} r={bodyRadius + 7} className="colony-ring" />
+          )}
           {/* Anneau de soute orbitale : son remplissage dit ce qui est prêt à partir. */}
           {colony && orbitalCap(colony, effects) > 0 && (
             <circle
@@ -137,7 +160,14 @@ export function BodyView({
           )}
           {/* Anneau de station : rayon distinct de l'anneau de colonie, un corps peut porter
            *  les deux (chantier 24). */}
-          {station && <circle cx={c} cy={c} r={bodyRadius + 20} className="station-ring" />}
+          {station && (
+            <circle
+              cx={c}
+              cy={c}
+              r={bodyRadius + 20}
+              className="station-ring"
+            />
+          )}
           {moons.map((moon, i) => {
             const angle = moon.orbitAngle;
             const x = c + Math.cos(angle) * moonOrbit(i);
@@ -154,18 +184,32 @@ export function BodyView({
                 }}
               >
                 <circle cx={x} cy={y} r={12} className="body-hit" />
-                <circle cx={x} cy={y} r={6} fill={BODY_COLORS[moon.type]} className="body-dot" />
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={6}
+                  fill={BODY_COLORS[moon.type]}
+                  className="body-dot"
+                />
                 {colonies.some((col) => col.planetId === moon.id) && (
                   <circle cx={x} cy={y} r={9} className="colony-ring" />
                 )}
-                <text x={x} y={y - 12} textAnchor="middle" className="body-label">
+                <text
+                  x={x}
+                  y={y - 12}
+                  textAnchor="middle"
+                  className="body-label"
+                >
                   {moon.name}
                 </text>
               </g>
             );
           })}
           {/* Encart : position du corps sur son orbite autour de l'étoile (ou de sa planète). */}
-          <g transform={`translate(${SCHEMA - 58}, 58)`} className="orbit-inset">
+          <g
+            transform={`translate(${SCHEMA - 58}, 58)`}
+            className="orbit-inset"
+          >
             <circle r={40} className="orbit-ring" />
             <circle r={4} className="star-core" />
             <circle
@@ -176,7 +220,9 @@ export function BodyView({
               className="body-dot"
             />
             <text y={56} textAnchor="middle" className="body-label">
-              {parent ? `orbite de ${parent.name}` : `orbite ${Math.round(body.orbitRadius)}`}
+              {parent
+                ? `orbite de ${parent.name}`
+                : `orbite ${Math.round(body.orbitRadius)}`}
             </text>
           </g>
         </svg>
@@ -235,12 +281,15 @@ export function BodyView({
             )}
           </Panel>
 
-          <Panel title={`Sol — ${colony ? usedSlots(colony) : 0}/${body.slots} emplacements`}>
+          <Panel
+            title={`Sol — ${colony ? usedSlots(colony) : 0}/${body.slots} emplacements`}
+          >
             <SlotGrid body={body} colony={colony} />
             {colony ? (
               <p className="small muted">
-                Population {Math.floor(colony.population)}/{popCap(colony, body, effects)} ·
-                satisfaction {Math.round(colony.satisfaction)}
+                Population {Math.floor(colony.population)}/
+                {popCap(colony, body, effects)} · satisfaction{" "}
+                {Math.round(colony.satisfaction)}
                 {orbitalCap(colony, effects) > 0
                   ? ` · soute orbitale ${Math.floor(orbitalUsed(colony))}/${orbitalCap(colony, effects)}`
                   : " · aucun dock orbital"}
@@ -256,9 +305,15 @@ export function BodyView({
 }
 
 /** Grille des emplacements : un carré par emplacement, occupé (par type) ou libre. */
-function SlotGrid({ body, colony }: { body: Planet; colony: Colony | undefined }) {
+function SlotGrid({
+  body,
+  colony,
+}: { body: Planet; colony: Colony | undefined }) {
   const built: BuildingId[] = [];
-  for (const [id, count] of Object.entries(colony?.buildings ?? {}) as [BuildingId, number][]) {
+  for (const [id, count] of Object.entries(colony?.buildings ?? {}) as [
+    BuildingId,
+    number,
+  ][]) {
     for (let i = 0; i < (count ?? 0); i++) built.push(id);
   }
   const queued = (colony?.queue ?? []).map((q) => q.buildingId);
@@ -267,7 +322,11 @@ function SlotGrid({ body, colony }: { body: Planet; colony: Colony | undefined }
   return (
     <div className="slot-grid">
       {built.map((id, i) => (
-        <span key={`b${i}`} className="slot built" title={BUILDING_LABELS[id].name}>
+        <span
+          key={`b${i}`}
+          className="slot built"
+          title={BUILDING_LABELS[id].name}
+        >
           {BUILDING_LABELS[id].name.charAt(0)}
         </span>
       ))}
@@ -283,7 +342,9 @@ function SlotGrid({ body, colony }: { body: Planet; colony: Colony | undefined }
       {Array.from({ length: free }, (_, i) => (
         <span key={`f${i}`} className="slot free" title="Emplacement libre" />
       ))}
-      {body.slots === 0 && <span className="small muted">Aucun emplacement exploitable.</span>}
+      {body.slots === 0 && (
+        <span className="small muted">Aucun emplacement exploitable.</span>
+      )}
     </div>
   );
 }

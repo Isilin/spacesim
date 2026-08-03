@@ -23,7 +23,10 @@ import {
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
-import { balanceFromContent, shipDefsFromContent } from "../content/content-service.js";
+import {
+  balanceFromContent,
+  shipDefsFromContent,
+} from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { ContractRepository } from "../repositories/contract-repository.js";
@@ -54,7 +57,10 @@ export class ContractService {
       fromColonyId: string,
       targetId: string,
       durationMs: number,
-      extras?: Pick<Mission, "cargo" | "budget" | "buyResource" | "capacity" | "contractId">,
+      extras?: Pick<
+        Mission,
+        "cargo" | "budget" | "buyResource" | "capacity" | "contractId"
+      >,
       departedAt?: number,
     ) => void,
   ) {
@@ -68,7 +74,9 @@ export class ContractService {
   }
 
   private get portalLinks(): [string, string][] {
-    return gatewayLinks(this.runtime.universe, [...this.runtime.gatewayMap.values()]);
+    return gatewayLinks(this.runtime.universe, [
+      ...this.runtime.gatewayMap.values(),
+    ]);
   }
 
   /** Scalaires d'équilibrage (DB-backed, chantier 23.8). */
@@ -115,10 +123,12 @@ export class ContractService {
     const openCount = [...this.runtime.contractMap.values()].filter(
       (c) => c.issuerId === empire.id && c.status === "open",
     ).length;
-    if (openCount >= MAX_OPEN_CONTRACTS_PER_EMPIRE) return "Trop de contrats ouverts (dix au plus)";
+    if (openCount >= MAX_OPEN_CONTRACTS_PER_EMPIRE)
+      return "Trop de contrats ouverts (dix au plus)";
 
     const escrow = contractEscrow(qty, price);
-    if (colony.resources.credits < escrow) return `Crédits insuffisants (séquestre : ${escrow})`;
+    if (colony.resources.credits < escrow)
+      return `Crédits insuffisants (séquestre : ${escrow})`;
 
     const planet = this.runtime.planetsById.get(colony.planetId);
     if (!planet) return "Planète inconnue";
@@ -140,7 +150,10 @@ export class ContractService {
       deadline: now + clampContractDuration(Number(durationMs)),
       status: "open",
     };
-    const resources = { ...colony.resources, credits: colony.resources.credits - escrow };
+    const resources = {
+      ...colony.resources,
+      credits: colony.resources.credits - escrow,
+    };
     empire.colonyMap.set(colony.id, { ...colony, resources });
     this.persistColony(empire.colonyMap.get(colony.id)!);
     this.runtime.contractMap.set(contract.id, contract);
@@ -160,11 +173,13 @@ export class ContractService {
     if (!colony) return "Colonie inconnue";
     const contract = this.runtime.contractMap.get(contractId);
     if (!contract) return "Contrat inconnu";
-    if (contract.issuerId === empire.id) return "Impossible d'accepter son propre contrat";
+    if (contract.issuerId === empire.id)
+      return "Impossible d'accepter son propre contrat";
 
     const now = Date.now();
     const qty = Math.floor(Number(quantity));
-    if (!contractAcceptable(contract, qty, now)) return "Contrat indisponible pour cette quantité";
+    if (!contractAcceptable(contract, qty, now))
+      return "Contrat indisponible pour cette quantité";
 
     const fromPlanet = this.runtime.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
@@ -177,7 +192,9 @@ export class ContractService {
     if (jumps < 0) return "Colonie destinataire inaccessible";
     const portals = this.portalsCrossed(fromPlanet.systemId, contract.systemId);
 
-    const cargo: Partial<Record<ResourceId, number>> = { [contract.resource]: qty };
+    const cargo: Partial<Record<ResourceId, number>> = {
+      [contract.resource]: qty,
+    };
     const loaded = takeFromOrbit(colony, cargo);
     if (!loaded) return `Stock orbital insuffisant : ${contract.resource}`;
 
@@ -189,14 +206,20 @@ export class ContractService {
       now + 2 * transferDurationMs(jumps, balance) * speed,
     );
     if (!one) return "Convoi indisponible : vaisseaux manquants";
-    const reserved = { colony: one.colony, ships: { [one.shipId]: 1 }, capacity: one.capacity };
+    const reserved = {
+      colony: one.colony,
+      ships: { [one.shipId]: 1 },
+      capacity: one.capacity,
+    };
     if (qty > reserved.capacity)
       return `Cargaison trop lourde pour ce convoi (soute : ${reserved.capacity})`;
 
-    const duration = convoyDurationMs(jumps, reserved.ships, this.statsOf, balance) * speed;
+    const duration =
+      convoyDurationMs(jumps, reserved.ships, this.statsOf, balance) * speed;
     const fee = convoyFees(jumps, portals, balance);
     const fuel = Math.ceil(
-      convoyFuel(jumps, reserved.ships, qty, this.statsOf, balance) * empire.effects.fuelMult,
+      convoyFuel(jumps, reserved.ships, qty, this.statsOf, balance) *
+        empire.effects.fuelMult,
     );
     const resources = { ...reserved.colony.resources };
     if (resources.credits < fee) return `Crédits insuffisants (frais : ${fee})`;
@@ -234,13 +257,17 @@ export class ContractService {
   cancelContract(empire: Empire, contractId: string): string | null {
     const contract = this.runtime.contractMap.get(contractId);
     if (!contract) return "Contrat inconnu";
-    if (contract.issuerId !== empire.id) return "Seul l'émetteur peut annuler ce contrat";
+    if (contract.issuerId !== empire.id)
+      return "Seul l'émetteur peut annuler ce contrat";
     if (contract.status !== "open") return "Contrat déjà clos";
 
     const colony = empire.colonyMap.get(contract.colonyId);
     if (colony) {
       const refund = contractEscrow(contract.remaining, contract.pricePerUnit);
-      const resources = { ...colony.resources, credits: colony.resources.credits + refund };
+      const resources = {
+        ...colony.resources,
+        credits: colony.resources.credits + refund,
+      };
       empire.colonyMap.set(colony.id, { ...colony, resources });
       this.persistColony(empire.colonyMap.get(colony.id)!);
     }
@@ -270,12 +297,19 @@ export class ContractService {
   /** Expire les contrats dépassés et rembourse le séquestre du reliquat non honoré. */
   resolveContracts(t: number): void {
     for (const [id, contract] of this.runtime.contractMap) {
-      if (contract.status !== "open" || !isContractExpired(contract, t)) continue;
+      if (contract.status !== "open" || !isContractExpired(contract, t))
+        continue;
       const issuer = this.runtime.empires.get(contract.issuerId);
       const colony = issuer?.colonyMap.get(contract.colonyId);
       if (issuer && colony) {
-        const refund = contractEscrow(contract.remaining, contract.pricePerUnit);
-        const resources = { ...colony.resources, credits: colony.resources.credits + refund };
+        const refund = contractEscrow(
+          contract.remaining,
+          contract.pricePerUnit,
+        );
+        const resources = {
+          ...colony.resources,
+          credits: colony.resources.credits + refund,
+        };
         issuer.colonyMap.set(colony.id, { ...colony, resources });
         this.persistColony(issuer.colonyMap.get(colony.id)!);
       }
@@ -289,7 +323,10 @@ export class ContractService {
   shiftTime(deltaMs: number): void {
     for (const [id, contract] of this.runtime.contractMap) {
       if (contract.status !== "open") continue;
-      const next: Contract = { ...contract, deadline: contract.deadline - deltaMs };
+      const next: Contract = {
+        ...contract,
+        deadline: contract.deadline - deltaMs,
+      };
       this.runtime.contractMap.set(id, next);
       this.persistContract(next);
     }

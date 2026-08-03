@@ -89,12 +89,16 @@ export function ZoomableSvg({
   }, [focus?.x, focus?.y, focus?.width, focus?.height]);
 
   /** Point du monde SVG sous le curseur. */
-  const worldAt = (event: { clientX: number; clientY: number }, current: ViewBox) => {
+  const worldAt = (
+    event: { clientX: number; clientY: number },
+    current: ViewBox,
+  ) => {
     const rect = svgRef.current?.getBoundingClientRect();
     if (!rect || rect.width === 0 || rect.height === 0) return null;
     return {
       x: current.x + ((event.clientX - rect.left) / rect.width) * current.width,
-      y: current.y + ((event.clientY - rect.top) / rect.height) * current.height,
+      y:
+        current.y + ((event.clientY - rect.top) / rect.height) * current.height,
     };
   };
 
@@ -105,7 +109,10 @@ export function ZoomableSvg({
    */
   const zoomAround = (factor: number, anchor: { x: number; y: number }) => {
     const scale = home.width / view.width;
-    const clamped = Math.min(MAX_SCALE / scale, Math.max(MIN_SCALE / scale, factor));
+    const clamped = Math.min(
+      MAX_SCALE / scale,
+      Math.max(MIN_SCALE / scale, factor),
+    );
     if (clamped === 1) return;
     apply({
       x: anchor.x - (anchor.x - view.x) / clamped,
@@ -116,7 +123,10 @@ export function ZoomableSvg({
   };
 
   /** Centre géométrique de la vue — ancre des boutons de zoom. */
-  const center = () => ({ x: view.x + view.width / 2, y: view.y + view.height / 2 });
+  const center = () => ({
+    x: view.x + view.width / 2,
+    y: view.y + view.height / 2,
+  });
 
   const onWheel = (event: ReactWheelEvent<SVGSVGElement>) => {
     const anchor = worldAt(event, view);
@@ -139,7 +149,10 @@ export function ZoomableSvg({
     const drag = dragRef.current;
     const rect = svgRef.current?.getBoundingClientRect();
     if (!drag || !rect || rect.width === 0) return;
-    const moved = Math.abs(event.clientX - drag.startX) + Math.abs(event.clientY - drag.startY) > 3;
+    const moved =
+      Math.abs(event.clientX - drag.startX) +
+        Math.abs(event.clientY - drag.startY) >
+      3;
     if (!moved && !movedRef.current) return;
     if (!movedRef.current) {
       movedRef.current = true;
@@ -181,10 +194,18 @@ export function ZoomableSvg({
         {children}
       </svg>
       <div className={styles.controls}>
-        <button type="button" title="Zoom avant" onClick={() => zoomAround(1.4, center())}>
+        <button
+          type="button"
+          title="Zoom avant"
+          onClick={() => zoomAround(1.4, center())}
+        >
           +
         </button>
-        <button type="button" title="Zoom arrière" onClick={() => zoomAround(1 / 1.4, center())}>
+        <button
+          type="button"
+          title="Zoom arrière"
+          onClick={() => zoomAround(1 / 1.4, center())}
+        >
           −
         </button>
         <button type="button" title="Recentrer" onClick={() => apply(home)}>

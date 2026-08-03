@@ -25,14 +25,19 @@ describe("generateObjectiveSpec", () => {
   it("peut tirer hold_system quand l'empire a une revendication, avec ce système pour cible", () => {
     // Le premier tirage (index de kind = 0) correspond à colonize_n_systems dans
     // OBJECTIVE_KINDS ; on force plutôt le dernier indice pour viser hold_system.
-    const lastIndex = OBJECTIVE_KINDS.indexOf("hold_system") / OBJECTIVE_KINDS.length;
-    const spec = generateObjectiveSpec(fakeRng([lastIndex, 0]), 0, 3, ["sys-1", "sys-2"]);
+    const lastIndex =
+      OBJECTIVE_KINDS.indexOf("hold_system") / OBJECTIVE_KINDS.length;
+    const spec = generateObjectiveSpec(fakeRng([lastIndex, 0]), 0, 3, [
+      "sys-1",
+      "sys-2",
+    ]);
     expect(spec.kind).toBe("hold_system");
     expect(["sys-1", "sys-2"]).toContain(spec.targetSystemId);
   });
 
   it("colonize_n_systems vise toujours plus que le nombre actuel de colonies", () => {
-    const idx = OBJECTIVE_KINDS.indexOf("colonize_n_systems") / OBJECTIVE_KINDS.length;
+    const idx =
+      OBJECTIVE_KINDS.indexOf("colonize_n_systems") / OBJECTIVE_KINDS.length;
     const spec = generateObjectiveSpec(fakeRng([idx, 0]), 0, 5, []);
     expect(spec.kind).toBe("colonize_n_systems");
     expect(spec.targetCount).toBeGreaterThan(5);
@@ -54,27 +59,48 @@ describe("generateObjectiveSpec", () => {
 describe("objectiveMet", () => {
   it("colonize_n_systems : rempli une fois le compte atteint ou dépassé", () => {
     expect(
-      objectiveMet({ kind: "colonize_n_systems", targetCount: 5 }, progress({ colonyCount: 4 })),
+      objectiveMet(
+        { kind: "colonize_n_systems", targetCount: 5 },
+        progress({ colonyCount: 4 }),
+      ),
     ).toBe(false);
     expect(
-      objectiveMet({ kind: "colonize_n_systems", targetCount: 5 }, progress({ colonyCount: 5 })),
+      objectiveMet(
+        { kind: "colonize_n_systems", targetCount: 5 },
+        progress({ colonyCount: 5 }),
+      ),
     ).toBe(true);
   });
 
   it("hold_system : rempli tant que le système visé reste revendiqué", () => {
     const spec = { kind: "hold_system" as const, targetSystemId: "sys-1" };
-    expect(objectiveMet(spec, progress({ claimedSystemIds: ["sys-2"] }))).toBe(false);
-    expect(objectiveMet(spec, progress({ claimedSystemIds: ["sys-1", "sys-2"] }))).toBe(true);
+    expect(objectiveMet(spec, progress({ claimedSystemIds: ["sys-2"] }))).toBe(
+      false,
+    );
+    expect(
+      objectiveMet(spec, progress({ claimedSystemIds: ["sys-1", "sys-2"] })),
+    ).toBe(true);
   });
 
   it("lead_population / lead_influence : reflètent directement le classement fourni", () => {
-    expect(objectiveMet({ kind: "lead_population" }, progress({ leadsPopulation: false }))).toBe(
-      false,
-    );
-    expect(objectiveMet({ kind: "lead_population" }, progress({ leadsPopulation: true }))).toBe(
-      true,
-    );
-    expect(objectiveMet({ kind: "lead_influence" }, progress({ leadsInfluence: true }))).toBe(true);
+    expect(
+      objectiveMet(
+        { kind: "lead_population" },
+        progress({ leadsPopulation: false }),
+      ),
+    ).toBe(false);
+    expect(
+      objectiveMet(
+        { kind: "lead_population" },
+        progress({ leadsPopulation: true }),
+      ),
+    ).toBe(true);
+    expect(
+      objectiveMet(
+        { kind: "lead_influence" },
+        progress({ leadsInfluence: true }),
+      ),
+    ).toBe(true);
   });
 });
 

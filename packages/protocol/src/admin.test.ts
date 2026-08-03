@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { ADMIN_ACTIONS, hasPermission, ROLE_IDS, ROLE_PERMISSIONS } from "./admin.js";
+import {
+  ADMIN_ACTIONS,
+  hasPermission,
+  ROLE_IDS,
+  ROLE_PERMISSIONS,
+} from "./admin.js";
 
 describe("rôles et permissions admin", () => {
   it("player n'a jamais aucune action admin", () => {
@@ -31,19 +36,27 @@ describe("rôles et permissions admin", () => {
 
   it("content_editor édite les vaisseaux de guerre (chantier 23.5) mais pas les comptes", () => {
     expect(hasPermission("content_editor", "content.warships.read")).toBe(true);
-    expect(hasPermission("content_editor", "content.warships.write")).toBe(true);
+    expect(hasPermission("content_editor", "content.warships.write")).toBe(
+      true,
+    );
     expect(hasPermission("content_editor", "account.view")).toBe(false);
     expect(hasPermission("content_editor", "audit.read")).toBe(false);
   });
 
   it("content_editor édite aussi les factions (chantier 23.6)", () => {
     expect(hasPermission("content_editor", "content.factions.read")).toBe(true);
-    expect(hasPermission("content_editor", "content.factions.write")).toBe(true);
+    expect(hasPermission("content_editor", "content.factions.write")).toBe(
+      true,
+    );
   });
 
   it("content_editor édite aussi les bâtiments (chantier 23.7)", () => {
-    expect(hasPermission("content_editor", "content.buildings.read")).toBe(true);
-    expect(hasPermission("content_editor", "content.buildings.write")).toBe(true);
+    expect(hasPermission("content_editor", "content.buildings.read")).toBe(
+      true,
+    );
+    expect(hasPermission("content_editor", "content.buildings.write")).toBe(
+      true,
+    );
   });
 
   it("content_editor édite aussi les vaisseaux civils (chantier 23.8)", () => {
@@ -52,8 +65,12 @@ describe("rôles et permissions admin", () => {
   });
 
   it("content_editor édite aussi les constantes d'équilibrage (chantier 23.8)", () => {
-    expect(hasPermission("content_editor", "content.constants.read")).toBe(true);
-    expect(hasPermission("content_editor", "content.constants.write")).toBe(true);
+    expect(hasPermission("content_editor", "content.constants.read")).toBe(
+      true,
+    );
+    expect(hasPermission("content_editor", "content.constants.write")).toBe(
+      true,
+    );
   });
 
   it("content_editor édite aussi l'arbre de recherche (chantier 23.9)", () => {
@@ -71,8 +88,12 @@ describe("rôles et permissions admin", () => {
   it("content_editor édite aussi presets et jalons (chantier 23.11)", () => {
     expect(hasPermission("content_editor", "content.presets.read")).toBe(true);
     expect(hasPermission("content_editor", "content.presets.write")).toBe(true);
-    expect(hasPermission("content_editor", "content.milestones.read")).toBe(true);
-    expect(hasPermission("content_editor", "content.milestones.write")).toBe(true);
+    expect(hasPermission("content_editor", "content.milestones.read")).toBe(
+      true,
+    );
+    expect(hasPermission("content_editor", "content.milestones.write")).toBe(
+      true,
+    );
   });
 
   it("seul admin voit le tableau de bord ops (chantier 23.12)", () => {

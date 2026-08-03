@@ -13,18 +13,24 @@ import "./styles.css";
  *  `adminGuard` côté serveur sur chaque route `/api/admin/*`. */
 function AuthGate() {
   const auth = useAdminAuth();
-  if (auth.status === "loading") return <div className="loading">Vérification de la session…</div>;
-  if (auth.status !== "authenticated" || !auth.token) return <AdminAuthView auth={auth} />;
+  if (auth.status === "loading")
+    return <div className="loading">Vérification de la session…</div>;
+  if (auth.status !== "authenticated" || !auth.token)
+    return <AdminAuthView auth={auth} />;
   if (auth.insufficientRole) {
     return (
       <div className="auth-screen">
         <div className="auth-panel">
           <h1 className="auth-brand">SPACESIM ADMIN</h1>
           <p className="auth-error">
-            Le compte {auth.email} n'a aucun privilège admin. Demandez à un administrateur de vous
-            attribuer un rôle.
+            Le compte {auth.email} n'a aucun privilège admin. Demandez à un
+            administrateur de vous attribuer un rôle.
           </p>
-          <Button variant="link" className="auth-submit" onClick={() => void auth.logout()}>
+          <Button
+            variant="link"
+            className="auth-submit"
+            onClick={() => void auth.logout()}
+          >
             Déconnexion
           </Button>
         </div>

@@ -30,7 +30,10 @@ export interface AuditEntryInput {
  * chemin humain à basse fréquence, pas le chemin chaud tick/commande que le write-behind
  * protège). N'est appelé que pour des mutations — les lectures ne sont pas auditées.
  */
-export async function recordAuditEntry(entry: AuditEntryInput, now = Date.now()): Promise<void> {
+export async function recordAuditEntry(
+  entry: AuditEntryInput,
+  now = Date.now(),
+): Promise<void> {
   await db.insert(schema.adminAuditLog).values({
     id: randomUUID(),
     actorAccountId: entry.actorAccountId,

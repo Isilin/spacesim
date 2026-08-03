@@ -26,7 +26,10 @@ export class StationRepository {
       // (chaque station est persistée sans condition, `tick-runner.ts`), sans rattrapage
       // SQL séparé.
       const zones = migrateLegacyZones(JSON.parse(row.zones));
-      const zoneQueue = migrateLegacyZoneQueue(JSON.parse(row.zoneQueue), zones);
+      const zoneQueue = migrateLegacyZoneQueue(
+        JSON.parse(row.zoneQueue),
+        zones,
+      );
       return {
         id: row.id,
         ownerId: row.ownerId,

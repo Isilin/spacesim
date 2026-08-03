@@ -58,9 +58,13 @@ describe("enqueueBuilding", () => {
     const result = enqueueBuilding(colony, planet, "mine", 1000);
     if (!result.ok) throw new Error(result.reason);
     expect(result.colony.resources.ore).toBe(500 - BUILDINGS.mine.cost.ore!);
-    expect(result.colony.resources.energy).toBe(200 - BUILDINGS.mine.cost.energy!);
+    expect(result.colony.resources.energy).toBe(
+      200 - BUILDINGS.mine.cost.energy!,
+    );
     expect(result.colony.queue).toHaveLength(1);
-    expect(result.colony.queue[0]!.finishesAt).toBe(1000 + BUILDINGS.mine.buildMs);
+    expect(result.colony.queue[0]!.finishesAt).toBe(
+      1000 + BUILDINGS.mine.buildMs,
+    );
   });
 
   it("refuse si ressources insuffisantes", () => {
@@ -70,7 +74,9 @@ describe("enqueueBuilding", () => {
   });
 
   it("refuse au-delà de la taille max de file", () => {
-    let colony = makeColony({ resources: { ...emptyResources(), ore: 100000, energy: 100000 } });
+    let colony = makeColony({
+      resources: { ...emptyResources(), ore: 100000, energy: 100000 },
+    });
     for (let i = 0; i < MAX_QUEUE_LENGTH; i++) {
       const r = enqueueBuilding(colony, planet, "mine", 0);
       if (!r.ok) throw new Error(r.reason);
@@ -89,14 +95,20 @@ describe("enqueueBuilding", () => {
   });
 
   it("refuse un bâtiment verrouillé par la tech, l'accepte une fois recherchée", () => {
-    const colony = makeColony({ resources: { ...emptyResources(), ore: 100000, energy: 100000 } });
+    const colony = makeColony({
+      resources: { ...emptyResources(), ore: 100000, energy: 100000 },
+    });
     expect(enqueueBuilding(colony, planet, "smelter", 0).ok).toBe(false);
     const withTech = computeEffects(["metallurgy"]);
-    expect(enqueueBuilding(colony, planet, "smelter", 0, withTech).ok).toBe(true);
+    expect(enqueueBuilding(colony, planet, "smelter", 0, withTech).ok).toBe(
+      true,
+    );
   });
 
   it("enchaîne les instances : coût plat, démarrage après l'item précédent", () => {
-    const colony = makeColony({ resources: { ...emptyResources(), ore: 100000, energy: 100000 } });
+    const colony = makeColony({
+      resources: { ...emptyResources(), ore: 100000, energy: 100000 },
+    });
     const r1 = enqueueBuilding(colony, planet, "mine", 1000);
     if (!r1.ok) throw new Error(r1.reason);
     const r2 = enqueueBuilding(r1.colony, planet, "mine", 1000);
@@ -108,23 +120,53 @@ describe("enqueueBuilding", () => {
   });
 
   it("accepte une table de bâtiments injectée (chantier 23.7) — coûts différents de BUILDINGS", () => {
-    const customBuildings = { ...BUILDINGS, mine: { ...BUILDINGS.mine, cost: { ore: 5 } } };
-    const colony = makeColony({ resources: { ...emptyResources(), ore: 10, energy: 10 } });
-    const result = enqueueBuilding(colony, planet, "mine", 0, undefined, customBuildings);
+    const customBuildings = {
+      ...BUILDINGS,
+      mine: { ...BUILDINGS.mine, cost: { ore: 5 } },
+    };
+    const colony = makeColony({
+      resources: { ...emptyResources(), ore: 10, energy: 10 },
+    });
+    const result = enqueueBuilding(
+      colony,
+      planet,
+      "mine",
+      0,
+      undefined,
+      customBuildings,
+    );
     if (!result.ok) throw new Error(result.reason);
     expect(result.colony.resources.ore).toBe(5);
   });
 
   it("accepte un bundle de constantes injecté (chantier 23.8) — MAX_QUEUE_LENGTH surchargé", () => {
     const customBalance = { ...DEFAULT_BALANCE, maxQueueLength: 1 };
-    let colony = makeColony({ resources: { ...emptyResources(), ore: 100000, energy: 100000 } });
-    const r1 = enqueueBuilding(colony, planet, "mine", 0, undefined, undefined, customBalance);
+    let colony = makeColony({
+      resources: { ...emptyResources(), ore: 100000, energy: 100000 },
+    });
+    const r1 = enqueueBuilding(
+      colony,
+      planet,
+      "mine",
+      0,
+      undefined,
+      undefined,
+      customBalance,
+    );
     if (!r1.ok) throw new Error(r1.reason);
     colony = r1.colony;
     // File pleine dès 1 avec la constante surchargée, alors que MAX_QUEUE_LENGTH réel est 3.
-    expect(enqueueBuilding(colony, planet, "mine", 0, undefined, undefined, customBalance).ok).toBe(
-      false,
-    );
+    expect(
+      enqueueBuilding(
+        colony,
+        planet,
+        "mine",
+        0,
+        undefined,
+        undefined,
+        customBalance,
+      ).ok,
+    ).toBe(false);
   });
 });
 
@@ -216,7 +258,10 @@ describe("chaînes de production", () => {
     expect(after.resources.metals).toBe(0);
     expect(after.resources.components).toBe(0);
     const shortages = colonyShortages(colony);
-    expect(shortages.map((s) => s.buildingId).sort()).toEqual(["component_factory", "smelter"]);
+    expect(shortages.map((s) => s.buildingId).sort()).toEqual([
+      "component_factory",
+      "smelter",
+    ]);
   });
 
   it("les biens consommés soutiennent la satisfaction", () => {
@@ -225,7 +270,10 @@ describe("chaînes de production", () => {
       buildings: { habitat: 5 } as Colony["buildings"],
     };
     const withGoods = applyColonyTick(
-      makeColony({ ...base, resources: { ...emptyResources(), food: 1000, goods: 1000 } }),
+      makeColony({
+        ...base,
+        resources: { ...emptyResources(), food: 1000, goods: 1000 },
+      }),
       planet,
     );
     const withoutGoods = applyColonyTick(

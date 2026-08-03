@@ -43,7 +43,11 @@ export function OrbitPanel({ colony, effects, send }: Props) {
     send({ type: "setLiftRule", colonyId: colony.id, resource, rule });
 
   const columns: TableColumn<ResourceId>[] = [
-    { key: "res", label: "Ressource", render: (_, res) => RESOURCE_LABELS[res] },
+    {
+      key: "res",
+      label: "Ressource",
+      render: (_, res) => RESOURCE_LABELS[res],
+    },
     {
       key: "ground",
       label: "Sol",
@@ -101,7 +105,10 @@ export function OrbitPanel({ colony, effects, send }: Props) {
               rule &&
               setRule(res, {
                 ...rule,
-                keepGround: Math.max(0, Math.floor(Number(e.target.value) || 0)),
+                keepGround: Math.max(
+                  0,
+                  Math.floor(Number(e.target.value) || 0),
+                ),
               })
             }
           />
@@ -125,9 +132,10 @@ export function OrbitPanel({ colony, effects, send }: Props) {
 
       <Table columns={columns} rows={LIFTABLE} />
       <p className="small muted">
-        « Monter le surplus » hisse tout ce qui dépasse le seuil gardé au sol ; « redescendre »
-        ramène de l'orbite jusqu'à atteindre ce seuil. L'ascenseur est partagé entre les ressources
-        et consomme de l'énergie au sol.
+        « Monter le surplus » hisse tout ce qui dépasse le seuil gardé au sol ;
+        « redescendre » ramène de l'orbite jusqu'à atteindre ce seuil.
+        L'ascenseur est partagé entre les ressources et consomme de l'énergie au
+        sol.
       </p>
     </Panel>
   );

@@ -37,7 +37,12 @@ describe("useMapLevel", () => {
     const { result } = renderHook(() => useMapLevel(universe), {
       wrapper: wrapperFor("/map", "/map"),
     });
-    expect(result.current).toEqual({ level: "universe", galaxy: null, system: null, body: null });
+    expect(result.current).toEqual({
+      level: "universe",
+      galaxy: null,
+      system: null,
+      body: null,
+    });
   });
 
   it("niveau galaxie résout la galaxie depuis :galaxyId", () => {
@@ -68,6 +73,11 @@ describe("useMapLevel", () => {
     const { result } = renderHook(() => useMapLevel(universe), {
       wrapper: wrapperFor("/map/galaxy/gal-absente", "/map/galaxy/:galaxyId"),
     });
-    expect(result.current).toEqual({ level: "universe", galaxy: null, system: null, body: null });
+    expect(result.current).toEqual({
+      level: "universe",
+      galaxy: null,
+      system: null,
+      body: null,
+    });
   });
 });

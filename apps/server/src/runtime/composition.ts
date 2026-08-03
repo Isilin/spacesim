@@ -158,7 +158,8 @@ export function composeEngine(
     },
     (g) => gateway.persistGateway(g),
     {
-      insertStation: (empire, newStation) => station.insertStation(empire, newStation),
+      insertStation: (empire, newStation) =>
+        station.insertStation(empire, newStation),
       persistStation: (s) => station.persistStation(s),
       resolveStationSaleAt: (stationId, cargo) =>
         station.resolveStationSaleAt(stationId, cargo),

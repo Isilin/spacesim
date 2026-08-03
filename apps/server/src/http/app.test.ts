@@ -94,7 +94,9 @@ describe("buildApp — routes HTTP", () => {
   });
 
   it("les routes /dev/* sont absentes quand devRoutes est désactivé", async () => {
-    const app = await buildApp(await GameEngine.loadOrBootstrap(), { devRoutes: false });
+    const app = await buildApp(await GameEngine.loadOrBootstrap(), {
+      devRoutes: false,
+    });
     const res = await app.inject({ method: "GET", url: "/dev/empires" });
     expect(res.statusCode).toBe(404);
   });
@@ -112,7 +114,9 @@ describe("buildApp — routes HTTP", () => {
       url: "/health",
       headers: { origin: "http://localhost:5173" },
     });
-    expect(res.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
+    expect(res.headers["access-control-allow-origin"]).toBe(
+      "http://localhost:5173",
+    );
   });
 
   it("rate-limit : /auth/login renvoie 429 au-delà du quota strict (chantier 20.5)", async () => {

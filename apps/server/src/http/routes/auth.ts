@@ -10,7 +10,10 @@ import {
 import type { GameEngine } from "../../game.js";
 
 /** Corps de réponse commun à l'inscription et à la connexion. */
-function authPayload(engine: GameEngine, result: Extract<AuthResult, { ok: true }>) {
+function authPayload(
+  engine: GameEngine,
+  result: Extract<AuthResult, { ok: true }>,
+) {
   const empire = engine.empireForAccount(result.account.id);
   return {
     token: result.token,
@@ -19,7 +22,9 @@ function authPayload(engine: GameEngine, result: Extract<AuthResult, { ok: true 
     // Exposé pour le client admin (chantier 23.2) : vérif de rôle côté UX uniquement, la
     // vraie frontière reste le garde serveur (`adminGuard`) sur chaque route /api/admin/*.
     role: result.account.role,
-    empire: empire ? { id: empire.id, name: empire.name, color: empire.color } : null,
+    empire: empire
+      ? { id: empire.id, name: empire.name, color: empire.color }
+      : null,
   };
 }
 
@@ -28,32 +33,50 @@ function authPayload(engine: GameEngine, result: Extract<AuthResult, { ok: true 
 const STRICT_AUTH_LIMIT = { rateLimit: { max: 10, timeWindow: "1 minute" } };
 
 // ── Comptes (chantier 8) ─────────────────────────────────────────────────────
-export function registerAuthRoutes(app: FastifyInstance, engine: GameEngine): void {
-  app.post("/auth/register", { config: STRICT_AUTH_LIMIT }, async (request, reply) => {
-    const { email, password, empireName } = (request.body ?? {}) as {
-      email?: string;
-      password?: string;
-      empireName?: string;
-    };
-    const result = await register(email ?? "", password ?? "", request.ip);
-    if (!result.ok) return reply.code(400).send({ error: result.error });
-    // L'empire naît avec le compte : une inscription = un empire dans l'univers partagé.
-    if (!engine.createEmpireForAccount(result.account.id, empireName)) {
-      return reply.code(503).send({ error: "Univers plein — aucune planète d'accueil disponible" });
-    }
-    return authPayload(engine, result);
-  });
+export function registerAuthRoutes(
+  app: FastifyInstance,
+  engine: GameEngine,
+): void {
+  app.post(
+    "/auth/register",
+    { config: STRICT_AUTH_LIMIT },
+    async (request, reply) => {
+      const { email, password, empireName } = (request.body ?? {}) as {
+        email?: string;
+        password?: string;
+        empireName?: string;
+      };
+      const result = await register(email ?? "", password ?? "", request.ip);
+      if (!result.ok) return reply.code(400).send({ error: result.error });
+      // L'empire naît avec le compte : une inscription = un empire dans l'univers partagé.
+      if (!engine.createEmpireForAccount(result.account.id, empireName)) {
+        return reply
+          .code(503)
+          .send({
+            error: "Univers plein — aucune planète d'accueil disponible",
+          });
+      }
+      return authPayload(engine, result);
+    },
+  );
 
-  app.post("/auth/login", { config: STRICT_AUTH_LIMIT }, async (request, reply) => {
-    const { email, password } = (request.body ?? {}) as { email?: string; password?: string };
-    const result = await login(email ?? "", password ?? "", request.ip);
-    if (!result.ok) return reply.code(401).send({ error: result.error });
-    // Compte sans empire (partie réinitialisée sous lui) : on lui en refait un.
-    if (!engine.empireForAccount(result.account.id)) {
-      engine.createEmpireForAccount(result.account.id);
-    }
-    return authPayload(engine, result);
-  });
+  app.post(
+    "/auth/login",
+    { config: STRICT_AUTH_LIMIT },
+    async (request, reply) => {
+      const { email, password } = (request.body ?? {}) as {
+        email?: string;
+        password?: string;
+      };
+      const result = await login(email ?? "", password ?? "", request.ip);
+      if (!result.ok) return reply.code(401).send({ error: result.error });
+      // Compte sans empire (partie réinitialisée sous lui) : on lui en refait un.
+      if (!engine.empireForAccount(result.account.id)) {
+        engine.createEmpireForAccount(result.account.id);
+      }
+      return authPayload(engine, result);
+    },
+  );
 
   app.post("/auth/logout", async (request) => {
     const token = bearerToken(request.headers.authorization);
@@ -62,13 +85,17 @@ export function registerAuthRoutes(app: FastifyInstance, engine: GameEngine): vo
   });
 
   app.get("/auth/me", async (request, reply) => {
-    const account = await resolveSession(bearerToken(request.headers.authorization));
+    const account = await resolveSession(
+      bearerToken(request.headers.authorization),
+    );
     if (!account) return reply.code(401).send({ error: "Session expirée" });
     const empire = engine.empireForAccount(account.id);
     return {
       email: account.email,
       role: account.role,
-      empire: empire ? { id: empire.id, name: empire.name, color: empire.color } : null,
+      empire: empire
+        ? { id: empire.id, name: empire.name, color: empire.color }
+        : null,
     };
   });
 }

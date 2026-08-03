@@ -30,7 +30,9 @@ describe("mots de passe", () => {
   });
 
   it("deux hash du même mot de passe diffèrent (sel aléatoire)", () => {
-    expect(hashPassword("orbite-basse-42")).not.toBe(hashPassword("orbite-basse-42"));
+    expect(hashPassword("orbite-basse-42")).not.toBe(
+      hashPassword("orbite-basse-42"),
+    );
   });
 
   it("un hash mal formé est un échec, jamais une exception", () => {
@@ -53,7 +55,9 @@ describe("inscription", () => {
   it("refuse un e-mail invalide, un mot de passe trop court, un doublon", async () => {
     expect((await register("pas-un-email", "orbite-basse-42")).ok).toBe(false);
     expect((await register("pilote@exemple.fr", "court")).ok).toBe(false);
-    expect((await register("pilote@exemple.fr", "orbite-basse-42")).ok).toBe(true);
+    expect((await register("pilote@exemple.fr", "orbite-basse-42")).ok).toBe(
+      true,
+    );
     const dup = await register("PILOTE@exemple.fr", "orbite-basse-42");
     expect(dup.ok).toBe(false);
     if (!dup.ok) expect(dup.error).toMatch(/existe déjà/);
@@ -69,7 +73,10 @@ describe("connexion", () => {
 
   it("ne distingue pas e-mail inconnu et mot de passe faux", async () => {
     await register("pilote@exemple.fr", "orbite-basse-42");
-    const wrongPassword = await login("pilote@exemple.fr", "mauvais-mot-de-passe");
+    const wrongPassword = await login(
+      "pilote@exemple.fr",
+      "mauvais-mot-de-passe",
+    );
     const unknownEmail = await login("inconnu@exemple.fr", "orbite-basse-42");
     expect(wrongPassword.ok).toBe(false);
     expect(unknownEmail.ok).toBe(false);
@@ -102,7 +109,10 @@ describe("sessions", () => {
   it("une session expirée ne résout plus et sa ligne est purgée", async () => {
     const result = await register("pilote@exemple.fr", "orbite-basse-42");
     if (!result.ok) throw new Error("inscription échouée");
-    const expired = await createSession(result.account.id, Date.now() - SESSION_TTL_MS - 1000);
+    const expired = await createSession(
+      result.account.id,
+      Date.now() - SESSION_TTL_MS - 1000,
+    );
     expect(await resolveSession(expired.token)).toBeNull();
     const remaining = await db.select().from(schema.sessions);
     expect(remaining.some((s) => s.token === expired.token)).toBe(false);
@@ -116,9 +126,13 @@ describe("sessions", () => {
       result.account.id,
       Date.now() - SESSION_TTL_MS + 24 * 3600 * 1000,
     );
-    const before = (await db.select().from(schema.sessions)).find((s) => s.token === old.token)!;
+    const before = (await db.select().from(schema.sessions)).find(
+      (s) => s.token === old.token,
+    )!;
     expect((await resolveSession(old.token))?.id).toBe(result.account.id);
-    const after = (await db.select().from(schema.sessions)).find((s) => s.token === old.token)!;
+    const after = (await db.select().from(schema.sessions)).find(
+      (s) => s.token === old.token,
+    )!;
     expect(after.expiresAt).toBeGreaterThan(before.expiresAt);
   });
 

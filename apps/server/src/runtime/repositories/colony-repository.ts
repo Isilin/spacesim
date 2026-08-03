@@ -27,7 +27,10 @@ export class ColonyRepository {
       planetId: row.planetId,
       name: row.name,
       resources: JSON.parse(row.resources),
-      orbitalResources: { ...emptyOrbital(), ...JSON.parse(row.orbitalResources) },
+      orbitalResources: {
+        ...emptyOrbital(),
+        ...JSON.parse(row.orbitalResources),
+      },
       liftRules: JSON.parse(row.liftRules),
       buildings: JSON.parse(row.buildings),
       queue: JSON.parse(row.queue),
@@ -76,6 +79,11 @@ export class ColonyRepository {
     await db
       .update(schema.colonies)
       .set({ ownerId })
-      .where(and(eq(schema.colonies.gameId, this.gameId), isNull(schema.colonies.ownerId)));
+      .where(
+        and(
+          eq(schema.colonies.gameId, this.gameId),
+          isNull(schema.colonies.ownerId),
+        ),
+      );
   }
 }

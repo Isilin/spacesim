@@ -14,11 +14,20 @@ export async function registerTestAccount(
     payload: { email, password: "orbite-basse-42" },
   });
   const { token } = res.json();
-  const accounts = await db.select().from(schema.accounts).where(eq(schema.accounts.email, email));
+  const accounts = await db
+    .select()
+    .from(schema.accounts)
+    .where(eq(schema.accounts.email, email));
   return { token, accountId: accounts[0]!.id };
 }
 
 /** Promeut un compte de test à un rôle donné — geste manuel documenté (chantier 23.1). */
-export async function setTestRole(accountId: string, role: RoleId): Promise<void> {
-  await db.update(schema.accounts).set({ role }).where(eq(schema.accounts.id, accountId));
+export async function setTestRole(
+  accountId: string,
+  role: RoleId,
+): Promise<void> {
+  await db
+    .update(schema.accounts)
+    .set({ role })
+    .where(eq(schema.accounts.id, accountId));
 }

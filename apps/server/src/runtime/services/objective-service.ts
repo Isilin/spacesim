@@ -44,17 +44,26 @@ export class ObjectiveService {
   }
 
   /** Empires en tête de population/influence — sert à évaluer lead_population/lead_influence. */
-  private empireLeaders(): { populationLeaderId: string | null; influenceLeaderId: string | null } {
+  private empireLeaders(): {
+    populationLeaderId: string | null;
+    influenceLeaderId: string | null;
+  } {
     let popLeader: { id: string; value: number } | null = null;
     let infLeader: { id: string; value: number } | null = null;
     for (const empire of this.runtime.empires.values()) {
-      const population = [...empire.colonyMap.values()].reduce((s, c) => s + c.population, 0);
+      const population = [...empire.colonyMap.values()].reduce(
+        (s, c) => s + c.population,
+        0,
+      );
       if (!popLeader || population > popLeader.value)
         popLeader = { id: empire.id, value: population };
       if (!infLeader || empire.influence > infLeader.value)
         infLeader = { id: empire.id, value: empire.influence };
     }
-    return { populationLeaderId: popLeader?.id ?? null, influenceLeaderId: infLeader?.id ?? null };
+    return {
+      populationLeaderId: popLeader?.id ?? null,
+      influenceLeaderId: infLeader?.id ?? null,
+    };
   }
 
   /** Tire un nouvel objectif éphémère pour chaque empire humain qui n'en a pas déjà un ouvert. */
@@ -67,10 +76,21 @@ export class ObjectiveService {
       // Cooldown : pas de nouveau tirage juste après complétion/expiration, sinon un but
       // trivialement déjà vrai (ex. lead_influence en tête depuis longtemps) se rejouerait
       // en boucle à chaque tick éco et verserait sa récompense sans fin.
-      const lastCreatedAt = mine.reduce((max, o) => Math.max(max, o.createdAt), 0);
-      if (lastCreatedAt > 0 && now - lastCreatedAt < OBJECTIVE_DURATION_MS) continue;
-      const rng = createRng(`objective-${this.runtime.clock.seed}-${empire.id}-${tickNumber}`);
-      const spec = generateObjectiveSpec(rng, now, empire.colonyMap.size, empire.claimedSystemIds);
+      const lastCreatedAt = mine.reduce(
+        (max, o) => Math.max(max, o.createdAt),
+        0,
+      );
+      if (lastCreatedAt > 0 && now - lastCreatedAt < OBJECTIVE_DURATION_MS)
+        continue;
+      const rng = createRng(
+        `objective-${this.runtime.clock.seed}-${empire.id}-${tickNumber}`,
+      );
+      const spec = generateObjectiveSpec(
+        rng,
+        now,
+        empire.colonyMap.size,
+        empire.claimedSystemIds,
+      );
       const objective: Objective = {
         id: randomUUID(),
         empireId: empire.id,
@@ -108,7 +128,9 @@ export class ObjectiveService {
         const next: Objective = { ...objective, status: "completed" };
         this.runtime.objectiveMap.set(id, next);
         this.persistObjective(next);
-        this.logger.info(`[game] « ${empire.name} » a rempli son objectif : ${objective.kind}`);
+        this.logger.info(
+          `[game] « ${empire.name} » a rempli son objectif : ${objective.kind}`,
+        );
       } else if (t >= objective.deadline) {
         const next: Objective = { ...objective, status: "expired" };
         this.runtime.objectiveMap.set(id, next);
@@ -121,7 +143,10 @@ export class ObjectiveService {
   shiftTime(deltaMs: number): void {
     for (const [id, objective] of this.runtime.objectiveMap) {
       if (objective.status !== "open") continue;
-      const next: Objective = { ...objective, deadline: objective.deadline - deltaMs };
+      const next: Objective = {
+        ...objective,
+        deadline: objective.deadline - deltaMs,
+      };
       this.runtime.objectiveMap.set(id, next);
       this.persistObjective(next);
     }

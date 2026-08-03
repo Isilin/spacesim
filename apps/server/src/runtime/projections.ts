@@ -27,7 +27,9 @@ import type { GameRuntime } from "./game-runtime.js";
 
 /** Stock d'une station restreint aux ressources échangeables (chantier 25) — jamais le
  *  reste (matériaux de construction du propriétaire, non exposés à un visiteur). */
-function tradableStocksOf(station: Station): Partial<Record<ResourceId, number>> {
+function tradableStocksOf(
+  station: Station,
+): Partial<Record<ResourceId, number>> {
   const stocks: Partial<Record<MarketResource, number>> = {};
   for (const res of MARKET_RESOURCES) stocks[res] = station.resources[res];
   return stocks;
@@ -178,7 +180,9 @@ export function foreignPresenceForEmpire(
   const foreignFleets: ForeignFleet[] = [];
   const foreignColonies: ForeignColony[] = [];
   const foreignStations: ForeignStation[] = [];
-  const installations = installationDefsFromContent(runtime.content.installations);
+  const installations = installationDefsFromContent(
+    runtime.content.installations,
+  );
   for (const other of runtime.empires.values()) {
     if (other.id === empire.id) continue;
     for (const fleet of other.fleetMap.values()) {

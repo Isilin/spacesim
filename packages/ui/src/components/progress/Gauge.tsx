@@ -17,7 +17,9 @@ export function Gauge({ value = 0, capacity = 100, markAt }: GaugeProps) {
         data-status={over ? "over" : "default"}
         style={{ width: `${pct}%` }}
       />
-      {markAt && <div className={styles.gaugeMax} style={{ left: `${markPct}%` }} />}
+      {markAt && (
+        <div className={styles.gaugeMax} style={{ left: `${markPct}%` }} />
+      )}
     </div>
   );
 }

@@ -1,4 +1,8 @@
-import { FRONTIER_GALAXIES, MAX_EMPIRES_PER_GALAXY, MAX_GALAXIES } from "../../constants.js";
+import {
+  FRONTIER_GALAXIES,
+  MAX_EMPIRES_PER_GALAXY,
+  MAX_GALAXIES,
+} from "../../constants.js";
 
 /** Occupation d'une galaxie, du point de vue de l'expansion de l'univers. */
 export interface GalaxyOccupancy {
@@ -50,7 +54,9 @@ export function pickStarterGalaxy(
   occupancy: readonly GalaxyOccupancy[],
   maxEmpires = MAX_EMPIRES_PER_GALAXY,
 ): number | null {
-  const eligible = occupancy.filter((g) => g.empires < maxEmpires && g.freeHabitable > 0);
+  const eligible = occupancy.filter(
+    (g) => g.empires < maxEmpires && g.freeHabitable > 0,
+  );
   if (eligible.length === 0) return null;
   const populated = eligible.filter((g) => g.empires > 0);
   const pool = populated.length > 0 ? populated : eligible;

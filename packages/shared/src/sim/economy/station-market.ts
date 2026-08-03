@@ -54,7 +54,10 @@ export function applyStationCredits(
   delta: number,
 ): { resources: Stocks; applied: number } {
   const applied = delta >= 0 ? delta : Math.max(delta, -resources.credits);
-  return { resources: { ...resources, credits: resources.credits + applied }, applied };
+  return {
+    resources: { ...resources, credits: resources.credits + applied },
+    applied,
+  };
 }
 
 /**
@@ -92,7 +95,11 @@ export function resolveStationPurchase(
   taxRate: number,
   ctx?: PriceContext,
 ): { station: Station; bought: number; spent: number } {
-  const { stocks, bought, spent: net } = resolvePurchase(
+  const {
+    stocks,
+    bought,
+    spent: net,
+  } = resolvePurchase(
     station.resources,
     resource,
     budget / (1 + taxRate),

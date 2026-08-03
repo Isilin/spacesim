@@ -108,13 +108,17 @@ describe("researchPath", () => {
 
   it("rend une seule tech quand tous les prérequis sont acquis", () => {
     const tech = TECHS.advanced_mining;
-    expect(researchPath("advanced_mining", tech.requires)).toEqual(["advanced_mining"]);
+    expect(researchPath("advanced_mining", tech.requires)).toEqual([
+      "advanced_mining",
+    ]);
   });
 
   it("cumule coût et durée de la chaîne", () => {
     const path = researchPath("fusion_power", []);
     expect(pathCost(path)).toBe(path.reduce((s, id) => s + TECHS[id].cost, 0));
-    expect(pathDurationMs(path)).toBe(path.reduce((s, id) => s + TECHS[id].durationMs, 0));
+    expect(pathDurationMs(path)).toBe(
+      path.reduce((s, id) => s + TECHS[id].durationMs, 0),
+    );
     // Une chaîne coûte forcément plus que sa dernière tech seule.
     expect(pathCost(path)).toBeGreaterThan(TECHS.fusion_power.cost);
   });
@@ -149,7 +153,9 @@ describe("missingPrereqs / descendants", () => {
     expect(fromMetallurgy).toContain("fusion_power");
     expect(fromMetallurgy).not.toContain("metallurgy");
     // Une feuille ne débloque rien.
-    const leaves = TECH_IDS.filter((id: TechId) => descendants(id).length === 0);
+    const leaves = TECH_IDS.filter(
+      (id: TechId) => descendants(id).length === 0,
+    );
     expect(leaves.length).toBeGreaterThan(0);
   });
 });

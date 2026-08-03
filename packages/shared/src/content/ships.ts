@@ -1,4 +1,3 @@
-import type { TechId } from "./techs.js";
 import { SHIP_IDS } from "../model/industry.js";
 import type { ResourceId } from "../model/resources.js";
 
@@ -6,13 +5,13 @@ import type { ResourceId } from "../model/resources.js";
 export type LegacyShipId = (typeof SHIP_IDS)[number];
 
 export interface ShipDef {
-  id: LegacyShipId;
+  id: string;
   /** Capacité de soute (unités de ressources). */
   capacity: number;
   cost: Partial<Record<ResourceId, number>>;
   buildMs: number;
   /** Tech requise pour la production (en plus du chantier naval). */
-  requiresTech?: TechId;
+  requiresTech?: string;
   /**
    * Durée de trajet relative (chantier 12) : < 1 = plus rapide. Un convoi avance à
    * l'allure de son vaisseau le plus lent.

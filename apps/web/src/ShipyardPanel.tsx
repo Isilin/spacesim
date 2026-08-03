@@ -10,9 +10,21 @@ import {
   type Route,
   type TechId,
 } from "@spacesim/shared";
-import { Badge, Button, EmptyState, ListRow, Panel, RowHeader } from "@spacesim/ui";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  ListRow,
+  Panel,
+  RowHeader,
+} from "@spacesim/ui";
 import { formatDuration } from "./format.js";
-import { RESOURCE_LABELS, SHIP_LABELS, shipLabel, TECH_LABELS } from "./labels.js";
+import {
+  RESOURCE_LABELS,
+  SHIP_LABELS,
+  shipLabel,
+  TECH_LABELS,
+} from "./labels.js";
 
 interface Props {
   colony: Colony;
@@ -28,7 +40,13 @@ function formatCost(cost: Partial<Record<ResourceId, number>>): string {
     .join(" · ");
 }
 
-export function ShipyardPanel({ colony, routes, researched, now, send }: Props) {
+export function ShipyardPanel({
+  colony,
+  routes,
+  researched,
+  now,
+  send,
+}: Props) {
   const hasShipyard = (colony.buildings.shipyard ?? 0) >= 1;
   const idle = idleShips(colony, routes);
 
@@ -41,14 +59,19 @@ export function ShipyardPanel({ colony, routes, researched, now, send }: Props) 
       }
     >
       {!hasShipyard && (
-        <EmptyState>Construisez un chantier naval pour produire des cargos.</EmptyState>
+        <EmptyState>
+          Construisez un chantier naval pour produire des cargos.
+        </EmptyState>
       )}
       <ul className="building-list">
         {SHIP_IDS.map((shipId) => {
           const def = SHIPS[shipId];
           const owned = colony.ships[shipId] ?? 0;
-          const queued = colony.shipQueue.filter((q) => q.shipId === shipId).length;
-          const techLocked = def.requiresTech && !researched.includes(def.requiresTech);
+          const queued = colony.shipQueue.filter(
+            (q) => q.shipId === shipId,
+          ).length;
+          const techLocked =
+            def.requiresTech && !researched.includes(def.requiresTech);
           const affordable = canAfford(colony, def.cost);
           const queueFull = colony.shipQueue.length >= MAX_SHIP_QUEUE_LENGTH;
           return (
@@ -77,7 +100,9 @@ export function ShipyardPanel({ colony, routes, researched, now, send }: Props) 
                               ? "Ressources insuffisantes"
                               : ""
                       }
-                      onClick={() => send({ type: "buildShip", colonyId: colony.id, shipId })}
+                      onClick={() =>
+                        send({ type: "buildShip", colonyId: colony.id, shipId })
+                      }
                     >
                       Produire
                     </Button>

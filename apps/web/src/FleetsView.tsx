@@ -50,7 +50,9 @@ interface RaidReport {
   stolen: Partial<Record<ResourceId, number>>;
 }
 const isRaid = (r: unknown): r is RaidReport =>
-  typeof r === "object" && r !== null && (r as { raid?: unknown }).raid === true;
+  typeof r === "object" &&
+  r !== null &&
+  (r as { raid?: unknown }).raid === true;
 
 const PHASE_LABELS: Record<string, string> = {
   long: "Longue portée",
@@ -58,7 +60,10 @@ const PHASE_LABELS: Record<string, string> = {
   short: "Mêlée",
 };
 
-function compositionText(comp: FleetComposition, nameOf: (id: string) => string): string {
+function compositionText(
+  comp: FleetComposition,
+  nameOf: (id: string) => string,
+): string {
   const parts = Object.entries(comp)
     .filter(([, n]) => (n ?? 0) > 0)
     .map(([id, n]) => `${n} ${nameOf(id)}`);
@@ -81,14 +86,18 @@ export function FleetsView({
   const [newFleetColony, setNewFleetColony] = useState("");
   const [newFleetName, setNewFleetName] = useState("");
   const [openBattle, setOpenBattle] = useState<string | null>(null);
-  const systemName = (id: string) => allSystems(universe).find((s) => s.id === id)?.name ?? id;
+  const systemName = (id: string) =>
+    allSystems(universe).find((s) => s.id === id)?.name ?? id;
   /** Nom d'un id de vaisseau : classe historique, ou nom du plan (chantier 13), ou l'id brut. */
   const nameOf = (id: string): string =>
-    WARSHIP_LABELS[id as WarshipId]?.name ?? blueprints.find((b) => b.id === id)?.name ?? id;
+    WARSHIP_LABELS[id as WarshipId]?.name ??
+    blueprints.find((b) => b.id === id)?.name ??
+    id;
   /** Defs de combat pour l'affichage de puissance : classes historiques + plans de l'empire. */
   const combatDefs = useMemo((): Record<string, CombatDef> => {
     const defs: Record<string, CombatDef> = { ...WARSHIP_COMBAT_DEFS };
-    for (const bp of blueprints) defs[bp.id] = combatDefFromStats(resolveBlueprint(bp));
+    for (const bp of blueprints)
+      defs[bp.id] = combatDefFromStats(resolveBlueprint(bp));
     return defs;
   }, [blueprints]);
 
@@ -101,8 +110,12 @@ export function FleetsView({
           {fleets.length === 0 && <p className="muted">Aucune flotte.</p>}
           <ul className="route-list">
             {fleets.map((fleet) => {
-              const lairsHere = pirateLairs.filter((l) => l.systemId === fleet.systemId);
-              const enemyFleetsHere = foreignFleets.filter((f) => f.systemId === fleet.systemId);
+              const lairsHere = pirateLairs.filter(
+                (l) => l.systemId === fleet.systemId,
+              );
+              const enemyFleetsHere = foreignFleets.filter(
+                (f) => f.systemId === fleet.systemId,
+              );
               const enemyColoniesHere = foreignColonies.filter(
                 (c) => c.systemId === fleet.systemId,
               );
@@ -125,7 +138,9 @@ export function FleetsView({
                     <span className="small muted">
                       Production : {nameOf(fleet.queue[0]!.warshipId)} —{" "}
                       {formatDuration(fleet.queue[0]!.finishesAt - now)}
-                      {fleet.queue.length > 1 ? ` (+${fleet.queue.length - 1})` : ""}
+                      {fleet.queue.length > 1
+                        ? ` (+${fleet.queue.length - 1})`
+                        : ""}
                     </span>
                   )}
 
@@ -144,11 +159,18 @@ export function FleetsView({
                               locked
                                 ? "Tech militaire requise"
                                 : Object.entries(def.cost)
-                                    .map(([r, n]) => `${n} ${RESOURCE_LABELS[r as ResourceId]}`)
+                                    .map(
+                                      ([r, n]) =>
+                                        `${n} ${RESOURCE_LABELS[r as ResourceId]}`,
+                                    )
                                     .join(" · ")
                             }
                             onClick={() =>
-                              send({ type: "buildWarship", fleetId: fleet.id, warshipId: id })
+                              send({
+                                type: "buildWarship",
+                                fleetId: fleet.id,
+                                warshipId: id,
+                              })
                             }
                           >
                             + {WARSHIP_LABELS[id].name}
@@ -169,7 +191,10 @@ export function FleetsView({
                           send({
                             type: "setFleetDirectives",
                             fleetId: fleet.id,
-                            directives: { ...fleet.directives, [phase]: e.target.value },
+                            directives: {
+                              ...fleet.directives,
+                              [phase]: e.target.value,
+                            },
                           })
                         }
                         options={COMBAT_DIRECTIVES.map((d) => ({
@@ -201,7 +226,11 @@ export function FleetsView({
                             .map((s) => ({ value: s.id, label: s.name })),
                         ]}
                       />
-                      <Button onClick={() => send({ type: "disbandFleet", fleetId: fleet.id })}>
+                      <Button
+                        onClick={() =>
+                          send({ type: "disbandFleet", fleetId: fleet.id })
+                        }
+                      >
                         Dissoudre
                       </Button>
                     </div>
@@ -211,13 +240,17 @@ export function FleetsView({
                   {lairsHere.map((lair) => (
                     <div key={lair.id} className="lair-target">
                       <Badge variant="ko">
-                        ☠ Repaire pirate — {compositionText(lair.ships, nameOf)} · butin{" "}
-                        {lair.bounty} ✧
+                        ☠ Repaire pirate — {compositionText(lair.ships, nameOf)}{" "}
+                        · butin {lair.bounty} ✧
                       </Badge>
                       <Button
                         disabled={!!fleet.movement}
                         onClick={() =>
-                          send({ type: "attackLair", fleetId: fleet.id, lairId: lair.id })
+                          send({
+                            type: "attackLair",
+                            fleetId: fleet.id,
+                            lairId: lair.id,
+                          })
                         }
                       >
                         Attaquer
@@ -230,13 +263,20 @@ export function FleetsView({
                     <div key={ef.id} className="lair-target">
                       <Badge variant="ko">
                         ⚔ Flotte {ef.name}{" "}
-                        <span style={{ color: ef.ownerColor }}>({ef.ownerName})</span> —{" "}
+                        <span style={{ color: ef.ownerColor }}>
+                          ({ef.ownerName})
+                        </span>{" "}
+                        —{" "}
                         {compositionText(ef.ships as FleetComposition, nameOf)}
                       </Badge>
                       <Button
                         disabled={!!fleet.movement}
                         onClick={() =>
-                          send({ type: "attackFleet", fleetId: fleet.id, targetFleetId: ef.id })
+                          send({
+                            type: "attackFleet",
+                            fleetId: fleet.id,
+                            targetFleetId: ef.id,
+                          })
                         }
                       >
                         Attaquer
@@ -249,12 +289,18 @@ export function FleetsView({
                     <div key={ec.id} className="lair-target">
                       <Badge variant="ko">
                         🎯 Colonie {ec.name}{" "}
-                        <span style={{ color: ec.ownerColor }}>({ec.ownerName})</span>
+                        <span style={{ color: ec.ownerColor }}>
+                          ({ec.ownerName})
+                        </span>
                       </Badge>
                       <Button
                         disabled={!!fleet.movement}
                         onClick={() =>
-                          send({ type: "attackColony", fleetId: fleet.id, targetColonyId: ec.id })
+                          send({
+                            type: "attackColony",
+                            fleetId: fleet.id,
+                            targetColonyId: ec.id,
+                          })
                         }
                       >
                         Raid
@@ -285,7 +331,11 @@ export function FleetsView({
                 disabled={!colony}
                 onClick={() => {
                   if (!colony) return;
-                  send({ type: "createFleet", colonyId: colony.id, name: newFleetName });
+                  send({
+                    type: "createFleet",
+                    colonyId: colony.id,
+                    name: newFleetName,
+                  });
                   setNewFleetName("");
                 }}
               >
@@ -303,7 +353,11 @@ export function FleetsView({
                   key={lair.id}
                   title={`☠ ${systemName(lair.systemId)}`}
                   meta={compositionText(lair.ships, nameOf)}
-                  right={<Badge variant="ko">{fleetPower(lair.ships, combatDefs)}</Badge>}
+                  right={
+                    <Badge variant="ko">
+                      {fleetPower(lair.ships, combatDefs)}
+                    </Badge>
+                  }
                 />
               ))}
             </ul>
@@ -318,14 +372,18 @@ export function FleetsView({
             <ul className="queue-list">
               {battles.map((b) => {
                 if (isRaid(b.report)) {
-                  const loot = (Object.entries(b.report.stolen) as [ResourceId, number][])
+                  const loot = (
+                    Object.entries(b.report.stolen) as [ResourceId, number][]
+                  )
                     .filter(([, n]) => n > 0)
                     .map(([r, n]) => `${n} ${RESOURCE_LABELS[r]}`)
                     .join(" · ");
                   return (
                     <li key={b.id} className="queue-item">
                       <div className="queue-head">
-                        <Badge variant="ok">🎯 Raid — {systemName(b.systemId)}</Badge>
+                        <Badge variant="ok">
+                          🎯 Raid — {systemName(b.systemId)}
+                        </Badge>
                         <span className="muted small">{b.attackerName}</span>
                       </div>
                       <span className="small muted">
@@ -340,11 +398,17 @@ export function FleetsView({
                   <li key={b.id} className="queue-item">
                     <div
                       className="queue-head battle-head"
-                      onClick={() => setOpenBattle(openBattle === b.id ? null : b.id)}
+                      onClick={() =>
+                        setOpenBattle(openBattle === b.id ? null : b.id)
+                      }
                     >
                       <Badge variant={won ? "ok" : "ko"}>
-                        {won ? "Victoire" : report.winner === "draw" ? "Nul" : "Défaite"} —{" "}
-                        {systemName(b.systemId)}
+                        {won
+                          ? "Victoire"
+                          : report.winner === "draw"
+                            ? "Nul"
+                            : "Défaite"}{" "}
+                        — {systemName(b.systemId)}
                       </Badge>
                       <span className="muted small">{b.attackerName}</span>
                     </div>
@@ -356,13 +420,15 @@ export function FleetsView({
                             {DIRECTIVE_LABELS[p.attackerDirective].name} vs{" "}
                             {DIRECTIVE_LABELS[p.defenderDirective].name}
                             <div className="muted">
-                              Pertes : {compositionText(p.attackerLosses, nameOf)} / ennemi{" "}
-                              {compositionText(p.defenderLosses, nameOf)}
+                              Pertes :{" "}
+                              {compositionText(p.attackerLosses, nameOf)} /
+                              ennemi {compositionText(p.defenderLosses, nameOf)}
                             </div>
                           </div>
                         ))}
                         <div className="muted">
-                          Survivants : {compositionText(report.attackerSurvivors, nameOf)}
+                          Survivants :{" "}
+                          {compositionText(report.attackerSurvivors, nameOf)}
                         </div>
                       </div>
                     )}

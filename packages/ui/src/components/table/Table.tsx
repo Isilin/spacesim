@@ -14,14 +14,20 @@ export interface TableProps<Row = Record<string, unknown>> {
   rows: readonly Row[];
 }
 
-export function Table<Row = Record<string, unknown>>({ columns = [], rows = [] }: TableProps<Row>) {
+export function Table<Row = Record<string, unknown>>({
+  columns = [],
+  rows = [],
+}: TableProps<Row>) {
   return (
     <div className={styles.tableWrapper}>
       <table className={styles.table}>
         <thead>
           <tr>
             {columns.map((c) => (
-              <th key={c.key} className={c.align === "right" ? styles.num : undefined}>
+              <th
+                key={c.key}
+                className={c.align === "right" ? styles.num : undefined}
+              >
                 {c.label}
               </th>
             ))}
@@ -32,7 +38,9 @@ export function Table<Row = Record<string, unknown>>({ columns = [], rows = [] }
             <tr key={i}>
               {columns.map((c) => {
                 const raw = (row as Record<string, unknown>)[c.key];
-                const content = c.render ? c.render(raw, row) : (raw as ReactNode);
+                const content = c.render
+                  ? c.render(raw, row)
+                  : (raw as ReactNode);
                 const trend = c.trend?.(row);
                 return (
                   <td
