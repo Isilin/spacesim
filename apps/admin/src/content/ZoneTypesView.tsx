@@ -55,7 +55,8 @@ function formFromZoneType(z: ZoneType): ZoneTypeForm {
 /**
  * CMS de contenu (chantier 24.7) — types de zone de station orbitale. Même recette
  * qu'un châssis/module (id libre, id-minting) mais sans emplacements ni effets : une
- * zone n'ajoute qu'un +1 d'emplacement de son type (voir `Station.zones`).
+ * zone construite ajoute une instance positionnée sur la grille hexagonale de la
+ * station (voir `Station.zones`, `sim/industry/station-layout`, chantier 26).
  */
 export function ZoneTypesView({ token }: Props) {
   const [zoneTypes, setZoneTypes] = useState<ZoneType[] | null>(null);

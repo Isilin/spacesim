@@ -1,21 +1,18 @@
 import type { ClientMessage } from "@spacesim/protocol";
 import {
-  canAffordStation,
+  computeGrowthPoints,
   convoyCapacity,
   convoyDurationMs,
   convoyFees,
   convoyFuel,
   findGalaxyOfSystem,
+  hexKey,
   idleShips,
-  INSTALLATION_IDS,
-  INSTALLATIONS,
   jumpDistanceInUniverse,
   maxConvoyCapacity,
   RESOURCES,
   SHIP_IDS,
   STATION_MARKET_ACCESS_IDS,
-  ZONE_TYPE_IDS,
-  ZONE_TYPES,
   type Colony,
   type EmpireEffects,
   type InstallationId,
@@ -24,21 +21,15 @@ import {
   type ShipId,
   type Station,
   type StationMarketAccess,
+  type StationZone,
   type Universe,
   type ZoneTypeId,
 } from "@spacesim/shared";
 import { useEffect, useState } from "react";
-import {
-  Button,
-  EmptyState,
-  ListRow,
-  NumberInput,
-  Panel,
-  ProgressBar,
-  RowHeader,
-  Select,
-} from "@spacesim/ui";
+import { Button, EmptyState, NumberInput, Panel, ProgressBar, RowHeader, Select } from "@spacesim/ui";
 import { formatDuration, systemIdOf } from "./format.js";
+import { StationBuildPicker, type BuildSelection } from "./StationBuildPicker.js";
+import { StationDiagram } from "./StationDiagram.js";
 import {
   INSTALLATION_LABELS,
   RESOURCE_LABELS,
@@ -54,12 +45,6 @@ interface Props {
   portalLinks: [string, string][];
 }
 
-function formatCost(cost: Partial<Record<ResourceId, number>>): string {
-  return Object.entries(cost)
-    .map(([res, amount]) => `${amount} ${RESOURCE_LABELS[res as ResourceId]}`)
-    .join(" · ");
-}
-
 /** Horloge locale pour les comptes à rebours (les timers font foi côté serveur). */
 function useNow(): number {
   const [now, setNow] = useState(Date.now());
@@ -70,37 +55,38 @@ function useNow(): number {
   return now;
 }
 
-/** Installations construites + en file d'un type de zone (miroir du privé côté serveur). */
-function installationsOfZoneType(
-  station: Station,
-  zoneType: ZoneTypeId,
-): number {
-  const built = (
-    Object.entries(station.installations) as [InstallationId, number][]
-  ).reduce(
-    (sum, [id, count]) =>
-      sum + (INSTALLATIONS[id]?.zoneType === zoneType ? (count ?? 0) : 0),
-    0,
-  );
-  const queued = station.installQueue.filter(
-    (q) =>
-      INSTALLATIONS[q.installationId as InstallationId]?.zoneType === zoneType,
-  ).length;
-  return built + queued;
-}
-
 /**
- * Onglet « Stations » (chantier 24.10) : miroir de `ColonyView.tsx` — sélecteur si
- * plusieurs stations, ressources, zones/installations construites via une file
- * séquentielle (comme `Colony.queue`, sans plafond — voir `sim/industry/station.ts`),
- * transfert de ressources depuis une colonie.
+ * Onglet « Stations » (chantier 24.10, constructeur spatial chantier 26) : miroir de
+ * `ColonyView.tsx` — sélecteur si plusieurs stations, ressources, zones/installations
+ * construites via une file séquentielle (comme `Colony.queue`, sans plafond — voir
+ * `sim/industry/station.ts`), transfert de ressources depuis une colonie.
  */
 export function StationsView({ effects, universe, portalLinks }: Props) {
   const { stations, colonies, routes, send } = useGameStore();
   const now = useNow();
   const [stationId, setStationId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<BuildSelection | null>(null);
   const station =
     stations.find((s) => s.id === stationId) ?? stations[0] ?? null;
+
+  // Une sélection périmée (point de croissance désormais occupé, zone détruite —
+  // aucun cas actuel, mais robuste si l'un ou l'autre change) ne doit pas rester
+  // affichée : le sélecteur en dessous du plan doit refléter l'état courant.
+  useEffect(() => {
+    if (!station || !selection) return;
+    if (selection.kind === "growthPoint") {
+      const stillValid = computeGrowthPoints(station).some(
+        (p) => p.q === selection.q && p.r === selection.r,
+      );
+      if (!stillValid) setSelection(null);
+    } else {
+      const stillBuilt = station.zones.some(
+        (z) => hexKey(z.q, z.r) === hexKey(selection.zone.q, selection.zone.r),
+      );
+      if (!stillBuilt) setSelection(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [station?.zones, station?.zoneQueue]);
 
   if (!station) {
     return (
@@ -132,111 +118,18 @@ export function StationsView({ effects, universe, portalLinks }: Props) {
         ))}
       </div>
 
+      <StationDiagram
+        station={station}
+        selectedGrowthPoint={selection?.kind === "growthPoint" ? selection : null}
+        onSelectGrowthPoint={(p) => setSelection({ kind: "growthPoint", q: p.q, r: p.r })}
+        selectedZoneKey={
+          selection?.kind === "zone" ? hexKey(selection.zone.q, selection.zone.r) : null
+        }
+        onSelectZone={(zone) => setSelection({ kind: "zone", zone })}
+      />
+      <StationBuildPicker station={station} effects={effects} selection={selection} send={send} />
+
       <div className="colony-columns">
-        <Panel title="Zones">
-          <ul className="building-list">
-            {ZONE_TYPE_IDS.map((id) => {
-              const def = ZONE_TYPES[id];
-              const locked = !effects.unlockedZoneTypes.has(id);
-              if (locked) {
-                return (
-                  <ListRow
-                    key={id}
-                    title={ZONE_TYPE_LABELS[id].name}
-                    meta="🔒 verrouillé — technologie non recherchée"
-                  />
-                );
-              }
-              const count = station.zones[id] ?? 0;
-              const queued = station.zoneQueue.filter(
-                (q) => q.zoneTypeId === id,
-              ).length;
-              const affordable = canAffordStation(station, def.cost);
-              return (
-                <ListRow
-                  key={id}
-                  title={ZONE_TYPE_LABELS[id].name}
-                  level={`×${count}${queued > 0 ? ` (+${queued})` : ""}`}
-                  meta={`${ZONE_TYPE_LABELS[id].description} · ${formatCost(def.cost)} — ${formatDuration(def.buildMs)}`}
-                  right={
-                    <Button
-                      size="sm"
-                      disabled={!affordable}
-                      title={!affordable ? "Ressources insuffisantes" : ""}
-                      onClick={() =>
-                        send({
-                          type: "buildZone",
-                          stationId: station.id,
-                          zoneTypeId: id,
-                        })
-                      }
-                    >
-                      Construire
-                    </Button>
-                  }
-                />
-              );
-            })}
-          </ul>
-        </Panel>
-
-        <Panel title="Installations">
-          <ul className="building-list">
-            {INSTALLATION_IDS.map((id) => {
-              const def = INSTALLATIONS[id];
-              const locked = !effects.unlockedInstallations.has(id);
-              if (locked) {
-                return (
-                  <ListRow
-                    key={id}
-                    title={INSTALLATION_LABELS[id].name}
-                    meta={`🔒 verrouillé — technologie non recherchée · ${ZONE_TYPE_LABELS[def.zoneType].name}`}
-                  />
-                );
-              }
-              const count = station.installations[id] ?? 0;
-              const queued = station.installQueue.filter(
-                (q) => q.installationId === id,
-              ).length;
-              const zoneSlots = station.zones[def.zoneType] ?? 0;
-              const slotsFull =
-                installationsOfZoneType(station, def.zoneType) >= zoneSlots;
-              const affordable = canAffordStation(station, def.cost);
-              const disabled = slotsFull || !affordable;
-              return (
-                <ListRow
-                  key={id}
-                  title={INSTALLATION_LABELS[id].name}
-                  level={`×${count}${queued > 0 ? ` (+${queued})` : ""}`}
-                  meta={`${ZONE_TYPE_LABELS[def.zoneType].name} · ${formatCost(def.cost)} — ${formatDuration(def.buildMs)}`}
-                  right={
-                    <Button
-                      size="sm"
-                      disabled={disabled}
-                      title={
-                        slotsFull
-                          ? "Plus d'emplacement dans ce type de zone"
-                          : !affordable
-                            ? "Ressources insuffisantes"
-                            : ""
-                      }
-                      onClick={() =>
-                        send({
-                          type: "buildInstallation",
-                          stationId: station.id,
-                          installationId: id,
-                        })
-                      }
-                    >
-                      Construire
-                    </Button>
-                  }
-                />
-              );
-            })}
-          </ul>
-        </Panel>
-
         <Panel
           title={`File de construction — ${station.zoneQueue.length + station.installQueue.length}`}
         >

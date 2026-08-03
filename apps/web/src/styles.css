@@ -1367,6 +1367,102 @@
   align-items: flex-start;
 }
 
+/* ── Constructeur spatial de station (chantier 26) ───────────────────── */
+
+.station-diagram {
+  width: 100%;
+  height: 380px;
+}
+
+.station-diagram-svg {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, #0d1420 0%, var(--bg) 80%);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.station-goo-layer {
+  opacity: 0.9;
+}
+
+.station-hub-blob,
+.station-zone-blob {
+  stroke: none;
+}
+
+.station-hub-blob {
+  fill: var(--border-bright);
+}
+
+.station-zone-blob.queued {
+  opacity: 0.55;
+}
+
+.station-hub-core {
+  fill: var(--panel);
+  stroke: var(--text);
+  stroke-width: 1.5;
+}
+
+.station-hub-label {
+  fill: var(--muted);
+  font-size: 10px;
+}
+
+.station-zone-icon {
+  fill: var(--bg);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.station-zone.clickable {
+  cursor: pointer;
+}
+
+.station-zone.selected .station-zone-icon {
+  filter: drop-shadow(0 0 4px var(--text));
+}
+
+.station-zone-ring {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+
+.station-growth-point-hit {
+  fill: color-mix(in srgb, var(--panel) 70%, transparent);
+  stroke: var(--border-bright);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 2;
+}
+
+.station-growth-point-cross {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+}
+
+.station-growth-point.clickable {
+  cursor: pointer;
+}
+
+.station-growth-point.clickable:hover .station-growth-point-hit {
+  stroke: var(--accent);
+}
+.station-growth-point.clickable:hover .station-growth-point-cross {
+  stroke: var(--accent);
+}
+
+.station-growth-point.selected .station-growth-point-hit {
+  stroke: var(--accent);
+  fill: color-mix(in srgb, var(--accent) 22%, var(--panel));
+}
+.station-growth-point.selected .station-growth-point-cross {
+  stroke: var(--accent);
+}
+
 .hull-diagram-wrap {
   position: relative;
   width: 200px;
