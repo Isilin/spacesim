@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # Workspace pnpm : une seule entrée à la racine, Dependabot lit pnpm-workspace.yaml et
+  # les 7 package.json. Volontairement activé après la vague A du chantier 27 (catalogues
+  # pnpm + montées manuelles TS7/Zod4/React19) — pas avant, pour ne pas ouvrir de PR
+  # concurrentes sur les mêmes montées majeures déjà en cours à la main.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
