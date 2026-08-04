@@ -42,6 +42,9 @@ export type { ProgressBarProps } from "./components/progress/ProgressBar.js";
 export { SectionTitle } from "./components/section-title/SectionTitle.js";
 export type { SectionTitleProps } from "./components/section-title/SectionTitle.js";
 
+export { Skeleton } from "./components/skeleton/Skeleton.js";
+export type { SkeletonProps } from "./components/skeleton/Skeleton.js";
+
 export { Stat } from "./components/stat/Stat.js";
 export type { StatProps } from "./components/stat/Stat.js";
 
