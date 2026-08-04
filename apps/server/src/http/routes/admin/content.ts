@@ -1,4 +1,6 @@
 import {
+  idParamSchema,
+  keyParamSchema,
   upsertBuildingSchema,
   upsertChassisSchema,
   upsertConstantSchema,
@@ -18,7 +20,6 @@ import {
   validateTree,
   type BuildingId,
 } from "@spacesim/shared";
-import type { FastifyInstance } from "fastify";
 import { recordAuditEntry } from "../../../admin/audit-service.js";
 import type { GameEngine } from "../../../game.js";
 import { ContentRepository } from "../../../runtime/content/content-repository.js";
@@ -37,6 +38,7 @@ import type {
   ContentWarship,
   ContentZoneType,
 } from "../../../runtime/content/content-types.js";
+import type { ZodFastifyInstance } from "../../zod-fastify.js";
 
 const repo = new ContentRepository();
 
@@ -48,7 +50,7 @@ const repo = new ContentRepository();
  * dédiée (chantier 23, « conséquence assumée » de la décision 1).
  */
 export function registerContentRoutes(
-  admin: FastifyInstance,
+  admin: ZodFastifyInstance,
   engine: GameEngine,
 ): void {
   admin.get(
@@ -70,17 +72,14 @@ export function registerContentRoutes(
 
   admin.put(
     "/content/warships/:id",
-    { config: { adminAction: "content.warships.write" } },
-    async (request, reply) => {
-      const { id } = request.params as { id: string };
-      const parsed = upsertWarshipSchema.safeParse(request.body);
-      if (!parsed.success) {
-        return reply.code(400).send({
-          error: parsed.error.issues[0]?.message ?? "Requête invalide",
-        });
-      }
+    {
+      schema: { params: idParamSchema, body: upsertWarshipSchema },
+      config: { adminAction: "content.warships.write" },
+    },
+    async (request) => {
+      const { id } = request.params;
       const isNew = !(id in engine.content.warships);
-      const warship: ContentWarship = { id, ...parsed.data };
+      const warship: ContentWarship = { id, ...request.body };
       await repo.saveWarship(warship);
       await engine.loadContent();
 
@@ -108,17 +107,14 @@ export function registerContentRoutes(
 
   admin.put(
     "/content/factions/:id",
-    { config: { adminAction: "content.factions.write" } },
-    async (request, reply) => {
-      const { id } = request.params as { id: string };
-      const parsed = upsertFactionSchema.safeParse(request.body);
-      if (!parsed.success) {
-        return reply.code(400).send({
-          error: parsed.error.issues[0]?.message ?? "Requête invalide",
-        });
-      }
+    {
+      schema: { params: idParamSchema, body: upsertFactionSchema },
+      config: { adminAction: "content.factions.write" },
+    },
+    async (request) => {
+      const { id } = request.params;
       const isNew = !(id in engine.content.factions);
-      const faction: ContentFaction = { id, ...parsed.data };
+      const faction: ContentFaction = { id, ...request.body };
       await repo.saveFaction(faction);
       await engine.loadContent();
 
@@ -148,24 +144,21 @@ export function registerContentRoutes(
 
   admin.put(
     "/content/buildings/:id",
-    { config: { adminAction: "content.buildings.write" } },
+    {
+      schema: { params: idParamSchema, body: upsertBuildingSchema },
+      config: { adminAction: "content.buildings.write" },
+    },
     async (request, reply) => {
-      const { id } = request.params as { id: string };
+      const { id } = request.params;
       if (!(BUILDING_IDS as readonly string[]).includes(id)) {
         return reply.code(400).send({
           error:
             "Id de bâtiment inconnu — la création n'est pas prise en charge pour ce domaine",
         });
       }
-      const parsed = upsertBuildingSchema.safeParse(request.body);
-      if (!parsed.success) {
-        return reply.code(400).send({
-          error: parsed.error.issues[0]?.message ?? "Requête invalide",
-        });
-      }
       const building: ContentBuilding = {
         id: id as BuildingId,
-        ...parsed.data,
+        ...request.body,
       };
       await repo.saveBuilding(building);
       await engine.loadContent();
@@ -195,17 +188,14 @@ export function registerContentRoutes(
 
   admin.put(
     "/content/ships/:id",
-    { config: { adminAction: "content.ships.write" } },
-    async (request, reply) => {
-      const { id } = request.params as { id: string };
-      const parsed = upsertShipSchema.safeParse(request.body);
-      if (!parsed.success) {
-        return reply.code(400).send({
-          error: parsed.error.issues[0]?.message ?? "Requête invalide",
-        });
-      }
+    {
+      schema: { params: idParamSchema, body: upsertShipSchema },
+      config: { adminAction: "content.ships.write" },
+    },
+    async (request) => {
+      const { id } = request.params;
       const isNew = !(id in engine.content.ships);
-      const ship: ContentShip = { id, ...parsed.data };
+      const ship: ContentShip = { id, ...request.body };
       await repo.saveShip(ship);
       await engine.loadContent();
 
@@ -234,22 +224,19 @@ export function registerContentRoutes(
 
   admin.put(
     "/content/constants/:key",
-    { config: { adminAction: "content.constants.write" } },
+    {
+      schema: { params: keyParamSchema, body: upsertConstantSchema },
+      config: { adminAction: "content.constants.write" },
+    },
     async (request, reply) => {
-      const { key } = request.params as { key: string };
+      const { key } = request.params;
       if (!(key in DEFAULT_BALANCE)) {
         return reply.code(400).send({
           error:
             "Clé de constante inconnue — la création n'est pas prise en charge pour ce domaine",
         });
       }
-      const parsed = upsertConstantSchema.safeParse(request.body);
-      if (!parsed.success) {
-        return reply.code(400).send({
-          error: parsed.error.issues[0]?.message ?? "Requête invalide",
-        });
-      }
-      const constant: ContentConstant = { key, ...parsed.data };
+      const constant: ContentConstant = { key, ...request.body };
       await repo.saveConstant(constant);
       await engine.loadContent();
 
@@ -279,17 +266,14 @@ export function registerContentRoutes(
 
   admin.put(
     "/content/techs/:id",
-    { config: { adminAction: "content.techs.write" } },
+    {
+      schema: { params: idParamSchema, body: upsertTechSchema },
+      config: { adminAction: "content.techs.write" },
+    },
     async (request, reply) => {
-      const { id } = request.params as { id: string };
-      const parsed = upsertTechSchema.safeParse(request.body);
-      if (!parsed.success) {
-        return reply.code(400).send({
-          error: parsed.error.issues[0]?.message ?? "Requête invalide",
-        });
-      }
+      const { id } = request.params;
       const isNew = !(id in engine.content.techs);
-      const tech: ContentTech = { id, ...parsed.data };
+      const tech: ContentTech = { id, ...request.body };
       const candidate = { ...engine.content.techs, [id]: tech };
       const problems = validateTree(techDefsFromContent(candidate));
       if (problems.length > 0) {
@@ -324,17 +308,14 @@ export function registerContentRoutes(
 
   admin.put(
     "/content/chassis/:id",
-    { config: { adminAction: "content.chassis.write" } },
-    async (request, reply) => {
-      const { id } = request.params as { id: string };
-      const parsed = upsertChassisSchema.safeParse(request.body);
-      if (!parsed.success) {
-        return reply.code(400).send({
-          error: parsed.error.issues[0]?.message ?? "Requête invalide",
-        });
-      }
+    {
+      schema: { params: idParamSchema, body: upsertChassisSchema },
+      config: { adminAction: "content.chassis.write" },
+    },
+    async (request) => {
+      const { id } = request.params;
       const isNew = !(id in engine.content.chassis);
-      const chassis: ContentChassis = { id, ...parsed.data };
+      const chassis: ContentChassis = { id, ...request.body };
       await repo.saveChassis(chassis);
       await engine.loadContent();
 
@@ -361,17 +342,14 @@ export function registerContentRoutes(
 
   admin.put(
     "/content/modules/:id",
-    { config: { adminAction: "content.modules.write" } },
-    async (request, reply) => {
-      const { id } = request.params as { id: string };
-      const parsed = upsertModuleSchema.safeParse(request.body);
-      if (!parsed.success) {
-        return reply.code(400).send({
-          error: parsed.error.issues[0]?.message ?? "Requête invalide",
-        });
-      }
+    {
+      schema: { params: idParamSchema, body: upsertModuleSchema },
+      config: { adminAction: "content.modules.write" },
+    },
+    async (request) => {
+      const { id } = request.params;
       const isNew = !(id in engine.content.modules);
-      const module: ContentModule = { id, ...parsed.data };
+      const module: ContentModule = { id, ...request.body };
       await repo.saveModule(module);
       await engine.loadContent();
 
@@ -400,17 +378,14 @@ export function registerContentRoutes(
 
   admin.put(
     "/content/presets/:id",
-    { config: { adminAction: "content.presets.write" } },
-    async (request, reply) => {
-      const { id } = request.params as { id: string };
-      const parsed = upsertPresetSchema.safeParse(request.body);
-      if (!parsed.success) {
-        return reply.code(400).send({
-          error: parsed.error.issues[0]?.message ?? "Requête invalide",
-        });
-      }
+    {
+      schema: { params: idParamSchema, body: upsertPresetSchema },
+      config: { adminAction: "content.presets.write" },
+    },
+    async (request) => {
+      const { id } = request.params;
       const isNew = !(id in engine.content.presets);
-      const preset: ContentPreset = { id, ...parsed.data };
+      const preset: ContentPreset = { id, ...request.body };
       await repo.savePreset(preset);
       await engine.loadContent();
 
@@ -439,17 +414,14 @@ export function registerContentRoutes(
 
   admin.put(
     "/content/milestones/:id",
-    { config: { adminAction: "content.milestones.write" } },
-    async (request, reply) => {
-      const { id } = request.params as { id: string };
-      const parsed = upsertMilestoneSchema.safeParse(request.body);
-      if (!parsed.success) {
-        return reply.code(400).send({
-          error: parsed.error.issues[0]?.message ?? "Requête invalide",
-        });
-      }
+    {
+      schema: { params: idParamSchema, body: upsertMilestoneSchema },
+      config: { adminAction: "content.milestones.write" },
+    },
+    async (request) => {
+      const { id } = request.params;
       const isNew = !(id in engine.content.milestones);
-      const milestone: ContentMilestone = { id, ...parsed.data };
+      const milestone: ContentMilestone = { id, ...request.body };
       await repo.saveMilestone(milestone);
       await engine.loadContent();
 
@@ -478,17 +450,14 @@ export function registerContentRoutes(
 
   admin.put(
     "/content/zone-types/:id",
-    { config: { adminAction: "content.zoneTypes.write" } },
-    async (request, reply) => {
-      const { id } = request.params as { id: string };
-      const parsed = upsertZoneTypeSchema.safeParse(request.body);
-      if (!parsed.success) {
-        return reply.code(400).send({
-          error: parsed.error.issues[0]?.message ?? "Requête invalide",
-        });
-      }
+    {
+      schema: { params: idParamSchema, body: upsertZoneTypeSchema },
+      config: { adminAction: "content.zoneTypes.write" },
+    },
+    async (request) => {
+      const { id } = request.params;
       const isNew = !(id in engine.content.zoneTypes);
-      const zoneType: ContentZoneType = { id, ...parsed.data };
+      const zoneType: ContentZoneType = { id, ...request.body };
       await repo.saveZoneType(zoneType);
       await engine.loadContent();
 
@@ -517,17 +486,14 @@ export function registerContentRoutes(
 
   admin.put(
     "/content/installations/:id",
-    { config: { adminAction: "content.installations.write" } },
-    async (request, reply) => {
-      const { id } = request.params as { id: string };
-      const parsed = upsertInstallationSchema.safeParse(request.body);
-      if (!parsed.success) {
-        return reply.code(400).send({
-          error: parsed.error.issues[0]?.message ?? "Requête invalide",
-        });
-      }
+    {
+      schema: { params: idParamSchema, body: upsertInstallationSchema },
+      config: { adminAction: "content.installations.write" },
+    },
+    async (request) => {
+      const { id } = request.params;
       const isNew = !(id in engine.content.installations);
-      const installation: ContentInstallation = { id, ...parsed.data };
+      const installation: ContentInstallation = { id, ...request.body };
       await repo.saveInstallation(installation);
       await engine.loadContent();
 

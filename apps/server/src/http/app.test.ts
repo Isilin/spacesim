@@ -23,6 +23,15 @@ describe("buildApp — routes HTTP", () => {
     expect(res.json()).toEqual({ ok: true, tick: 0 });
   });
 
+  it("GET /documentation/json expose un spec OpenAPI valide (chantier 27.8, usage interne orval)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const res = await app.inject({ method: "GET", url: "/documentation/json" });
+    expect(res.statusCode).toBe(200);
+    const spec = res.json();
+    expect(spec.openapi).toBe("3.0.0");
+    expect(spec.paths["/api/admin/content/warships/{id}"].put).toBeDefined();
+  });
+
   describe("/auth/register", () => {
     it("refuse un e-mail invalide", async () => {
       const app = await buildApp(await GameEngine.loadOrBootstrap());

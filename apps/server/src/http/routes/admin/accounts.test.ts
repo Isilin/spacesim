@@ -64,6 +64,21 @@ describe("/api/admin/accounts", () => {
     expect(body.accounts[0].email).toBe("alice@exemple.fr");
   });
 
+  it("un paramètre limit malformé est refusé (400 Zod, chantier 27.8)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "admin@exemple.fr",
+    );
+    await setTestRole(accountId, "admin");
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/admin/accounts?limit=abc",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
   it("le détail d'un compte inclut le résumé de son empire", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
     const { token, accountId } = await registerTestAccount(

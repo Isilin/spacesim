@@ -1,9 +1,12 @@
 import {
+  accountsQuerySchema,
   applySanctionSchema,
   hasPermission,
+  idParamSchema,
   SANCTION_ACTIONS,
 } from "@spacesim/protocol";
 import type { FastifyInstance } from "fastify";
+import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { accountDetail, listAccounts } from "../../../admin/accounts-query.js";
 import {
   listAuditEntries,
@@ -11,6 +14,7 @@ import {
 } from "../../../admin/audit-service.js";
 import { applySanction } from "../../../admin/sanctions-service.js";
 import type { GameEngine } from "../../../game.js";
+import type { ZodFastifyInstance } from "../../zod-fastify.js";
 import { registerContentRoutes } from "./content.js";
 import { adminGuard } from "./guard.js";
 
@@ -25,7 +29,9 @@ export function registerAdminRoutes(
   engine: GameEngine,
 ): void {
   app.register(
-    async (admin) => {
+    async (rawAdmin) => {
+      const admin: ZodFastifyInstance =
+        rawAdmin.withTypeProvider<ZodTypeProvider>();
       admin.addHook("preHandler", adminGuard);
 
       // Route de fumée (chantier 23.1) : prouve tout le tuyau (session → rôle → DB) avant
@@ -38,29 +44,33 @@ export function registerAdminRoutes(
         }),
       );
 
-      // Gestion joueurs (chantier 23.3) : recherche/liste + détail d'un compte.
+      // Gestion joueurs (chantier 23.3) : recherche/liste + détail d'un compte. Un
+      // paramètre malformé (ex. limit=abc) renvoie désormais un 400 Zod plutôt que de se
+      // coercer silencieusement (chantier 27.8).
       admin.get(
         "/accounts",
-        { config: { adminAction: "account.view" } },
+        {
+          schema: { querystring: accountsQuerySchema },
+          config: { adminAction: "account.view" },
+        },
         async (request) => {
-          const { query, limit, offset } = request.query as {
-            query?: string;
-            limit?: string;
-            offset?: string;
-          };
+          const { query, limit, offset } = request.query;
           return listAccounts(engine, {
             query,
-            limit: Math.min(Number(limit) || 50, 200),
-            offset: Number(offset) || 0,
+            limit: Math.min(limit ?? 50, 200),
+            offset: offset ?? 0,
           });
         },
       );
 
       admin.get(
         "/accounts/:id",
-        { config: { adminAction: "account.view" } },
+        {
+          schema: { params: idParamSchema },
+          config: { adminAction: "account.view" },
+        },
         async (request, reply) => {
-          const { id } = request.params as { id: string };
+          const { id } = request.params;
           const detail = await accountDetail(engine, id);
           if (!detail) return reply.code(404).send({ error: "Compte inconnu" });
           return detail;
@@ -74,17 +84,14 @@ export function registerAdminRoutes(
       // n'obtient pas tous les genres de sanction.
       admin.post(
         "/accounts/:id/sanctions",
-        { config: { adminAction: "account.warn" } },
+        {
+          schema: { params: idParamSchema, body: applySanctionSchema },
+          config: { adminAction: "account.warn" },
+        },
         async (request, reply) => {
-          const { id } = request.params as { id: string };
-          const parsed = applySanctionSchema.safeParse(request.body);
-          if (!parsed.success) {
-            return reply.code(400).send({
-              error: parsed.error.issues[0]?.message ?? "Requête invalide",
-            });
-          }
+          const { id } = request.params;
           const actor = request.adminAccount!;
-          const action = SANCTION_ACTIONS[parsed.data.kind];
+          const action = SANCTION_ACTIONS[request.body.kind];
           if (!hasPermission(actor.role, action)) {
             return reply
               .code(403)
@@ -95,11 +102,11 @@ export function registerAdminRoutes(
 
           await applySanction({
             accountId: id,
-            kind: parsed.data.kind,
-            reason: parsed.data.reason,
+            kind: request.body.kind,
+            reason: request.body.reason,
             actorAccountId: actor.id,
             actorEmail: actor.email,
-            durationMs: parsed.data.durationMs,
+            durationMs: request.body.durationMs,
           });
           await recordAuditEntry({
             actorAccountId: actor.id,
@@ -107,7 +114,7 @@ export function registerAdminRoutes(
             action,
             targetType: "account",
             targetId: id,
-            reason: parsed.data.reason,
+            reason: request.body.reason,
           });
           return accountDetail(engine, id);
         },

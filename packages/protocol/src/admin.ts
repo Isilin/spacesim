@@ -139,3 +139,24 @@ export const SANCTION_ACTIONS: Record<SanctionKind, AdminActionId> = {
   unban: "account.unban",
   force_logout: "account.force_logout",
 };
+
+// ── Schémas de route pour params/query (chantier 27.8) ──────────────────────
+// request.params/request.query n'étaient validés par aucun schéma (contrairement au
+// body, déjà couvert partout où un schéma existe) — de simples casts `as` non vérifiés.
+
+/** `:id` de route — tous les domaines de contenu et `/accounts/:id` (id libre ou tuple
+ *  fermé selon le domaine, la route revérifie l'appartenance quand elle est fermée). */
+export const idParamSchema = z.object({ id: z.string().min(1) });
+
+/** `:key` de route — uniquement `/content/constants/:key` (clé de `BalanceConstants`,
+ *  pas un id libre). */
+export const keyParamSchema = z.object({ key: z.string().min(1) });
+
+/** Query de `GET /api/admin/accounts` — un paramètre malformé (ex. `limit=abc`) doit
+ *  renvoyer un 400 Zod, pas se coercer silencieusement (ancien `Number(limit) || 50`). */
+export const accountsQuerySchema = z.object({
+  query: z.string().trim().min(1).optional(),
+  limit: z.coerce.number().int().positive().max(200).optional(),
+  offset: z.coerce.number().int().nonnegative().optional(),
+});
+export type AccountsQuery = z.infer<typeof accountsQuerySchema>;
