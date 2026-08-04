@@ -31,9 +31,10 @@ import {
   Table,
   type TableColumn,
 } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import { BlueprintMarket } from "./BlueprintMarket.js";
 import { formatDuration, systemIdOf } from "./format.js";
-import { FACTION_LABELS, RESOURCE_LABELS, repTierName } from "./labels.js";
+import { factionLabel, resourceLabel, repTierName } from "./labels.js";
 
 interface Props {
   tradingPost: TradingPost;
@@ -65,12 +66,13 @@ export function TradingPostPanel({
   now,
   send,
 }: Props) {
+  const { t } = useTranslation();
   const [sellAmounts, setSellAmounts] = useState<
     Partial<Record<ResourceId, string>>
   >({});
   const [buyResource, setBuyResource] = useState<MarketResource>("metals");
   const [buyBudget, setBuyBudget] = useState("");
-  const faction = FACTION_LABELS[tradingPost.factionId as FactionId];
+  const faction = factionLabel(tradingPost.factionId as FactionId);
 
   // Contexte régional (chantier 12) : le comptoir a son propre barème selon son
   // éloignement — c'est ce qui fait qu'un aller-retour peut valoir le carburant.
@@ -140,8 +142,12 @@ export function TradingPostPanel({
       </p>
       {jumps >= 0 && (
         <p className="small muted">
-          {jumps} saut{jumps > 1 ? "s" : ""} — {formatDuration(eta)} — frais{" "}
-          {fee} crédits par convoi
+          {t("tradingPostPanel.tripSummary", {
+            jumps,
+            plural: jumps > 1 ? "s" : "",
+            eta: formatDuration(eta),
+            fee,
+          })}
         </p>
       )}
       {(() => {
@@ -149,12 +155,14 @@ export function TradingPostPanel({
         const bonus = repBonus(rep);
         return (
           <p className="small">
-            Réputation : <span className="ok">{repTierName(rep)}</span>{" "}
+            {t("tradingPostPanel.reputationLabel")}{" "}
+            <span className="ok">{repTierName(rep)}</span>{" "}
             <span className="muted">({Math.floor(rep)})</span>
             {bonus > 0 && (
               <span className="ok">
-                {" "}
-                — ventes +{bonus * 100} %, achats −{bonus * 100} %
+                {t("tradingPostPanel.reputationBonus", {
+                  bonus: bonus * 100,
+                })}
               </span>
             )}
           </p>
@@ -167,18 +175,18 @@ export function TradingPostPanel({
             [
               {
                 key: "res",
-                label: "Ressource",
-                render: (_, res) => RESOURCE_LABELS[res],
+                label: t("tradingPostPanel.resource"),
+                render: (_, res) => resourceLabel(res),
               },
               {
                 key: "stock",
-                label: "Stock",
+                label: t("tradingPostPanel.stock"),
                 align: "right",
                 render: (_, res) => Math.floor(market.stocks[res]),
               },
               {
                 key: "price",
-                label: "Prix",
+                label: t("tradingPostPanel.price"),
                 align: "right",
                 trend: (res) => {
                   const gap =
@@ -202,7 +210,7 @@ export function TradingPostPanel({
           rows={MARKET_RESOURCES}
         />
       ) : (
-        <p className="muted small">Marché inconnu.</p>
+        <p className="muted small">{t("tradingPostPanel.unknownMarket")}</p>
       )}
 
       {related.length > 0 && (
@@ -212,10 +220,10 @@ export function TradingPostPanel({
               <div className="queue-head">
                 <span>
                   {m.kind === "sell"
-                    ? "Vente"
+                    ? t("tradingPostPanel.sellKind")
                     : m.kind === "buy"
-                      ? "Achat (aller)"
-                      : "Achat (retour)"}
+                      ? t("tradingPostPanel.buyOutbound")
+                      : t("tradingPostPanel.buyReturn")}
                 </span>
                 <span className="muted">
                   {formatDuration(m.arrivesAt - now)}
@@ -228,13 +236,16 @@ export function TradingPostPanel({
 
       {canTrade && market && (
         <>
-          <SectionTitle>Vendre</SectionTitle>
+          <SectionTitle>{t("tradingPostPanel.sell")}</SectionTitle>
           <div className="form-stack">
             {/* On ne vend que ce qui est déjà en orbite (chantier 12). */}
             {MARKET_RESOURCES.map((res) => (
               <NumberInput
                 key={res}
-                label={`${RESOURCE_LABELS[res]} (orbite : ${Math.floor(activeColony.orbitalResources[res] ?? 0)})`}
+                label={t("tradingPostPanel.resourceOrbit", {
+                  resource: resourceLabel(res),
+                  amount: Math.floor(activeColony.orbitalResources[res] ?? 0),
+                })}
                 min={0}
                 max={Math.floor(activeColony.orbitalResources[res] ?? 0)}
                 value={sellAmounts[res] ?? ""}
@@ -245,12 +256,18 @@ export function TradingPostPanel({
               />
             ))}
             <span className={`small ${overCapacity ? "ko" : "muted"}`}>
-              Soute disponible : {convoyCapacity}
-              {overCapacity ? ` — cargaison trop lourde (${totalCargo})` : ""}
+              {t("tradingPostPanel.availableHold", {
+                capacity: convoyCapacity,
+              })}
+              {overCapacity
+                ? t("tradingPostPanel.tooHeavy", { total: totalCargo })
+                : ""}
             </span>
             {hasCargo && !overCapacity && (
               <span className="small ok">
-                Revenu estimé au prix actuel : ~{estimatedRevenue} crédits
+                {t("tradingPostPanel.estimatedRevenue", {
+                  amount: estimatedRevenue,
+                })}
               </span>
             )}
             <Button
@@ -266,23 +283,23 @@ export function TradingPostPanel({
                 setSellAmounts({});
               }}
             >
-              Envoyer le convoi de vente
+              {t("tradingPostPanel.sendSaleConvoy")}
             </Button>
           </div>
 
-          <SectionTitle>Acheter</SectionTitle>
+          <SectionTitle>{t("tradingPostPanel.buy")}</SectionTitle>
           <div className="form-stack">
             <Select
-              label="Ressource"
+              label={t("tradingPostPanel.resource")}
               value={buyResource}
               onChange={(e) => setBuyResource(e.target.value as MarketResource)}
               options={MARKET_RESOURCES.map((res) => ({
                 value: res,
-                label: RESOURCE_LABELS[res],
+                label: resourceLabel(res),
               }))}
             />
             <NumberInput
-              label="Budget (crédits)"
+              label={t("tradingPostPanel.budget")}
               min={0}
               value={buyBudget}
               placeholder="0"
@@ -290,8 +307,11 @@ export function TradingPostPanel({
             />
             {estimatedPurchase && estimatedPurchase.bought > 0 && (
               <span className="small ok">
-                ~{estimatedPurchase.bought} {RESOURCE_LABELS[buyResource]} pour{" "}
-                {estimatedPurchase.spent} crédits (au prix actuel)
+                {t("tradingPostPanel.estimatedPurchase", {
+                  amount: estimatedPurchase.bought,
+                  resource: resourceLabel(buyResource),
+                  spent: estimatedPurchase.spent,
+                })}
               </span>
             )}
             <Button
@@ -300,7 +320,7 @@ export function TradingPostPanel({
               }
               title={
                 activeColony.resources.credits < budget + fee
-                  ? "Crédits insuffisants (budget + frais)"
+                  ? t("tradingPostPanel.insufficientCredits")
                   : ""
               }
               onClick={() => {
@@ -315,7 +335,7 @@ export function TradingPostPanel({
                 setBuyBudget("");
               }}
             >
-              Envoyer le convoi d'achat
+              {t("tradingPostPanel.sendBuyConvoy")}
             </Button>
           </div>
 

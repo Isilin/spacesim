@@ -22,6 +22,7 @@ import {
   type TechId,
 } from "@spacesim/shared";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import {
   Badge,
@@ -34,10 +35,10 @@ import {
 } from "@spacesim/ui";
 import { formatDuration } from "./format.js";
 import {
-  BUILDING_LABELS,
-  PLANET_TYPE_LABELS,
-  RESOURCE_LABELS,
-  TECH_LABELS,
+  buildingLabel,
+  planetTypeLabel,
+  resourceLabel,
+  techLabel,
 } from "./labels.js";
 
 import { ShipyardPanel } from "./ShipyardPanel.js";
@@ -70,7 +71,7 @@ const SHOWN_RESOURCES: ResourceId[] = [
 
 function formatCost(cost: Partial<Record<ResourceId, number>>): string {
   return Object.entries(cost)
-    .map(([res, amount]) => `${amount} ${RESOURCE_LABELS[res as ResourceId]}`)
+    .map(([res, amount]) => `${amount} ${resourceLabel(res as ResourceId)}`)
     .join(" · ");
 }
 
@@ -85,6 +86,7 @@ function useNow(): number {
 }
 
 export function ColonyView({ effects }: Props) {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const activeColony = useGameStore(
     selectActiveColony(searchParams.get("colony")),
@@ -97,7 +99,7 @@ export function ColonyView({ effects }: Props) {
       : undefined;
 
   if (!activeColony || !planet || !game) {
-    return <p className="muted">Aucune colonie.</p>;
+    return <p className="muted">{t("colonyView.noColony")}</p>;
   }
   const colony = activeColony;
   const researched = game.researched;
@@ -115,14 +117,19 @@ export function ColonyView({ effects }: Props) {
       <div className="colony-header">
         <h2>{colony.name}</h2>
         <span className="muted">
-          {planet.name} — {PLANET_TYPE_LABELS[planet.type]} · Habitabilité{" "}
-          {planet.habitability} · Emplacements {slots}/{planet.slots}
+          {t("colonyView.habitability", {
+            planet: planet.name,
+            type: planetTypeLabel(planet.type),
+            hab: planet.habitability,
+            slots,
+            max: planet.slots,
+          })}
         </span>
       </div>
 
       <div className="resource-bar">
         <div className="resource-cell">
-          <span className="resource-name">Population</span>
+          <span className="resource-name">{t("colonyView.population")}</span>
           <span className="resource-stock">
             {pop}
             <span className="muted"> / {cap}</span>
@@ -130,26 +137,30 @@ export function ColonyView({ effects }: Props) {
           <span
             className={`resource-rate ${colony.satisfaction >= 50 ? "ok" : "ko"}`}
           >
-            Satisfaction {Math.round(colony.satisfaction)}
+            {t("colonyView.satisfaction", {
+              value: Math.round(colony.satisfaction),
+            })}
           </span>
         </div>
         <div className="resource-cell">
-          <span className="resource-name">Emplois</span>
+          <span className="resource-name">{t("colonyView.jobs")}</span>
           <span className="resource-stock">
             {employed}
             <span className="muted"> / {jobs}</span>
           </span>
           <span className={`resource-rate ${efficiency >= 1 ? "ok" : "ko"}`}>
-            Rendement {Math.round(efficiency * 100)} %
+            {t("colonyView.yield", { value: Math.round(efficiency * 100) })}
           </span>
         </div>
         <div className="resource-cell">
-          <span className="resource-name">Logements</span>
+          <span className="resource-name">{t("colonyView.housing")}</span>
           <span className="resource-stock">{housing(colony, effects)}</span>
           <span
             className={`resource-rate ${housing(colony, effects) >= pop ? "ok" : "ko"}`}
           >
-            {housing(colony, effects) >= pop ? "suffisants" : "surpeuplés"}
+            {housing(colony, effects) >= pop
+              ? t("colonyView.housingOk")
+              : t("colonyView.housingOver")}
           </span>
         </div>
         {SHOWN_RESOURCES.map((res) => {
@@ -157,7 +168,7 @@ export function ColonyView({ effects }: Props) {
           const rate = rates[res];
           return (
             <div key={res} className="resource-cell">
-              <span className="resource-name">{RESOURCE_LABELS[res]}</span>
+              <span className="resource-name">{resourceLabel(res)}</span>
               <span className="resource-stock">
                 {Math.floor(colony.resources[res])}
                 {Number.isFinite(cap) && (
@@ -167,8 +178,10 @@ export function ColonyView({ effects }: Props) {
               <span
                 className={`resource-rate ${rate > 0 ? "ok" : rate < 0 ? "ko" : "muted"}`}
               >
-                {rate >= 0 ? "+" : ""}
-                {Math.round(rate * 100) / 100}/tick
+                {t("colonyView.perTick", {
+                  sign: rate >= 0 ? "+" : "",
+                  value: Math.round(rate * 100) / 100,
+                })}
               </span>
             </div>
           );
@@ -176,7 +189,7 @@ export function ColonyView({ effects }: Props) {
       </div>
 
       <div className="colony-columns">
-        <Panel title="Bâtiments">
+        <Panel title={t("colonyView.buildings")}>
           <ul className="building-list">
             {BUILDING_IDS.map((id) => {
               const def = BUILDINGS[id];
@@ -186,8 +199,12 @@ export function ColonyView({ effects }: Props) {
                 return (
                   <ListRow
                     key={id}
-                    title={BUILDING_LABELS[id].name}
-                    meta={`🔒 verrouillé — Requiert : ${tech ? TECH_LABELS[tech].name : "technologie inconnue"}`}
+                    title={buildingLabel(id).name}
+                    meta={t("colonyView.locked", {
+                      tech: tech
+                        ? techLabel(tech).name
+                        : t("colonyView.unknownTech"),
+                    })}
                   />
                 );
               }
@@ -205,17 +222,21 @@ export function ColonyView({ effects }: Props) {
               return (
                 <ListRow
                   key={id}
-                  title={BUILDING_LABELS[id].name}
+                  title={buildingLabel(id).name}
                   level={`×${count}${queued > 0 ? ` (+${queued})` : ""}`}
-                  meta={`${BUILDING_LABELS[id].description} · ${formatCost(cost)} — ${formatDuration(buildingBuildMs(def))} l'instance`}
+                  meta={t("colonyView.buildCost", {
+                    description: buildingLabel(id).description,
+                    cost: formatCost(cost),
+                    duration: formatDuration(buildingBuildMs(def)),
+                  })}
                   right={
                     <>
                       {hasShortage && (
                         <Badge
                           variant="ko"
-                          title="Intrants manquants : bâtiment à l'arrêt"
+                          title={t("colonyView.shortageTooltip")}
                         >
-                          ⚠ pénurie
+                          {t("colonyView.shortage")}
                         </Badge>
                       )}
                       <Button
@@ -223,11 +244,11 @@ export function ColonyView({ effects }: Props) {
                         disabled={disabled}
                         title={
                           queueFull
-                            ? "File pleine"
+                            ? t("colonyView.queueFull")
                             : slotsFull
-                              ? "Plus d'emplacements"
+                              ? t("colonyView.slotsFull")
                               : !affordable
-                                ? "Ressources insuffisantes"
+                                ? t("colonyView.notAffordable")
                                 : ""
                         }
                         onClick={() =>
@@ -238,7 +259,7 @@ export function ColonyView({ effects }: Props) {
                           })
                         }
                       >
-                        Construire
+                        {t("colonyView.build")}
                       </Button>
                     </>
                   }
@@ -249,10 +270,13 @@ export function ColonyView({ effects }: Props) {
         </Panel>
 
         <Panel
-          title={`File de construction — ${colony.queue.length}/${MAX_QUEUE_LENGTH + effects.queueBonus}`}
+          title={t("colonyView.buildQueue", {
+            count: colony.queue.length,
+            max: MAX_QUEUE_LENGTH + effects.queueBonus,
+          })}
         >
           {colony.queue.length === 0 ? (
-            <EmptyState>Aucune construction en cours.</EmptyState>
+            <EmptyState>{t("colonyView.noBuild")}</EmptyState>
           ) : (
             <ul className="queue-list">
               {colony.queue.map((item, i) => {
@@ -267,10 +291,10 @@ export function ColonyView({ effects }: Props) {
                     className="queue-item"
                   >
                     <RowHeader
-                      label={BUILDING_LABELS[item.buildingId].name}
+                      label={buildingLabel(item.buildingId).name}
                       value={
                         now < item.startedAt && i > 0
-                          ? "en attente"
+                          ? t("colonyView.waiting")
                           : formatDuration(item.finishesAt - now)
                       }
                     />
@@ -292,9 +316,10 @@ export function ColonyView({ effects }: Props) {
           {/* Convois, ascenseur orbital et marchés vivent dans l'onglet Logistique
               (chantier 12D) : cette vue reste centrée sur la production au sol. */}
           <p className="small muted colony-logistics-hint">
-            Soute orbitale : {Math.floor(orbitalUsed(colony))}/
-            {orbitalCap(colony, effects)} — réglages et convois dans l'onglet
-            Logistique.
+            {t("colonyView.orbitalHold", {
+              used: Math.floor(orbitalUsed(colony)),
+              cap: orbitalCap(colony, effects),
+            })}
           </p>
         </Panel>
       </div>

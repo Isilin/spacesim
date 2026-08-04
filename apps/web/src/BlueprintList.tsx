@@ -3,6 +3,7 @@ import {
   CHASSIS,
   resolveBlueprint,
   type Blueprint,
+  type ChassisId,
   type Colony,
   type Fleet,
   type ModuleId,
@@ -10,8 +11,9 @@ import {
 } from "@spacesim/shared";
 import { useState } from "react";
 import { Button, Select } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import { formatDuration } from "./format.js";
-import { CHASSIS_LABELS, RESOURCE_LABELS } from "./labels.js";
+import { chassisLabel, resourceLabel } from "./labels.js";
 import { ShipHullDiagram } from "./ShipHullDiagram.js";
 
 interface Props {
@@ -25,7 +27,7 @@ interface Props {
 
 function formatCost(cost: Partial<Record<ResourceId, number>>): string {
   return Object.entries(cost)
-    .map(([res, n]) => `${Math.round(n)} ${RESOURCE_LABELS[res as ResourceId]}`)
+    .map(([res, n]) => `${Math.round(n)} ${resourceLabel(res as ResourceId)}`)
     .join(" · ");
 }
 
@@ -38,14 +40,11 @@ export function BlueprintList({
   onEdit,
   send,
 }: Props) {
+  const { t } = useTranslation();
   const [fleetChoice, setFleetChoice] = useState<Record<string, string>>({});
 
   if (blueprints.length === 0) {
-    return (
-      <p className="muted small">
-        Aucun plan. Concevez votre premier vaisseau ci-contre.
-      </p>
-    );
+    return <p className="muted small">{t("blueprintList.empty")}</p>;
   }
 
   return (
@@ -54,8 +53,7 @@ export function BlueprintList({
         const stats = resolveBlueprint(bp);
         const chassis = CHASSIS[bp.chassisId as keyof typeof CHASSIS];
         const chassisName =
-          CHASSIS_LABELS[bp.chassisId as keyof typeof CHASSIS_LABELS]?.name ??
-          bp.chassisId;
+          chassisLabel(bp.chassisId as ChassisId)?.name ?? bp.chassisId;
         const isColony = stats.domain === "colony";
         const targetFleetId = fleetChoice[bp.id] ?? fleets[0]?.id ?? "";
         const canBuildColony = isColony && !!activeColony;
@@ -75,13 +73,34 @@ export function BlueprintList({
                 <strong>{bp.name}</strong>
                 <span className="level">{chassisName}</span>
                 <span className="muted small">
-                  {isColony ? "civil" : "flotte"}
+                  {isColony
+                    ? t("blueprintList.domainColony")
+                    : t("blueprintList.domainFleet")}
                 </span>
               </div>
               <span className="muted small">
                 {isColony
-                  ? `Soute ${Math.round(stats.capacity)}${stats.miningYield > 0 ? ` · minage ${Math.round(stats.miningYield)}` : ""}${stats.colonizer ? " · colonisateur" : ""}`
-                  : `Coque ${Math.round(stats.hull)} · bouclier ${Math.round(stats.shield)} · feu ${Math.round(stats.weapons.long + stats.weapons.medium + stats.weapons.short)}`}
+                  ? t("blueprintList.colonyStats", {
+                      capacity: Math.round(stats.capacity),
+                      mining:
+                        stats.miningYield > 0
+                          ? t("blueprintList.miningSuffix", {
+                              yield: Math.round(stats.miningYield),
+                            })
+                          : "",
+                      colonizer: stats.colonizer
+                        ? t("blueprintList.colonizerSuffix")
+                        : "",
+                    })
+                  : t("blueprintList.fleetStats", {
+                      hull: Math.round(stats.hull),
+                      shield: Math.round(stats.shield),
+                      weapons: Math.round(
+                        stats.weapons.long +
+                          stats.weapons.medium +
+                          stats.weapons.short,
+                      ),
+                    })}
               </span>
               <span className="small">
                 {formatCost(stats.cost)} — {formatDuration(stats.buildMs)}
@@ -97,7 +116,7 @@ export function BlueprintList({
                   disabled={fleets.length === 0}
                   options={
                     fleets.length === 0
-                      ? [{ value: "", label: "Aucune flotte" }]
+                      ? [{ value: "", label: t("blueprintList.noFleet") }]
                       : fleets.map((f) => ({ value: f.id, label: f.name }))
                   }
                 />
@@ -108,10 +127,10 @@ export function BlueprintList({
                   isColony
                     ? canBuildColony
                       ? ""
-                      : "Aucune colonie active"
+                      : t("blueprintList.noActiveColony")
                     : canBuildFleet
                       ? ""
-                      : "Créez une flotte d'abord (onglet Flottes)"
+                      : t("blueprintList.createFleetFirst")
                 }
                 onClick={() =>
                   send(
@@ -129,10 +148,10 @@ export function BlueprintList({
                   )
                 }
               >
-                Produire
+                {t("blueprintList.produce")}
               </Button>
               <Button variant="link" onClick={() => onEdit(bp.id)}>
-                Éditer
+                {t("blueprintList.edit")}
               </Button>
               <Button
                 variant="link"
@@ -140,7 +159,7 @@ export function BlueprintList({
                   send({ type: "deleteBlueprint", blueprintId: bp.id })
                 }
               >
-                Supprimer
+                {t("blueprintList.remove")}
               </Button>
             </div>
           </li>

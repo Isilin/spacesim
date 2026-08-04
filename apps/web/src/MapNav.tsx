@@ -1,5 +1,6 @@
 import type { Colony, Universe } from "@spacesim/shared";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@spacesim/ui";
 
@@ -45,6 +46,7 @@ export function MapNav({
   homeSystemId,
   onGo,
 }: Props) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
 
@@ -56,7 +58,7 @@ export function MapNav({
       items.push({
         key: `g:${galaxy.id}`,
         label: galaxy.name,
-        hint: "Galaxie",
+        hint: t("mapNav.galaxy"),
         target: { kind: "galaxy", galaxyId: galaxy.id },
       });
       for (const system of galaxy.systems) {
@@ -69,14 +71,17 @@ export function MapNav({
           key: `s:${system.id}`,
           label: colony ? colony.name : system.name,
           hint: colony
-            ? `Colonie · ${system.name} · ${galaxy.name}`
-            : `Système · ${galaxy.name}`,
+            ? t("mapNav.colonyHint", {
+                system: system.name,
+                galaxy: galaxy.name,
+              })
+            : t("mapNav.systemHint", { galaxy: galaxy.name }),
           target: { kind: "system", galaxyId: galaxy.id, systemId: system.id },
         });
       }
     }
     return items;
-  }, [universe, colonies, exploredSystemIds]);
+  }, [universe, colonies, exploredSystemIds, t]);
 
   const trimmed = query.trim().toLowerCase();
   const matches = trimmed
@@ -115,10 +120,18 @@ export function MapNav({
   return (
     <div className="map-nav">
       <div className="map-nav-history">
-        <button type="button" title="Précédent" onClick={() => navigate(-1)}>
+        <button
+          type="button"
+          title={t("mapNav.prev")}
+          onClick={() => navigate(-1)}
+        >
           ‹
         </button>
-        <button type="button" title="Suivant" onClick={() => navigate(1)}>
+        <button
+          type="button"
+          title={t("mapNav.next")}
+          onClick={() => navigate(1)}
+        >
           ›
         </button>
       </div>
@@ -127,7 +140,7 @@ export function MapNav({
         <input
           type="search"
           value={query}
-          placeholder="Rechercher une galaxie, un système, une colonie…"
+          placeholder={t("mapNav.searchPlaceholder")}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && matches[0]) go(matches[0].target);
@@ -148,9 +161,7 @@ export function MapNav({
         )}
         {trimmed && matches.length === 0 && (
           <ul className="map-suggestions">
-            <li className="muted small map-no-match">
-              Aucun lieu connu ne correspond.
-            </li>
+            <li className="muted small map-no-match">{t("mapNav.noMatch")}</li>
           </ul>
         )}
       </div>
@@ -167,11 +178,11 @@ export function MapNav({
             })
           }
         >
-          Ma capitale
+          {t("mapNav.myCapital")}
         </Button>
         <Button
           disabled={!fleetTarget}
-          title={fleetTarget ? "" : "Aucune flotte en service"}
+          title={fleetTarget ? "" : t("mapNav.noActiveFleet")}
           onClick={() =>
             fleetTarget &&
             go({
@@ -181,9 +192,11 @@ export function MapNav({
             })
           }
         >
-          Mes flottes
+          {t("mapNav.myFleets")}
         </Button>
-        <Button onClick={() => go({ kind: "universe" })}>Vue d'ensemble</Button>
+        <Button onClick={() => go({ kind: "universe" })}>
+          {t("mapNav.overview")}
+        </Button>
       </div>
     </div>
   );

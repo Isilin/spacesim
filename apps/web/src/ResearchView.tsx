@@ -12,8 +12,9 @@ import {
   type TechId,
 } from "@spacesim/shared";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { formatDuration } from "./format.js";
-import { BRANCH_LABELS, TECH_LABELS } from "./labels.js";
+import { branchLabel, techLabel } from "./labels.js";
 import { Badge, Button, ZoomableSvg, type ViewBox } from "@spacesim/ui";
 
 interface Props {
@@ -41,6 +42,7 @@ const MARGIN_Y = 20;
 
 /** Arbre de recherche en graphe : nœuds par branche et profondeur, arêtes de prérequis. */
 export function ResearchView({ game, colonies, now, send }: Props) {
+  const { t } = useTranslation();
   const researched = game.researched as TechId[];
   const queue = game.researchQueue as TechId[];
   const active = game.research;
@@ -118,26 +120,33 @@ export function ResearchView({ game, colonies, now, send }: Props) {
   return (
     <div className="research-view">
       <div className="research-header">
-        <Badge>Science disponible : {Math.floor(totalScience)}</Badge>
+        <Badge>
+          {t("researchView.scienceAvailable", {
+            value: Math.floor(totalScience),
+          })}
+        </Badge>
         {active ? (
           <Badge variant="ok">
-            En cours :{" "}
-            {TECH_LABELS[active.techId as TechId]?.name ?? active.techId} —{" "}
-            {formatDuration(active.finishesAt - now)}
+            {t("researchView.inProgress", {
+              tech: techLabel(active.techId as TechId)?.name ?? active.techId,
+              duration: formatDuration(active.finishesAt - now),
+            })}
           </Badge>
         ) : (
-          <Badge>Aucune recherche en cours</Badge>
+          <Badge>{t("researchView.noResearch")}</Badge>
         )}
         {queue.length > 0 && (
           <Badge>
-            File : {queue.length} tech{queue.length > 1 ? "s" : ""} planifiée
-            {queue.length > 1 ? "s" : ""}
+            {t("researchView.queue", {
+              count: queue.length,
+              plural: queue.length > 1 ? "s" : "",
+            })}
             <Button
               variant="link"
               className="research-clear"
               onClick={() => send({ type: "clearResearchQueue" })}
             >
-              vider
+              {t("researchView.clear")}
             </Button>
           </Badge>
         )}
@@ -148,7 +157,7 @@ export function ResearchView({ game, colonies, now, send }: Props) {
           <ZoomableSvg
             className="tech-graph"
             home={home}
-            ariaLabel="Arbre de recherche"
+            ariaLabel={t("researchView.treeAriaLabel")}
           >
             {bands.map((band) => (
               <g key={band.branch}>
@@ -160,7 +169,7 @@ export function ResearchView({ game, colonies, now, send }: Props) {
                   className={`tech-band ${band.branch}`}
                 />
                 <text x={6} y={band.y - 16} className="tech-band-label">
-                  {BRANCH_LABELS[band.branch]}
+                  {branchLabel(band.branch)}
                 </text>
               </g>
             ))}
@@ -216,14 +225,19 @@ export function ResearchView({ game, colonies, now, send }: Props) {
                     className="tech-box"
                   />
                   <text x={9} y={19} className="tech-node-name">
-                    {TECH_LABELS[id].name}
+                    {techLabel(id).name}
                   </text>
                   <text x={9} y={35} className="tech-node-meta">
                     {state === "done"
-                      ? "✓ acquise"
+                      ? t("researchView.acquired")
                       : state === "active"
-                        ? `en cours — ${formatDuration(active!.finishesAt - now)}`
-                        : `${TECHS[id].cost} science · ${formatDuration(TECHS[id].durationMs)}`}
+                        ? t("researchView.inProgressShort", {
+                            duration: formatDuration(active!.finishesAt - now),
+                          })
+                        : t("researchView.costDuration", {
+                            cost: TECHS[id].cost,
+                            duration: formatDuration(TECHS[id].durationMs),
+                          })}
                   </text>
                   {state === "queued" && (
                     <text
@@ -244,45 +258,51 @@ export function ResearchView({ game, colonies, now, send }: Props) {
         <aside className="research-detail">
           {detail && selected ? (
             <>
-              <h3>{TECH_LABELS[selected].name}</h3>
-              <p className="small muted">{TECH_LABELS[selected].description}</p>
+              <h3>{techLabel(selected).name}</h3>
+              <p className="small muted">{techLabel(selected).description}</p>
               <p className="small">
-                {BRANCH_LABELS[detail.branch]} · {detail.cost} science ·{" "}
+                {branchLabel(detail.branch)} · {detail.cost} science ·{" "}
                 {formatDuration(detail.durationMs)}
               </p>
               {detail.requires.length > 0 && (
                 <p className="small muted">
-                  Requiert :{" "}
-                  {detail.requires.map((r) => TECH_LABELS[r].name).join(", ")}
+                  {t("researchView.requires", {
+                    list: detail.requires
+                      .map((r) => techLabel(r).name)
+                      .join(", "),
+                  })}
                 </p>
               )}
 
               {detailState === "done" ? (
-                <p className="small ok">Technologie acquise.</p>
+                <p className="small ok">{t("researchView.techAcquired")}</p>
               ) : detailState === "active" ? (
                 <p className="small ok">
-                  Recherche en cours —{" "}
-                  {formatDuration(active!.finishesAt - now)}
+                  {t("researchView.researchInProgress", {
+                    duration: formatDuration(active!.finishesAt - now),
+                  })}
                 </p>
               ) : detailState === "available" ? (
                 <Button
                   disabled={!!active || totalScience < detail.cost}
                   title={
                     active
-                      ? "Une recherche est déjà en cours"
+                      ? t("researchView.researchInProgressAlready")
                       : totalScience < detail.cost
-                        ? "Science insuffisante"
+                        ? t("researchView.insufficientScience")
                         : ""
                   }
                   onClick={() => send({ type: "research", techId: selected })}
                 >
-                  Lancer
+                  {t("researchView.start")}
                 </Button>
               ) : (
                 <>
                   <p className="small muted">
-                    Chaîne à parcourir : {detailPath.length} technologies ·{" "}
-                    {pathCost(detailPath)} science au total.
+                    {t("researchView.chainSummary", {
+                      count: detailPath.length,
+                      cost: pathCost(detailPath),
+                    })}
                   </p>
                   <ol className="research-chain small">
                     {detailPath.map((id) => (
@@ -290,7 +310,7 @@ export function ResearchView({ game, colonies, now, send }: Props) {
                         key={id}
                         className={queue.includes(id) ? "queued" : ""}
                       >
-                        {TECH_LABELS[id].name}
+                        {techLabel(id).name}
                       </li>
                     ))}
                   </ol>
@@ -299,16 +319,13 @@ export function ResearchView({ game, colonies, now, send }: Props) {
                       send({ type: "queueResearch", techId: selected })
                     }
                   >
-                    Planifier la chaîne
+                    {t("researchView.planChain")}
                   </Button>
                 </>
               )}
             </>
           ) : (
-            <p className="muted small">
-              Sélectionnez une technologie pour voir son détail. Survolez un
-              nœud pour éclairer sa chaîne de prérequis.
-            </p>
+            <p className="muted small">{t("researchView.selectHint")}</p>
           )}
         </aside>
       </div>

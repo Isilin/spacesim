@@ -15,12 +15,9 @@ import {
 } from "@spacesim/shared";
 import { useSearchParams } from "react-router-dom";
 import { Panel } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import { BodyActions } from "./BodyActions.js";
-import {
-  BUILDING_LABELS,
-  PLANET_TYPE_LABELS,
-  RESOURCE_LABELS,
-} from "./labels.js";
+import { buildingLabel, planetTypeLabel, resourceLabel } from "./labels.js";
 import { useGameStore } from "./state/game-store.js";
 import { selectActiveColony, selectExplored } from "./state/selectors.js";
 
@@ -35,12 +32,12 @@ interface Props {
   onOpenBody: (body: Planet) => void;
 }
 
-const ATMOSPHERE_LABELS: Record<Atmosphere, string> = {
-  none: "Aucune",
-  thin: "Ténue",
-  breathable: "Respirable",
-  toxic: "Toxique",
-  dense: "Dense",
+const ATMOSPHERE_KEYS: Record<Atmosphere, string> = {
+  none: "bodyView.atmosphereNone",
+  thin: "bodyView.atmosphereThin",
+  breathable: "bodyView.atmosphereBreathable",
+  toxic: "bodyView.atmosphereToxic",
+  dense: "bodyView.atmosphereDense",
 };
 
 const BODY_COLORS: Record<string, string> = {
@@ -65,6 +62,7 @@ export function BodyView({
   onSelectBody,
   onOpenBody,
 }: Props) {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const activeColony = useGameStore(
     selectActiveColony(searchParams.get("colony")),
@@ -93,11 +91,11 @@ export function BodyView({
         <div>
           <h2>{body.name}</h2>
           <p className="muted">
-            {body.kind === "moon" ? "Lune" : "Planète"}{" "}
-            {PLANET_TYPE_LABELS[body.type].toLowerCase()}
+            {body.kind === "moon" ? t("bodyView.moon") : t("bodyView.planet")}{" "}
+            {planetTypeLabel(body.type).toLowerCase()}
             {parent
-              ? ` · en orbite autour de ${parent.name}`
-              : ` · système ${system.name}`}
+              ? t("bodyView.orbitingParent", { parent: parent.name })
+              : t("bodyView.orbitingSystem", { system: system.name })}
           </p>
         </div>
         <BodyActions
@@ -114,10 +112,7 @@ export function BodyView({
       </header>
 
       {!explored && (
-        <p className="small muted">
-          Système non exploré — les relevés proviennent de l'observation à
-          distance.
-        </p>
+        <p className="small muted">{t("bodyView.notExploredHint")}</p>
       )}
 
       <div className="body-layout">
@@ -125,7 +120,7 @@ export function BodyView({
           className="body-schema"
           viewBox={`0 0 ${SCHEMA} ${SCHEMA}`}
           role="img"
-          aria-label={`Schéma orbital de ${body.name}`}
+          aria-label={t("bodyView.schemaAriaLabel", { name: body.name })}
         >
           {/* Orbites des lunes, puis les lunes elles-mêmes (cliquables). */}
           {moons.map((moon, i) => (
@@ -221,81 +216,91 @@ export function BodyView({
             />
             <text y={56} textAnchor="middle" className="body-label">
               {parent
-                ? `orbite de ${parent.name}`
-                : `orbite ${Math.round(body.orbitRadius)}`}
+                ? t("bodyView.orbitOfParent", { parent: parent.name })
+                : t("bodyView.orbitRadius", {
+                    radius: Math.round(body.orbitRadius),
+                  })}
             </text>
           </g>
         </svg>
 
         <div className="body-panels">
-          <Panel title="Relevés">
+          <Panel title={t("bodyView.readings")}>
             <dl className="body-stats">
               <div>
-                <dt>Rayon</dt>
+                <dt>{t("bodyView.radius")}</dt>
                 <dd>{physicals.radiusKm.toLocaleString("fr-FR")} km</dd>
               </div>
               <div>
-                <dt>Gravité</dt>
+                <dt>{t("bodyView.gravity")}</dt>
                 <dd>{physicals.gravityG} g</dd>
               </div>
               <div>
-                <dt>Température</dt>
+                <dt>{t("bodyView.temperature")}</dt>
                 <dd>{physicals.meanTempC} °C</dd>
               </div>
               <div>
-                <dt>Atmosphère</dt>
+                <dt>{t("bodyView.atmosphere")}</dt>
                 <dd className={isBreathable(physicals) ? "ok" : ""}>
-                  {ATMOSPHERE_LABELS[physicals.atmosphere]}
+                  {t(ATMOSPHERE_KEYS[physicals.atmosphere])}
                 </dd>
               </div>
               <div>
-                <dt>Jour</dt>
+                <dt>{t("bodyView.day")}</dt>
                 <dd>{physicals.dayLengthHours} h</dd>
               </div>
               <div>
-                <dt>Révolution</dt>
+                <dt>{t("bodyView.revolution")}</dt>
                 <dd>{physicals.orbitPeriodDays} j</dd>
               </div>
               <div>
-                <dt>Habitabilité</dt>
+                <dt>{t("bodyView.habitability")}</dt>
                 <dd>{body.habitability}/100</dd>
               </div>
               <div>
-                <dt>Lunes</dt>
+                <dt>{t("bodyView.moons")}</dt>
                 <dd>{moons.length}</dd>
               </div>
             </dl>
           </Panel>
 
-          <Panel title="Gisements">
+          <Panel title={t("bodyView.deposits")}>
             {Object.keys(body.deposits).length > 0 ? (
               <div className="deposits">
                 {Object.entries(body.deposits).map(([res, mod]) => (
                   <span key={res} className="deposit">
-                    {RESOURCE_LABELS[res as ResourceId]} ×{mod}
+                    {resourceLabel(res as ResourceId)} ×{mod}
                   </span>
                 ))}
               </div>
             ) : (
-              <p className="small muted">Aucun gisement notable.</p>
+              <p className="small muted">{t("bodyView.noDeposits")}</p>
             )}
           </Panel>
 
           <Panel
-            title={`Sol — ${colony ? usedSlots(colony) : 0}/${body.slots} emplacements`}
+            title={t("bodyView.ground", {
+              used: colony ? usedSlots(colony) : 0,
+              max: body.slots,
+            })}
           >
             <SlotGrid body={body} colony={colony} />
             {colony ? (
               <p className="small muted">
-                Population {Math.floor(colony.population)}/
-                {popCap(colony, body, effects)} · satisfaction{" "}
-                {Math.round(colony.satisfaction)}
+                {t("bodyView.population", {
+                  pop: Math.floor(colony.population),
+                  cap: popCap(colony, body, effects),
+                  satisfaction: Math.round(colony.satisfaction),
+                })}
                 {orbitalCap(colony, effects) > 0
-                  ? ` · soute orbitale ${Math.floor(orbitalUsed(colony))}/${orbitalCap(colony, effects)}`
-                  : " · aucun dock orbital"}
+                  ? t("bodyView.orbitalHoldSuffix", {
+                      used: Math.floor(orbitalUsed(colony)),
+                      cap: orbitalCap(colony, effects),
+                    })
+                  : t("bodyView.noOrbitalDock")}
               </p>
             ) : (
-              <p className="small muted">Aucune implantation.</p>
+              <p className="small muted">{t("bodyView.noSettlement")}</p>
             )}
           </Panel>
         </div>
@@ -309,6 +314,7 @@ function SlotGrid({
   body,
   colony,
 }: { body: Planet; colony: Colony | undefined }) {
+  const { t } = useTranslation();
   const built: BuildingId[] = [];
   for (const [id, count] of Object.entries(colony?.buildings ?? {}) as [
     BuildingId,
@@ -325,25 +331,29 @@ function SlotGrid({
         <span
           key={`b${i}`}
           className="slot built"
-          title={BUILDING_LABELS[id].name}
+          title={buildingLabel(id).name}
         >
-          {BUILDING_LABELS[id].name.charAt(0)}
+          {buildingLabel(id).name.charAt(0)}
         </span>
       ))}
       {queued.map((id, i) => (
         <span
           key={`q${i}`}
           className="slot queued"
-          title={`${BUILDING_LABELS[id].name} (en cours)`}
+          title={`${buildingLabel(id).name}${t("bodyView.inProgress")}`}
         >
-          {BUILDING_LABELS[id].name.charAt(0)}
+          {buildingLabel(id).name.charAt(0)}
         </span>
       ))}
       {Array.from({ length: free }, (_, i) => (
-        <span key={`f${i}`} className="slot free" title="Emplacement libre" />
+        <span
+          key={`f${i}`}
+          className="slot free"
+          title={t("bodyView.freeSlot")}
+        />
       ))}
       {body.slots === 0 && (
-        <span className="small muted">Aucun emplacement exploitable.</span>
+        <span className="small muted">{t("bodyView.noSlot")}</span>
       )}
     </div>
   );

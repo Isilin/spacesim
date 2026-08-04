@@ -21,13 +21,15 @@ import {
   type WorldEvent,
 } from "@spacesim/shared";
 import { Button, Panel, ProgressBar } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
+import { i18n } from "./i18n.js";
 import { formatDuration } from "./format.js";
 import {
-  FACTION_MOOD_LABELS,
-  OBJECTIVE_KIND_LABELS,
-  RELATION_BADGES,
-  RESOURCE_LABELS,
-  WORLD_EVENT_LABELS,
+  factionMoodLabel,
+  objectiveKindLabel,
+  relationBadge,
+  resourceLabel,
+  worldEventLabel,
   repTierName,
 } from "./labels.js";
 
@@ -57,17 +59,20 @@ function objectiveDetail(
 ): string {
   switch (o.kind) {
     case "colonize_n_systems":
-      return `${colonyCount}/${o.targetCount ?? "?"} colonies`;
+      return i18n.t("empireView.colonizeProgress", {
+        count: colonyCount,
+        target: o.targetCount ?? "?",
+      });
     case "hold_system": {
       const name =
         allSystems(universe).find((s) => s.id === o.targetSystemId)?.name ??
         o.targetSystemId;
-      return `Conserver la revendication sur ${name}`;
+      return i18n.t("empireView.holdClaim", { name });
     }
     case "lead_population":
-      return "Avoir la plus grande population de la partie";
+      return i18n.t("empireView.leadPopulation");
     case "lead_influence":
-      return "Avoir la plus grande influence de la partie";
+      return i18n.t("empireView.leadInfluence");
     default:
       return "";
   }
@@ -84,11 +89,11 @@ function worldEventLocation(e: WorldEvent, universe: Universe): string {
   return "";
 }
 
-const METRIC_LABELS: Record<MilestoneMetric, string> = {
-  population: "Population totale",
-  colonies: "Colonies fondées",
-  explored: "Systèmes explorés",
-  techs: "Technologies",
+const METRIC_KEYS: Record<MilestoneMetric, string> = {
+  population: "empireView.metricPopulation",
+  colonies: "empireView.metricColonies",
+  explored: "empireView.metricExplored",
+  techs: "empireView.metricTechs",
 };
 
 export function EmpireView({
@@ -108,6 +113,7 @@ export function EmpireView({
   now,
   send,
 }: Props) {
+  const { t } = useTranslation();
   const metrics: Record<MilestoneMetric, number> = {
     population: Math.floor(colonies.reduce((s, c) => s + c.population, 0)),
     colonies: colonies.length,
@@ -117,47 +123,53 @@ export function EmpireView({
 
   return (
     <>
-      <Panel title="Vue d'ensemble">
+      <Panel title={t("empireView.overview")}>
         <div className="resource-bar">
           {(Object.keys(metrics) as MilestoneMetric[]).map((metric) => (
             <div key={metric} className="resource-cell">
-              <span className="resource-name">{METRIC_LABELS[metric]}</span>
+              <span className="resource-name">{t(METRIC_KEYS[metric])}</span>
               <span className="resource-stock">{metrics[metric]}</span>
             </div>
           ))}
           <div className="resource-cell">
-            <span className="resource-name">Univers</span>
+            <span className="resource-name">{t("empireView.universe")}</span>
             <span className="resource-stock">
-              {universe.galaxies.length} galaxies ·{" "}
-              {allSystems(universe).length} systèmes
+              {t("empireView.universeStats", {
+                galaxies: universe.galaxies.length,
+                systems: allSystems(universe).length,
+              })}
             </span>
           </div>
           <div className="resource-cell">
-            <span className="resource-name">Influence</span>
+            <span className="resource-name">{t("empireView.influence")}</span>
             <span className="resource-stock">
               ✦ {Math.floor(game.influence)}
             </span>
             <span className="resource-rate ok">
-              {(influencePerTick(
-                colonies,
-                game.claimedSystemIds.length,
-                effects.influenceMult,
-              ) >= 0
-                ? "+"
-                : "") +
-                Math.round(
+              {t("empireView.perTick", {
+                sign:
                   influencePerTick(
                     colonies,
                     game.claimedSystemIds.length,
                     effects.influenceMult,
-                  ) * 1000,
-                ) /
-                  1000}
-              /tick
+                  ) >= 0
+                    ? "+"
+                    : "",
+                value:
+                  Math.round(
+                    influencePerTick(
+                      colonies,
+                      game.claimedSystemIds.length,
+                      effects.influenceMult,
+                    ) * 1000,
+                  ) / 1000,
+              })}
             </span>
           </div>
           <div className="resource-cell">
-            <span className="resource-name">Systèmes revendiqués</span>
+            <span className="resource-name">
+              {t("empireView.claimedSystems")}
+            </span>
             <span className="resource-stock">
               {game.claimedSystemIds.length}
             </span>
@@ -167,36 +179,35 @@ export function EmpireView({
                   (id) =>
                     allSystems(universe).find((s) => s.id === id)?.name ?? id,
                 )
-                .join(", ") || "aucun"}
+                .join(", ") || t("empireView.none")}
             </span>
           </div>
         </div>
       </Panel>
 
-      <Panel title="Fil du monde">
+      <Panel title={t("empireView.worldFeed")}>
         <ul className="milestone-list">
           {objectives
             .filter((o) => o.status === "open")
             .map((o) => (
               <li key={o.id} className="milestone">
                 <div className="queue-head">
-                  <span>🎯 {OBJECTIVE_KIND_LABELS[o.kind]}</span>
+                  <span>🎯 {objectiveKindLabel(o.kind)}</span>
                   <span className="muted small">
                     {formatDuration(o.deadline - now)}
                   </span>
                 </div>
                 <span className="small muted">
-                  {objectiveDetail(o, universe, colonies.length)} · récompense{" "}
-                  {o.reward} crédits
+                  {objectiveDetail(o, universe, colonies.length)}
+                  {t("empireView.reward", { reward: o.reward })}
                 </span>
               </li>
             ))}
           {worldEvents.map((e) => (
             <li key={e.id} className="milestone">
               <div className="queue-head">
-                <span className={WORLD_EVENT_LABELS[e.kind].tone}>
-                  {WORLD_EVENT_LABELS[e.kind].icon}{" "}
-                  {WORLD_EVENT_LABELS[e.kind].name}
+                <span className={worldEventLabel(e.kind).tone}>
+                  {worldEventLabel(e.kind).icon} {worldEventLabel(e.kind).name}
                   {" — "}
                   {worldEventLocation(e, universe)}
                 </span>
@@ -212,26 +223,28 @@ export function EmpireView({
               <li key={l.id} className="milestone">
                 <div className="queue-head">
                   <span>
-                    ☠ Repaire pirate —{" "}
-                    {allSystems(universe).find((s) => s.id === l.systemId)
-                      ?.name ?? l.systemId}
+                    {t("empireView.pirateLairEntry", {
+                      system:
+                        allSystems(universe).find((s) => s.id === l.systemId)
+                          ?.name ?? l.systemId,
+                    })}
                   </span>
-                  <span className="muted small">prime {l.bounty} crédits</span>
+                  <span className="muted small">
+                    {t("empireView.bounty", { bounty: l.bounty })}
+                  </span>
                 </div>
               </li>
             ))}
           {objectives.filter((o) => o.status === "open").length === 0 &&
             worldEvents.length === 0 &&
             pirateLairs.filter((l) => l.bounty > 0).length === 0 && (
-              <li className="small muted">
-                Calme plat — rien à signaler pour l'instant.
-              </li>
+              <li className="small muted">{t("empireView.allQuiet")}</li>
             )}
         </ul>
       </Panel>
 
       {leaderboard.length > 1 && (
-        <Panel title="Classement des empires">
+        <Panel title={t("empireView.empireRanking")}>
           <ul className="milestone-list">
             {leaderboard.map((e, i) => {
               // Une proposition en cours (émise ou reçue) prime sur les boutons de relation :
@@ -252,26 +265,29 @@ export function EmpireView({
                       <span style={{ color: e.color }}>◆</span> #{i + 1}{" "}
                       {e.name}
                       {e.id === playerId
-                        ? " (vous)"
-                        : RELATION_BADGES[e.relation]}
+                        ? t("empireView.you")
+                        : relationBadge(e.relation)}
                     </span>
-                    <span className="muted small">score {e.score}</span>
+                    <span className="muted small">
+                      {t("empireView.score", { value: e.score })}
+                    </span>
                   </div>
                   <span className="small muted">
-                    {e.colonies} colonie{e.colonies > 1 ? "s" : ""} ·{" "}
-                    {e.claimed} système
-                    {e.claimed > 1 ? "s" : ""} · ✦ {e.influence} · pop{" "}
-                    {e.population}
+                    {t("empireView.colonyCount", { count: e.colonies })}
+                    {t("empireView.systemCount", { count: e.claimed })}
+                    {t("empireView.scoreLine", {
+                      influence: e.influence,
+                      population: e.population,
+                    })}
                   </span>
                   {e.id !== playerId && (
                     <div className="route-actions">
                       {incoming ? (
                         <>
                           <span className="small muted">
-                            Propose{" "}
                             {incoming.kind === "nap"
-                              ? "un pacte"
-                              : "une alliance"}
+                              ? t("empireView.proposesPact")
+                              : t("empireView.proposesAlliance")}
                           </span>
                           <Button
                             size="sm"
@@ -283,7 +299,7 @@ export function EmpireView({
                               })
                             }
                           >
-                            Accepter
+                            {t("empireView.accept")}
                           </Button>
                           <Button
                             size="sm"
@@ -295,14 +311,15 @@ export function EmpireView({
                               })
                             }
                           >
-                            Refuser
+                            {t("empireView.decline")}
                           </Button>
                         </>
                       ) : outgoing ? (
                         <>
                           <span className="small muted">
-                            Proposition envoyée (
-                            {outgoing.kind === "nap" ? "pacte" : "alliance"})
+                            {outgoing.kind === "nap"
+                              ? t("empireView.proposalSentPact")
+                              : t("empireView.proposalSentAlliance")}
                           </span>
                           <Button
                             size="sm"
@@ -313,7 +330,7 @@ export function EmpireView({
                               })
                             }
                           >
-                            Annuler
+                            {t("empireView.cancel")}
                           </Button>
                         </>
                       ) : e.relation === "war" ? (
@@ -323,7 +340,7 @@ export function EmpireView({
                             send({ type: "makePeace", targetEmpireId: e.id })
                           }
                         >
-                          Faire la paix
+                          {t("empireView.makePeace")}
                         </Button>
                       ) : e.relation === "alliance" || e.relation === "nap" ? (
                         <Button
@@ -336,8 +353,8 @@ export function EmpireView({
                           }
                         >
                           {e.relation === "alliance"
-                            ? "Rompre l'alliance"
-                            : "Rompre le pacte"}
+                            ? t("empireView.breakAlliance")
+                            : t("empireView.breakPact")}
                         </Button>
                       ) : (
                         <>
@@ -347,7 +364,7 @@ export function EmpireView({
                               send({ type: "declareWar", targetEmpireId: e.id })
                             }
                           >
-                            Déclarer la guerre
+                            {t("empireView.declareWar")}
                           </Button>
                           <Button
                             size="sm"
@@ -359,7 +376,7 @@ export function EmpireView({
                               })
                             }
                           >
-                            Proposer un pacte
+                            {t("empireView.proposePact")}
                           </Button>
                           <Button
                             size="sm"
@@ -371,7 +388,7 @@ export function EmpireView({
                               })
                             }
                           >
-                            Proposer une alliance
+                            {t("empireView.proposeAlliance")}
                           </Button>
                         </>
                       )}
@@ -384,14 +401,14 @@ export function EmpireView({
         </Panel>
       )}
 
-      <Panel title="Factions">
+      <Panel title={t("empireView.factions")}>
         <ul className="milestone-list">
           {FACTION_IDS.map((factionId) => {
             const rep = game.factionRep[factionId] ?? 0;
             const nextTier = [...REP_TIERS].reverse().find((t) => rep < t.min);
             const progress = nextTier ? Math.min(1, rep / nextTier.min) : 1;
             const state = factionStates.find((s) => s.factionId === factionId);
-            const mood = FACTION_MOOD_LABELS[state?.mood ?? "neutral"];
+            const mood = factionMoodLabel(state?.mood ?? "neutral");
             const openContract = contracts.find(
               (c) => c.issuerId === factionId && c.status === "open",
             );
@@ -406,7 +423,7 @@ export function EmpireView({
                   </span>
                   <span className="muted small">
                     {Math.floor(rep)}
-                    {nextTier ? `/${nextTier.min}` : " (max)"}
+                    {nextTier ? `/${nextTier.min}` : t("empireView.maxSuffix")}
                   </span>
                 </div>
                 <ProgressBar
@@ -417,11 +434,11 @@ export function EmpireView({
                 <span className={`small ${mood.tone}`}>{mood.name}</span>
                 {openContract && (
                   <span className="small muted">
-                    {" · "}
-                    Demande {openContract.remaining}{" "}
-                    {RESOURCE_LABELS[openContract.resource]} à{" "}
-                    {openContract.pricePerUnit} cr/u — voir Logistique ›
-                    Contrats
+                    {t("empireView.contractDemand", {
+                      remaining: openContract.remaining,
+                      resource: resourceLabel(openContract.resource),
+                      price: openContract.pricePerUnit,
+                    })}
                   </span>
                 )}
               </li>
@@ -430,7 +447,7 @@ export function EmpireView({
         </ul>
       </Panel>
 
-      <Panel title="Jalons">
+      <Panel title={t("empireView.milestones")}>
         <ul className="milestone-list">
           {MILESTONES.map((m) => {
             const value = metrics[m.metric];
@@ -444,7 +461,10 @@ export function EmpireView({
                 <div className="queue-head">
                   <span>
                     {reached ? "✓ " : ""}
-                    {METRIC_LABELS[m.metric]} : {m.threshold}
+                    {t("empireView.milestoneLine", {
+                      metric: t(METRIC_KEYS[m.metric]),
+                      threshold: m.threshold,
+                    })}
                   </span>
                   <span className="muted small">
                     {Math.min(value, m.threshold)}/{m.threshold}

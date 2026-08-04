@@ -30,9 +30,10 @@ import {
   Table,
   type TableColumn,
 } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import { BlueprintMarket } from "./BlueprintMarket.js";
 import { formatDuration, systemIdOf } from "./format.js";
-import { RESOURCE_LABELS, STATION_MARKET_ACCESS_LABELS } from "./labels.js";
+import { resourceLabel, stationMarketAccessLabel } from "./labels.js";
 
 interface Props {
   id: string;
@@ -91,6 +92,7 @@ export function StationMarketPanel({
   now,
   send,
 }: Props) {
+  const { t } = useTranslation();
   const [sellAmounts, setSellAmounts] = useState<
     Partial<Record<ResourceId, string>>
   >({});
@@ -165,20 +167,31 @@ export function StationMarketPanel({
     <Panel title={`◆ ${name}${ownerName ? ` — ${ownerName}` : ""}`}>
       {jumps >= 0 && (
         <p className="small muted">
-          {jumps} saut{jumps > 1 ? "s" : ""} — {formatDuration(eta)} — frais{" "}
-          {fee} crédits par convoi
+          {t("tradingPostPanel.tripSummary", {
+            jumps,
+            plural: jumps > 1 ? "s" : "",
+            eta: formatDuration(eta),
+            fee,
+          })}
         </p>
       )}
       {!isOwn && (
         <p className="small muted">
-          Accès : {STATION_MARKET_ACCESS_LABELS[access].name}
-          {taxRate > 0 ? ` · taxe ${Math.round(taxRate * 100)} %` : ""}
+          {t("stationMarketPanel.access", {
+            access: stationMarketAccessLabel(access).name,
+          })}
+          {taxRate > 0
+            ? t("stationMarketPanel.taxSuffix", {
+                rate: Math.round(taxRate * 100),
+              })
+            : ""}
         </p>
       )}
       {!allowed && (
         <p className="small ko">
-          Accès refusé — politique de marché :{" "}
-          {STATION_MARKET_ACCESS_LABELS[access].name}.
+          {t("stationMarketPanel.accessDenied", {
+            access: stationMarketAccessLabel(access).name,
+          })}
         </p>
       )}
 
@@ -188,18 +201,18 @@ export function StationMarketPanel({
             [
               {
                 key: "res",
-                label: "Ressource",
-                render: (_, res) => RESOURCE_LABELS[res],
+                label: t("tradingPostPanel.resource"),
+                render: (_, res) => resourceLabel(res),
               },
               {
                 key: "stock",
-                label: "Stock",
+                label: t("tradingPostPanel.stock"),
                 align: "right",
                 render: (_, res) => Math.floor(tradableStocks[res] ?? 0),
               },
               {
                 key: "price",
-                label: "Prix",
+                label: t("tradingPostPanel.price"),
                 align: "right",
                 trend: (res) => {
                   const gap =
@@ -228,7 +241,7 @@ export function StationMarketPanel({
         />
       ) : (
         <p className="muted small">
-          Aucun marché de ressources sur cette station.
+          {t("stationMarketPanel.noResourceMarket")}
         </p>
       )}
 
@@ -239,10 +252,10 @@ export function StationMarketPanel({
               <div className="queue-head">
                 <span>
                   {m.kind === "sell"
-                    ? "Vente"
+                    ? t("tradingPostPanel.sellKind")
                     : m.kind === "buy"
-                      ? "Achat (aller)"
-                      : "Achat (retour)"}
+                      ? t("tradingPostPanel.buyOutbound")
+                      : t("tradingPostPanel.buyReturn")}
                 </span>
                 <span className="muted">
                   {formatDuration(m.arrivesAt - now)}
@@ -255,12 +268,15 @@ export function StationMarketPanel({
 
       {canTrade && hasResourceMarket && (
         <>
-          <SectionTitle>Vendre</SectionTitle>
+          <SectionTitle>{t("tradingPostPanel.sell")}</SectionTitle>
           <div className="form-stack">
             {MARKET_RESOURCES.map((res) => (
               <NumberInput
                 key={res}
-                label={`${RESOURCE_LABELS[res]} (orbite : ${Math.floor(activeColony.orbitalResources[res] ?? 0)})`}
+                label={t("tradingPostPanel.resourceOrbit", {
+                  resource: resourceLabel(res),
+                  amount: Math.floor(activeColony.orbitalResources[res] ?? 0),
+                })}
                 min={0}
                 max={Math.floor(activeColony.orbitalResources[res] ?? 0)}
                 value={sellAmounts[res] ?? ""}
@@ -271,12 +287,18 @@ export function StationMarketPanel({
               />
             ))}
             <span className={`small ${overCapacity ? "ko" : "muted"}`}>
-              Soute disponible : {convoyCapacity}
-              {overCapacity ? ` — cargaison trop lourde (${totalCargo})` : ""}
+              {t("tradingPostPanel.availableHold", {
+                capacity: convoyCapacity,
+              })}
+              {overCapacity
+                ? t("tradingPostPanel.tooHeavy", { total: totalCargo })
+                : ""}
             </span>
             {hasCargo && !overCapacity && isOwn && (
               <span className="small ok">
-                Revenu estimé net de taxe : ~{estimatedRevenue} crédits
+                {t("stationMarketPanel.estimatedRevenueNet", {
+                  amount: estimatedRevenue,
+                })}
               </span>
             )}
             <Button
@@ -292,23 +314,23 @@ export function StationMarketPanel({
                 setSellAmounts({});
               }}
             >
-              Envoyer le convoi de vente
+              {t("tradingPostPanel.sendSaleConvoy")}
             </Button>
           </div>
 
-          <SectionTitle>Acheter</SectionTitle>
+          <SectionTitle>{t("tradingPostPanel.buy")}</SectionTitle>
           <div className="form-stack">
             <Select
-              label="Ressource"
+              label={t("tradingPostPanel.resource")}
               value={buyResource}
               onChange={(e) => setBuyResource(e.target.value as MarketResource)}
               options={MARKET_RESOURCES.map((res) => ({
                 value: res,
-                label: RESOURCE_LABELS[res],
+                label: resourceLabel(res),
               }))}
             />
             <NumberInput
-              label="Budget (crédits, taxe comprise)"
+              label={t("stationMarketPanel.budgetWithTax")}
               min={0}
               value={buyBudget}
               placeholder="0"
@@ -316,8 +338,10 @@ export function StationMarketPanel({
             />
             {estimatedPurchase && estimatedPurchase.bought > 0 && (
               <span className="small ok">
-                ~{estimatedPurchase.bought} {RESOURCE_LABELS[buyResource]} (au
-                prix actuel)
+                {t("stationMarketPanel.estimatedPurchaseAtPrice", {
+                  amount: estimatedPurchase.bought,
+                  resource: resourceLabel(buyResource),
+                })}
               </span>
             )}
             <Button
@@ -326,7 +350,7 @@ export function StationMarketPanel({
               }
               title={
                 activeColony.resources.credits < budget + fee
-                  ? "Crédits insuffisants (budget + frais)"
+                  ? t("tradingPostPanel.insufficientCredits")
                   : ""
               }
               onClick={() => {
@@ -341,7 +365,7 @@ export function StationMarketPanel({
                 setBuyBudget("");
               }}
             >
-              Envoyer le convoi d'achat
+              {t("tradingPostPanel.sendBuyConvoy")}
             </Button>
           </div>
         </>

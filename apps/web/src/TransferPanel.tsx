@@ -18,8 +18,9 @@ import {
 } from "@spacesim/shared";
 import { useState } from "react";
 import { Button, NumberInput, Panel, Select } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import { formatDuration, systemIdOf } from "./format.js";
-import { RESOURCE_LABELS, SHIP_LABELS } from "./labels.js";
+import { resourceLabel, shipLabel } from "./labels.js";
 
 interface Props {
   colony: Colony;
@@ -54,6 +55,7 @@ export function TransferPanel({
   now,
   send,
 }: Props) {
+  const { t } = useTranslation();
   const others = colonies.filter((c) => c.id !== colony.id);
   const [destinationId, setDestinationId] = useState("");
   const [amounts, setAmounts] = useState<Partial<Record<ResourceId, string>>>(
@@ -124,7 +126,7 @@ export function TransferPanel({
   const missingFuel = fuel > orbitalEnergy;
 
   return (
-    <Panel title="Convois">
+    <Panel title={t("transferPanel.title")}>
       {related.length > 0 && (
         <ul className="queue-list">
           {related.map((t) => {
@@ -145,8 +147,7 @@ export function TransferPanel({
                 <span className="small muted">
                   {Object.entries(t.resources)
                     .map(
-                      ([res, n]) =>
-                        `${n} ${RESOURCE_LABELS[res as ResourceId]}`,
+                      ([res, n]) => `${n} ${resourceLabel(res as ResourceId)}`,
                     )
                     .join(" · ")}
                 </span>
@@ -157,13 +158,11 @@ export function TransferPanel({
       )}
 
       {others.length === 0 ? (
-        <p className="muted small">
-          Fondez une seconde colonie pour envoyer des convois.
-        </p>
+        <p className="muted small">{t("transferPanel.noSecondColony")}</p>
       ) : (
         <div className="form-stack">
           <Select
-            label="Destination"
+            label={t("transferPanel.destination")}
             value={destination?.id ?? ""}
             onChange={(e) => setDestinationId(e.target.value)}
             options={others.map((c) => ({ value: c.id, label: c.name }))}
@@ -172,7 +171,10 @@ export function TransferPanel({
           {CARGO_RESOURCES.map((res) => (
             <NumberInput
               key={res}
-              label={`${RESOURCE_LABELS[res]} (orbite : ${Math.floor(colony.orbitalResources[res] ?? 0)})`}
+              label={t("transferPanel.resourceOrbit", {
+                resource: resourceLabel(res),
+                amount: Math.floor(colony.orbitalResources[res] ?? 0),
+              })}
               min={0}
               max={Math.floor(colony.orbitalResources[res] ?? 0)}
               value={amounts[res] ?? ""}
@@ -183,11 +185,14 @@ export function TransferPanel({
             />
           ))}
 
-          <span className="small muted">Convoi</span>
+          <span className="small muted">{t("transferPanel.convoyLabel")}</span>
           {SHIP_IDS.map((shipId) => (
             <NumberInput
               key={shipId}
-              label={`${SHIP_LABELS[shipId].name} (dispo : ${idle[shipId] ?? 0})`}
+              label={t("transferPanel.shipAvailable", {
+                name: shipLabel(shipId).name,
+                count: idle[shipId] ?? 0,
+              })}
               min={0}
               max={idle[shipId] ?? 0}
               value={shipCounts[shipId] ?? ""}
@@ -200,22 +205,37 @@ export function TransferPanel({
 
           {jumps >= 0 && (
             <span className="small muted">
-              {jumps} saut{jumps > 1 ? "s" : ""}
+              {t("transferPanel.jumps", {
+                jumps,
+                jumpPlural: jumps > 1 ? "s" : "",
+              })}
               {portals > 0
-                ? ` · ${portals} portail${portals > 1 ? "s" : ""}`
-                : ""}{" "}
-              — {formatDuration(eta)} — {fees} crédits
-              {hasConvoy ? ` · ${fuel} énergie` : ""}
+                ? t("transferPanel.portalsSuffix", {
+                    portals,
+                    portalPlural: portals > 1 ? "s" : "",
+                  })
+                : ""}
+              {t("transferPanel.tripSummary", {
+                eta: formatDuration(eta),
+                fees,
+              })}
+              {hasConvoy ? t("transferPanel.fuelSuffix", { fuel }) : ""}
             </span>
           )}
           <span className={`small ${overCapacity ? "ko" : "muted"}`}>
-            Soute {hasConvoy ? "du convoi" : "disponible"} : {capacity}
-            {overCapacity ? ` — cargaison trop lourde (${totalCargo})` : ""}
+            {hasConvoy
+              ? t("transferPanel.holdConvoy", { capacity })
+              : t("transferPanel.holdAvailable", { capacity })}
+            {overCapacity
+              ? t("transferPanel.tooHeavy", { total: totalCargo })
+              : ""}
           </span>
           {hasConvoy && missingFuel && (
             <span className="small ko">
-              Carburant insuffisant en orbite : {fuel} requis, {orbitalEnergy}{" "}
-              disponible.
+              {t("transferPanel.insufficientFuel", {
+                fuel,
+                available: orbitalEnergy,
+              })}
             </span>
           )}
           <Button
@@ -239,7 +259,7 @@ export function TransferPanel({
               setShipCounts({});
             }}
           >
-            Envoyer le convoi
+            {t("transferPanel.sendConvoy")}
           </Button>
         </div>
       )}

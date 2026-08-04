@@ -5,6 +5,7 @@ import {
 } from "@spacesim/shared";
 import { useMemo } from "react";
 import { ZoomableSvg, type ViewBox } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import { useGameStore } from "./state/game-store.js";
 import { selectExplored } from "./state/selectors.js";
 
@@ -40,6 +41,7 @@ export function SystemView({
   onSelectBody,
   onOpenBody,
 }: Props) {
+  const { t } = useTranslation();
   const explored = useGameStore(selectExplored(system.id));
   const { colonies, stations, foreignStations } = useGameStore();
   const c = SYSTEM_VIEW_SIZE / 2;
@@ -77,7 +79,7 @@ export function SystemView({
     <ZoomableSvg
       className="galaxy-map"
       home={home}
-      ariaLabel={`Système ${system.name}`}
+      ariaLabel={t("systemView.ariaLabel", { name: system.name })}
     >
       <circle cx={c} cy={c} r={18} className="star-core" />
       <text x={c} y={c - 28} textAnchor="middle" className="system-label">
@@ -105,7 +107,7 @@ export function SystemView({
 
       {!explored && (
         <text x={c} y={c + 60} textAnchor="middle" className="galaxy-sub muted">
-          Système non exploré — envoyez une sonde.
+          {t("systemView.notExplored")}
         </text>
       )}
 

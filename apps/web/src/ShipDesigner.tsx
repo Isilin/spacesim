@@ -14,6 +14,7 @@ import {
   type SlotType,
 } from "@spacesim/shared";
 import { useMemo, useState, type CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import {
   Button,
@@ -26,10 +27,10 @@ import {
 import { BlueprintList } from "./BlueprintList.js";
 import { formatDuration } from "./format.js";
 import {
-  CHASSIS_LABELS,
-  MODULE_LABELS,
-  RESOURCE_LABELS,
-  SLOT_LABELS,
+  chassisLabel,
+  moduleLabel,
+  resourceLabel,
+  slotLabel,
 } from "./labels.js";
 import {
   ShipHullDiagram,
@@ -82,6 +83,7 @@ function Gauge({
 
 /** Concepteur de vaisseaux (chantier 13) : liste des plans + éditeur châssis/modules. */
 export function ShipDesigner({ effects }: Props) {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const activeColony = useGameStore(
     selectActiveColony(searchParams.get("colony")),
@@ -125,8 +127,8 @@ export function ShipDesigner({ effects }: Props) {
     () =>
       draft.chassisId
         ? validateBlueprint(shape, effects)
-        : ["Choisissez un châssis"],
-    [draft, effects],
+        : [t("shipDesigner.chooseChassis")],
+    [draft, effects, t],
   );
 
   const slotUsed = (slot: SlotType) =>
@@ -201,8 +203,10 @@ export function ShipDesigner({ effects }: Props) {
     <div className="designer-layout">
       <Panel
         className="designer-list"
-        title="Plans de vaisseaux"
-        actions={<Button onClick={startNew}>+ Nouveau plan</Button>}
+        title={t("shipDesigner.blueprints")}
+        actions={
+          <Button onClick={startNew}>{t("shipDesigner.newBlueprint")}</Button>
+        }
       >
         <BlueprintList
           blueprints={blueprints}
@@ -216,18 +220,22 @@ export function ShipDesigner({ effects }: Props) {
 
       <Panel
         className="designer-editor"
-        title={editingId ? "Modifier le plan" : "Nouveau plan"}
+        title={
+          editingId
+            ? t("shipDesigner.editBlueprint")
+            : t("shipDesigner.newBlueprintTitle")
+        }
       >
         <div className="designer-editor-body">
           <Field
-            label="Nom"
+            label={t("shipDesigner.name")}
             value={draft.name}
-            placeholder="Nom du plan"
+            placeholder={t("shipDesigner.namePlaceholder")}
             onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
           />
 
           <Select
-            label="Châssis"
+            label={t("shipDesigner.chassis")}
             value={draft.chassisId}
             onChange={(e) => {
               setDraft({
@@ -238,10 +246,14 @@ export function ShipDesigner({ effects }: Props) {
               setSelectedSlot(null);
             }}
             options={[
-              { value: "", label: "— Choisir —" },
+              { value: "", label: t("shipDesigner.chooseOption") },
               ...unlockedChassis.map((id) => ({
                 value: id,
-                label: `${CHASSIS_LABELS[id].name} (${CHASSIS[id].domain === "colony" ? "civil" : "flotte"})`,
+                label: `${chassisLabel(id).name} (${
+                  CHASSIS[id].domain === "colony"
+                    ? t("shipDesigner.domainColony")
+                    : t("shipDesigner.domainFleet")
+                })`,
               })),
             ]}
           />
@@ -249,7 +261,7 @@ export function ShipDesigner({ effects }: Props) {
           {chassis && stats && (
             <>
               <p className="muted small">
-                {CHASSIS_LABELS[chassis.id].description}
+                {chassisLabel(chassis.id).description}
               </p>
 
               <div className="designer-preview">
@@ -282,11 +294,11 @@ export function ShipDesigner({ effects }: Props) {
                         className="hull-legend-dot"
                         style={{ background: `var(${varName})` }}
                       />
-                      {SLOT_LABELS[slot]}
+                      {slotLabel(slot)}
                     </span>
                   ))}
                   <span className="muted small">
-                    Cliquez un emplacement pour choisir un module.
+                    {t("shipDesigner.clickSlotHint")}
                   </span>
                 </div>
               </div>
@@ -299,10 +311,11 @@ export function ShipDesigner({ effects }: Props) {
                   <div className="slot-popover-notch" />
                   <Popover style={{ position: "relative" }}>
                     <div className="slot-popover-head">
-                      <strong>{SLOT_LABELS[selectedSlot.type]}</strong>
+                      <strong>{slotLabel(selectedSlot.type)}</strong>
                       {selectedModule && (
                         <button className="chip" onClick={removeSelected}>
-                          {MODULE_LABELS[selectedModule.m].name} — Retirer
+                          {moduleLabel(selectedModule.m).name} —{" "}
+                          {t("shipDesigner.remove")}
                         </button>
                       )}
                     </div>
@@ -315,10 +328,10 @@ export function ShipDesigner({ effects }: Props) {
                         <button
                           key={id}
                           className={`chip add ${selectedModule?.m === id ? "active" : ""}`}
-                          title={MODULE_LABELS[id].description}
+                          title={moduleLabel(id).description}
                           onClick={() => pickModule(id)}
                         >
-                          + {MODULE_LABELS[id].name}
+                          + {moduleLabel(id).name}
                         </button>
                       ))}
                     </div>
@@ -327,13 +340,21 @@ export function ShipDesigner({ effects }: Props) {
               )}
 
               <div className="gauges">
-                <Gauge label="Énergie" used={load.power} max={chassis.power} />
                 <Gauge
-                  label="Tonnage"
+                  label={t("shipDesigner.energy")}
+                  used={load.power}
+                  max={chassis.power}
+                />
+                <Gauge
+                  label={t("shipDesigner.tonnage")}
                   used={load.tonnage}
                   max={chassis.tonnage}
                 />
-                <Gauge label="Calcul" used={load.calc} max={chassis.calc} />
+                <Gauge
+                  label={t("shipDesigner.compute")}
+                  used={load.calc}
+                  max={chassis.calc}
+                />
               </div>
 
               {/* Emplacements montés */}
@@ -341,7 +362,7 @@ export function ShipDesigner({ effects }: Props) {
                 {SLOT_TYPES.map((slot) => (
                   <div key={slot} className="fit-slot">
                     <div className="fit-slot-head">
-                      <strong>{SLOT_LABELS[slot]}</strong>
+                      <strong>{slotLabel(slot)}</strong>
                       <span
                         className={
                           slotUsed(slot) > chassis.slots[slot]
@@ -362,7 +383,7 @@ export function ShipDesigner({ effects }: Props) {
                             className="chip"
                             onClick={() => removeModuleAt(i)}
                           >
-                            {MODULE_LABELS[m].name} ×
+                            {moduleLabel(m).name} ×
                           </button>
                         ))}
                     </div>
@@ -372,23 +393,51 @@ export function ShipDesigner({ effects }: Props) {
 
               {/* Récap stats */}
               <div className="stats-recap">
-                <span>Coque {Math.round(stats.hull)}</span>
-                <span>Bouclier {Math.round(stats.shield)}</span>
                 <span>
-                  Feu {Math.round(stats.weapons.long)}/
-                  {Math.round(stats.weapons.medium)}/
-                  {Math.round(stats.weapons.short)}
+                  {t("shipDesigner.hull", { value: Math.round(stats.hull) })}
                 </span>
-                <span>Init. {Math.round(stats.initiative)}</span>
+                <span>
+                  {t("shipDesigner.shield", {
+                    value: Math.round(stats.shield),
+                  })}
+                </span>
+                <span>
+                  {t("shipDesigner.fire", {
+                    long: Math.round(stats.weapons.long),
+                    medium: Math.round(stats.weapons.medium),
+                    short: Math.round(stats.weapons.short),
+                  })}
+                </span>
+                <span>
+                  {t("shipDesigner.initiative", {
+                    value: Math.round(stats.initiative),
+                  })}
+                </span>
                 {stats.capacity > 0 && (
-                  <span>Soute {Math.round(stats.capacity)}</span>
+                  <span>
+                    {t("shipDesigner.hold", {
+                      value: Math.round(stats.capacity),
+                    })}
+                  </span>
                 )}
                 {stats.miningYield > 0 && (
-                  <span>Minage {Math.round(stats.miningYield)}</span>
+                  <span>
+                    {t("shipDesigner.mining", {
+                      value: Math.round(stats.miningYield),
+                    })}
+                  </span>
                 )}
-                {stats.colonizer && <span>Colonisateur</span>}
-                <span>Vitesse ×{stats.speedMult.toFixed(2)}</span>
-                <span>Carburant {Math.round(stats.fuelPerJump)}</span>
+                {stats.colonizer && <span>{t("shipDesigner.colonizer")}</span>}
+                <span>
+                  {t("shipDesigner.speed", {
+                    value: stats.speedMult.toFixed(2),
+                  })}
+                </span>
+                <span>
+                  {t("shipDesigner.fuel", {
+                    value: Math.round(stats.fuelPerJump),
+                  })}
+                </span>
                 <span className="muted">
                   {formatCost(stats.cost)} — {formatDuration(stats.buildMs)}
                 </span>
@@ -404,11 +453,13 @@ export function ShipDesigner({ effects }: Props) {
 
               <div className="editor-actions">
                 <Button disabled={problems.length > 0} onClick={save}>
-                  {editingId ? "Enregistrer" : "Créer le plan"}
+                  {editingId
+                    ? t("shipDesigner.save")
+                    : t("shipDesigner.createBlueprint")}
                 </Button>
                 {editingId && (
                   <Button variant="link" onClick={startNew}>
-                    Annuler
+                    {t("shipDesigner.cancel")}
                   </Button>
                 )}
               </div>
@@ -422,6 +473,6 @@ export function ShipDesigner({ effects }: Props) {
 
 function formatCost(cost: Partial<Record<ResourceId, number>>): string {
   return Object.entries(cost)
-    .map(([res, n]) => `${Math.round(n)} ${RESOURCE_LABELS[res as ResourceId]}`)
+    .map(([res, n]) => `${Math.round(n)} ${resourceLabel(res as ResourceId)}`)
     .join(" · ");
 }

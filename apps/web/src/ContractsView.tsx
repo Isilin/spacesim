@@ -8,8 +8,9 @@ import {
 } from "@spacesim/shared";
 import { useState } from "react";
 import { Badge, Button, NumberInput, Panel, Select } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import { formatDuration } from "./format.js";
-import { RESOURCE_LABELS } from "./labels.js";
+import { resourceLabel } from "./labels.js";
 
 interface Props {
   contracts: Contract[];
@@ -27,11 +28,11 @@ const DURATION_OPTIONS = [
   { label: "6 h", ms: 21_600_000 },
 ] as const;
 
-const STATUS_LABELS: Record<Contract["status"], string> = {
-  open: "ouvert",
-  fulfilled: "honoré",
-  expired: "expiré",
-  cancelled: "annulé",
+const STATUS_KEYS: Record<Contract["status"], string> = {
+  open: "contractsView.statusOpen",
+  fulfilled: "contractsView.statusFulfilled",
+  expired: "contractsView.statusExpired",
+  cancelled: "contractsView.statusCancelled",
 };
 
 export function ContractsView({
@@ -41,6 +42,7 @@ export function ContractsView({
   now,
   send,
 }: Props) {
+  const { t } = useTranslation();
   const [resource, setResource] = useState<MarketResource>("metals");
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
@@ -63,26 +65,32 @@ export function ContractsView({
 
   return (
     <>
-      <Panel title="Mes contrats">
+      <Panel title={t("contractsView.mine")}>
         {mine.length === 0 ? (
-          <p className="muted">Aucun contrat publié.</p>
+          <p className="muted">{t("contractsView.noneMine")}</p>
         ) : (
           <ul className="route-list">
             {mine.map((c) => (
               <li key={c.id} className="route-item">
                 <div className="queue-head">
                   <strong>
-                    {RESOURCE_LABELS[c.resource]} — {c.remaining} / {c.quantity}{" "}
-                    à {c.pricePerUnit} cr/u
+                    {t("contractsView.contractLine", {
+                      resource: resourceLabel(c.resource),
+                      remaining: c.remaining,
+                      quantity: c.quantity,
+                      price: c.pricePerUnit,
+                    })}
                   </strong>
                   <Badge variant={c.status === "open" ? "ok" : "neutral"}>
-                    {STATUS_LABELS[c.status]}
+                    {t(STATUS_KEYS[c.status])}
                   </Badge>
                 </div>
                 <span className="small muted">
                   {c.colonyName}
                   {c.status === "open" &&
-                    ` · échéance ${formatDuration(c.deadline - now)}`}
+                    t("contractsView.deadlineSuffix", {
+                      duration: formatDuration(c.deadline - now),
+                    })}
                 </span>
                 {c.status === "open" && (
                   <div className="route-actions">
@@ -91,7 +99,7 @@ export function ContractsView({
                         send({ type: "cancelContract", contractId: c.id })
                       }
                     >
-                      Annuler
+                      {t("contractsView.cancel")}
                     </Button>
                   </div>
                 )}
@@ -101,9 +109,9 @@ export function ContractsView({
         )}
       </Panel>
 
-      <Panel title="Contrats disponibles">
+      <Panel title={t("contractsView.available")}>
         {available.length === 0 ? (
-          <p className="muted">Aucune offre en attente d'un fournisseur.</p>
+          <p className="muted">{t("contractsView.noneAvailable")}</p>
         ) : (
           <ul className="route-list">
             {available.map((c) => {
@@ -118,16 +126,22 @@ export function ContractsView({
                       {c.issuerName}
                     </strong>
                     <span className="small muted">
-                      échéance {formatDuration(c.deadline - now)}
+                      {t("contractsView.deadline", {
+                        duration: formatDuration(c.deadline - now),
+                      })}
                     </span>
                   </div>
                   <span className="small muted">
-                    Demande {c.remaining} {RESOURCE_LABELS[c.resource]} à{" "}
-                    {c.colonyName}, payé {c.pricePerUnit} cr/u
+                    {t("contractsView.demand", {
+                      remaining: c.remaining,
+                      resource: resourceLabel(c.resource),
+                      colony: c.colonyName,
+                      price: c.pricePerUnit,
+                    })}
                   </span>
                   <div className="form-stack">
                     <NumberInput
-                      label="Quantité livrée"
+                      label={t("contractsView.quantityDelivered")}
                       min={1}
                       max={c.remaining}
                       value={entry}
@@ -151,7 +165,7 @@ export function ContractsView({
                         setAcceptAmounts({ ...acceptAmounts, [c.id]: "" });
                       }}
                     >
-                      Affréter le convoi
+                      {t("contractsView.charterConvoy")}
                     </Button>
                   </div>
                 </li>
@@ -161,34 +175,34 @@ export function ContractsView({
         )}
       </Panel>
 
-      <Panel title="Publier un contrat">
+      <Panel title={t("contractsView.publish")}>
         {!colony ? (
-          <p className="muted">Aucune colonie.</p>
+          <p className="muted">{t("contractsView.noColony")}</p>
         ) : (
           <div className="form-stack">
             <Select
-              label="Ressource"
+              label={t("contractsView.resource")}
               value={resource}
               onChange={(e) => setResource(e.target.value as MarketResource)}
               options={MARKET_RESOURCES.map((res) => ({
                 value: res,
-                label: RESOURCE_LABELS[res],
+                label: resourceLabel(res),
               }))}
             />
             <NumberInput
-              label="Quantité"
+              label={t("contractsView.quantity")}
               min={1}
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
             />
             <NumberInput
-              label="Prix (cr/unité)"
+              label={t("contractsView.price")}
               min={1}
               value={price}
               onChange={(e) => setPrice(e.target.value)}
             />
             <Select
-              label="Échéance"
+              label={t("contractsView.deadlineLabel")}
               value={durationMs}
               onChange={(e) => setDurationMs(Number(e.target.value))}
               options={DURATION_OPTIONS.map((opt) => ({
@@ -198,8 +212,10 @@ export function ContractsView({
             />
             {escrow > 0 && (
               <span className="small muted">
-                Séquestre : {escrow} crédits (soldée dispo :{" "}
-                {Math.floor(colony.resources.credits)})
+                {t("contractsView.escrow", {
+                  escrow,
+                  available: Math.floor(colony.resources.credits),
+                })}
               </span>
             )}
             <Button
@@ -218,7 +234,7 @@ export function ContractsView({
                 setPrice("");
               }}
             >
-              Publier le contrat
+              {t("contractsView.publishContract")}
             </Button>
           </div>
         )}

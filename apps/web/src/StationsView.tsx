@@ -35,6 +35,7 @@ import {
   RowHeader,
   Select,
 } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import { formatDuration, systemIdOf } from "./format.js";
 import {
   StationBuildPicker,
@@ -42,11 +43,11 @@ import {
 } from "./StationBuildPicker.js";
 import { StationDiagram } from "./StationDiagram.js";
 import {
-  INSTALLATION_LABELS,
-  RESOURCE_LABELS,
-  SHIP_LABELS,
-  STATION_MARKET_ACCESS_LABELS,
-  ZONE_TYPE_LABELS,
+  installationLabel,
+  resourceLabel,
+  shipLabel,
+  stationMarketAccessLabel,
+  zoneTypeLabel,
 } from "./labels.js";
 import { useGameStore } from "./state/game-store.js";
 
@@ -73,6 +74,7 @@ function useNow(): number {
  * `sim/industry/station.ts`), transfert de ressources depuis une colonie.
  */
 export function StationsView({ effects, universe, portalLinks }: Props) {
+  const { t } = useTranslation();
   const { stations, colonies, routes, send } = useGameStore();
   const now = useNow();
   const [stationId, setStationId] = useState<string | null>(null);
@@ -100,9 +102,7 @@ export function StationsView({ effects, universe, portalLinks }: Props) {
   }, [station?.zones, station?.zoneQueue]);
 
   if (!station) {
-    return (
-      <p className="muted">Aucune station — fondez-en une depuis la carte.</p>
-    );
+    return <p className="muted">{t("stationsView.noStation")}</p>;
   }
 
   return (
@@ -121,7 +121,7 @@ export function StationsView({ effects, universe, portalLinks }: Props) {
       <div className="resource-bar">
         {RESOURCES.map((res) => (
           <div key={res} className="resource-cell">
-            <span className="resource-name">{RESOURCE_LABELS[res]}</span>
+            <span className="resource-name">{resourceLabel(res)}</span>
             <span className="resource-stock">
               {Math.floor(station.resources[res])}
             </span>
@@ -153,11 +153,13 @@ export function StationsView({ effects, universe, portalLinks }: Props) {
 
       <div className="colony-columns">
         <Panel
-          title={`File de construction — ${station.zoneQueue.length + station.installQueue.length}`}
+          title={t("stationsView.buildQueue", {
+            count: station.zoneQueue.length + station.installQueue.length,
+          })}
         >
           {station.zoneQueue.length === 0 &&
           station.installQueue.length === 0 ? (
-            <EmptyState>Aucune construction en cours.</EmptyState>
+            <EmptyState>{t("stationsView.noBuild")}</EmptyState>
           ) : (
             <ul className="queue-list">
               {station.zoneQueue.map((item) => {
@@ -172,9 +174,7 @@ export function StationsView({ effects, universe, portalLinks }: Props) {
                     className="queue-item"
                   >
                     <RowHeader
-                      label={
-                        ZONE_TYPE_LABELS[item.zoneTypeId as ZoneTypeId].name
-                      }
+                      label={zoneTypeLabel(item.zoneTypeId as ZoneTypeId).name}
                       value={formatDuration(item.finishesAt - now)}
                     />
                     <ProgressBar value={progress * 100} max={100} />
@@ -194,9 +194,8 @@ export function StationsView({ effects, universe, portalLinks }: Props) {
                   >
                     <RowHeader
                       label={
-                        INSTALLATION_LABELS[
-                          item.installationId as InstallationId
-                        ].name
+                        installationLabel(item.installationId as InstallationId)
+                          .name
                       }
                       value={formatDuration(item.finishesAt - now)}
                     />
@@ -238,6 +237,7 @@ function StationMarketPolicyForm({
   station: Station;
   send: (msg: ClientMessage) => void;
 }) {
+  const { t } = useTranslation();
   const [access, setAccess] = useState<StationMarketAccess>(
     station.marketAccess,
   );
@@ -252,22 +252,22 @@ function StationMarketPolicyForm({
   const validTax = Number.isFinite(Number(taxPercent)) && taxPercent !== "";
 
   return (
-    <Panel title="Politique de marché">
+    <Panel title={t("stationsView.marketPolicy")}>
       <div className="form-stack">
         <Select
-          label="Accès"
+          label={t("stationsView.access")}
           value={access}
           onChange={(e) => setAccess(e.target.value as StationMarketAccess)}
           options={STATION_MARKET_ACCESS_IDS.map((id) => ({
             value: id,
-            label: STATION_MARKET_ACCESS_LABELS[id].name,
+            label: stationMarketAccessLabel(id).name,
           }))}
         />
         <p className="muted small">
-          {STATION_MARKET_ACCESS_LABELS[access].description}
+          {stationMarketAccessLabel(access).description}
         </p>
         <NumberInput
-          label="Taxe sur les échanges des visiteurs (%)"
+          label={t("stationsView.tax")}
           min={0}
           max={100}
           value={taxPercent}
@@ -284,7 +284,7 @@ function StationMarketPolicyForm({
             });
           }}
         >
-          Appliquer
+          {t("stationsView.apply")}
         </Button>
       </div>
     </Panel>
@@ -323,6 +323,7 @@ function StationTransferForm({
   now,
   send,
 }: TransferProps) {
+  const { t } = useTranslation();
   const [fromColonyId, setFromColonyId] = useState("");
   const [amounts, setAmounts] = useState<Partial<Record<ResourceId, string>>>(
     {},
@@ -386,15 +387,13 @@ function StationTransferForm({
   const missingFuel = fuel > orbitalEnergy;
 
   return (
-    <Panel title="Transfert vers la station">
+    <Panel title={t("stationsView.transferToStation")}>
       {colonies.length === 0 ? (
-        <p className="muted small">
-          Aucune colonie pour approvisionner la station.
-        </p>
+        <p className="muted small">{t("stationsView.noColonySupply")}</p>
       ) : (
         <div className="form-stack">
           <Select
-            label="Colonie d'origine"
+            label={t("stationsView.originColony")}
             value={source?.id ?? ""}
             onChange={(e) => setFromColonyId(e.target.value)}
             options={colonies.map((c) => ({ value: c.id, label: c.name }))}
@@ -402,7 +401,10 @@ function StationTransferForm({
           {CARGO_RESOURCES.map((res) => (
             <NumberInput
               key={res}
-              label={`${RESOURCE_LABELS[res]} (orbite : ${Math.floor(source?.orbitalResources[res] ?? 0)})`}
+              label={t("transferPanel.resourceOrbit", {
+                resource: resourceLabel(res),
+                amount: Math.floor(source?.orbitalResources[res] ?? 0),
+              })}
               min={0}
               max={Math.floor(source?.orbitalResources[res] ?? 0)}
               value={amounts[res] ?? ""}
@@ -413,11 +415,14 @@ function StationTransferForm({
             />
           ))}
 
-          <span className="small muted">Convoi</span>
+          <span className="small muted">{t("transferPanel.convoyLabel")}</span>
           {SHIP_IDS.map((shipId) => (
             <NumberInput
               key={shipId}
-              label={`${SHIP_LABELS[shipId].name} (dispo : ${idle[shipId] ?? 0})`}
+              label={t("transferPanel.shipAvailable", {
+                name: shipLabel(shipId).name,
+                count: idle[shipId] ?? 0,
+              })}
               min={0}
               max={idle[shipId] ?? 0}
               value={shipCounts[shipId] ?? ""}
@@ -430,22 +435,37 @@ function StationTransferForm({
 
           {jumps >= 0 && (
             <span className="small muted">
-              {jumps} saut{jumps > 1 ? "s" : ""}
+              {t("transferPanel.jumps", {
+                jumps,
+                jumpPlural: jumps > 1 ? "s" : "",
+              })}
               {portals > 0
-                ? ` · ${portals} portail${portals > 1 ? "s" : ""}`
-                : ""}{" "}
-              — {formatDuration(eta)} — {fees} crédits
-              {hasConvoy ? ` · ${fuel} énergie` : ""}
+                ? t("transferPanel.portalsSuffix", {
+                    portals,
+                    portalPlural: portals > 1 ? "s" : "",
+                  })
+                : ""}
+              {t("transferPanel.tripSummary", {
+                eta: formatDuration(eta),
+                fees,
+              })}
+              {hasConvoy ? t("transferPanel.fuelSuffix", { fuel }) : ""}
             </span>
           )}
           <span className={`small ${overCapacity ? "ko" : "muted"}`}>
-            Soute {hasConvoy ? "du convoi" : "disponible"} : {capacity}
-            {overCapacity ? ` — cargaison trop lourde (${totalCargo})` : ""}
+            {hasConvoy
+              ? t("transferPanel.holdConvoy", { capacity })
+              : t("transferPanel.holdAvailable", { capacity })}
+            {overCapacity
+              ? t("transferPanel.tooHeavy", { total: totalCargo })
+              : ""}
           </span>
           {hasConvoy && missingFuel && (
             <span className="small ko">
-              Carburant insuffisant en orbite : {fuel} requis, {orbitalEnergy}{" "}
-              disponible.
+              {t("transferPanel.insufficientFuel", {
+                fuel,
+                available: orbitalEnergy,
+              })}
             </span>
           )}
           <Button
@@ -470,7 +490,7 @@ function StationTransferForm({
               setShipCounts({});
             }}
           >
-            Envoyer le convoi
+            {t("transferPanel.sendConvoy")}
           </Button>
         </div>
       )}

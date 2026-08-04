@@ -18,7 +18,8 @@ import {
   Table,
   type TableColumn,
 } from "@spacesim/ui";
-import { RESOURCE_LABELS } from "./labels.js";
+import { useTranslation } from "react-i18next";
+import { resourceLabel } from "./labels.js";
 
 interface Props {
   colony: Colony;
@@ -34,6 +35,7 @@ const LIFTABLE: ResourceId[] = [...MARKET_RESOURCES];
  * et à quel débit. Sans dock, rien n'est exportable — le panneau le dit d'emblée.
  */
 export function OrbitPanel({ colony, effects, send }: Props) {
+  const { t } = useTranslation();
   const cap = orbitalCap(colony, effects);
   const used = orbitalUsed(colony);
   const throughput = liftThroughput(colony, effects);
@@ -45,25 +47,25 @@ export function OrbitPanel({ colony, effects, send }: Props) {
   const columns: TableColumn<ResourceId>[] = [
     {
       key: "res",
-      label: "Ressource",
-      render: (_, res) => RESOURCE_LABELS[res],
+      label: t("orbitPanel.colResource"),
+      render: (_, res) => resourceLabel(res),
     },
     {
       key: "ground",
-      label: "Sol",
+      label: t("orbitPanel.colGround"),
       align: "right",
       render: (_, res) => Math.floor(colony.resources[res]),
     },
     {
       key: "orbit",
-      label: "Orbite",
+      label: t("orbitPanel.colOrbit"),
       align: "right",
       trend: (res) => (colony.orbitalResources[res] > 0 ? "up" : undefined),
       render: (_, res) => Math.floor(colony.orbitalResources[res] ?? 0),
     },
     {
       key: "rule",
-      label: "Consigne",
+      label: t("orbitPanel.colRule"),
       render: (_, res) => {
         const rule = colony.liftRules[res];
         return (
@@ -71,9 +73,9 @@ export function OrbitPanel({ colony, effects, send }: Props) {
             value={rule?.direction ?? "none"}
             disabled={docks === 0}
             options={[
-              { value: "none", label: "—" },
-              { value: "up", label: "Monter le surplus" },
-              { value: "down", label: "Redescendre" },
+              { value: "none", label: t("orbitPanel.ruleNone") },
+              { value: "up", label: t("orbitPanel.ruleUp") },
+              { value: "down", label: t("orbitPanel.ruleDown") },
             ]}
             onChange={(e) =>
               setRule(
@@ -92,7 +94,7 @@ export function OrbitPanel({ colony, effects, send }: Props) {
     },
     {
       key: "threshold",
-      label: "Seuil au sol",
+      label: t("orbitPanel.colThreshold"),
       render: (_, res) => {
         const rule = colony.liftRules[res];
         return (
@@ -119,24 +121,25 @@ export function OrbitPanel({ colony, effects, send }: Props) {
 
   return (
     <Panel
-      title="Orbite"
+      title={t("orbitPanel.title")}
       actions={
         <Badge variant={docks > 0 ? "neutral" : "ko"}>
           {docks > 0
-            ? `${docks} dock${docks > 1 ? "s" : ""} · soute ${Math.floor(used)}/${cap} · ascenseur ${throughput}/tick`
-            : "Aucun dock orbital — cette colonie ne peut rien expédier."}
+            ? t("orbitPanel.withDocks", {
+                docks,
+                plural: docks > 1 ? "s" : "",
+                used: Math.floor(used),
+                cap,
+                throughput,
+              })
+            : t("orbitPanel.noDocks")}
         </Badge>
       }
     >
       {docks > 0 && <ProgressBar value={used} max={cap} />}
 
       <Table columns={columns} rows={LIFTABLE} />
-      <p className="small muted">
-        « Monter le surplus » hisse tout ce qui dépasse le seuil gardé au sol ;
-        « redescendre » ramène de l'orbite jusqu'à atteindre ce seuil.
-        L'ascenseur est partagé entre les ressources et consomme de l'énergie au
-        sol.
-      </p>
+      <p className="small muted">{t("orbitPanel.hint")}</p>
     </Panel>
   );
 }

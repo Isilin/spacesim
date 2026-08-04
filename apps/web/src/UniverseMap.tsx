@@ -14,6 +14,7 @@ import {
 } from "@spacesim/shared";
 import { useMemo, useState } from "react";
 import { ZoomableSvg, type ViewBox } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   universe: Universe;
@@ -95,6 +96,7 @@ export function UniverseMap({
   onSelect,
   onOpenGalaxy,
 }: Props) {
+  const { t } = useTranslation();
   const explored = new Set(exploredSystemIds);
   const colonyPlanetIds = new Set(colonies.map((c) => c.planetId));
 
@@ -169,7 +171,7 @@ export function UniverseMap({
       className="galaxy-map universe-map"
       home={homeView}
       focus={focus}
-      ariaLabel="Carte de l'univers"
+      ariaLabel={t("universeMap.ariaLabel")}
       onViewChange={setView}
     >
       <defs>
@@ -222,7 +224,7 @@ export function UniverseMap({
                 className="galaxy-sub muted"
               >
                 {gw!.activatesAt
-                  ? "chantier final…"
+                  ? t("universeMap.finalConstruction")
                   : `${Math.round(gatewayProgressRatio(gw!) * 100)} %`}
               </text>
             )}
@@ -306,8 +308,13 @@ export function UniverseMap({
             )}
             {showStats && (
               <text y={DISC + 26} textAnchor="middle" className="galaxy-sub">
-                {galaxy.systems.length} systèmes · {exploredCount} explorés
-                {colonyCount > 0 ? ` · ${colonyCount} colonies` : ""}
+                {t("universeMap.systemStats", {
+                  systems: galaxy.systems.length,
+                  explored: exploredCount,
+                })}
+                {colonyCount > 0
+                  ? t("universeMap.coloniesSuffix", { count: colonyCount })
+                  : ""}
               </text>
             )}
             {showStats && isReachable && gi > 0 && (
@@ -316,7 +323,7 @@ export function UniverseMap({
                 textAnchor="middle"
                 className="galaxy-sub gateway-active"
               >
-                ◈ Relié — gisements ×{galaxy.depositBonus}
+                {t("universeMap.connected", { bonus: galaxy.depositBonus })}
               </text>
             )}
             {showStats && heat > 0.5 && (
@@ -325,7 +332,7 @@ export function UniverseMap({
                 textAnchor="middle"
                 className="galaxy-sub gateway-active"
               >
-                🔥 forte activité économique
+                {t("universeMap.highActivity")}
               </text>
             )}
           </g>

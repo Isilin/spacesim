@@ -20,7 +20,8 @@ import {
 } from "@spacesim/shared";
 import { useMemo, useState } from "react";
 import { Panel, Select, Stat, Table, type TableColumn } from "@spacesim/ui";
-import { RESOURCE_LABELS } from "./labels.js";
+import { useTranslation } from "react-i18next";
+import { resourceLabel } from "./labels.js";
 
 interface Props {
   universe: Universe;
@@ -68,6 +69,7 @@ export function MarketsView({
   leaderboard,
   playerId,
 }: Props) {
+  const { t } = useTranslation();
   const [resource, setResource] = useState<MarketResource>("components");
 
   const fromSystem = useMemo(() => {
@@ -188,22 +190,22 @@ export function MarketsView({
   const columns: TableColumn<MarketRow>[] = [
     {
       key: "venue",
-      label: "Comptoir / station",
+      label: t("marketsView.colVenue"),
       render: (_, row) =>
         row.venue.id === best?.venue.id
           ? `★ ${row.venue.name}`
           : row.venue.name,
     },
-    { key: "galaxyName", label: "Galaxie" },
+    { key: "galaxyName", label: t("marketsView.colGalaxy") },
     {
       key: "stock",
-      label: "Stock",
+      label: t("marketsView.colStock"),
       align: "right",
       render: (_, row) => Math.floor(row.stock),
     },
     {
       key: "price",
-      label: "Prix",
+      label: t("marketsView.colPrice"),
       align: "right",
       render: (_, row) => row.price.toFixed(2),
       trend: (row) =>
@@ -211,7 +213,7 @@ export function MarketsView({
     },
     {
       key: "gap",
-      label: "Écart",
+      label: t("marketsView.colGap"),
       align: "right",
       render: (_, row) =>
         `${gapOf(row) >= 0 ? "+" : ""}${Math.round(gapOf(row) * 100)} %`,
@@ -219,57 +221,56 @@ export function MarketsView({
     },
     {
       key: "jumps",
-      label: "Distance",
+      label: t("marketsView.colDistance"),
       render: (_, row) =>
-        row.jumps >= 0 ? `${row.jumps} sauts` : "hors portée",
+        row.jumps >= 0
+          ? t("marketsView.jumps", { jumps: row.jumps })
+          : t("marketsView.outOfRange"),
     },
     {
       key: "fees",
-      label: "Frais + carburant",
+      label: t("marketsView.colFees"),
       render: (_, row) =>
-        row.jumps >= 0 ? `${row.fees} cr · ${row.fuel} én.` : "—",
+        row.jumps >= 0
+          ? t("marketsView.feesFuel", { fees: row.fees, fuel: row.fuel })
+          : "—",
     },
     {
       key: "net",
-      label: `Lot de ${REFERENCE_LOT} net`,
+      label: t("marketsView.colNet", { lot: REFERENCE_LOT }),
       align: "right",
       render: (_, row) => (row.net === null ? "—" : `${row.net} cr`),
     },
   ];
 
   return (
-    <Panel title="Comparateur de marchés">
+    <Panel title={t("marketsView.title")}>
       <div className="research-header">
         <Select
-          label="Ressource"
+          label={t("marketsView.resource")}
           value={resource}
           onChange={(e) => setResource(e.target.value as MarketResource)}
           options={MARKET_RESOURCES.map((res) => ({
             value: res,
-            label: RESOURCE_LABELS[res],
+            label: resourceLabel(res),
           }))}
         />
-        <Stat label="Prix de référence" value={BASE_PRICES[resource]} />
-        {activeColony && <Stat label="Depuis" value={activeColony.name} />}
+        <Stat
+          label={t("marketsView.referencePrice")}
+          value={BASE_PRICES[resource]}
+        />
+        {activeColony && (
+          <Stat label={t("marketsView.from")} value={activeColony.name} />
+        )}
       </div>
 
       {rows.length === 0 ? (
-        <p className="muted">
-          Aucun comptoir ni station commerciale découvert. Explorez des systèmes
-          pour comparer les marchés.
-        </p>
+        <p className="muted">{t("marketsView.empty")}</p>
       ) : (
         <Table columns={columns} rows={rows} />
       )}
 
-      <p className="small muted">
-        Le prix d'un lieu de marché dépend de son stock, de son biais local et
-        de l'éloignement de sa galaxie : les anneaux lointains paient cher le
-        manufacturé et bradent le brut. Les stations commerciales de joueurs
-        n'apparaissent ici que si leur marché de ressources est construit et
-        leur politique d'accès vous autorise. La colonne « net » retranche les
-        frais du voyage pour un cargo léger plein.
-      </p>
+      <p className="small muted">{t("marketsView.hint")}</p>
     </Panel>
   );
 }

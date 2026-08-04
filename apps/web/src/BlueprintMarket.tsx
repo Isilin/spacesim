@@ -11,6 +11,7 @@ import {
   type Route,
 } from "@spacesim/shared";
 import { Button, ListRow, SectionTitle } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import { shipLabel } from "./labels.js";
 
 /**
@@ -37,6 +38,7 @@ export function BlueprintMarket({
   routes: Route[];
   send: (msg: ClientMessage) => void;
 }) {
+  const { t } = useTranslation();
   const idle = idleShips(activeColony, routes);
   const idleShipEntries = Object.entries(activeColony.ships).filter(
     ([, n]) => (n ?? 0) > 0,
@@ -44,10 +46,12 @@ export function BlueprintMarket({
 
   return (
     <>
-      <SectionTitle>Plans de vaisseaux</SectionTitle>
+      <SectionTitle>{t("blueprintMarket.title")}</SectionTitle>
 
       <span className="muted small">
-        Catalogue (marge {Math.round((BLUEPRINT_BUY_MARKUP - 1) * 100)} %)
+        {t("blueprintMarket.catalog", {
+          markup: Math.round((BLUEPRINT_BUY_MARKUP - 1) * 100),
+        })}
       </span>
       <ul className="building-list">
         {PRESETS.map((preset) => {
@@ -59,12 +63,14 @@ export function BlueprintMarket({
             <ListRow
               key={preset.id}
               title={preset.name}
-              meta={`${price} crédits`}
+              meta={t("blueprintMarket.creditsAmount", { price })}
               right={
                 <Button
                   size="sm"
                   disabled={!affordable}
-                  title={affordable ? "" : "Crédits insuffisants"}
+                  title={
+                    affordable ? "" : t("blueprintMarket.insufficientCredits")
+                  }
                   onClick={() =>
                     send({
                       type: "buyBlueprint",
@@ -75,7 +81,7 @@ export function BlueprintMarket({
                     })
                   }
                 >
-                  Acheter
+                  {t("blueprintMarket.buy")}
                 </Button>
               }
             />
@@ -86,8 +92,9 @@ export function BlueprintMarket({
       {blueprints.length > 0 && (
         <>
           <span className="muted small">
-            Revendre un plan (décote{" "}
-            {Math.round((1 - BLUEPRINT_SELL_FRACTION) * 100)} %)
+            {t("blueprintMarket.resellBlueprint", {
+              discount: Math.round((1 - BLUEPRINT_SELL_FRACTION) * 100),
+            })}
           </span>
           <ul className="building-list">
             {blueprints.map((bp) => {
@@ -98,7 +105,7 @@ export function BlueprintMarket({
                 <ListRow
                   key={bp.id}
                   title={bp.name}
-                  meta={`${price} crédits`}
+                  meta={t("blueprintMarket.creditsAmount", { price })}
                   right={
                     <Button
                       size="sm"
@@ -112,7 +119,7 @@ export function BlueprintMarket({
                         })
                       }
                     >
-                      Vendre
+                      {t("blueprintMarket.sell")}
                     </Button>
                   }
                 />
@@ -124,9 +131,7 @@ export function BlueprintMarket({
 
       {idleShipEntries.length > 0 && (
         <>
-          <span className="muted small">
-            Vendre un vaisseau assemblé (désœuvré)
-          </span>
+          <span className="muted small">{t("blueprintMarket.sellShip")}</span>
           <ul className="building-list">
             {idleShipEntries.map(([shipId, owned]) => {
               const dispo = Math.min(idle[shipId] ?? 0, owned ?? 0);
@@ -137,7 +142,7 @@ export function BlueprintMarket({
                 <ListRow
                   key={shipId}
                   title={name}
-                  meta={`${dispo} disponible(s)`}
+                  meta={t("blueprintMarket.available", { count: dispo })}
                   right={
                     <Button
                       size="sm"
@@ -153,7 +158,7 @@ export function BlueprintMarket({
                         })
                       }
                     >
-                      Vendre ×1
+                      {t("blueprintMarket.sellOne")}
                     </Button>
                   }
                 />

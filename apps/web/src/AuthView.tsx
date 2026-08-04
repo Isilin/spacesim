@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Button, Field, Tabs } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import type { Auth } from "./useAuth.js";
 
 interface Props {
@@ -10,6 +11,7 @@ type Mode = "login" | "register";
 
 /** Écran d'accueil : connexion ou inscription. Aucun dashboard avant authentification. */
 export function AuthView({ auth }: Props) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,21 +42,21 @@ export function AuthView({ auth }: Props) {
         <h1 className="auth-brand">SPACESIM</h1>
         <p className="muted small auth-tagline">
           {mode === "login"
-            ? "Reprenez le commandement de votre empire."
-            : "Fondez un empire dans l'univers partagé."}
+            ? t("authView.taglineLogin")
+            : t("authView.taglineRegister")}
         </p>
 
         <Tabs
           items={[
-            { value: "login", label: "Connexion" },
-            { value: "register", label: "Inscription" },
+            { value: "login", label: t("authView.tabLogin") },
+            { value: "register", label: t("authView.tabRegister") },
           ]}
           active={mode}
           onChange={(value) => switchMode(value as Mode)}
         />
 
         <Field
-          label="Adresse e-mail"
+          label={t("authView.email")}
           type="email"
           autoComplete="email"
           required
@@ -63,7 +65,7 @@ export function AuthView({ auth }: Props) {
         />
 
         <Field
-          label="Mot de passe"
+          label={t("authView.password")}
           type="password"
           autoComplete={
             mode === "register" ? "new-password" : "current-password"
@@ -72,15 +74,15 @@ export function AuthView({ auth }: Props) {
           minLength={mode === "register" ? 8 : undefined}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          hint={mode === "register" ? "8 caractères minimum." : undefined}
+          hint={mode === "register" ? t("authView.passwordHint") : undefined}
         />
 
         {mode === "register" && (
           <Field
-            label="Nom de l'empire"
+            label={t("authView.empireName")}
             type="text"
             maxLength={40}
-            placeholder="Consortium d'Elyssia"
+            placeholder={t("authView.empireNamePlaceholder")}
             value={empireName}
             onChange={(e) => setEmpireName(e.target.value)}
           />
@@ -89,7 +91,11 @@ export function AuthView({ auth }: Props) {
         {error && <p className="auth-error">{error}</p>}
 
         <Button type="submit" disabled={busy} className="auth-submit">
-          {busy ? "…" : mode === "login" ? "Se connecter" : "Fonder l'empire"}
+          {busy
+            ? "…"
+            : mode === "login"
+              ? t("authView.submitLogin")
+              : t("authView.submitRegister")}
         </Button>
       </form>
     </div>

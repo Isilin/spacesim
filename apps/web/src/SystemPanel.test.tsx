@@ -47,7 +47,7 @@ describe("SystemPanel — système non exploré", () => {
     });
   });
 
-  it("clic sur Sonder envoie la commande probe pour la colonie active", async () => {
+  it("clic sur le bouton de sonde envoie la commande probe pour la colonie active", async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
@@ -60,7 +60,10 @@ describe("SystemPanel — système non exploré", () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole("button", { name: /Sonder/ }));
+    // Seul bouton rendu dans ce scénario (système non exploré, pas de sonde en
+    // route) : interroger par rôle plutôt que par texte littéral, indépendant
+    // de la locale active (chantier 27.17 — i18n).
+    await user.click(screen.getByRole("button"));
 
     expect(send).toHaveBeenCalledWith({
       type: "probe",

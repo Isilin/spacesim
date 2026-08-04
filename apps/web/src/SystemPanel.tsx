@@ -13,9 +13,10 @@ import {
 } from "@spacesim/shared";
 import { useSearchParams } from "react-router-dom";
 import { Button, Panel } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import { BodyActions, COLONY_SHIP_COST_TEXT } from "./BodyActions.js";
 import { formatDuration } from "./format.js";
-import { PLANET_TYPE_LABELS, RESOURCE_LABELS } from "./labels.js";
+import { planetTypeLabel, resourceLabel } from "./labels.js";
 import { StationMarketPanel } from "./StationMarketPanel.js";
 import { TradingPostPanel } from "./TradingPostPanel.js";
 import { useGameStore } from "./state/game-store.js";
@@ -31,7 +32,7 @@ interface Props {
 }
 
 const OUTPOST_COST_TEXT = Object.entries(OUTPOST_COST)
-  .map(([res, n]) => `${n} ${RESOURCE_LABELS[res as ResourceId]}`)
+  .map(([res, n]) => `${n} ${resourceLabel(res as ResourceId)}`)
   .join(" · ");
 
 export function SystemPanel({
@@ -41,6 +42,7 @@ export function SystemPanel({
   now,
   onOpenBody,
 }: Props) {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const activeColony = useGameStore(
     selectActiveColony(searchParams.get("colony")),
@@ -71,10 +73,12 @@ export function SystemPanel({
   if (!explored) {
     return (
       <Panel title={system.name}>
-        <p className="muted">Système non exploré.</p>
+        <p className="muted">{t("systemPanel.notExplored")}</p>
         {probeMission ? (
           <p className="small ok">
-            Sonde en route — {formatDuration(probeMission.arrivesAt - now)}
+            {t("systemPanel.probeEnRoute", {
+              duration: formatDuration(probeMission.arrivesAt - now),
+            })}
           </p>
         ) : (
           <Button
@@ -90,7 +94,7 @@ export function SystemPanel({
               })
             }
           >
-            Sonder ({probeCost} crédits)
+            {t("systemPanel.probe", { cost: probeCost })}
           </Button>
         )}
       </Panel>
@@ -114,19 +118,20 @@ export function SystemPanel({
             {p.name}
           </strong>
           <span className="muted">
-            {p.kind === "moon" ? "Lune " : ""}
-            {PLANET_TYPE_LABELS[p.type]}
+            {p.kind === "moon" ? t("systemPanel.moon") : ""}
+            {planetTypeLabel(p.type)}
           </span>
         </div>
         <div className="planet-stats">
-          <span>Habitabilité {p.habitability}</span>
-          <span>{p.slots} emplacements</span>
+          <span>
+            {t("systemPanel.habitability", { value: p.habitability })}
+          </span>
+          <span>{t("systemPanel.slots", { count: p.slots })}</span>
           {Object.keys(p.deposits).length > 0 && (
             <span className="muted">
               {Object.entries(p.deposits)
                 .map(
-                  ([res, mod]) =>
-                    `${RESOURCE_LABELS[res as ResourceId]} ×${mod}`,
+                  ([res, mod]) => `${resourceLabel(res as ResourceId)} ×${mod}`,
                 )
                 .join(" · ")}
             </span>
@@ -159,29 +164,37 @@ export function SystemPanel({
     <>
       <Panel title={system.name}>
         <p className="muted">
-          {planets.length} planètes
-          {moonCount > 0 ? `, ${moonCount} lunes` : ""}
-          {system.belts.length > 0 ? `, ${system.belts.length} ceintures` : ""}
-          {system.station ? ", 1 comptoir" : ""}
+          {t("systemPanel.planetsCount", { count: planets.length })}
+          {moonCount > 0
+            ? t("systemPanel.moonsSuffix", { count: moonCount })
+            : ""}
+          {system.belts.length > 0
+            ? t("systemPanel.beltsSuffix", { count: system.belts.length })
+            : ""}
+          {system.station ? t("systemPanel.stationSuffix") : ""}
         </p>
         {claimed ? (
           <p className="small claim-badge">
-            ✦ Système revendiqué — production +15 %{" "}
+            {t("systemPanel.claimed")}{" "}
             <Button
               onClick={() =>
                 send({ type: "unclaimSystem", systemId: system.id })
               }
             >
-              Abandonner
+              {t("systemPanel.abandon")}
             </Button>
           </p>
         ) : hasOwnColony ? (
           <Button
             disabled={game.influence < CLAIM_COST}
-            title={game.influence < CLAIM_COST ? "Influence insuffisante" : ""}
+            title={
+              game.influence < CLAIM_COST
+                ? t("systemPanel.insufficientInfluence")
+                : ""
+            }
             onClick={() => send({ type: "claimSystem", systemId: system.id })}
           >
-            Revendiquer le système ({CLAIM_COST} ✦)
+            {t("systemPanel.claimSystem", { cost: CLAIM_COST })}
           </Button>
         ) : null}
         <ul className="planet-list">
@@ -205,12 +218,12 @@ export function SystemPanel({
               <li key={belt.id} className="planet moon-row">
                 <div className="planet-head">
                   <strong>☄ {belt.name}</strong>
-                  <span className="muted">Astéroïdes</span>
+                  <span className="muted">{t("systemPanel.asteroids")}</span>
                 </div>
                 <div className="deposits">
                   {Object.entries(belt.deposits).map(([res, mod]) => (
                     <span key={res} className="deposit">
-                      {RESOURCE_LABELS[res as ResourceId]} ×{mod}
+                      {resourceLabel(res as ResourceId)} ×{mod}
                     </span>
                   ))}
                 </div>
@@ -218,21 +231,26 @@ export function SystemPanel({
                   <p
                     className={`small ${outpost.oreStock >= OUTPOST_STOCK_CAP ? "ko" : "ok"}`}
                   >
-                    ⛏ Avant-poste — stock {Math.floor(outpost.oreStock)}/
-                    {OUTPOST_STOCK_CAP}
+                    {t("systemPanel.outpost", {
+                      stock: Math.floor(outpost.oreStock),
+                      cap: OUTPOST_STOCK_CAP,
+                    })}
                     {outpost.oreStock >= OUTPOST_STOCK_CAP
-                      ? " — PLEIN, extraction stoppée"
+                      ? t("systemPanel.outpostFull")
                       : ""}
                   </p>
                 ) : buildMission ? (
                   <p className="small ok">
-                    Chantier en route —{" "}
-                    {formatDuration(buildMission.arrivesAt - now)}
+                    {t("systemPanel.outpostBuildEnRoute", {
+                      duration: formatDuration(buildMission.arrivesAt - now),
+                    })}
                   </p>
                 ) : (
                   <Button
                     disabled={!outpostAffordable}
-                    title={`Coût : ${OUTPOST_COST_TEXT}`}
+                    title={t("systemPanel.outpostCost", {
+                      cost: OUTPOST_COST_TEXT,
+                    })}
                     onClick={() =>
                       activeColony &&
                       send({
@@ -242,7 +260,7 @@ export function SystemPanel({
                       })
                     }
                   >
-                    Construire un avant-poste
+                    {t("systemPanel.buildOutpost")}
                   </Button>
                 )}
               </li>
@@ -251,8 +269,10 @@ export function SystemPanel({
         </ul>
         {activeColony && (
           <p className="small muted">
-            Origine des missions : {activeColony.name}. Vaisseau colonial :{" "}
-            {COLONY_SHIP_COST_TEXT}.
+            {t("systemPanel.missionOrigin", {
+              name: activeColony.name,
+              cost: COLONY_SHIP_COST_TEXT,
+            })}
           </p>
         )}
       </Panel>

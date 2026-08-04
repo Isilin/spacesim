@@ -20,6 +20,7 @@ import {
 } from "@spacesim/shared";
 import { useEffect, useMemo, useState } from "react";
 import { Badge, Button, Select, Toast, ToastStack, TopBar } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import {
   Navigate,
   Route,
@@ -103,6 +104,7 @@ function MapPage({
   portalLinks,
   now,
 }: MapPageProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const {
@@ -192,7 +194,7 @@ function MapPage({
         />
         <nav className="breadcrumb">
           <button onClick={() => navigate(`/map${colonyOnlySearch()}`)}>
-            Univers
+            {t("app.universe")}
           </button>
           {viewGalaxy && (
             <>
@@ -284,15 +286,13 @@ function MapPage({
               onOpenBody={openBody}
             />
             <Button onClick={() => openSystem(focusedSystem)}>
-              Ouvrir la vue système
+              {t("app.openSystemView")}
             </Button>
           </>
         ) : level === "universe" ? (
           <GatewaysPanel now={now} />
         ) : (
-          <p className="muted">
-            Sélectionnez un système (double-clic : vue système).
-          </p>
+          <p className="muted">{t("app.selectSystemHint")}</p>
         )}
       </aside>
     </main>
@@ -300,6 +300,7 @@ function MapPage({
 }
 
 export function App({ auth }: Props) {
+  const { t } = useTranslation();
   useGameConnection(auth.token!, auth.sessionExpired);
   const {
     playerId,
@@ -358,26 +359,29 @@ export function App({ auth }: Props) {
   });
 
   if (!universe || !game) {
-    return <div className="loading">Connexion au serveur…</div>;
+    return <div className="loading">{t("app.connecting")}</div>;
   }
 
   const colony = colonies.find((c) => c.id === colonyId) ?? colonies[0] ?? null;
 
   const routeTabs = [
-    { value: "colony", label: "Colonie" },
-    { value: "stations", label: "Stations" },
-    { value: "map", label: "Carte" },
-    { value: "logistics", label: "Logistique" },
+    { value: "colony", label: t("app.tabColony") },
+    { value: "stations", label: t("app.tabStations") },
+    { value: "map", label: t("app.tabMap") },
+    { value: "logistics", label: t("app.tabLogistics") },
     {
       value: "fleets",
-      label: `Flottes${pirateLairs.length > 0 ? ` (${pirateLairs.length}☠)` : ""}`,
+      label:
+        pirateLairs.length > 0
+          ? t("app.tabFleetsWithLairs", { count: pirateLairs.length })
+          : t("app.tabFleets"),
     },
-    { value: "shipyard", label: "Chantier" },
-    { value: "research", label: "Recherche" },
-    { value: "empire", label: "Empire" },
-  ].map((t) => ({ ...t, href: `/${t.value}${location.search}` }));
-  const activeTab = routeTabs.find((t) =>
-    location.pathname.startsWith(`/${t.value}`),
+    { value: "shipyard", label: t("app.tabShipyard") },
+    { value: "research", label: t("app.tabResearch") },
+    { value: "empire", label: t("app.tabEmpire") },
+  ].map((tab) => ({ ...tab, href: `/${tab.value}${location.search}` }));
+  const activeTab = routeTabs.find((tab) =>
+    location.pathname.startsWith(`/${tab.value}`),
   )?.value;
 
   return (
@@ -389,7 +393,7 @@ export function App({ auth }: Props) {
           navigate({ pathname: `/${value}`, search: location.search })
         }
         status={{
-          label: connected ? "● LIAISON ÉTABLIE" : "○ LIAISON PERDUE",
+          label: connected ? t("app.connected") : t("app.disconnected"),
           tone: connected ? "ok" : "ko",
         }}
       >
@@ -400,10 +404,10 @@ export function App({ auth }: Props) {
             options={colonies.map((c) => ({ value: c.id, label: c.name }))}
           />
         )}
-        <Badge variant="violet" title="Influence de l'empire">
+        <Badge variant="violet" title={t("app.empireInfluence")}>
           ✦ {Math.floor(game.influence)}
         </Badge>
-        <Badge>Tick {game.tick}</Badge>
+        <Badge>{t("app.tick", { value: game.tick })}</Badge>
         <span title={auth.email ?? ""}>
           <span
             style={{
@@ -415,10 +419,10 @@ export function App({ auth }: Props) {
               background: auth.empire?.color ?? "var(--cyan)",
             }}
           />
-          {auth.empire?.name ?? "Empire"}
+          {auth.empire?.name ?? t("app.defaultEmpireName")}
         </span>
         <Button variant="link" onClick={() => void auth.logout()}>
-          Déconnexion
+          {t("app.logout")}
         </Button>
       </TopBar>
 

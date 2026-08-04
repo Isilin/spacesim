@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { i18n } from "./i18n.js";
 
 /** Clé de persistance du jeton de session (chantier 8 — remplace le jeton de joueur 7c). */
 const SESSION_KEY = "spacesim.session";
@@ -44,11 +45,11 @@ async function readJson<T>(
   try {
     body = await response.json();
   } catch {
-    return { error: "Réponse illisible du serveur" };
+    return { error: i18n.t("useAuth.unreadableResponse") };
   }
   if (!response.ok) {
     const message = (body as { error?: string }).error;
-    return { error: message ?? "Erreur serveur" };
+    return { error: message ?? i18n.t("useAuth.serverError") };
   }
   return { data: body as T };
 }
@@ -119,7 +120,7 @@ export function useAuth(): Auth {
         });
         result = await readJson<AuthPayload>(response);
       } catch {
-        return "Serveur injoignable";
+        return i18n.t("useAuth.serverUnreachable");
       }
       if ("error" in result) return result.error;
       localStorage.setItem(SESSION_KEY, result.data.token);

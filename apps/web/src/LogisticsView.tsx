@@ -1,5 +1,6 @@
 import type { EmpireEffects } from "@spacesim/shared";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { Tabs } from "@spacesim/ui";
 import { ContractsView } from "./ContractsView.js";
@@ -18,12 +19,12 @@ interface Props {
 
 type Tab = "routes" | "convoys" | "orbit" | "markets" | "contracts";
 
-const TAB_LABELS: Record<Tab, string> = {
-  routes: "Routes",
-  convoys: "Convois",
-  orbit: "Orbite",
-  markets: "Marchés",
-  contracts: "Contrats",
+const TAB_KEYS: Record<Tab, string> = {
+  routes: "logisticsView.tabRoutes",
+  convoys: "logisticsView.tabConvoys",
+  orbit: "logisticsView.tabOrbit",
+  markets: "logisticsView.tabMarkets",
+  contracts: "logisticsView.tabContracts",
 };
 
 /**
@@ -31,6 +32,7 @@ const TAB_LABELS: Record<Tab, string> = {
  * automatiques, convois ponctuels, ascenseur orbital et comparateur de marchés.
  */
 export function LogisticsView({ effects, portalLinks, now }: Props) {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const colony = useGameStore(selectActiveColony(searchParams.get("colony")));
   const {
@@ -55,9 +57,9 @@ export function LogisticsView({ effects, portalLinks, now }: Props) {
   return (
     <div className="logistics-view">
       <Tabs
-        items={(Object.keys(TAB_LABELS) as Tab[]).map((id) => ({
+        items={(Object.keys(TAB_KEYS) as Tab[]).map((id) => ({
           value: id,
-          label: TAB_LABELS[id],
+          label: t(TAB_KEYS[id]),
         }))}
         active={tab}
         onChange={(value) => setTab(value as Tab)}
@@ -87,13 +89,13 @@ export function LogisticsView({ effects, portalLinks, now }: Props) {
             send={send}
           />
         ) : (
-          <p className="muted">Aucune colonie.</p>
+          <p className="muted">{t("logisticsView.noColony")}</p>
         )
       ) : tab === "orbit" ? (
         colony ? (
           <OrbitPanel colony={colony} effects={effects} send={send} />
         ) : (
-          <p className="muted">Aucune colonie.</p>
+          <p className="muted">{t("logisticsView.noColony")}</p>
         )
       ) : tab === "markets" ? (
         <MarketsView

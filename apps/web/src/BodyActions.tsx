@@ -13,8 +13,9 @@ import {
   type Station,
 } from "@spacesim/shared";
 import { Button } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import { formatDuration } from "./format.js";
-import { RESOURCE_LABELS } from "./labels.js";
+import { resourceLabel } from "./labels.js";
 
 interface Props {
   body: Planet;
@@ -31,12 +32,12 @@ interface Props {
 
 /** Coût d'un vaisseau colonial, en clair. */
 export const COLONY_SHIP_COST_TEXT = Object.entries(COLONY_SHIP_COST)
-  .map(([res, n]) => `${n} ${RESOURCE_LABELS[res as ResourceId]}`)
+  .map(([res, n]) => `${n} ${resourceLabel(res as ResourceId)}`)
   .join(" · ");
 
 /** Coût d'un vaisseau de construction de station, en clair. */
 export const STATION_SHIP_COST_TEXT = Object.entries(STATION_SHIP_COST)
-  .map(([res, n]) => `${n} ${RESOURCE_LABELS[res as ResourceId]}`)
+  .map(([res, n]) => `${n} ${resourceLabel(res as ResourceId)}`)
   .join(" · ");
 
 /**
@@ -92,6 +93,7 @@ function ColonizeAction({
   Props,
   "body" | "colonies" | "missions" | "activeColony" | "game" | "now" | "send"
 >) {
+  const { t } = useTranslation();
   const colony = colonies.find((c) => c.planetId === body.id);
   const incoming = missions.find(
     (m) => m.kind === "colonize" && m.targetId === body.id,
@@ -101,12 +103,14 @@ function ColonizeAction({
   if (incoming) {
     return (
       <p className="small ok">
-        Vaisseau colonial en route — {formatDuration(incoming.arrivesAt - now)}
+        {t("bodyActions.colonyShipEnRoute", {
+          duration: formatDuration(incoming.arrivesAt - now),
+        })}
       </p>
     );
   }
   if (body.type === "gas") {
-    return <p className="small muted">Géante gazeuse — non colonisable.</p>;
+    return <p className="small muted">{t("bodyActions.gasGiant")}</p>;
   }
 
   const influenceCost = colonizeInfluenceCost(
@@ -124,19 +128,25 @@ function ColonizeAction({
       disabled={!affordable || !enoughInfluence}
       title={
         !activeColony
-          ? "Aucune colonie d'origine"
+          ? t("bodyActions.noOriginColony")
           : !affordable
-            ? `Ressources insuffisantes : ${COLONY_SHIP_COST_TEXT}`
+            ? t("bodyActions.insufficientResources", {
+                cost: COLONY_SHIP_COST_TEXT,
+              })
             : !enoughInfluence
-              ? `Influence insuffisante (${Math.floor(game.influence)}/${influenceCost})`
-              : `Coût : ${COLONY_SHIP_COST_TEXT}`
+              ? t("bodyActions.insufficientInfluence", {
+                  current: Math.floor(game.influence),
+                  required: influenceCost,
+                })
+              : t("bodyActions.cost", { cost: COLONY_SHIP_COST_TEXT })
       }
       onClick={() =>
         activeColony &&
         send({ type: "colonize", colonyId: activeColony.id, planetId: body.id })
       }
     >
-      Coloniser{influenceCost > 0 ? ` (${influenceCost} ✦)` : ""}
+      {t("bodyActions.colonize")}
+      {influenceCost > 0 ? ` (${influenceCost} ✦)` : ""}
     </Button>
   );
 }
@@ -153,6 +163,7 @@ function StationAction({
   Props,
   "body" | "stations" | "missions" | "activeColony" | "effects" | "now" | "send"
 >) {
+  const { t } = useTranslation();
   const station = stations.find((s) => s.bodyId === body.id);
   const incoming = missions.find(
     (m) => m.kind === "found_station" && m.targetId === body.id,
@@ -162,8 +173,9 @@ function StationAction({
   if (incoming) {
     return (
       <p className="small ok">
-        Vaisseau de construction en route —{" "}
-        {formatDuration(incoming.arrivesAt - now)}
+        {t("bodyActions.stationShipEnRoute", {
+          duration: formatDuration(incoming.arrivesAt - now),
+        })}
       </p>
     );
   }
@@ -180,10 +192,12 @@ function StationAction({
       disabled={!affordable}
       title={
         !activeColony
-          ? "Aucune colonie d'origine"
+          ? t("bodyActions.noOriginColony")
           : !affordable
-            ? `Ressources insuffisantes : ${STATION_SHIP_COST_TEXT}`
-            : `Coût : ${STATION_SHIP_COST_TEXT}`
+            ? t("bodyActions.insufficientResources", {
+                cost: STATION_SHIP_COST_TEXT,
+              })
+            : t("bodyActions.cost", { cost: STATION_SHIP_COST_TEXT })
       }
       onClick={() =>
         activeColony &&
@@ -194,7 +208,7 @@ function StationAction({
         })
       }
     >
-      Fonder une station
+      {t("bodyActions.foundStation")}
     </Button>
   );
 }

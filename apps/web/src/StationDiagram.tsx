@@ -9,7 +9,8 @@ import {
 } from "@spacesim/shared";
 import { useId, useMemo } from "react";
 import { ZoomableSvg, type ViewBox } from "@spacesim/ui";
-import { ZONE_TYPE_LABELS } from "./labels.js";
+import { useTranslation } from "react-i18next";
+import { zoneTypeLabel } from "./labels.js";
 
 interface Props {
   station: Station;
@@ -74,6 +75,7 @@ export function StationDiagram({
   selectedZoneKey,
   onSelectZone,
 }: Props) {
+  const { t } = useTranslation();
   const uid = useId();
   const gooId = `${uid}-goo`;
 
@@ -105,7 +107,7 @@ export function StationDiagram({
       <ZoomableSvg
         home={home}
         className="station-diagram-svg"
-        ariaLabel={`Plan de la station ${station.name}`}
+        ariaLabel={t("stationDiagram.stationPlan", { name: station.name })}
       >
         <defs>
           <filter id={gooId}>
@@ -154,7 +156,7 @@ export function StationDiagram({
         {/* Couche nette : cœur, icônes de zone, points de croissance cliquables. */}
         <circle cx={0} cy={0} r={10} className="station-hub-core" />
         <text y={-16} textAnchor="middle" className="station-hub-label">
-          Cœur
+          {t("stationDiagram.core")}
         </text>
 
         {station.zones.map((z) => {
@@ -163,7 +165,7 @@ export function StationDiagram({
           const queued = queuedByCell.get(key);
           const clickable = !!onSelectZone;
           const label =
-            ZONE_TYPE_LABELS[z.zoneTypeId as ZoneTypeId]?.name ?? z.zoneTypeId;
+            zoneTypeLabel(z.zoneTypeId as ZoneTypeId)?.name ?? z.zoneTypeId;
           return (
             <g
               key={key}
@@ -172,7 +174,11 @@ export function StationDiagram({
               onClick={clickable ? () => onSelectZone(z) : undefined}
               role={clickable ? "button" : undefined}
               tabIndex={clickable ? 0 : undefined}
-              aria-label={clickable ? `Zone : ${label}` : undefined}
+              aria-label={
+                clickable
+                  ? t("stationDiagram.zoneAriaLabel", { name: label })
+                  : undefined
+              }
               onKeyDown={
                 clickable
                   ? (e) => {
@@ -213,7 +219,7 @@ export function StationDiagram({
               onClick={clickable ? () => onSelectGrowthPoint(p) : undefined}
               role={clickable ? "button" : undefined}
               tabIndex={clickable ? 0 : undefined}
-              aria-label="Nouvel emplacement de zone"
+              aria-label={t("stationDiagram.newZoneSlot")}
               onKeyDown={
                 clickable
                   ? (e) => {

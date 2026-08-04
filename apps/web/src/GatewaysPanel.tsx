@@ -7,10 +7,11 @@ import {
   type ResourceId,
 } from "@spacesim/shared";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { Badge, Button, NumberInput, Panel, ProgressBar } from "@spacesim/ui";
 import { formatDuration } from "./format.js";
-import { RESOURCE_LABELS } from "./labels.js";
+import { resourceLabel } from "./labels.js";
 import { useGameStore } from "./state/game-store.js";
 import { selectActiveColony } from "./state/selectors.js";
 
@@ -21,6 +22,7 @@ interface Props {
 const GATEWAY_RESOURCES = Object.keys(GATEWAY_COST) as ResourceId[];
 
 export function GatewaysPanel({ now }: Props) {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const activeColony = useGameStore(
     selectActiveColony(searchParams.get("colony")),
@@ -38,12 +40,8 @@ export function GatewaysPanel({ now }: Props) {
   if (!universe) return null;
 
   return (
-    <Panel title="Portails inter-galactiques">
-      {!hasTech && (
-        <p className="muted small">
-          Recherchez « Ingénierie des portails » pour contribuer aux chantiers.
-        </p>
-      )}
+    <Panel title={t("gatewaysPanel.title")}>
+      {!hasTech && <p className="muted small">{t("gatewaysPanel.needTech")}</p>}
       {gateways.map((gateway) => {
         const galaxy = universe.galaxies.find((g) => g.id === gateway.galaxyId);
         if (!galaxy) return null;
@@ -65,10 +63,12 @@ export function GatewaysPanel({ now }: Props) {
             <div className="queue-head">
               <strong>{galaxy.name}</strong>
               {gateway.active ? (
-                <Badge variant="ok">◈ Portail actif</Badge>
+                <Badge variant="ok">{t("gatewaysPanel.active")}</Badge>
               ) : gateway.activatesAt ? (
                 <Badge variant="ok">
-                  Chantier final — {formatDuration(gateway.activatesAt - now)}
+                  {t("gatewaysPanel.finalBuild", {
+                    duration: formatDuration(gateway.activatesAt - now),
+                  })}
                 </Badge>
               ) : (
                 <Badge>{Math.round(ratio * 100)} %</Badge>
@@ -78,18 +78,22 @@ export function GatewaysPanel({ now }: Props) {
               <>
                 <ProgressBar value={ratio * 100} max={100} />
                 <span className="small muted">
-                  Reste :{" "}
-                  {Object.entries(remaining)
-                    .map(
-                      ([res, n]) =>
-                        `${n} ${RESOURCE_LABELS[res as ResourceId]}`,
-                    )
-                    .join(" · ") || "rien"}
+                  {t("gatewaysPanel.remaining", {
+                    list:
+                      Object.entries(remaining)
+                        .map(
+                          ([res, n]) =>
+                            `${n} ${resourceLabel(res as ResourceId)}`,
+                        )
+                        .join(" · ") || t("gatewaysPanel.remainingNone"),
+                  })}
                 </span>
                 {/* Le coût croît avec l'éloignement : la richesse promise justifie l'effort. */}
                 <span className="small muted">
-                  Rang {galaxyIndexOfId(gateway.galaxyId)} · gisements ×
-                  {galaxy.depositBonus}
+                  {t("gatewaysPanel.rank", {
+                    rank: galaxyIndexOfId(gateway.galaxyId),
+                    bonus: galaxy.depositBonus,
+                  })}
                 </span>
                 {hasTech && activeColony && (
                   <div className="form-stack">
@@ -98,7 +102,10 @@ export function GatewaysPanel({ now }: Props) {
                     ).map((res) => (
                       <NumberInput
                         key={res}
-                        label={`${RESOURCE_LABELS[res]} (reste ${remaining[res]})`}
+                        label={t("gatewaysPanel.resourceRemaining", {
+                          resource: resourceLabel(res),
+                          amount: remaining[res],
+                        })}
                         min={0}
                         value={entry[res] ?? ""}
                         placeholder="0"
@@ -114,8 +121,12 @@ export function GatewaysPanel({ now }: Props) {
                       />
                     ))}
                     <span className={`small ${overCapacity ? "ko" : "muted"}`}>
-                      Soute disponible : {convoyCapacity}
-                      {overCapacity ? ` — trop lourd (${physical})` : ""}
+                      {t("gatewaysPanel.availableCargo", {
+                        capacity: convoyCapacity,
+                      })}
+                      {overCapacity
+                        ? t("gatewaysPanel.tooHeavy", { physical })
+                        : ""}
                     </span>
                     <Button
                       disabled={Object.keys(cargo).length === 0 || overCapacity}
@@ -129,7 +140,7 @@ export function GatewaysPanel({ now }: Props) {
                         setAmounts({ ...amounts, [gateway.galaxyId]: {} });
                       }}
                     >
-                      Envoyer le convoi de chantier
+                      {t("gatewaysPanel.sendConvoy")}
                     </Button>
                   </div>
                 )}
@@ -137,8 +148,7 @@ export function GatewaysPanel({ now }: Props) {
             )}
             {gateway.active && (
               <span className="small muted">
-                Gisements ×{galaxy.depositBonus} — sondez et colonisez via
-                l'ancrage.
+                {t("gatewaysPanel.activeHint", { bonus: galaxy.depositBonus })}
               </span>
             )}
           </div>

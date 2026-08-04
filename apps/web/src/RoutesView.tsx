@@ -18,8 +18,9 @@ import {
 } from "@spacesim/shared";
 import { useState } from "react";
 import { Badge, Button, NumberInput, Panel, Select } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import { formatDuration } from "./format.js";
-import { RESOURCE_LABELS, SHIP_LABELS } from "./labels.js";
+import { resourceLabel, shipLabel } from "./labels.js";
 
 interface Props {
   routes: Route[];
@@ -33,10 +34,10 @@ interface Props {
 
 type RuleType = RouteRule["type"];
 
-const RULE_LABELS: Record<RuleType, string> = {
-  maintain: "Maintenir un stock à destination",
-  fixed: "Quantité fixe par cycle",
-  surplus: "Exporter le surplus",
+const RULE_KEYS: Record<RuleType, string> = {
+  maintain: "routesView.ruleMaintain",
+  fixed: "routesView.ruleFixed",
+  surplus: "routesView.ruleSurplus",
 };
 
 export function RoutesView({
@@ -48,6 +49,7 @@ export function RoutesView({
   now,
   send,
 }: Props) {
+  const { t } = useTranslation();
   const [fromId, setFromId] = useState("");
   const [ownerId, setOwnerId] = useState("");
   const [toId, setToId] = useState("");
@@ -61,7 +63,7 @@ export function RoutesView({
 
   const belts = allBelts(universe);
   const beltName = (beltId: string) =>
-    belts.find((b) => b.id === beltId)?.name ?? "Ceinture ?";
+    belts.find((b) => b.id === beltId)?.name ?? t("routesView.unknownBelt");
 
   const sources = [
     ...colonies.map((c) => ({
@@ -158,21 +160,27 @@ export function RoutesView({
 
   return (
     <>
-      <Panel title="Routes logistiques">
+      <Panel title={t("routesView.logisticsRoutes")}>
         {routes.length === 0 ? (
-          <p className="muted">Aucune route. La flotte attend vos ordres.</p>
+          <p className="muted">{t("routesView.noRoutes")}</p>
         ) : (
           <ul className="route-list">
             {routes.map((route) => {
               const names = nameOf(route);
               const cycle = route.activeCycle;
               const status = route.paused
-                ? "en pause"
+                ? t("routesView.statusPaused")
                 : cycle
                   ? cycle.carrying > 0
-                    ? `en route (${cycle.carrying} ${RESOURCE_LABELS[route.resource]}) — livraison ${formatDuration(cycle.arrivesAt - now)}`
-                    : `retour — ${formatDuration(cycle.backAt - now)}`
-                  : "au repos (règle non déclenchée)";
+                    ? t("routesView.statusEnRoute", {
+                        carrying: cycle.carrying,
+                        resource: resourceLabel(route.resource),
+                        duration: formatDuration(cycle.arrivesAt - now),
+                      })
+                    : t("routesView.statusReturning", {
+                        duration: formatDuration(cycle.backAt - now),
+                      })
+                  : t("routesView.statusIdle");
               return (
                 <li key={route.id} className="route-item">
                   <div className="queue-head">
@@ -184,16 +192,24 @@ export function RoutesView({
                     </Badge>
                   </div>
                   <span className="small muted">
-                    {RESOURCE_LABELS[route.resource]} ·{" "}
-                    {RULE_LABELS[route.rule.type]}
+                    {resourceLabel(route.resource)} ·{" "}
+                    {t(RULE_KEYS[route.rule.type])}
                     {route.rule.type === "maintain" &&
-                      ` (≥ ${route.rule.minAtDestination} dest., garde ${route.rule.keepAtSource})`}
+                      t("routesView.maintainSuffix", {
+                        min: route.rule.minAtDestination,
+                        keep: route.rule.keepAtSource,
+                      })}
                     {route.rule.type === "fixed" &&
-                      ` (${route.rule.amount}/cycle)`}
+                      t("routesView.fixedSuffix", {
+                        amount: route.rule.amount,
+                      })}
                     {route.rule.type === "surplus" &&
-                      ` (garde ${route.rule.keepAtSource})`}
-                    {" · soute "}
-                    {fleetCapacity(route.ships)}
+                      t("routesView.surplusSuffix", {
+                        keep: route.rule.keepAtSource,
+                      })}
+                    {t("routesView.holdSuffix", {
+                      capacity: fleetCapacity(route.ships),
+                    })}
                   </span>
                   <div className="route-actions">
                     <Button
@@ -205,20 +221,20 @@ export function RoutesView({
                         })
                       }
                     >
-                      {route.paused ? "Reprendre" : "Suspendre"}
+                      {route.paused
+                        ? t("routesView.resume")
+                        : t("routesView.suspend")}
                     </Button>
                     <Button
                       disabled={!!route.activeCycle}
                       title={
-                        route.activeCycle
-                          ? "Attendez le retour du cycle en cours"
-                          : ""
+                        route.activeCycle ? t("routesView.waitForCycle") : ""
                       }
                       onClick={() =>
                         send({ type: "deleteRoute", routeId: route.id })
                       }
                     >
-                      Supprimer
+                      {t("routesView.remove")}
                     </Button>
                   </div>
                 </li>
@@ -228,55 +244,55 @@ export function RoutesView({
         )}
       </Panel>
 
-      <Panel title="Nouvelle route">
+      <Panel title={t("routesView.newRoute")}>
         <div className="form-stack">
           <Select
-            label="Source"
+            label={t("routesView.source")}
             value={source?.id ?? ""}
             onChange={(e) => setFromId(e.target.value)}
             options={sources.map((s) => ({ value: s.id, label: s.label }))}
           />
           {fromOutpost && (
             <Select
-              label="Cargos fournis par"
+              label={t("routesView.cargoProvidedBy")}
               value={owner?.id ?? ""}
               onChange={(e) => setOwnerId(e.target.value)}
               options={colonies.map((c) => ({ value: c.id, label: c.name }))}
             />
           )}
           <Select
-            label="Destination"
+            label={t("transferPanel.destination")}
             value={destination?.id ?? ""}
             onChange={(e) => setToId(e.target.value)}
             options={destinations.map((d) => ({ value: d.id, label: d.label }))}
           />
           <Select
-            label="Ressource"
+            label={t("routesView.resource")}
             value={effectiveResource}
             onChange={(e) => setResource(e.target.value as ResourceId)}
             options={availableResources.map((res) => ({
               value: res,
-              label: RESOURCE_LABELS[res as ResourceId],
+              label: resourceLabel(res as ResourceId),
             }))}
           />
           <Select
-            label="Règle"
+            label={t("routesView.rule")}
             value={ruleType}
             onChange={(e) => setRuleType(e.target.value as RuleType)}
-            options={(Object.keys(RULE_LABELS) as RuleType[])
+            options={(Object.keys(RULE_KEYS) as RuleType[])
               .filter((r) => !(toTradingPost && r === "maintain"))
-              .map((r) => ({ value: r, label: RULE_LABELS[r] }))}
+              .map((r) => ({ value: r, label: t(RULE_KEYS[r]) }))}
           />
           {ruleType === "maintain" && (
             <>
               <NumberInput
-                label="Stock min à destination"
+                label={t("routesView.minStockDestination")}
                 min={1}
                 value={param1}
                 onChange={(e) => setParam1(e.target.value)}
               />
               <NumberInput
-                label="Garder à la source"
+                label={t("routesView.keepAtSource")}
                 min={0}
                 value={param2}
                 onChange={(e) => setParam2(e.target.value)}
@@ -285,7 +301,7 @@ export function RoutesView({
           )}
           {ruleType === "fixed" && (
             <NumberInput
-              label="Quantité par cycle"
+              label={t("routesView.quantityPerCycle")}
               min={1}
               value={param1}
               onChange={(e) => setParam1(e.target.value)}
@@ -293,7 +309,7 @@ export function RoutesView({
           )}
           {ruleType === "surplus" && (
             <NumberInput
-              label="Garder à la source"
+              label={t("routesView.keepAtSource")}
               min={0}
               value={param1}
               placeholder="0"
@@ -303,7 +319,10 @@ export function RoutesView({
           {SHIP_IDS.map((shipId) => (
             <NumberInput
               key={shipId}
-              label={`${SHIP_LABELS[shipId].name} (dispo : ${idle[shipId] ?? 0})`}
+              label={t("transferPanel.shipAvailable", {
+                name: shipLabel(shipId).name,
+                count: idle[shipId] ?? 0,
+              })}
               min={0}
               max={idle[shipId] ?? 0}
               value={shipCounts[shipId] ?? ""}
@@ -314,7 +333,9 @@ export function RoutesView({
             />
           ))}
           {capacity > 0 && (
-            <span className="small ok">Soute totale : {capacity}</span>
+            <span className="small ok">
+              {t("routesView.totalHold", { capacity })}
+            </span>
           )}
           <Button
             disabled={!canCreate}
@@ -336,7 +357,7 @@ export function RoutesView({
               setParam2("");
             }}
           >
-            Créer la route
+            {t("routesView.createRoute")}
           </Button>
         </div>
       </Panel>

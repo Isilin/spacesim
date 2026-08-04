@@ -18,13 +18,9 @@ import {
   Panel,
   RowHeader,
 } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import { formatDuration } from "./format.js";
-import {
-  RESOURCE_LABELS,
-  SHIP_LABELS,
-  shipLabel,
-  TECH_LABELS,
-} from "./labels.js";
+import { resourceLabel, shipLabel, techLabel } from "./labels.js";
 
 interface Props {
   colony: Colony;
@@ -36,7 +32,7 @@ interface Props {
 
 function formatCost(cost: Partial<Record<ResourceId, number>>): string {
   return Object.entries(cost)
-    .map(([res, n]) => `${n} ${RESOURCE_LABELS[res as ResourceId]}`)
+    .map(([res, n]) => `${n} ${resourceLabel(res as ResourceId)}`)
     .join(" · ");
 }
 
@@ -47,6 +43,7 @@ export function ShipyardPanel({
   now,
   send,
 }: Props) {
+  const { t } = useTranslation();
   const hasShipyard = (colony.buildings.shipyard ?? 0) >= 1;
   const idle = idleShips(colony, routes);
 
@@ -54,14 +51,15 @@ export function ShipyardPanel({
     <Panel
       title={
         hasShipyard
-          ? `Flotte civile — file ${colony.shipQueue.length}/${MAX_SHIP_QUEUE_LENGTH}`
-          : "Flotte civile"
+          ? t("shipyardPanel.titleWithQueue", {
+              count: colony.shipQueue.length,
+              max: MAX_SHIP_QUEUE_LENGTH,
+            })
+          : t("shipyardPanel.title")
       }
     >
       {!hasShipyard && (
-        <EmptyState>
-          Construisez un chantier naval pour produire des cargos.
-        </EmptyState>
+        <EmptyState>{t("shipyardPanel.needShipyard")}</EmptyState>
       )}
       <ul className="building-list">
         {SHIP_IDS.map((shipId) => {
@@ -77,34 +75,38 @@ export function ShipyardPanel({
           return (
             <ListRow
               key={shipId}
-              title={SHIP_LABELS[shipId].name}
+              title={shipLabel(shipId).name}
               level={`×${owned}${queued > 0 ? ` (+${queued})` : ""}`}
               meta={
                 techLocked
-                  ? `${SHIP_LABELS[shipId].description} · Requiert : ${TECH_LABELS[def.requiresTech as TechId].name}`
-                  : `${SHIP_LABELS[shipId].description} · ${formatCost(def.cost)} — ${formatDuration(def.buildMs)}`
+                  ? `${shipLabel(shipId).description}${t("shipyardPanel.requires", { tech: techLabel(def.requiresTech as TechId).name })}`
+                  : `${shipLabel(shipId).description} · ${formatCost(def.cost)} — ${formatDuration(def.buildMs)}`
               }
               right={
                 <>
-                  <Badge>{Math.min(idle[shipId] ?? 0, owned)} dispo</Badge>
+                  <Badge>
+                    {t("shipyardPanel.available", {
+                      count: Math.min(idle[shipId] ?? 0, owned),
+                    })}
+                  </Badge>
                   {!techLocked && (
                     <Button
                       size="sm"
                       disabled={!hasShipyard || !affordable || queueFull}
                       title={
                         !hasShipyard
-                          ? "Chantier naval requis"
+                          ? t("shipyardPanel.needShipyardTooltip")
                           : queueFull
-                            ? "File navale pleine"
+                            ? t("shipyardPanel.queueFull")
                             : !affordable
-                              ? "Ressources insuffisantes"
+                              ? t("shipyardPanel.notAffordable")
                               : ""
                       }
                       onClick={() =>
                         send({ type: "buildShip", colonyId: colony.id, shipId })
                       }
                     >
-                      Produire
+                      {t("shipyardPanel.produce")}
                     </Button>
                   )}
                 </>

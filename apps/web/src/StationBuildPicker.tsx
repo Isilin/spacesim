@@ -13,12 +13,9 @@ import {
   type ZoneTypeId,
 } from "@spacesim/shared";
 import { Panel } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import { formatDuration } from "./format.js";
-import {
-  INSTALLATION_LABELS,
-  RESOURCE_LABELS,
-  ZONE_TYPE_LABELS,
-} from "./labels.js";
+import { installationLabel, resourceLabel, zoneTypeLabel } from "./labels.js";
 
 export type BuildSelection =
   | { kind: "growthPoint"; q: number; r: number }
@@ -33,7 +30,7 @@ interface Props {
 
 function formatCost(cost: Partial<Record<ResourceId, number>>): string {
   return Object.entries(cost)
-    .map(([res, amount]) => `${amount} ${RESOURCE_LABELS[res as ResourceId]}`)
+    .map(([res, amount]) => `${amount} ${resourceLabel(res as ResourceId)}`)
     .join(" · ");
 }
 
@@ -69,12 +66,11 @@ export function StationBuildPicker({
   selection,
   send,
 }: Props) {
+  const { t } = useTranslation();
   if (!selection) {
     return (
-      <Panel title="Construire">
-        <p className="muted small">
-          Sélectionnez un point de croissance ou une zone bâtie sur le plan.
-        </p>
+      <Panel title={t("stationBuildPicker.build")}>
+        <p className="muted small">{t("stationBuildPicker.selectHint")}</p>
       </Panel>
     );
   }
@@ -82,7 +78,7 @@ export function StationBuildPicker({
   if (selection.kind === "growthPoint") {
     const { q, r } = selection;
     return (
-      <Panel title="Nouvelle zone">
+      <Panel title={t("stationBuildPicker.newZone")}>
         <div className="fit-add">
           {ZONE_TYPE_IDS.map((id) => {
             const def = ZONE_TYPES[id];
@@ -97,10 +93,13 @@ export function StationBuildPicker({
                 disabled={disabled}
                 title={
                   locked
-                    ? "Technologie non recherchée"
+                    ? t("stationBuildPicker.techLocked")
                     : !affordable
-                      ? "Ressources insuffisantes"
-                      : `${formatCost(def.cost)} — ${formatDuration(def.buildMs)}`
+                      ? t("stationBuildPicker.notAffordable")
+                      : t("stationBuildPicker.costHint", {
+                          cost: formatCost(def.cost),
+                          duration: formatDuration(def.buildMs),
+                        })
                 }
                 onClick={() =>
                   send({
@@ -112,7 +111,7 @@ export function StationBuildPicker({
                   })
                 }
               >
-                {ZONE_TYPE_LABELS[id].name}
+                {zoneTypeLabel(id).name}
               </button>
             );
           })}
@@ -133,10 +132,12 @@ export function StationBuildPicker({
 
   return (
     <Panel
-      title={`Installations — ${ZONE_TYPE_LABELS[zoneType]?.name ?? zoneType}`}
+      title={t("stationBuildPicker.installations", {
+        zone: zoneTypeLabel(zoneType)?.name ?? zoneType,
+      })}
     >
       {candidates.length === 0 ? (
-        <p className="muted small">Aucune installation pour ce type de zone.</p>
+        <p className="muted small">{t("stationBuildPicker.noInstallation")}</p>
       ) : (
         <div className="fit-add">
           {candidates.map((id) => {
@@ -152,12 +153,15 @@ export function StationBuildPicker({
                 disabled={disabled}
                 title={
                   locked
-                    ? "Technologie non recherchée"
+                    ? t("stationBuildPicker.techLocked")
                     : slotsFull
-                      ? "Plus d'emplacement dans cette zone"
+                      ? t("stationBuildPicker.slotsFull")
                       : !affordable
-                        ? "Ressources insuffisantes"
-                        : `${formatCost(def.cost)} — ${formatDuration(def.buildMs)}`
+                        ? t("stationBuildPicker.notAffordable")
+                        : t("stationBuildPicker.costHint", {
+                            cost: formatCost(def.cost),
+                            duration: formatDuration(def.buildMs),
+                          })
                 }
                 onClick={() =>
                   send({
@@ -167,7 +171,7 @@ export function StationBuildPicker({
                   })
                 }
               >
-                {INSTALLATION_LABELS[id].name}
+                {installationLabel(id).name}
               </button>
             );
           })}

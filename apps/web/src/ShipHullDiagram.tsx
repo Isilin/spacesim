@@ -8,7 +8,8 @@ import {
   type SlotType,
 } from "@spacesim/shared";
 import { useId } from "react";
-import { MODULE_LABELS } from "./labels.js";
+import { useTranslation } from "react-i18next";
+import { moduleLabel, slotLabel } from "./labels.js";
 
 export interface SlotRef {
   type: SlotType;
@@ -373,6 +374,7 @@ export function ShipHullDiagram({
   selectedSlot,
   onSelectSlot,
 }: Props) {
+  const { t } = useTranslation();
   const chassis = chassisId ? CHASSIS[chassisId] : null;
   const size = compact ? 72 : 200;
   const uid = useId();
@@ -385,7 +387,7 @@ export function ShipHullDiagram({
         className={`hull-diagram ${compact ? "compact" : ""} empty`}
         style={{ width: size, height: size * 1.375 }}
       >
-        <span className="muted small">Aucun châssis</span>
+        <span className="muted small">{t("shipHullDiagram.noChassis")}</span>
       </div>
     );
   }
@@ -456,7 +458,7 @@ export function ShipHullDiagram({
           Array.from({ length: chassis.slots[type] }, (_, i) => {
             const pos = slotPositions(type, chassis.slots[type])[i]!;
             const filled = grouped[type][i];
-            const label = filled ? MODULE_LABELS[filled.id].name : undefined;
+            const label = filled ? moduleLabel(filled.id).name : undefined;
             const clickable = !!onSelectSlot;
             const selected =
               selectedSlot?.type === type && selectedSlot.index === i;
@@ -473,8 +475,10 @@ export function ShipHullDiagram({
                 aria-label={
                   clickable
                     ? label
-                      ? `Modifier ${label}`
-                      : `Choisir un module (${type})`
+                      ? t("shipHullDiagram.editModule", { module: label })
+                      : t("shipHullDiagram.chooseModule", {
+                          slot: slotLabel(type),
+                        })
                     : undefined
                 }
                 onKeyDown={

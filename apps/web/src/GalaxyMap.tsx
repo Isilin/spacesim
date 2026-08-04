@@ -11,6 +11,7 @@ import {
 } from "@spacesim/shared";
 import { useMemo } from "react";
 import { ZoomableSvg, type ViewBox } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   galaxy: Galaxy;
@@ -40,6 +41,7 @@ export function GalaxyMap({
   onSelect,
   onOpenSystem,
 }: Props) {
+  const { t } = useTranslation();
   const byId = new Map(galaxy.systems.map((s) => [s.id, s]));
   const territoryColor = new Map(
     territories.map((t) => [t.systemId, t.ownerColor]),
@@ -83,7 +85,7 @@ export function GalaxyMap({
     <ZoomableSvg
       className="galaxy-map"
       home={home}
-      ariaLabel={`Galaxie ${galaxy.name}`}
+      ariaLabel={t("galaxyMap.ariaLabel", { name: galaxy.name })}
     >
       {galaxy.links.map(([a, b]) => {
         const sa = byId.get(a);

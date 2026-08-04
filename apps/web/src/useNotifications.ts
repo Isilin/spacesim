@@ -10,7 +10,8 @@ import {
   type Universe,
 } from "@spacesim/shared";
 import { useEffect, useRef, useState } from "react";
-import { BUILDING_LABELS, repTierName, TECH_LABELS } from "./labels.js";
+import { useTranslation } from "react-i18next";
+import { buildingLabel, repTierName, techLabel } from "./labels.js";
 
 export interface Notification {
   id: number;
@@ -31,6 +32,7 @@ interface Snapshot {
 
 /** Détecte les événements entre deux états serveur et les transforme en toasts. */
 export function useNotifications(snapshot: Snapshot): Notification[] {
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const previous = useRef<Snapshot | null>(null);
   const nextId = useRef(1);
@@ -45,14 +47,16 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
     for (const techId of snapshot.game.researched) {
       if (!prev.game.researched.includes(techId)) {
         texts.push(
-          `Recherche terminée : ${TECH_LABELS[techId as TechId]?.name ?? techId}`,
+          t("notifications.researchDone", {
+            tech: techLabel(techId as TechId)?.name ?? techId,
+          }),
         );
       }
     }
 
     for (const colony of snapshot.colonies) {
       if (!prev.colonies.some((c) => c.id === colony.id)) {
-        texts.push(`Colonie fondée : ${colony.name}`);
+        texts.push(t("notifications.colonyFounded", { name: colony.name }));
       }
     }
 
@@ -64,7 +68,7 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
           : systemId;
         // Le premier système (colonie mère) ne mérite pas de toast.
         if (prev.exploredSystemIds.length > 0)
-          texts.push(`Système exploré : ${name}`);
+          texts.push(t("notifications.systemExplored", { name }));
       }
     }
 
@@ -81,34 +85,43 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
           (prevColony.buildings[item.buildingId] ?? 0);
         if (!stillQueued && built) {
           texts.push(
-            `Construction terminée : ${BUILDING_LABELS[item.buildingId].name} (${current.name})`,
+            t("notifications.buildingDone", {
+              building: buildingLabel(item.buildingId).name,
+              colony: current.name,
+            }),
           );
         }
       }
     }
 
     for (const transfer of prev.transfers) {
-      if (!snapshot.transfers.some((t) => t.id === transfer.id)) {
+      if (!snapshot.transfers.some((tr) => tr.id === transfer.id)) {
         const to = snapshot.colonies.find((c) => c.id === transfer.toId);
-        texts.push(`Convoi livré : ${to?.name ?? "destination inconnue"}`);
+        texts.push(
+          t("notifications.convoyDelivered", {
+            destination: to?.name ?? t("notifications.unknownDestination"),
+          }),
+        );
       }
     }
 
     for (const mission of prev.missions) {
       if (snapshot.missions.some((m) => m.id === mission.id)) continue;
       if (mission.kind === "sell") {
-        texts.push("Cargaison vendue — crédits encaissés");
+        texts.push(t("notifications.cargoSold"));
       } else if (mission.kind === "buy_return") {
         const colony = snapshot.colonies.find(
           (c) => c.id === mission.fromColonyId,
         );
         texts.push(
-          `Cargaison achetée livrée${colony ? ` : ${colony.name}` : ""}`,
+          colony
+            ? t("notifications.cargoBoughtDeliveredTo", { colony: colony.name })
+            : t("notifications.cargoBoughtDelivered"),
         );
       } else if (mission.kind === "build_outpost") {
-        texts.push("Avant-poste minier opérationnel");
+        texts.push(t("notifications.outpostOperational"));
       } else if (mission.kind === "contribute_gateway") {
-        texts.push("Contribution livrée au chantier de portail");
+        texts.push(t("notifications.gatewayContribution"));
       }
     }
 
@@ -119,20 +132,23 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
           ? (allSystems(snapshot.universe).find((s) => s.id === systemId)
               ?.name ?? systemId)
           : systemId;
-        texts.push(`Revendication perdue : ${name}`);
+        texts.push(t("notifications.claimLost", { name }));
       }
     }
     for (const [factionId, rep] of Object.entries(snapshot.game.factionRep)) {
       const prevRep = prev.game.factionRep[factionId] ?? 0;
       if (repTierName(rep) !== repTierName(prevRep) && rep > prevRep) {
         texts.push(
-          `Réputation : ${FACTIONS[factionId as FactionId]?.name ?? factionId} — ${repTierName(rep)}`,
+          t("notifications.reputation", {
+            faction: FACTIONS[factionId as FactionId]?.name ?? factionId,
+            tier: repTierName(rep),
+          }),
         );
       }
     }
 
     if (snapshot.battleCount > prev.battleCount) {
-      texts.push("Bataille résolue — voir l'onglet Flottes");
+      texts.push(t("notifications.battleResolved"));
     }
 
     if (texts.length === 0) return;
@@ -145,6 +161,7 @@ export function useNotifications(snapshot: Snapshot): Notification[] {
       );
     }, DISPLAY_MS);
   }, [
+    t,
     snapshot.game,
     snapshot.colonies,
     snapshot.transfers,
