@@ -4,7 +4,7 @@ import {
   type RoleId,
   type SanctionKind,
 } from "@spacesim/protocol";
-import { desc, eq, lt } from "drizzle-orm";
+import { and, desc, eq, lt } from "drizzle-orm";
 import {
   randomBytes,
   randomUUID,
@@ -155,7 +155,7 @@ export async function purgeExpiredSessions(now = Date.now()): Promise<void> {
 
 export async function findAccountByEmail(
   email: string,
-): Promise<{ id: string; passwordHash: string; role: RoleId } | null> {
+): Promise<{ id: string; passwordHash: string | null; role: RoleId } | null> {
   const rows = await db
     .select()
     .from(schema.accounts)
@@ -164,6 +164,71 @@ export async function findAccountByEmail(
   return row
     ? { id: row.id, passwordHash: row.passwordHash, role: row.role as RoleId }
     : null;
+}
+
+/** Identité chez un fournisseur SSO — forme minimale, pas encore le vrai échange OAuth
+ *  (chantier 27.10). */
+export interface ExternalIdentity {
+  provider: string;
+  providerUserId: string;
+  email: string;
+}
+
+/**
+ * Trouve le compte lié à une identité SSO (provider, providerUserId), ou en crée un
+ * nouveau — sans mot de passe (`passwordHash` nul) — si c'est la première connexion par
+ * ce fournisseur (chantier 27.9, fondation du schéma). Ne fusionne pas avec un compte
+ * mot de passe existant de même e-mail — décision de produit à trancher au vrai câblage
+ * OAuth (chantier 27.10), pas une hypothèse à figer maintenant.
+ */
+export async function findOrCreateAccountByIdentity(
+  identity: ExternalIdentity,
+): Promise<Account> {
+  const linked = (
+    await db
+      .select()
+      .from(schema.accountIdentities)
+      .where(
+        and(
+          eq(schema.accountIdentities.provider, identity.provider),
+          eq(schema.accountIdentities.providerUserId, identity.providerUserId),
+        ),
+      )
+  )[0];
+  if (linked) {
+    const account = (
+      await db
+        .select()
+        .from(schema.accounts)
+        .where(eq(schema.accounts.id, linked.accountId))
+    )[0];
+    if (!account)
+      throw new Error("Identité SSO orpheline — compte introuvable");
+    return {
+      id: account.id,
+      email: account.email,
+      role: account.role as RoleId,
+    };
+  }
+
+  const now = Date.now();
+  const accountId = randomUUID();
+  const email = normalizeEmail(identity.email);
+  await db.insert(schema.accounts).values({
+    id: accountId,
+    email,
+    passwordHash: null,
+    createdAt: now,
+    lastLoginAt: now,
+  });
+  await db.insert(schema.accountIdentities).values({
+    id: randomUUID(),
+    accountId,
+    provider: identity.provider,
+    providerUserId: identity.providerUserId,
+    createdAt: now,
+  });
+  return { id: accountId, email, role: "player" };
 }
 
 /**
@@ -241,7 +306,12 @@ export async function login(
     recordFailure(ip);
     return invalid;
   }
-  if (!verifyPassword(password, account.passwordHash)) {
+  // Compte SSO-seul (chantier 27.9) : aucun mot de passe à vérifier, même message
+  // générique que des identifiants incorrects (pas d'énumération de comptes).
+  if (
+    account.passwordHash === null ||
+    !verifyPassword(password, account.passwordHash)
+  ) {
     recordFailure(ip);
     return invalid;
   }

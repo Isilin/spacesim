@@ -1,8 +1,10 @@
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   activeSessionCount,
   bearerToken,
   createSession,
+  findOrCreateAccountByIdentity,
   hashPassword,
   login,
   normalizeEmail,
@@ -19,6 +21,7 @@ import { db, schema } from "./db/index.js";
 /** DB en mémoire (vitest.config.ts) : on repart de tables vides à chaque test. */
 beforeEach(async () => {
   await db.delete(schema.sessions);
+  await db.delete(schema.accountIdentities);
   await db.delete(schema.accounts);
 });
 
@@ -167,5 +170,72 @@ describe("utilitaires", () => {
 
   it("normalizeEmail met en minuscules et retire les espaces", () => {
     expect(normalizeEmail("  Pilote@Exemple.FR  ")).toBe("pilote@exemple.fr");
+  });
+});
+
+describe("identités SSO (chantier 27.9 — fondation, pas de vrai câblage OAuth)", () => {
+  it("crée un compte sans mot de passe à la première connexion par un fournisseur", async () => {
+    const account = await findOrCreateAccountByIdentity({
+      provider: "faux-fournisseur",
+      providerUserId: "ext-123",
+      email: "pilote@exemple.fr",
+    });
+    expect(account.email).toBe("pilote@exemple.fr");
+    expect(account.role).toBe("player");
+
+    const rows = await db
+      .select()
+      .from(schema.accounts)
+      .where(eq(schema.accounts.id, account.id));
+    expect(rows[0]!.passwordHash).toBeNull();
+
+    const identities = await db
+      .select()
+      .from(schema.accountIdentities)
+      .where(eq(schema.accountIdentities.accountId, account.id));
+    expect(identities).toHaveLength(1);
+    expect(identities[0]!.provider).toBe("faux-fournisseur");
+    expect(identities[0]!.providerUserId).toBe("ext-123");
+  });
+
+  it("retrouve le même compte à une connexion suivante par la même identité", async () => {
+    const first = await findOrCreateAccountByIdentity({
+      provider: "faux-fournisseur",
+      providerUserId: "ext-123",
+      email: "pilote@exemple.fr",
+    });
+    const second = await findOrCreateAccountByIdentity({
+      provider: "faux-fournisseur",
+      providerUserId: "ext-123",
+      email: "pilote@exemple.fr",
+    });
+    expect(second.id).toBe(first.id);
+    expect(await db.select().from(schema.accounts)).toHaveLength(1);
+  });
+
+  it("un compte SSO-seul ne peut pas se connecter par mot de passe (pas d'énumération)", async () => {
+    await findOrCreateAccountByIdentity({
+      provider: "faux-fournisseur",
+      providerUserId: "ext-123",
+      email: "pilote@exemple.fr",
+    });
+    const res = await login("pilote@exemple.fr", "un-mot-de-passe-quelconque");
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error).toBe("Identifiants incorrects");
+  });
+
+  it("deux fournisseurs différents pour le même providerUserId créent deux comptes distincts", async () => {
+    const a = await findOrCreateAccountByIdentity({
+      provider: "google",
+      providerUserId: "ext-123",
+      email: "a@exemple.fr",
+    });
+    const b = await findOrCreateAccountByIdentity({
+      provider: "discord",
+      providerUserId: "ext-123",
+      email: "b@exemple.fr",
+    });
+    expect(a.id).not.toBe(b.id);
   });
 });

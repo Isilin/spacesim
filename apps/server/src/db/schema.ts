@@ -5,6 +5,7 @@ import {
   pgTable,
   primaryKey,
   text,
+  unique,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -137,13 +138,14 @@ export const universeTradingPosts = pgTable("universe_trading_posts", {
 
 /**
  * Comptes joueurs (chantier 8). Le mot de passe est stocké en `scrypt$sel$hash`
- * (voir `src/auth.ts`) — jamais en clair, jamais réversible.
+ * (voir `src/auth.ts`) — jamais en clair, jamais réversible. `passwordHash` nullable
+ * depuis le chantier 27.9 : un compte SSO-seul (`account_identities`) n'en a pas.
  */
 export const accounts = pgTable("accounts", {
   id: text("id").primaryKey(),
   /** Normalisé en minuscules, unique. */
   email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
+  passwordHash: text("password_hash"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   lastLoginAt: bigint("last_login_at", { mode: "number" }),
   /**
@@ -153,6 +155,27 @@ export const accounts = pgTable("accounts", {
    */
   role: text("role").notNull().default("player"),
 });
+
+/**
+ * Identités SSO liées à un compte (chantier 27.9 — fondation, pas encore de vrai câblage
+ * OAuth, voir chantier 27.10). Un compte mot de passe n'a aucune ligne ici ; un compte
+ * SSO-seul (`accounts.passwordHash` nul) en a au moins une. `provider` en texte libre
+ * (pas d'enum Postgres, même convention que `accounts.role`) : ajouter un fournisseur ne
+ * demande pas de migration.
+ */
+export const accountIdentities = pgTable(
+  "account_identities",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    /** "google" | "discord" | ... — texte libre, pas un enum fermé. */
+    provider: text("provider").notNull(),
+    /** Id opaque chez le fournisseur — jamais réutilisé comme clé primaire locale. */
+    providerUserId: text("provider_user_id").notNull(),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  },
+  (t) => [unique().on(t.provider, t.providerUserId)],
+);
 
 /** Sessions ouvertes : jeton opaque → compte. TTL glissant, purge au boot. */
 export const sessions = pgTable("sessions", {
