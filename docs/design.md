@@ -1209,7 +1209,10 @@ pas seulement française), et parité responsive téléphone/PC avec une passe d
 Décision explicitement écartée : Effect.ts comme couche systémique (paradigme incompatible avec
 l'async/await + exceptions existant, taxe d'interop à chaque frontière). Le plan détaillé
 (séquencement par dépendance réelle, fichiers, vérifications) a vécu hors dépôt le temps de
-l'exécution, sur le même principe que les chantiers 8→12/23.
+l'exécution, sur le même principe que les chantiers 8→12/23. *Révisé au chantier 28 (ADR
+[0005](adr/0005-effect-ts-en-conditions-reelles.md)) : réintroduit dans un but d'apprentissage
+personnel, en conditions réelles (pas de couche systémique, pas de bac à sable) — les raisons
+ci-dessus restent valables pour une adoption systémique, ce que ce chantier ne décide pas.*
 
 **Numérotation** : le plus haut chantier existant dans l'historique étant 26.6-26.9, cette
 roadmap démarre à 27 plutôt que de renuméroter — 24/25/26 (comptes de stations, marché
@@ -1353,3 +1356,44 @@ sont cochées ; seules **27.10** (SSO — identifiants OAuth Discord/Google à f
 qu'un agent ne peut pas produire lui-même. Prochaine action à leur déblocage : reprendre
 directement à 27.10 (le schéma 27.9 est déjà prêt) et 27.12 (la mesure de tick 27.5 est déjà en
 place pour la première métrique custom).
+
+## Chantier 28 — Effect.ts, apprentissage en conditions réelles (04/08/2026)
+
+Chantier 27 avait explicitement écarté Effect.ts comme couche systémique (voir sa note de fin
+d'intro, révisée pour pointer ici). Décision révisée : réintroduction dans un but principal
+d'apprentissage personnel du framework — "avec le temps que ça prendra", aucune deadline produit
+— tracée dans l'ADR [0005](adr/0005-effect-ts-en-conditions-reelles.md). Contrairement à un
+apprentissage classique, pas de bac à sable séparé : chaque étape modifie directement un fichier
+réel du dépôt, en petits pas chirurgicaux et vérifiés (méthode : explication du concept, exercice
+et modification ciblée proposés, implémentation et commit par l'utilisateur, relecture/correction
+par l'agent). Gardes-fous non négociables pour ce chantier : `composeEngine`
+(`apps/server/src/runtime/composition.ts`, ADR 0001) n'est pas touché, `TickRunner.run()`
+(ADR 0003 — boucle synchrone) ne devient pas async, `packages/protocol` garde Zod comme source de
+vérité. `packages/shared` perd sa propriété "zéro dépendance runtime" dès la première étape qui y
+touche — accepté sciemment (voir ADR 0005).
+
+- [ ] **28.0** — spike de compatibilité TypeScript 7 × Effect (scratch, hors dépôt, non committé) :
+  `Effect.gen`, erreur typée, `Context.Tag`/`Layer`, `Effect.retry`+`Schedule`, plus un cas
+  `@ts-expect-error` qui doit être rejeté par le compilateur. Go/no-go avant d'ajouter `effect` à
+  un `package.json` réel.
+- [ ] **28.1** — premier `Effect.gen`/`pipe` réel, sur une petite fonction pure existante de
+  `packages/shared/src/sim/industry/colony.ts` (candidat : `canAfford`/coût de construction).
+- [ ] **28.2** — erreurs typées : factorisation du pattern `{ ok, reason }` réellement dupliqué
+  (`EnqueueResult`/`EnqueueZoneResult`/`ShipEnqueueResult` dans
+  `colony.ts`/`station.ts`/`ships.ts`) en un type d'erreur Effect commun, appliqué aux call-sites
+  réels.
+- [ ] **28.3** — `Context.Tag`, sur un service réel mais neuf et isolé (pas une réécriture d'un
+  service déjà câblé dans `composeEngine`).
+- [ ] **28.4** — `Layer`/composition, sur les dépendances réelles de ce même nouveau service.
+- [ ] **28.5** — `Schedule`/retry, préparation directe du pilote suivant.
+- [ ] **28.6** — pilote : migration bornée de `apps/server/src/runtime/persistence/persister.ts`
+  (canal d'erreur typé + `Effect.retry`/`Schedule` borné dans `runFlush()`, à la place du
+  try/catch + champ d'erreur mutable + retry implicite actuels). Signature publique et
+  comportement observé par `persister.test.ts`/`tick-runner.test.ts` inchangés.
+- [ ] **28.7** — bilan : poursuivre vers d'autres modules ou s'arrêter là pour l'instant, avant
+  d'ouvrir le chantier 29 (AdonisJS).
+
+**Chemin critique** : `28.0 → 28.1 → 28.2 → 28.3 → 28.4 → 28.5 → 28.6 → 28.7`, linéaire — chaque
+étape s'appuie sur la précédente, le pilote 28.6 s'appuie sur 28.5. Seul point d'arrêt possible
+autre que la fin : 28.0 négatif (TS7 incompatible), auquel cas la suite s'ajuste avant de
+continuer.
