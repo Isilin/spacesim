@@ -4,6 +4,7 @@
 #   docker compose run --rm test     → tests unitaires de la simulation (PGlite mémoire)
 #   docker compose run --rm typecheck→ tsc sur les 3 packages
 #   docker compose run --rm e2e      → Playwright (pile serveur+web en base mémoire)
+#   docker compose run --rm loadtest → harnais de charge REST+WS (Postgres jetable, chantier 27.7)
 #
 # Le code est monté depuis l'hôte (hot reload) ; les node_modules vivent dans
 # des volumes nommés pour ne pas mélanger les binaires natifs Linux avec l'hôte.
@@ -98,6 +99,38 @@ services:
       sh -c "pnpm install --frozen-lockfile &&
              pnpm --filter @spacesim/web exec playwright install chromium &&
              pnpm --filter @spacesim/web e2e"
+    profiles: ["tools"]
+
+  # Postgres jetable pour le harnais de charge (chantier 27.7) : jamais le volume
+  # `pgdata` de dev — les données de charge ne doivent pas polluer l'univers de dev.
+  postgres_loadtest:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: spacesim
+      POSTGRES_USER: spacesim
+      POSTGRES_PASSWORD: spacesim
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spacesim -d spacesim"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+    profiles: ["tools"]
+
+  # Harnais de charge (chantier 27.7) : démarre son propre serveur (loadtest/run.mjs),
+  # attend /health, puis REST (autocannon) et WS (connexions concurrentes réelles) contre
+  # ce serveur — durée de tick en régime stationnaire + percentiles de latence WS, à lire
+  # par rapport à l'instrumentation de 27.5.
+  loadtest:
+    <<: *base
+    environment:
+      DATABASE_URL: postgres://spacesim:spacesim@postgres_loadtest:5432/spacesim
+      # Le but ici est de mesurer un débit réel, pas de vérifier le rate-limit lui-même
+      # (RATE_LIMIT_MAX=100/min par défaut, adapté à un usage normal, pas à autocannon).
+      RATE_LIMIT_MAX: "1000000"
+    depends_on:
+      postgres_loadtest:
+        condition: service_healthy
+    command: sh -c "pnpm install --frozen-lockfile && pnpm --filter @spacesim/server loadtest"
     profiles: ["tools"]
 
 volumes:
