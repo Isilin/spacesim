@@ -22,6 +22,7 @@ import {
 } from "@spacesim/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Module {
   id: string;
@@ -38,22 +39,22 @@ interface Module {
   effects: Record<string, unknown>;
 }
 
-const SLOT_LABELS: Record<string, string> = {
-  weapon: "Arme",
-  defense: "Défense",
-  propulsion: "Propulsion",
-  utility: "Utilitaire",
+const SLOT_KEYS: Record<string, string> = {
+  weapon: "modulesView.slotWeapon",
+  defense: "modulesView.slotDefense",
+  propulsion: "modulesView.slotPropulsion",
+  utility: "modulesView.slotUtility",
 };
 
-const ROLE_LABELS: Record<string, string> = {
-  weapon: "Arme",
-  defense: "Défense",
-  propulsion: "Propulsion",
-  cargo: "Cargo",
-  mining: "Minage",
-  habitat: "Habitat",
-  support: "Soutien",
-  sensor: "Senseur",
+const ROLE_KEYS: Record<string, string> = {
+  weapon: "modulesView.roleWeapon",
+  defense: "modulesView.roleDefense",
+  propulsion: "modulesView.rolePropulsion",
+  cargo: "modulesView.roleCargo",
+  mining: "modulesView.roleMining",
+  habitat: "modulesView.roleHabitat",
+  support: "modulesView.roleSupport",
+  sensor: "modulesView.roleSensor",
 };
 
 interface ModuleForm {
@@ -108,6 +109,7 @@ function formFromModule(m: Module): ModuleForm {
  * Client orval (chantier 27.15).
  */
 export function ModulesView() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data, error, isPending } = useGetApiAdminContentModules();
   const modules = (data?.modules ?? []) as Module[];
@@ -115,7 +117,7 @@ export function ModulesView() {
   const loadError = error
     ? error instanceof Error
       ? error.message
-      : "Serveur injoignable"
+      : t("contentCommon.serverUnreachable")
     : null;
 
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
@@ -142,14 +144,18 @@ export function ModulesView() {
     if (!editing) return;
     const id = editing.isNew ? newId.trim() : editing.id;
     if (!id) {
-      setSubmitError("Id requis");
+      setSubmitError(t("contentCommon.idRequired"));
       return;
     }
     let effects: unknown;
     try {
       effects = JSON.parse(form.effectsText);
     } catch {
-      setSubmitError("Effets : JSON invalide");
+      setSubmitError(
+        t("contentCommon.invalidJson", {
+          field: t("contentCommon.effectsField"),
+        }),
+      );
       return;
     }
     const payload: UpsertModuleInput = {
@@ -171,7 +177,9 @@ export function ModulesView() {
       queryClient.setQueryData(getGetApiAdminContentModulesQueryKey(), result);
       setEditing(null);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
+      setSubmitError(
+        err instanceof Error ? err.message : t("contentCommon.serverError"),
+      );
     }
   };
 
@@ -180,29 +188,35 @@ export function ModulesView() {
   };
 
   const columns: TableColumn<Module>[] = [
-    { key: "id", label: "Id" },
-    { key: "nameFr", label: "Nom" },
+    { key: "id", label: t("contentCommon.id") },
+    { key: "nameFr", label: t("contentCommon.name") },
     {
       key: "slot",
-      label: "Emplacement",
-      render: (v) => SLOT_LABELS[v as string] ?? (v as string),
+      label: t("modulesView.slot"),
+      render: (v) => {
+        const key = SLOT_KEYS[v as string];
+        return key ? t(key) : (v as string);
+      },
     },
     {
       key: "role",
-      label: "Rôle",
-      render: (v) => ROLE_LABELS[v as string] ?? (v as string),
+      label: t("modulesView.role"),
+      render: (v) => {
+        const key = ROLE_KEYS[v as string];
+        return key ? t(key) : (v as string);
+      },
     },
     {
       key: "requiresTech",
-      label: "Tech requise",
-      render: (v) => (v as string | null) ?? "—",
+      label: t("contentCommon.requiredTech"),
+      render: (v) => (v as string | null) ?? t("contentCommon.none"),
     },
     {
       key: "actions",
       label: "",
       render: (_v, row) => (
         <Button variant="link" onClick={() => openEdit(row)}>
-          Modifier
+          {t("contentCommon.edit")}
         </Button>
       ),
     },
@@ -210,12 +224,12 @@ export function ModulesView() {
 
   return (
     <Panel
-      title="Modules"
-      actions={<Button onClick={openCreate}>Nouveau</Button>}
+      title={t("modulesView.title")}
+      actions={<Button onClick={openCreate}>{t("modulesView.new")}</Button>}
     >
       {loadError && <p className="auth-error">{loadError}</p>}
       {!loadError && isPending && (
-        <Skeleton variant="block" label="Chargement des modules…" />
+        <Skeleton variant="block" label={t("modulesView.loading")} />
       )}
       {!loadError && !isPending && <Table columns={columns} rows={modules} />}
 
@@ -223,24 +237,26 @@ export function ModulesView() {
         <Modal open={editing !== null} onClose={() => setEditing(null)}>
           <Modal.Header
             title={
-              editing.isNew ? "Nouveau module" : `Modifier « ${editing.id} »`
+              editing.isNew
+                ? t("modulesView.newTitle")
+                : t("contentCommon.editTitle", { id: editing.id })
             }
           />
           <Modal.Body>
             {editing.isNew && (
               <Field
-                label="Id (identifiant technique, ex. quantum_scanner)"
+                label={t("modulesView.idHint")}
                 value={newId}
                 onChange={(e) => setNewId(e.target.value)}
               />
             )}
             <Field
-              label="Nom"
+              label={t("contentCommon.name")}
               value={form.nameFr}
               onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
             />
             <Field
-              label="Description"
+              label={t("contentCommon.description")}
               value={form.descriptionFr}
               onChange={(e) =>
                 setForm({ ...form, descriptionFr: e.target.value })
@@ -248,7 +264,7 @@ export function ModulesView() {
             />
             <div className="stat-row">
               <Select
-                label="Emplacement"
+                label={t("modulesView.slot")}
                 value={form.slot}
                 onChange={(e) =>
                   setForm({
@@ -258,11 +274,11 @@ export function ModulesView() {
                 }
                 options={SLOT_TYPES.map((s) => ({
                   value: s,
-                  label: SLOT_LABELS[s] ?? s,
+                  label: SLOT_KEYS[s] ? t(SLOT_KEYS[s]) : s,
                 }))}
               />
               <Select
-                label="Rôle"
+                label={t("modulesView.role")}
                 value={form.role}
                 onChange={(e) =>
                   setForm({
@@ -272,28 +288,28 @@ export function ModulesView() {
                 }
                 options={MODULE_ROLES.map((r) => ({
                   value: r,
-                  label: ROLE_LABELS[r] ?? r,
+                  label: ROLE_KEYS[r] ? t(ROLE_KEYS[r]) : r,
                 }))}
               />
             </div>
-            <p className="muted small">Budgets consommés</p>
+            <p className="muted small">{t("modulesView.budgetsConsumed")}</p>
             <div className="stat-row">
               <NumberInput
-                label="Énergie"
+                label={t("modulesView.energy")}
                 value={form.power}
                 onChange={(e) =>
                   setForm({ ...form, power: Number(e.target.value) })
                 }
               />
               <NumberInput
-                label="Tonnage"
+                label={t("modulesView.tonnage")}
                 value={form.tonnage}
                 onChange={(e) =>
                   setForm({ ...form, tonnage: Number(e.target.value) })
                 }
               />
               <NumberInput
-                label="Calcul"
+                label={t("modulesView.calc")}
                 value={form.calc}
                 onChange={(e) =>
                   setForm({ ...form, calc: Number(e.target.value) })
@@ -301,23 +317,21 @@ export function ModulesView() {
               />
             </div>
             <NumberInput
-              label="Temps de fabrication (s)"
+              label={t("contentCommon.buildTime")}
               value={form.buildMs / 1000}
               onChange={(e) =>
                 setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
               }
             />
             <Field
-              label="Tech requise (id, vide = aucune)"
+              label={t("contentCommon.requiredTechField")}
               value={form.requiresTech}
               onChange={(e) =>
                 setForm({ ...form, requiresTech: e.target.value })
               }
             />
             <div className="field-textarea-wrap">
-              <label htmlFor="module-effects">
-                Effets (JSON — champs de ModuleEffects)
-              </label>
+              <label htmlFor="module-effects">{t("modulesView.effects")}</label>
               <textarea
                 id="module-effects"
                 className="field-textarea"
@@ -329,7 +343,7 @@ export function ModulesView() {
               />
             </div>
             <p className="muted small">
-              Coût de construction (ajouté au châssis)
+              {t("modulesView.buildCostAddedToChassis")}
             </p>
             <div className="stat-row">
               {RESOURCES.map((res) => (
@@ -345,10 +359,12 @@ export function ModulesView() {
           </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
-              Annuler
+              {t("contentCommon.cancel")}
             </Button>
             <Button disabled={mutation.isPending} onClick={() => void submit()}>
-              {mutation.isPending ? "…" : "Enregistrer"}
+              {mutation.isPending
+                ? t("contentCommon.saving")
+                : t("contentCommon.save")}
             </Button>
           </Modal.Actions>
         </Modal>

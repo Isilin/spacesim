@@ -17,6 +17,7 @@ import {
 } from "@spacesim/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface ZoneType {
   id: string;
@@ -63,6 +64,7 @@ function formFromZoneType(z: ZoneType): ZoneTypeForm {
  * Client orval (chantier 27.15).
  */
 export function ZoneTypesView() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data, error, isPending } = useGetApiAdminContentZoneTypes();
   const zoneTypes = (data?.zoneTypes ?? []) as ZoneType[];
@@ -70,7 +72,7 @@ export function ZoneTypesView() {
   const loadError = error
     ? error instanceof Error
       ? error.message
-      : "Serveur injoignable"
+      : t("contentCommon.serverUnreachable")
     : null;
 
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
@@ -97,7 +99,7 @@ export function ZoneTypesView() {
     if (!editing) return;
     const id = editing.isNew ? newId.trim() : editing.id;
     if (!id) {
-      setSubmitError("Id requis");
+      setSubmitError(t("contentCommon.idRequired"));
       return;
     }
     const payload: UpsertZoneTypeInput = {
@@ -116,7 +118,9 @@ export function ZoneTypesView() {
       );
       setEditing(null);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
+      setSubmitError(
+        err instanceof Error ? err.message : t("contentCommon.serverError"),
+      );
     }
   };
 
@@ -125,25 +129,25 @@ export function ZoneTypesView() {
   };
 
   const columns: TableColumn<ZoneType>[] = [
-    { key: "id", label: "Id" },
-    { key: "nameFr", label: "Nom" },
+    { key: "id", label: t("contentCommon.id") },
+    { key: "nameFr", label: t("contentCommon.name") },
     {
       key: "buildMs",
-      label: "Construction",
+      label: t("zoneTypesView.colConstruction"),
       align: "right",
       render: (v) => `${Math.round((v as number) / 1000)} s`,
     },
     {
       key: "requiresTech",
-      label: "Tech requise",
-      render: (v) => (v as string | null) ?? "—",
+      label: t("contentCommon.requiredTech"),
+      render: (v) => (v as string | null) ?? t("contentCommon.none"),
     },
     {
       key: "actions",
       label: "",
       render: (_v, row) => (
         <Button variant="link" onClick={() => openEdit(row)}>
-          Modifier
+          {t("contentCommon.edit")}
         </Button>
       ),
     },
@@ -151,12 +155,12 @@ export function ZoneTypesView() {
 
   return (
     <Panel
-      title="Types de zone"
-      actions={<Button onClick={openCreate}>Nouveau</Button>}
+      title={t("zoneTypesView.title")}
+      actions={<Button onClick={openCreate}>{t("zoneTypesView.new")}</Button>}
     >
       {loadError && <p className="auth-error">{loadError}</p>}
       {!loadError && isPending && (
-        <Skeleton variant="block" label="Chargement des types de zone…" />
+        <Skeleton variant="block" label={t("zoneTypesView.loading")} />
       )}
       {!loadError && !isPending && <Table columns={columns} rows={zoneTypes} />}
 
@@ -165,45 +169,45 @@ export function ZoneTypesView() {
           <Modal.Header
             title={
               editing.isNew
-                ? "Nouveau type de zone"
-                : `Modifier « ${editing.id} »`
+                ? t("zoneTypesView.newTitle")
+                : t("contentCommon.editTitle", { id: editing.id })
             }
           />
           <Modal.Body>
             {editing.isNew && (
               <Field
-                label="Id (identifiant technique, ex. logistics_zone)"
+                label={t("zoneTypesView.idHint")}
                 value={newId}
                 onChange={(e) => setNewId(e.target.value)}
               />
             )}
             <Field
-              label="Nom"
+              label={t("contentCommon.name")}
               value={form.nameFr}
               onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
             />
             <Field
-              label="Description"
+              label={t("contentCommon.description")}
               value={form.descriptionFr}
               onChange={(e) =>
                 setForm({ ...form, descriptionFr: e.target.value })
               }
             />
             <NumberInput
-              label="Temps de construction (s)"
+              label={t("zoneTypesView.buildTime")}
               value={form.buildMs / 1000}
               onChange={(e) =>
                 setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
               }
             />
             <Field
-              label="Tech requise (id, vide = aucune)"
+              label={t("contentCommon.requiredTechField")}
               value={form.requiresTech}
               onChange={(e) =>
                 setForm({ ...form, requiresTech: e.target.value })
               }
             />
-            <p className="muted small">Coût de construction</p>
+            <p className="muted small">{t("contentCommon.buildCost")}</p>
             <div className="stat-row">
               {RESOURCES.map((res) => (
                 <NumberInput
@@ -218,10 +222,12 @@ export function ZoneTypesView() {
           </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
-              Annuler
+              {t("contentCommon.cancel")}
             </Button>
             <Button disabled={mutation.isPending} onClick={() => void submit()}>
-              {mutation.isPending ? "…" : "Enregistrer"}
+              {mutation.isPending
+                ? t("contentCommon.saving")
+                : t("contentCommon.save")}
             </Button>
           </Modal.Actions>
         </Modal>

@@ -21,6 +21,7 @@ import {
 } from "@spacesim/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Warship {
   id: string;
@@ -37,11 +38,11 @@ interface Warship {
   fleetDamageBonus: number | null;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  skirmisher: "Escarmoucheur",
-  line: "Ligne",
-  capital: "Capital",
-  support: "Soutien",
+const CATEGORY_KEYS: Record<string, string> = {
+  skirmisher: "warshipsView.categorySkirmisher",
+  line: "warshipsView.categoryLine",
+  capital: "warshipsView.categoryCapital",
+  support: "warshipsView.categorySupport",
 };
 
 function emptyForm(): UpsertWarshipInput {
@@ -84,13 +85,14 @@ function formFromWarship(w: Warship): UpsertWarshipInput {
  * requêtes obsolètes (AbortSignal) et l'état de chargement/erreur.
  */
 export function WarshipsView() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data, error, isPending } = useGetApiAdminContentWarships();
   const warships = (data?.warships ?? []) as Warship[];
   const loadError = error
     ? error instanceof Error
       ? error.message
-      : "Serveur injoignable"
+      : t("contentCommon.serverUnreachable")
     : null;
   const mutation = usePutApiAdminContentWarshipsId();
 
@@ -118,7 +120,7 @@ export function WarshipsView() {
     if (!editing) return;
     const id = editing.isNew ? newId.trim() : editing.id;
     if (!id) {
-      setSubmitError("Id requis");
+      setSubmitError(t("contentCommon.idRequired"));
       return;
     }
     setSubmitError(null);
@@ -127,7 +129,9 @@ export function WarshipsView() {
       queryClient.setQueryData(getGetApiAdminContentWarshipsQueryKey(), result);
       setEditing(null);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
+      setSubmitError(
+        err instanceof Error ? err.message : t("contentCommon.serverError"),
+      );
     }
   };
 
@@ -136,33 +140,36 @@ export function WarshipsView() {
   };
 
   const columns: TableColumn<Warship>[] = [
-    { key: "id", label: "Id" },
-    { key: "nameFr", label: "Nom" },
+    { key: "id", label: t("contentCommon.id") },
+    { key: "nameFr", label: t("contentCommon.name") },
     {
       key: "category",
-      label: "Catégorie",
-      render: (v) => CATEGORY_LABELS[v as string] ?? (v as string),
+      label: t("warshipsView.category"),
+      render: (v) => {
+        const key = CATEGORY_KEYS[v as string];
+        return key ? t(key) : (v as string);
+      },
     },
-    { key: "hull", label: "Coque", align: "right" },
-    { key: "shield", label: "Boucliers", align: "right" },
-    { key: "initiative", label: "Initiative", align: "right" },
+    { key: "hull", label: t("warshipsView.hull"), align: "right" },
+    { key: "shield", label: t("warshipsView.shields"), align: "right" },
+    { key: "initiative", label: t("warshipsView.initiative"), align: "right" },
     {
       key: "buildMs",
-      label: "Fabrication",
+      label: t("contentCommon.buildDuration"),
       align: "right",
       render: (v) => `${Math.round((v as number) / 1000)} s`,
     },
     {
       key: "requiresTech",
-      label: "Tech requise",
-      render: (v) => (v as string | null) ?? "—",
+      label: t("contentCommon.requiredTech"),
+      render: (v) => (v as string | null) ?? t("contentCommon.none"),
     },
     {
       key: "actions",
       label: "",
       render: (_v, row) => (
         <Button variant="link" onClick={() => openEdit(row)}>
-          Modifier
+          {t("contentCommon.edit")}
         </Button>
       ),
     },
@@ -170,12 +177,12 @@ export function WarshipsView() {
 
   return (
     <Panel
-      title="Vaisseaux de guerre"
-      actions={<Button onClick={openCreate}>Nouveau</Button>}
+      title={t("warshipsView.title")}
+      actions={<Button onClick={openCreate}>{t("warshipsView.new")}</Button>}
     >
       {loadError && <p className="auth-error">{loadError}</p>}
       {!loadError && isPending && (
-        <Skeleton variant="block" label="Chargement des vaisseaux de guerre…" />
+        <Skeleton variant="block" label={t("warshipsView.loading")} />
       )}
       {!loadError && !isPending && <Table columns={columns} rows={warships} />}
 
@@ -184,32 +191,32 @@ export function WarshipsView() {
           <Modal.Header
             title={
               editing.isNew
-                ? "Nouveau vaisseau de guerre"
-                : `Modifier « ${editing.id} »`
+                ? t("warshipsView.newTitle")
+                : t("contentCommon.editTitle", { id: editing.id })
             }
           />
           <Modal.Body>
             {editing.isNew && (
               <Field
-                label="Id (identifiant technique, ex. plasma_cruiser)"
+                label={t("warshipsView.idHint")}
                 value={newId}
                 onChange={(e) => setNewId(e.target.value)}
               />
             )}
             <Field
-              label="Nom"
+              label={t("contentCommon.name")}
               value={form.nameFr}
               onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
             />
             <Field
-              label="Description"
+              label={t("contentCommon.description")}
               value={form.descriptionFr}
               onChange={(e) =>
                 setForm({ ...form, descriptionFr: e.target.value })
               }
             />
             <Select
-              label="Catégorie"
+              label={t("warshipsView.category")}
               value={form.category}
               onChange={(e) =>
                 setForm({
@@ -219,26 +226,26 @@ export function WarshipsView() {
               }
               options={WARSHIP_CATEGORIES.map((c) => ({
                 value: c,
-                label: CATEGORY_LABELS[c] ?? c,
+                label: CATEGORY_KEYS[c] ? t(CATEGORY_KEYS[c]) : c,
               }))}
             />
             <div className="stat-row">
               <NumberInput
-                label="Coque"
+                label={t("warshipsView.hull")}
                 value={form.hull}
                 onChange={(e) =>
                   setForm({ ...form, hull: Number(e.target.value) })
                 }
               />
               <NumberInput
-                label="Boucliers"
+                label={t("warshipsView.shields")}
                 value={form.shield}
                 onChange={(e) =>
                   setForm({ ...form, shield: Number(e.target.value) })
                 }
               />
               <NumberInput
-                label="Initiative"
+                label={t("warshipsView.initiative")}
                 value={form.initiative}
                 onChange={(e) =>
                   setForm({ ...form, initiative: Number(e.target.value) })
@@ -247,7 +254,7 @@ export function WarshipsView() {
             </div>
             <div className="stat-row">
               <NumberInput
-                label="Armes (longue portée)"
+                label={t("warshipsView.weaponsLong")}
                 value={form.weapons.long}
                 onChange={(e) =>
                   setForm({
@@ -257,7 +264,7 @@ export function WarshipsView() {
                 }
               />
               <NumberInput
-                label="Armes (portée moyenne)"
+                label={t("warshipsView.weaponsMedium")}
                 value={form.weapons.medium}
                 onChange={(e) =>
                   setForm({
@@ -270,7 +277,7 @@ export function WarshipsView() {
                 }
               />
               <NumberInput
-                label="Armes (courte portée)"
+                label={t("warshipsView.weaponsShort")}
                 value={form.weapons.short}
                 onChange={(e) =>
                   setForm({
@@ -282,14 +289,14 @@ export function WarshipsView() {
             </div>
             <div className="stat-row">
               <NumberInput
-                label="Temps de fabrication (s)"
+                label={t("contentCommon.buildTime")}
                 value={form.buildMs / 1000}
                 onChange={(e) =>
                   setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
                 }
               />
               <NumberInput
-                label="Bonus dégâts de flotte"
+                label={t("warshipsView.fleetDamageBonus")}
                 value={form.fleetDamageBonus ?? 0}
                 onChange={(e) =>
                   setForm({
@@ -300,7 +307,7 @@ export function WarshipsView() {
               />
             </div>
             <Field
-              label="Tech requise (id, vide = aucune)"
+              label={t("contentCommon.requiredTechField")}
               value={form.requiresTech ?? ""}
               onChange={(e) =>
                 setForm({
@@ -309,7 +316,7 @@ export function WarshipsView() {
                 })
               }
             />
-            <p className="muted small">Coût de construction</p>
+            <p className="muted small">{t("contentCommon.buildCost")}</p>
             <div className="stat-row">
               {RESOURCES.map((res) => (
                 <NumberInput
@@ -324,10 +331,12 @@ export function WarshipsView() {
           </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
-              Annuler
+              {t("contentCommon.cancel")}
             </Button>
             <Button disabled={mutation.isPending} onClick={() => void submit()}>
-              {mutation.isPending ? "…" : "Enregistrer"}
+              {mutation.isPending
+                ? t("contentCommon.saving")
+                : t("contentCommon.save")}
             </Button>
           </Modal.Actions>
         </Modal>

@@ -17,6 +17,7 @@ import {
 } from "@spacesim/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Tech {
   id: string;
@@ -29,11 +30,11 @@ interface Tech {
   effects: Record<string, unknown>;
 }
 
-const BRANCH_LABELS: Record<string, string> = {
-  industry: "Industrie",
-  colonization: "Colonisation",
-  society: "Société",
-  military: "Militaire",
+const BRANCH_KEYS: Record<string, string> = {
+  industry: "techsView.branchIndustry",
+  colonization: "techsView.branchColonization",
+  society: "techsView.branchSociety",
+  military: "techsView.branchMilitary",
 };
 
 interface TechForm {
@@ -79,6 +80,7 @@ function formFromTech(t: Tech): TechForm {
  * Client orval (chantier 27.15).
  */
 export function TechsView() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data, error, isPending } = useGetApiAdminContentTechs();
   const techs = (data?.techs ?? []) as Tech[];
@@ -86,7 +88,7 @@ export function TechsView() {
   const loadError = error
     ? error instanceof Error
       ? error.message
-      : "Serveur injoignable"
+      : t("contentCommon.serverUnreachable")
     : null;
 
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
@@ -113,14 +115,18 @@ export function TechsView() {
     if (!editing) return;
     const id = editing.isNew ? newId.trim() : editing.id;
     if (!id) {
-      setSubmitError("Id requis");
+      setSubmitError(t("contentCommon.idRequired"));
       return;
     }
     let effects: unknown;
     try {
       effects = JSON.parse(form.effectsText);
     } catch {
-      setSubmitError("Effets : JSON invalide");
+      setSubmitError(
+        t("contentCommon.invalidJson", {
+          field: t("contentCommon.effectsField"),
+        }),
+      );
       return;
     }
     const payload: UpsertTechInput = {
@@ -141,37 +147,44 @@ export function TechsView() {
       queryClient.setQueryData(getGetApiAdminContentTechsQueryKey(), result);
       setEditing(null);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
+      setSubmitError(
+        err instanceof Error ? err.message : t("contentCommon.serverError"),
+      );
     }
   };
 
   const columns: TableColumn<Tech>[] = [
-    { key: "id", label: "Id" },
-    { key: "nameFr", label: "Nom" },
+    { key: "id", label: t("contentCommon.id") },
+    { key: "nameFr", label: t("contentCommon.name") },
     {
       key: "branch",
-      label: "Branche",
-      render: (v) => BRANCH_LABELS[v as string] ?? (v as string),
+      label: t("techsView.branch"),
+      render: (v) => {
+        const key = BRANCH_KEYS[v as string];
+        return key ? t(key) : (v as string);
+      },
     },
-    { key: "cost", label: "Coût (science)", align: "right" },
+    { key: "cost", label: t("techsView.scienceCost"), align: "right" },
     {
       key: "durationMs",
-      label: "Durée",
+      label: t("techsView.colDuration"),
       align: "right",
       render: (v) => `${Math.round((v as number) / 1000)} s`,
     },
     {
       key: "requires",
-      label: "Prérequis",
+      label: t("techsView.colRequires"),
       render: (v) =>
-        (v as string[]).length > 0 ? (v as string[]).join(", ") : "—",
+        (v as string[]).length > 0
+          ? (v as string[]).join(", ")
+          : t("contentCommon.none"),
     },
     {
       key: "actions",
       label: "",
       render: (_v, row) => (
         <Button variant="link" onClick={() => openEdit(row)}>
-          Modifier
+          {t("contentCommon.edit")}
         </Button>
       ),
     },
@@ -179,12 +192,12 @@ export function TechsView() {
 
   return (
     <Panel
-      title="Arbre de recherche"
-      actions={<Button onClick={openCreate}>Nouvelle</Button>}
+      title={t("techsView.title")}
+      actions={<Button onClick={openCreate}>{t("techsView.new")}</Button>}
     >
       {loadError && <p className="auth-error">{loadError}</p>}
       {!loadError && isPending && (
-        <Skeleton variant="block" label="Chargement de l'arbre de recherche…" />
+        <Skeleton variant="block" label={t("techsView.loading")} />
       )}
       {!loadError && !isPending && <Table columns={columns} rows={techs} />}
 
@@ -192,24 +205,26 @@ export function TechsView() {
         <Modal open={editing !== null} onClose={() => setEditing(null)}>
           <Modal.Header
             title={
-              editing.isNew ? "Nouvelle tech" : `Modifier « ${editing.id} »`
+              editing.isNew
+                ? t("techsView.newTitle")
+                : t("contentCommon.editTitle", { id: editing.id })
             }
           />
           <Modal.Body>
             {editing.isNew && (
               <Field
-                label="Id (identifiant technique, ex. deep_mining)"
+                label={t("techsView.idHint")}
                 value={newId}
                 onChange={(e) => setNewId(e.target.value)}
               />
             )}
             <Field
-              label="Nom"
+              label={t("contentCommon.name")}
               value={form.nameFr}
               onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
             />
             <Field
-              label="Description"
+              label={t("contentCommon.description")}
               value={form.descriptionFr}
               onChange={(e) =>
                 setForm({ ...form, descriptionFr: e.target.value })
@@ -217,7 +232,7 @@ export function TechsView() {
             />
             <div className="stat-row">
               <Select
-                label="Branche"
+                label={t("techsView.branch")}
                 value={form.branch}
                 onChange={(e) =>
                   setForm({
@@ -227,18 +242,18 @@ export function TechsView() {
                 }
                 options={TECH_BRANCHES.map((b) => ({
                   value: b,
-                  label: BRANCH_LABELS[b] ?? b,
+                  label: BRANCH_KEYS[b] ? t(BRANCH_KEYS[b]) : b,
                 }))}
               />
               <NumberInput
-                label="Coût (science)"
+                label={t("techsView.scienceCost")}
                 value={form.cost}
                 onChange={(e) =>
                   setForm({ ...form, cost: Number(e.target.value) })
                 }
               />
               <NumberInput
-                label="Durée (s)"
+                label={t("techsView.duration")}
                 value={form.durationMs / 1000}
                 onChange={(e) =>
                   setForm({
@@ -249,16 +264,14 @@ export function TechsView() {
               />
             </div>
             <Field
-              label="Prérequis (ids séparés par des virgules)"
+              label={t("techsView.requires")}
               value={form.requiresText}
               onChange={(e) =>
                 setForm({ ...form, requiresText: e.target.value })
               }
             />
             <div className="field-textarea-wrap">
-              <label htmlFor="tech-effects">
-                Effets (JSON — champs de TechEffects)
-              </label>
+              <label htmlFor="tech-effects">{t("techsView.effects")}</label>
               <textarea
                 id="tech-effects"
                 className="field-textarea"
@@ -273,10 +286,12 @@ export function TechsView() {
           </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
-              Annuler
+              {t("contentCommon.cancel")}
             </Button>
             <Button disabled={mutation.isPending} onClick={() => void submit()}>
-              {mutation.isPending ? "…" : "Enregistrer"}
+              {mutation.isPending
+                ? t("contentCommon.saving")
+                : t("contentCommon.save")}
             </Button>
           </Modal.Actions>
         </Modal>

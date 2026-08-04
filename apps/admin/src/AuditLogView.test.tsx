@@ -1,7 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import { I18nextProvider } from "react-i18next";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuditLogView } from "./AuditLogView.js";
+import { i18n } from "./i18n.js";
 
 function mockFetch(body: unknown, status = 200) {
   vi.spyOn(global, "fetch").mockResolvedValue(
@@ -16,9 +18,11 @@ function renderView() {
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={queryClient}>
-      <AuditLogView />
-    </QueryClientProvider>,
+    <I18nextProvider i18n={i18n}>
+      <QueryClientProvider client={queryClient}>
+        <AuditLogView />
+      </QueryClientProvider>
+    </I18nextProvider>,
   );
 }
 
@@ -31,7 +35,10 @@ describe("AuditLogView", () => {
   it("affiche un état vide quand le journal est vide", async () => {
     mockFetch({ entries: [] });
     renderView();
-    expect(await screen.findByText("Aucune action journalisée.")).toBeDefined();
+    // Texte traduit (chantier 27.18 — i18n) : interroger via la même clé que le
+    // composant plutôt qu'un littéral, indépendant de la locale active en test
+    // (jsdom résout `navigator.language` en `en-US`, pas le repli français).
+    expect(await screen.findByText(i18n.t("auditLogView.empty"))).toBeDefined();
   });
 
   it("affiche les entrées reçues, envoie le jeton stocké en Authorization", async () => {

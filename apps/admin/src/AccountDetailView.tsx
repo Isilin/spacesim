@@ -18,6 +18,7 @@ import {
   type TableColumn,
 } from "@spacesim/ui";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 import { useModal } from "@spacesim/ui";
 import { useQueryClient } from "@tanstack/react-query";
@@ -74,58 +75,33 @@ interface AccountDetail {
   sanctionHistory: SanctionEntry[];
 }
 
-const COLONY_COLUMNS: TableColumn<ColonyRow>[] = [
-  { key: "name", label: "Colonie" },
-  { key: "systemId", label: "Système" },
-  { key: "population", label: "Population", align: "right" },
-  { key: "credits", label: "Crédits", align: "right" },
-  { key: "ore", label: "Minerai", align: "right" },
-  { key: "energy", label: "Énergie", align: "right" },
-  { key: "food", label: "Nourriture", align: "right" },
-];
-
-const SANCTION_LABELS: Record<SanctionKind, string> = {
-  warn: "Avertissement",
-  suspend: "Suspension temporaire",
-  ban: "Bannissement",
-  unban: "Lever le bannissement",
-  force_logout: "Déconnexion forcée",
+const SANCTION_KEYS: Record<SanctionKind, string> = {
+  warn: "accountDetailView.sanctionWarn",
+  suspend: "accountDetailView.sanctionSuspend",
+  ban: "accountDetailView.sanctionBan",
+  unban: "accountDetailView.sanctionUnban",
+  force_logout: "accountDetailView.sanctionForceLogout",
 };
 
-const SANCTION_KIND_OPTIONS = Object.entries(SANCTION_LABELS).map(
-  ([value, label]) => ({
-    value,
-    label,
-  }),
-);
-
-const HISTORY_COLUMNS: TableColumn<SanctionEntry>[] = [
-  {
-    key: "kind",
-    label: "Type",
-    render: (value) => SANCTION_LABELS[value as SanctionKind],
-  },
-  { key: "reason", label: "Raison" },
-  { key: "actorEmail", label: "Par" },
-  {
-    key: "createdAt",
-    label: "Date",
-    render: (value) => new Date(value as number).toLocaleString("fr-FR"),
-  },
-];
-
-function statusBadge(status: SanctionStatus) {
-  if (!status.active) return <Badge variant="ok">Aucune sanction active</Badge>;
+function statusBadge(
+  status: SanctionStatus,
+  t: ReturnType<typeof useTranslation>["t"],
+) {
+  if (!status.active)
+    return <Badge variant="ok">{t("accountDetailView.noSanction")}</Badge>;
   const label =
     status.kind === "ban"
-      ? "Banni"
-      : `Suspendu jusqu'au ${new Date(status.expiresAt!).toLocaleString("fr-FR")}`;
+      ? t("accountDetailView.banned")
+      : t("accountDetailView.suspendedUntil", {
+          date: new Date(status.expiresAt!).toLocaleString("fr-FR"),
+        });
   return <Badge variant="ko">{label}</Badge>;
 }
 
 /** Détail d'un compte : identité, sessions, empire, sanctions (chantier 23.3/23.4).
  *  Client orval (chantier 27.15). */
 export function AccountDetailView() {
+  const { t } = useTranslation();
   const { id = "" } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const { data, error, isPending } = useGetApiAdminAccountsId(id, {
@@ -135,8 +111,45 @@ export function AccountDetailView() {
   const loadError = error
     ? error instanceof Error
       ? error.message
-      : "Serveur injoignable"
+      : t("contentCommon.serverUnreachable")
     : null;
+
+  const colonyColumns: TableColumn<ColonyRow>[] = [
+    { key: "name", label: t("accountDetailView.colColony") },
+    { key: "systemId", label: t("accountDetailView.colSystem") },
+    {
+      key: "population",
+      label: t("accountDetailView.colPopulation"),
+      align: "right",
+    },
+    {
+      key: "credits",
+      label: t("accountDetailView.colCredits"),
+      align: "right",
+    },
+    { key: "ore", label: t("accountDetailView.colOre"), align: "right" },
+    { key: "energy", label: t("accountDetailView.colEnergy"), align: "right" },
+    { key: "food", label: t("accountDetailView.colFood"), align: "right" },
+  ];
+
+  const sanctionKindOptions = (
+    Object.keys(SANCTION_KEYS) as SanctionKind[]
+  ).map((value) => ({ value, label: t(SANCTION_KEYS[value]) }));
+
+  const historyColumns: TableColumn<SanctionEntry>[] = [
+    {
+      key: "kind",
+      label: t("accountDetailView.colType"),
+      render: (value) => t(SANCTION_KEYS[value as SanctionKind]),
+    },
+    { key: "reason", label: t("accountDetailView.colReason") },
+    { key: "actorEmail", label: t("accountDetailView.colActor") },
+    {
+      key: "createdAt",
+      label: t("accountDetailView.colDate"),
+      render: (value) => new Date(value as number).toLocaleString("fr-FR"),
+    },
+  ];
 
   const { open, openModal, closeModal } = useModal();
   const [kind, setKind] = useState<SanctionKind>("warn");
@@ -160,16 +173,18 @@ export function AccountDetailView() {
       closeModal();
       setReason("");
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
+      setSubmitError(
+        err instanceof Error ? err.message : t("contentCommon.serverError"),
+      );
     }
   };
 
   return (
     <div className="detail-stack">
-      <Link to="/accounts">← Retour aux comptes</Link>
+      <Link to="/accounts">{t("accountDetailView.back")}</Link>
       {loadError && <p className="auth-error">{loadError}</p>}
       {!loadError && isPending && (
-        <Skeleton variant="block" label="Chargement du compte…" />
+        <Skeleton variant="block" label={t("accountDetailView.loading")} />
       )}
       {account && (
         <>
@@ -182,28 +197,28 @@ export function AccountDetailView() {
                 >
                   {account.role}
                 </Badge>
-                {statusBadge(account.sanctionStatus)}
+                {statusBadge(account.sanctionStatus, t)}
                 <Button variant="primary" onClick={openModal}>
-                  Sanctionner
+                  {t("accountDetailView.sanction")}
                 </Button>
               </>
             }
           >
             <div className="stat-row">
               <Stat
-                label="Inscrit le"
+                label={t("accountDetailView.registeredAt")}
                 value={new Date(account.createdAt).toLocaleDateString("fr-FR")}
               />
               <Stat
-                label="Dernière connexion"
+                label={t("accountDetailView.lastLogin")}
                 value={
                   account.lastLoginAt
                     ? new Date(account.lastLoginAt).toLocaleString("fr-FR")
-                    : "—"
+                    : t("contentCommon.none")
                 }
               />
               <Stat
-                label="Sessions actives"
+                label={t("accountDetailView.activeSessions")}
                 value={account.activeSessions}
                 tone={account.activeSessions > 0 ? "ok" : "default"}
               />
@@ -212,63 +227,70 @@ export function AccountDetailView() {
 
           {account.empireSummary ? (
             <Panel
-              title={`Empire — ${account.empireSummary.name}`}
+              title={t("accountDetailView.empireTitle", {
+                name: account.empireSummary.name,
+              })}
               accent="violet"
             >
               <div className="stat-row">
                 <Stat
-                  label="Influence"
+                  label={t("accountDetailView.influence")}
                   value={account.empireSummary.influence}
                 />
                 <Stat
-                  label="Techs acquises"
+                  label={t("accountDetailView.researchedTechs")}
                   value={account.empireSummary.researched}
                 />
                 <Stat
-                  label="Systèmes explorés"
+                  label={t("accountDetailView.exploredSystems")}
                   value={account.empireSummary.exploredCount}
                 />
                 <Stat
-                  label="Systèmes revendiqués"
+                  label={t("accountDetailView.claimedSystems")}
                   value={account.empireSummary.claimed}
                 />
-                <Stat label="Flottes" value={account.empireSummary.fleets} />
+                <Stat
+                  label={t("accountDetailView.fleets")}
+                  value={account.empireSummary.fleets}
+                />
               </div>
               {account.empireSummary.colonies.length > 0 ? (
                 <Table
-                  columns={COLONY_COLUMNS}
+                  columns={colonyColumns}
                   rows={account.empireSummary.colonies}
                 />
               ) : (
-                <EmptyState>Aucune colonie.</EmptyState>
+                <EmptyState>{t("accountDetailView.noColonies")}</EmptyState>
               )}
             </Panel>
           ) : (
-            <EmptyState>
-              Ce compte n'a pas encore d'empire dans cette partie.
-            </EmptyState>
+            <EmptyState>{t("accountDetailView.noEmpire")}</EmptyState>
           )}
 
-          <Panel title="Historique des sanctions" accent="amber">
+          <Panel title={t("accountDetailView.sanctionHistory")} accent="amber">
             {account.sanctionHistory.length > 0 ? (
-              <Table columns={HISTORY_COLUMNS} rows={account.sanctionHistory} />
+              <Table columns={historyColumns} rows={account.sanctionHistory} />
             ) : (
-              <EmptyState>Aucune sanction journalisée.</EmptyState>
+              <EmptyState>{t("accountDetailView.noSanctions")}</EmptyState>
             )}
           </Panel>
 
           <Modal open={open} onClose={closeModal}>
-            <Modal.Header title={`Sanctionner ${account.email}`} />
+            <Modal.Header
+              title={t("accountDetailView.sanctionModalTitle", {
+                email: account.email,
+              })}
+            />
             <Modal.Body>
               <Select
-                label="Type de sanction"
-                options={SANCTION_KIND_OPTIONS}
+                label={t("accountDetailView.sanctionType")}
+                options={sanctionKindOptions}
                 value={kind}
                 onChange={(e) => setKind(e.target.value as SanctionKind)}
               />
               {kind === "suspend" && (
                 <Field
-                  label="Durée (heures)"
+                  label={t("accountDetailView.durationHours")}
                   type="number"
                   min={1}
                   value={durationHours}
@@ -276,7 +298,7 @@ export function AccountDetailView() {
                 />
               )}
               <Field
-                label="Raison (obligatoire, journalisée)"
+                label={t("accountDetailView.reason")}
                 required
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -285,14 +307,16 @@ export function AccountDetailView() {
             </Modal.Body>
             <Modal.Actions>
               <Button variant="ghost" onClick={closeModal}>
-                Annuler
+                {t("contentCommon.cancel")}
               </Button>
               <Button
                 variant="danger"
                 disabled={mutation.isPending || !reason.trim()}
                 onClick={() => void submitSanction()}
               >
-                {mutation.isPending ? "…" : "Confirmer"}
+                {mutation.isPending
+                  ? t("contentCommon.saving")
+                  : t("accountDetailView.confirm")}
               </Button>
             </Modal.Actions>
           </Modal>

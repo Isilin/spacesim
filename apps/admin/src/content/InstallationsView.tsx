@@ -18,13 +18,14 @@ import {
 } from "@spacesim/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 type InstallationGrant = "resourceMarket" | "blueprintMarket";
 
-const GRANT_OPTIONS = [
-  { value: "", label: "Aucune" },
-  { value: "resourceMarket", label: "Marché de ressources" },
-  { value: "blueprintMarket", label: "Marché de plans / vaisseaux" },
+const GRANT_KEYS: { value: string; key: string }[] = [
+  { value: "", key: "installationsView.grantNone" },
+  { value: "resourceMarket", key: "installationsView.grantResourceMarket" },
+  { value: "blueprintMarket", key: "installationsView.grantBlueprintMarket" },
 ];
 
 interface Installation {
@@ -96,6 +97,7 @@ function summarize(resources: Record<string, number> | null): string {
  * Client orval (chantier 27.15).
  */
 export function InstallationsView() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data, error, isPending } = useGetApiAdminContentInstallations();
   const installations = (data?.installations ?? []) as Installation[];
@@ -103,7 +105,7 @@ export function InstallationsView() {
   const loadError = error
     ? error instanceof Error
       ? error.message
-      : "Serveur injoignable"
+      : t("contentCommon.serverUnreachable")
     : null;
 
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
@@ -130,7 +132,7 @@ export function InstallationsView() {
     if (!editing) return;
     const id = editing.isNew ? newId.trim() : editing.id;
     if (!id) {
-      setSubmitError("Id requis");
+      setSubmitError(t("contentCommon.idRequired"));
       return;
     }
     const payload: UpsertInstallationInput = {
@@ -153,7 +155,9 @@ export function InstallationsView() {
       );
       setEditing(null);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
+      setSubmitError(
+        err instanceof Error ? err.message : t("contentCommon.serverError"),
+      );
     }
   };
 
@@ -170,36 +174,38 @@ export function InstallationsView() {
   };
 
   const columns: TableColumn<Installation>[] = [
-    { key: "id", label: "Id" },
-    { key: "nameFr", label: "Nom" },
-    { key: "zoneType", label: "Type de zone" },
+    { key: "id", label: t("contentCommon.id") },
+    { key: "nameFr", label: t("contentCommon.name") },
+    { key: "zoneType", label: t("installationsView.colZoneType") },
     {
       key: "outputs",
-      label: "Produit",
+      label: t("contentCommon.produces"),
       render: (v) => summarize(v as Record<string, number>),
     },
     {
       key: "inputs",
-      label: "Consomme",
+      label: t("contentCommon.consumes"),
       render: (v) => summarize(v as Record<string, number>),
     },
     {
       key: "requiresTech",
-      label: "Tech requise",
-      render: (v) => (v as string | null) ?? "—",
+      label: t("contentCommon.requiredTech"),
+      render: (v) => (v as string | null) ?? t("contentCommon.none"),
     },
     {
       key: "grants",
-      label: "Marché",
-      render: (v) =>
-        GRANT_OPTIONS.find((o) => o.value === (v ?? ""))?.label ?? "—",
+      label: t("installationsView.colMarket"),
+      render: (v) => {
+        const found = GRANT_KEYS.find((o) => o.value === (v ?? ""));
+        return found ? t(found.key) : t("contentCommon.none");
+      },
     },
     {
       key: "actions",
       label: "",
       render: (_v, row) => (
         <Button variant="link" onClick={() => openEdit(row)}>
-          Modifier
+          {t("contentCommon.edit")}
         </Button>
       ),
     },
@@ -207,12 +213,14 @@ export function InstallationsView() {
 
   return (
     <Panel
-      title="Installations"
-      actions={<Button onClick={openCreate}>Nouveau</Button>}
+      title={t("installationsView.title")}
+      actions={
+        <Button onClick={openCreate}>{t("installationsView.new")}</Button>
+      }
     >
       {loadError && <p className="auth-error">{loadError}</p>}
       {!loadError && isPending && (
-        <Skeleton variant="block" label="Chargement des installations…" />
+        <Skeleton variant="block" label={t("installationsView.loading")} />
       )}
       {!loadError && !isPending && (
         <Table columns={columns} rows={installations} />
@@ -223,53 +231,56 @@ export function InstallationsView() {
           <Modal.Header
             title={
               editing.isNew
-                ? "Nouvelle installation"
-                : `Modifier « ${editing.id} »`
+                ? t("installationsView.newTitle")
+                : t("contentCommon.editTitle", { id: editing.id })
             }
           />
           <Modal.Body>
             {editing.isNew && (
               <Field
-                label="Id (identifiant technique, ex. orbital_relay)"
+                label={t("installationsView.idHint")}
                 value={newId}
                 onChange={(e) => setNewId(e.target.value)}
               />
             )}
             <Field
-              label="Nom"
+              label={t("contentCommon.name")}
               value={form.nameFr}
               onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
             />
             <Field
-              label="Description"
+              label={t("contentCommon.description")}
               value={form.descriptionFr}
               onChange={(e) =>
                 setForm({ ...form, descriptionFr: e.target.value })
               }
             />
             <Field
-              label="Id du type de zone"
+              label={t("installationsView.zoneTypeId")}
               value={form.zoneType}
               onChange={(e) => setForm({ ...form, zoneType: e.target.value })}
             />
             <NumberInput
-              label="Temps de construction (s)"
+              label={t("installationsView.buildTime")}
               value={form.buildMs / 1000}
               onChange={(e) =>
                 setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
               }
             />
             <Field
-              label="Tech requise (id, vide = aucune)"
+              label={t("contentCommon.requiredTechField")}
               value={form.requiresTech}
               onChange={(e) =>
                 setForm({ ...form, requiresTech: e.target.value })
               }
             />
             <Select
-              label="Marché ouvert par cette installation (chantier 25)"
+              label={t("installationsView.grantsField")}
               value={form.grants}
-              options={GRANT_OPTIONS}
+              options={GRANT_KEYS.map((o) => ({
+                value: o.value,
+                label: t(o.key),
+              }))}
               onChange={(e) =>
                 setForm({
                   ...form,
@@ -277,7 +288,7 @@ export function InstallationsView() {
                 })
               }
             />
-            <p className="muted small">Coût de construction</p>
+            <p className="muted small">{t("contentCommon.buildCost")}</p>
             <div className="stat-row">
               {RESOURCES.map((res) => (
                 <NumberInput
@@ -288,7 +299,7 @@ export function InstallationsView() {
                 />
               ))}
             </div>
-            <p className="muted small">Production par tick</p>
+            <p className="muted small">{t("contentCommon.outputsPerTick")}</p>
             <div className="stat-row">
               {RESOURCES.map((res) => (
                 <NumberInput
@@ -301,7 +312,7 @@ export function InstallationsView() {
                 />
               ))}
             </div>
-            <p className="muted small">Consommation par tick</p>
+            <p className="muted small">{t("contentCommon.inputsPerTick")}</p>
             <div className="stat-row">
               {RESOURCES.map((res) => (
                 <NumberInput
@@ -318,10 +329,12 @@ export function InstallationsView() {
           </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
-              Annuler
+              {t("contentCommon.cancel")}
             </Button>
             <Button disabled={mutation.isPending} onClick={() => void submit()}>
-              {mutation.isPending ? "…" : "Enregistrer"}
+              {mutation.isPending
+                ? t("contentCommon.saving")
+                : t("contentCommon.save")}
             </Button>
           </Modal.Actions>
         </Modal>

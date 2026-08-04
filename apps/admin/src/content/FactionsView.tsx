@@ -18,6 +18,7 @@ import {
 } from "@spacesim/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Faction {
   id: string;
@@ -59,6 +60,7 @@ function formFromFaction(f: Faction): UpsertFactionInput {
  *  vaisseaux de guerre (23.5) : `PUT .../factions/:id` upsert, id choisi par l'admin.
  *  Client orval (chantier 27.15). */
 export function FactionsView() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data, error, isPending } = useGetApiAdminContentFactions();
   const factions = (data?.factions ?? []) as Faction[];
@@ -66,7 +68,7 @@ export function FactionsView() {
   const loadError = error
     ? error instanceof Error
       ? error.message
-      : "Serveur injoignable"
+      : t("contentCommon.serverUnreachable")
     : null;
 
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
@@ -93,7 +95,7 @@ export function FactionsView() {
     if (!editing) return;
     const id = editing.isNew ? newId.trim() : editing.id;
     if (!id) {
-      setSubmitError("Id requis");
+      setSubmitError(t("contentCommon.idRequired"));
       return;
     }
     setSubmitError(null);
@@ -102,7 +104,9 @@ export function FactionsView() {
       queryClient.setQueryData(getGetApiAdminContentFactionsQueryKey(), result);
       setEditing(null);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
+      setSubmitError(
+        err instanceof Error ? err.message : t("contentCommon.serverError"),
+      );
     }
   };
 
@@ -115,10 +119,10 @@ export function FactionsView() {
   };
 
   const columns: TableColumn<Faction>[] = [
-    { key: "id", label: "Id" },
+    { key: "id", label: t("contentCommon.id") },
     {
       key: "name",
-      label: "Nom",
+      label: t("contentCommon.name"),
       render: (v, row) => (
         <>
           <Badge style={{ background: row.color, marginRight: 6 }}>
@@ -130,12 +134,12 @@ export function FactionsView() {
     },
     {
       key: "produces",
-      label: "Produit",
+      label: t("contentCommon.produces"),
       render: (v) => summarize(v as Record<string, number>),
     },
     {
       key: "consumes",
-      label: "Consomme",
+      label: t("contentCommon.consumes"),
       render: (v) => summarize(v as Record<string, number>),
     },
     {
@@ -143,7 +147,7 @@ export function FactionsView() {
       label: "",
       render: (_v, row) => (
         <Button variant="link" onClick={() => openEdit(row)}>
-          Modifier
+          {t("contentCommon.edit")}
         </Button>
       ),
     },
@@ -151,12 +155,12 @@ export function FactionsView() {
 
   return (
     <Panel
-      title="Factions marchandes"
-      actions={<Button onClick={openCreate}>Nouvelle</Button>}
+      title={t("factionsView.title")}
+      actions={<Button onClick={openCreate}>{t("factionsView.new")}</Button>}
     >
       {loadError && <p className="auth-error">{loadError}</p>}
       {!loadError && isPending && (
-        <Skeleton variant="block" label="Chargement des factions…" />
+        <Skeleton variant="block" label={t("factionsView.loading")} />
       )}
       {!loadError && !isPending && <Table columns={columns} rows={factions} />}
 
@@ -164,35 +168,37 @@ export function FactionsView() {
         <Modal open={editing !== null} onClose={() => setEditing(null)}>
           <Modal.Header
             title={
-              editing.isNew ? "Nouvelle faction" : `Modifier « ${editing.id} »`
+              editing.isNew
+                ? t("factionsView.newTitle")
+                : t("contentCommon.editTitle", { id: editing.id })
             }
           />
           <Modal.Body>
             {editing.isNew && (
               <Field
-                label="Id (identifiant technique, ex. helion_syndicate)"
+                label={t("factionsView.idHint")}
                 value={newId}
                 onChange={(e) => setNewId(e.target.value)}
               />
             )}
             <Field
-              label="Nom"
+              label={t("contentCommon.name")}
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
             <Field
-              label="Couleur (hex, ex. #ff8c42)"
+              label={t("factionsView.color")}
               value={form.color}
               onChange={(e) => setForm({ ...form, color: e.target.value })}
             />
             <Field
-              label="Description"
+              label={t("contentCommon.description")}
               value={form.descriptionFr}
               onChange={(e) =>
                 setForm({ ...form, descriptionFr: e.target.value })
               }
             />
-            <p className="muted small">Production par tick économique</p>
+            <p className="muted small">{t("factionsView.productionPerTick")}</p>
             <div className="stat-row">
               {RESOURCES.map((res) => (
                 <NumberInput
@@ -205,7 +211,9 @@ export function FactionsView() {
                 />
               ))}
             </div>
-            <p className="muted small">Consommation par tick économique</p>
+            <p className="muted small">
+              {t("factionsView.consumptionPerTick")}
+            </p>
             <div className="stat-row">
               {RESOURCES.map((res) => (
                 <NumberInput
@@ -222,10 +230,12 @@ export function FactionsView() {
           </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
-              Annuler
+              {t("contentCommon.cancel")}
             </Button>
             <Button disabled={mutation.isPending} onClick={() => void submit()}>
-              {mutation.isPending ? "…" : "Enregistrer"}
+              {mutation.isPending
+                ? t("contentCommon.saving")
+                : t("contentCommon.save")}
             </Button>
           </Modal.Actions>
         </Modal>

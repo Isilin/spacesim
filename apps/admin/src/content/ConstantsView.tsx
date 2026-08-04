@@ -16,6 +16,7 @@ import {
 } from "@spacesim/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Constant {
   key: string;
@@ -34,6 +35,7 @@ function formFromConstant(c: Constant): UpsertConstantInput {
  * Client orval (chantier 27.15).
  */
 export function ConstantsView() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data, error, isPending } = useGetApiAdminContentConstants();
   const constants = (data?.constants ?? []) as Constant[];
@@ -41,7 +43,7 @@ export function ConstantsView() {
   const loadError = error
     ? error instanceof Error
       ? error.message
-      : "Serveur injoignable"
+      : t("contentCommon.serverUnreachable")
     : null;
 
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -69,46 +71,50 @@ export function ConstantsView() {
       setEditingKey(null);
       setForm(null);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
+      setSubmitError(
+        err instanceof Error ? err.message : t("contentCommon.serverError"),
+      );
     }
   };
 
   const columns: TableColumn<Constant>[] = [
-    { key: "key", label: "Clé" },
-    { key: "descriptionFr", label: "Description" },
-    { key: "value", label: "Valeur", align: "right" },
+    { key: "key", label: t("constantsView.colKey") },
+    { key: "descriptionFr", label: t("contentCommon.description") },
+    { key: "value", label: t("constantsView.colValue"), align: "right" },
     {
       key: "actions",
       label: "",
       render: (_v, row) => (
         <Button variant="link" onClick={() => openEdit(row)}>
-          Modifier
+          {t("contentCommon.edit")}
         </Button>
       ),
     },
   ];
 
   return (
-    <Panel title="Constantes d'équilibrage">
+    <Panel title={t("constantsView.title")}>
       {loadError && <p className="auth-error">{loadError}</p>}
       {!loadError && isPending && (
-        <Skeleton variant="block" label="Chargement des constantes…" />
+        <Skeleton variant="block" label={t("constantsView.loading")} />
       )}
       {!loadError && !isPending && <Table columns={columns} rows={constants} />}
 
       {editingKey && form && (
         <Modal open={editingKey !== null} onClose={() => setEditingKey(null)}>
-          <Modal.Header title={`Modifier « ${editingKey} »`} />
+          <Modal.Header
+            title={t("contentCommon.editTitle", { id: editingKey })}
+          />
           <Modal.Body>
             <NumberInput
-              label="Valeur"
+              label={t("constantsView.value")}
               value={form.value}
               onChange={(e) =>
                 setForm({ ...form, value: Number(e.target.value) })
               }
             />
             <Field
-              label="Description"
+              label={t("contentCommon.description")}
               value={form.descriptionFr}
               onChange={(e) =>
                 setForm({ ...form, descriptionFr: e.target.value })
@@ -118,10 +124,12 @@ export function ConstantsView() {
           </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditingKey(null)}>
-              Annuler
+              {t("contentCommon.cancel")}
             </Button>
             <Button disabled={mutation.isPending} onClick={() => void submit()}>
-              {mutation.isPending ? "…" : "Enregistrer"}
+              {mutation.isPending
+                ? t("contentCommon.saving")
+                : t("contentCommon.save")}
             </Button>
           </Modal.Actions>
         </Modal>

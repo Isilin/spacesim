@@ -18,6 +18,7 @@ import {
 } from "@spacesim/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Building {
   id: string;
@@ -61,6 +62,7 @@ const NO_DEPOSIT = "__none__";
  * Client orval (chantier 27.15).
  */
 export function BuildingsView() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data, error, isPending } = useGetApiAdminContentBuildings();
   const buildings = (data?.buildings ?? []) as Building[];
@@ -68,7 +70,7 @@ export function BuildingsView() {
   const loadError = error
     ? error instanceof Error
       ? error.message
-      : "Serveur injoignable"
+      : t("contentCommon.serverUnreachable")
     : null;
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -93,7 +95,9 @@ export function BuildingsView() {
       setEditingId(null);
       setForm(null);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
+      setSubmitError(
+        err instanceof Error ? err.message : t("contentCommon.serverError"),
+      );
     }
   };
 
@@ -108,22 +112,22 @@ export function BuildingsView() {
   };
 
   const columns: TableColumn<Building>[] = [
-    { key: "id", label: "Id" },
-    { key: "nameFr", label: "Nom" },
+    { key: "id", label: t("contentCommon.id") },
+    { key: "nameFr", label: t("contentCommon.name") },
     {
       key: "buildMs",
-      label: "Fabrication",
+      label: t("contentCommon.buildDuration"),
       align: "right",
       render: (v) => `${Math.round((v as number) / 1000)} s`,
     },
     {
       key: "outputs",
-      label: "Produit",
+      label: t("contentCommon.produces"),
       render: (v) => summarize(v as Record<string, number>),
     },
     {
       key: "inputs",
-      label: "Consomme",
+      label: t("contentCommon.consumes"),
       render: (v) => summarize(v as Record<string, number>),
     },
     {
@@ -131,31 +135,33 @@ export function BuildingsView() {
       label: "",
       render: (_v, row) => (
         <Button variant="link" onClick={() => openEdit(row)}>
-          Modifier
+          {t("contentCommon.edit")}
         </Button>
       ),
     },
   ];
 
   return (
-    <Panel title="Bâtiments">
+    <Panel title={t("buildingsView.title")}>
       {loadError && <p className="auth-error">{loadError}</p>}
       {!loadError && isPending && (
-        <Skeleton variant="block" label="Chargement des bâtiments…" />
+        <Skeleton variant="block" label={t("buildingsView.loading")} />
       )}
       {!loadError && !isPending && <Table columns={columns} rows={buildings} />}
 
       {editingId && form && (
         <Modal open={editingId !== null} onClose={() => setEditingId(null)}>
-          <Modal.Header title={`Modifier « ${editingId} »`} />
+          <Modal.Header
+            title={t("contentCommon.editTitle", { id: editingId })}
+          />
           <Modal.Body>
             <Field
-              label="Nom"
+              label={t("contentCommon.name")}
               value={form.nameFr}
               onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
             />
             <Field
-              label="Description"
+              label={t("contentCommon.description")}
               value={form.descriptionFr}
               onChange={(e) =>
                 setForm({ ...form, descriptionFr: e.target.value })
@@ -163,14 +169,14 @@ export function BuildingsView() {
             />
             <div className="stat-row">
               <NumberInput
-                label="Temps de fabrication (s)"
+                label={t("contentCommon.buildTime")}
                 value={form.buildMs / 1000}
                 onChange={(e) =>
                   setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
                 }
               />
               <NumberInput
-                label="Emplois par instance"
+                label={t("buildingsView.jobsPerInstance")}
                 value={form.jobsPerInstance ?? 0}
                 onChange={(e) =>
                   setForm({
@@ -180,7 +186,7 @@ export function BuildingsView() {
                 }
               />
               <Select
-                label="Production boostée par le gisement de"
+                label={t("buildingsView.depositBoost")}
                 value={form.depositScaled ?? NO_DEPOSIT}
                 onChange={(e) =>
                   setForm({
@@ -190,12 +196,12 @@ export function BuildingsView() {
                   })
                 }
                 options={[
-                  { value: NO_DEPOSIT, label: "Aucune" },
+                  { value: NO_DEPOSIT, label: t("contentCommon.none") },
                   ...RESOURCES.map((res) => ({ value: res, label: res })),
                 ]}
               />
             </div>
-            <p className="muted small">Coût de construction</p>
+            <p className="muted small">{t("contentCommon.buildCost")}</p>
             <div className="stat-row">
               {RESOURCES.map((res) => (
                 <NumberInput
@@ -211,7 +217,7 @@ export function BuildingsView() {
                 />
               ))}
             </div>
-            <p className="muted small">Production par tick</p>
+            <p className="muted small">{t("contentCommon.outputsPerTick")}</p>
             <div className="stat-row">
               {RESOURCES.map((res) => (
                 <NumberInput
@@ -224,7 +230,7 @@ export function BuildingsView() {
                 />
               ))}
             </div>
-            <p className="muted small">Consommation par tick</p>
+            <p className="muted small">{t("contentCommon.inputsPerTick")}</p>
             <div className="stat-row">
               {RESOURCES.map((res) => (
                 <NumberInput
@@ -241,10 +247,12 @@ export function BuildingsView() {
           </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditingId(null)}>
-              Annuler
+              {t("contentCommon.cancel")}
             </Button>
             <Button disabled={mutation.isPending} onClick={() => void submit()}>
-              {mutation.isPending ? "…" : "Enregistrer"}
+              {mutation.isPending
+                ? t("contentCommon.saving")
+                : t("contentCommon.save")}
             </Button>
           </Modal.Actions>
         </Modal>

@@ -16,6 +16,7 @@ import {
 } from "@spacesim/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Preset {
   id: string;
@@ -61,6 +62,7 @@ function formFromPreset(p: Preset): PresetForm {
  * Client orval (chantier 27.15).
  */
 export function PresetsView() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data, error, isPending } = useGetApiAdminContentPresets();
   const presets = (data?.presets ?? []) as Preset[];
@@ -68,7 +70,7 @@ export function PresetsView() {
   const loadError = error
     ? error instanceof Error
       ? error.message
-      : "Serveur injoignable"
+      : t("contentCommon.serverUnreachable")
     : null;
 
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
@@ -95,7 +97,7 @@ export function PresetsView() {
     if (!editing) return;
     const id = editing.isNew ? newId.trim() : editing.id;
     if (!id) {
-      setSubmitError("Id requis");
+      setSubmitError(t("contentCommon.idRequired"));
       return;
     }
     const payload: UpsertPresetInput = {
@@ -114,30 +116,33 @@ export function PresetsView() {
       queryClient.setQueryData(getGetApiAdminContentPresetsQueryKey(), result);
       setEditing(null);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
+      setSubmitError(
+        err instanceof Error ? err.message : t("contentCommon.serverError"),
+      );
     }
   };
 
   const columns: TableColumn<Preset>[] = [
-    { key: "id", label: "Id" },
-    { key: "nameFr", label: "Nom" },
-    { key: "chassisId", label: "Châssis" },
+    { key: "id", label: t("contentCommon.id") },
+    { key: "nameFr", label: t("contentCommon.name") },
+    { key: "chassisId", label: t("presetsView.colChassis") },
     {
       key: "modules",
-      label: "Modules",
-      render: (v) => (v as string[]).join(", ") || "—",
+      label: t("presetsView.colModules"),
+      render: (v) => (v as string[]).join(", ") || t("contentCommon.none"),
     },
     {
       key: "starter",
-      label: "Amorçage",
-      render: (v) => ((v as boolean) ? "Oui" : "—"),
+      label: t("presetsView.colStarter"),
+      render: (v) =>
+        (v as boolean) ? t("contentCommon.yes") : t("contentCommon.none"),
     },
     {
       key: "actions",
       label: "",
       render: (_v, row) => (
         <Button variant="link" onClick={() => openEdit(row)}>
-          Modifier
+          {t("contentCommon.edit")}
         </Button>
       ),
     },
@@ -145,12 +150,12 @@ export function PresetsView() {
 
   return (
     <Panel
-      title="Plans pré-conçus"
-      actions={<Button onClick={openCreate}>Nouveau</Button>}
+      title={t("presetsView.title")}
+      actions={<Button onClick={openCreate}>{t("presetsView.new")}</Button>}
     >
       {loadError && <p className="auth-error">{loadError}</p>}
       {!loadError && isPending && (
-        <Skeleton variant="block" label="Chargement des plans pré-conçus…" />
+        <Skeleton variant="block" label={t("presetsView.loading")} />
       )}
       {!loadError && !isPending && <Table columns={columns} rows={presets} />}
 
@@ -158,60 +163,64 @@ export function PresetsView() {
         <Modal open={editing !== null} onClose={() => setEditing(null)}>
           <Modal.Header
             title={
-              editing.isNew ? "Nouveau plan" : `Modifier « ${editing.id} »`
+              editing.isNew
+                ? t("presetsView.newTitle")
+                : t("contentCommon.editTitle", { id: editing.id })
             }
           />
           <Modal.Body>
             {editing.isNew && (
               <Field
-                label="Id (identifiant technique, ex. corvette_mk1)"
+                label={t("presetsView.idHint")}
                 value={newId}
                 onChange={(e) => setNewId(e.target.value)}
               />
             )}
             <Field
-              label="Nom"
+              label={t("contentCommon.name")}
               value={form.nameFr}
               onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
             />
             <Field
-              label="Description"
+              label={t("contentCommon.description")}
               value={form.descriptionFr}
               onChange={(e) =>
                 setForm({ ...form, descriptionFr: e.target.value })
               }
             />
             <Field
-              label="Id du châssis"
+              label={t("presetsView.chassisId")}
               value={form.chassisId}
               onChange={(e) => setForm({ ...form, chassisId: e.target.value })}
             />
             <Field
-              label="Modules (ids séparés par des virgules)"
+              label={t("presetsView.modules")}
               value={form.modulesText}
               onChange={(e) =>
                 setForm({ ...form, modulesText: e.target.value })
               }
             />
             <Select
-              label="Fourni à la création d'un empire"
+              label={t("presetsView.starterField")}
               value={form.starter}
               onChange={(e) =>
                 setForm({ ...form, starter: e.target.value as "yes" | "no" })
               }
               options={[
-                { value: "no", label: "Non" },
-                { value: "yes", label: "Oui" },
+                { value: "no", label: t("contentCommon.no") },
+                { value: "yes", label: t("contentCommon.yes") },
               ]}
             />
             {submitError && <p className="auth-error">{submitError}</p>}
           </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
-              Annuler
+              {t("contentCommon.cancel")}
             </Button>
             <Button disabled={mutation.isPending} onClick={() => void submit()}>
-              {mutation.isPending ? "…" : "Enregistrer"}
+              {mutation.isPending
+                ? t("contentCommon.saving")
+                : t("contentCommon.save")}
             </Button>
           </Modal.Actions>
         </Modal>

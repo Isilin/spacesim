@@ -1,4 +1,5 @@
 import { Button, TopBar } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 import {
   Navigate,
   Route,
@@ -31,14 +32,15 @@ interface Props {
 
 /** Quatre onglets — "content" a sa propre sous-navigation (23.6+). "ops" (23.12) reste
  *  visible pour tous les rôles, comme "audit" : c'est la route qui refuse (403), pas le nav. */
-const NAV_ITEMS = [
-  { value: "accounts", label: "Joueurs" },
-  { value: "content", label: "Contenu" },
-  { value: "ops", label: "Ops" },
-  { value: "audit", label: "Journal d'audit" },
+const NAV_KEYS = [
+  { value: "accounts", key: "app.navAccounts" },
+  { value: "content", key: "app.navContent" },
+  { value: "ops", key: "app.navOps" },
+  { value: "audit", key: "app.navAudit" },
 ];
 
 export function App({ auth }: Props) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   // Premier segment du chemin : `/accounts/:id` reste sur l'onglet "accounts".
@@ -48,13 +50,17 @@ export function App({ auth }: Props) {
     <div className="layout">
       <TopBar
         brand="SPACESIM ADMIN"
-        items={NAV_ITEMS.map((item) => ({ ...item, href: `/${item.value}` }))}
+        items={NAV_KEYS.map((item) => ({
+          value: item.value,
+          label: t(item.key),
+          href: `/${item.value}`,
+        }))}
         active={activeTab}
         onNavChange={(value) => navigate(`/${value}`)}
         status={{ label: auth.email ?? "", tone: "ok" }}
       >
         <Button variant="link" onClick={() => void auth.logout()}>
-          Déconnexion
+          {t("app.logout")}
         </Button>
       </TopBar>
       <div className="content">

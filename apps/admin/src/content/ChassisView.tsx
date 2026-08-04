@@ -22,6 +22,7 @@ import {
 } from "@spacesim/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Chassis {
   id: string;
@@ -43,18 +44,18 @@ interface Chassis {
   requiresTech: string | null;
 }
 
-const KIND_LABELS: Record<string, string> = {
-  generic: "Générique",
-  military: "Militaire",
-  freighter: "Cargo",
-  miner: "Minier",
-  colonizer: "Colonisateur",
-  explorer: "Éclaireur",
+const KIND_KEYS: Record<string, string> = {
+  generic: "chassisView.kindGeneric",
+  military: "chassisView.kindMilitary",
+  freighter: "chassisView.kindFreighter",
+  miner: "chassisView.kindMiner",
+  colonizer: "chassisView.kindColonizer",
+  explorer: "chassisView.kindExplorer",
 };
 
-const DOMAIN_LABELS: Record<string, string> = {
-  fleet: "Flotte",
-  colony: "Colonie",
+const DOMAIN_KEYS: Record<string, string> = {
+  fleet: "chassisView.domainFleet",
+  colony: "chassisView.domainColony",
 };
 
 interface ChassisForm {
@@ -133,6 +134,7 @@ function formFromChassis(c: Chassis): ChassisForm {
  * directe à une liste fixe de rôles à afficher. Client orval (chantier 27.15).
  */
 export function ChassisView() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data, error, isPending } = useGetApiAdminContentChassis();
   const chassis = (data?.chassis ?? []) as Chassis[];
@@ -140,7 +142,7 @@ export function ChassisView() {
   const loadError = error
     ? error instanceof Error
       ? error.message
-      : "Serveur injoignable"
+      : t("contentCommon.serverUnreachable")
     : null;
 
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
@@ -167,7 +169,7 @@ export function ChassisView() {
     if (!editing) return;
     const id = editing.isNew ? newId.trim() : editing.id;
     if (!id) {
-      setSubmitError("Id requis");
+      setSubmitError(t("contentCommon.idRequired"));
       return;
     }
     let roleBonus: Record<string, number> | null = null;
@@ -175,7 +177,11 @@ export function ChassisView() {
       try {
         roleBonus = JSON.parse(form.roleBonusText);
       } catch {
-        setSubmitError("Bonus de rôle : JSON invalide");
+        setSubmitError(
+          t("contentCommon.invalidJson", {
+            field: t("contentCommon.roleBonusField"),
+          }),
+        );
         return;
       }
     }
@@ -208,7 +214,9 @@ export function ChassisView() {
       queryClient.setQueryData(getGetApiAdminContentChassisQueryKey(), result);
       setEditing(null);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
+      setSubmitError(
+        err instanceof Error ? err.message : t("contentCommon.serverError"),
+      );
     }
   };
 
@@ -217,38 +225,49 @@ export function ChassisView() {
   };
 
   const columns: TableColumn<Chassis>[] = [
-    { key: "id", label: "Id" },
-    { key: "nameFr", label: "Nom" },
+    { key: "id", label: t("contentCommon.id") },
+    { key: "nameFr", label: t("contentCommon.name") },
     {
       key: "kind",
-      label: "Type",
-      render: (v) => KIND_LABELS[v as string] ?? (v as string),
+      label: t("chassisView.type"),
+      render: (v) => {
+        const key = KIND_KEYS[v as string];
+        return key ? t(key) : (v as string);
+      },
     },
     {
       key: "domain",
-      label: "Domaine",
-      render: (v) => DOMAIN_LABELS[v as string] ?? (v as string),
+      label: t("chassisView.domain"),
+      render: (v) => {
+        const key = DOMAIN_KEYS[v as string];
+        return key ? t(key) : (v as string);
+      },
     },
-    { key: "hull", label: "Coque", align: "right" },
+    { key: "hull", label: t("chassisView.title"), align: "right" },
     {
       key: "slots",
-      label: "Emplacements",
+      label: t("chassisView.colSlots"),
       render: (v) => {
         const s = v as Record<string, number>;
-        return `A${s.weapon ?? 0} D${s.defense ?? 0} P${s.propulsion ?? 0} U${s.utility ?? 0}`;
+        return t("chassisView.slotsFormat", {
+          weapon: s.weapon ?? 0,
+          defense: s.defense ?? 0,
+          propulsion: s.propulsion ?? 0,
+          utility: s.utility ?? 0,
+        });
       },
     },
     {
       key: "requiresTech",
-      label: "Tech requise",
-      render: (v) => (v as string | null) ?? "—",
+      label: t("contentCommon.requiredTech"),
+      render: (v) => (v as string | null) ?? t("contentCommon.none"),
     },
     {
       key: "actions",
       label: "",
       render: (_v, row) => (
         <Button variant="link" onClick={() => openEdit(row)}>
-          Modifier
+          {t("contentCommon.edit")}
         </Button>
       ),
     },
@@ -256,12 +275,12 @@ export function ChassisView() {
 
   return (
     <Panel
-      title="Châssis"
-      actions={<Button onClick={openCreate}>Nouveau</Button>}
+      title={t("chassisView.title")}
+      actions={<Button onClick={openCreate}>{t("chassisView.new")}</Button>}
     >
       {loadError && <p className="auth-error">{loadError}</p>}
       {!loadError && isPending && (
-        <Skeleton variant="block" label="Chargement des châssis…" />
+        <Skeleton variant="block" label={t("chassisView.loading")} />
       )}
       {!loadError && !isPending && <Table columns={columns} rows={chassis} />}
 
@@ -269,24 +288,26 @@ export function ChassisView() {
         <Modal open={editing !== null} onClose={() => setEditing(null)}>
           <Modal.Header
             title={
-              editing.isNew ? "Nouveau châssis" : `Modifier « ${editing.id} »`
+              editing.isNew
+                ? t("chassisView.newTitle")
+                : t("contentCommon.editTitle", { id: editing.id })
             }
           />
           <Modal.Body>
             {editing.isNew && (
               <Field
-                label="Id (identifiant technique, ex. assault_frame)"
+                label={t("chassisView.idHint")}
                 value={newId}
                 onChange={(e) => setNewId(e.target.value)}
               />
             )}
             <Field
-              label="Nom"
+              label={t("contentCommon.name")}
               value={form.nameFr}
               onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
             />
             <Field
-              label="Description"
+              label={t("contentCommon.description")}
               value={form.descriptionFr}
               onChange={(e) =>
                 setForm({ ...form, descriptionFr: e.target.value })
@@ -294,7 +315,7 @@ export function ChassisView() {
             />
             <div className="stat-row">
               <Select
-                label="Type"
+                label={t("chassisView.type")}
                 value={form.kind}
                 onChange={(e) =>
                   setForm({
@@ -304,11 +325,11 @@ export function ChassisView() {
                 }
                 options={CHASSIS_KINDS.map((k) => ({
                   value: k,
-                  label: KIND_LABELS[k] ?? k,
+                  label: KIND_KEYS[k] ? t(KIND_KEYS[k]) : k,
                 }))}
               />
               <Select
-                label="Domaine"
+                label={t("chassisView.domain")}
                 value={form.domain}
                 onChange={(e) =>
                   setForm({
@@ -318,75 +339,75 @@ export function ChassisView() {
                 }
                 options={SHIP_DOMAINS.map((d) => ({
                   value: d,
-                  label: DOMAIN_LABELS[d] ?? d,
+                  label: DOMAIN_KEYS[d] ? t(DOMAIN_KEYS[d]) : d,
                 }))}
               />
             </div>
             <div className="stat-row">
               <NumberInput
-                label="Coque"
+                label={t("chassisView.title")}
                 value={form.hull}
                 onChange={(e) =>
                   setForm({ ...form, hull: Number(e.target.value) })
                 }
               />
               <NumberInput
-                label="Initiative de base"
+                label={t("chassisView.baseInitiative")}
                 value={form.baseInitiative}
                 onChange={(e) =>
                   setForm({ ...form, baseInitiative: Number(e.target.value) })
                 }
               />
             </div>
-            <p className="muted small">Budgets (énergie / tonnage / calcul)</p>
+            <p className="muted small">{t("chassisView.budgets")}</p>
             <div className="stat-row">
               <NumberInput
-                label="Énergie"
+                label={t("chassisView.energy")}
                 value={form.power}
                 onChange={(e) =>
                   setForm({ ...form, power: Number(e.target.value) })
                 }
               />
               <NumberInput
-                label="Tonnage"
+                label={t("chassisView.tonnage")}
                 value={form.tonnage}
                 onChange={(e) =>
                   setForm({ ...form, tonnage: Number(e.target.value) })
                 }
               />
               <NumberInput
-                label="Calcul"
+                label={t("chassisView.calc")}
                 value={form.calc}
                 onChange={(e) =>
                   setForm({ ...form, calc: Number(e.target.value) })
                 }
               />
             </div>
-            <p className="muted small">Emplacements par type</p>
+            <p className="muted small">{t("chassisView.slotsByType")}</p>
             <div className="stat-row">
               <NumberInput
-                label="Armes"
+                label={t("chassisView.weapons")}
                 value={form.weaponSlots}
                 onChange={(e) =>
                   setForm({ ...form, weaponSlots: Number(e.target.value) })
                 }
               />
               <NumberInput
-                label="Défenses"
+                label={t("chassisView.defenses")}
                 value={form.defenseSlots}
                 onChange={(e) =>
                   setForm({ ...form, defenseSlots: Number(e.target.value) })
                 }
               />
               <NumberInput
-                label="Propulsion"
+                label={t("chassisView.propulsion")}
                 value={form.propulsionSlots}
                 onChange={(e) =>
                   setForm({ ...form, propulsionSlots: Number(e.target.value) })
                 }
               />
               <NumberInput
-                label="Utilitaires"
+                label={t("chassisView.utilities")}
                 value={form.utilitySlots}
                 onChange={(e) =>
                   setForm({ ...form, utilitySlots: Number(e.target.value) })
@@ -395,21 +416,21 @@ export function ChassisView() {
             </div>
             <div className="stat-row">
               <NumberInput
-                label="Vitesse de base (×)"
+                label={t("chassisView.baseSpeed")}
                 value={form.baseSpeedMult}
                 onChange={(e) =>
                   setForm({ ...form, baseSpeedMult: Number(e.target.value) })
                 }
               />
               <NumberInput
-                label="Carburant de base par saut"
+                label={t("chassisView.baseFuel")}
                 value={form.baseFuelPerJump}
                 onChange={(e) =>
                   setForm({ ...form, baseFuelPerJump: Number(e.target.value) })
                 }
               />
               <NumberInput
-                label="Temps de fabrication (s)"
+                label={t("contentCommon.buildTime")}
                 value={form.buildMs / 1000}
                 onChange={(e) =>
                   setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
@@ -417,7 +438,7 @@ export function ChassisView() {
               />
             </div>
             <Field
-              label="Tech requise (id, vide = aucune)"
+              label={t("contentCommon.requiredTechField")}
               value={form.requiresTech}
               onChange={(e) =>
                 setForm({ ...form, requiresTech: e.target.value })
@@ -425,7 +446,7 @@ export function ChassisView() {
             />
             <div className="field-textarea-wrap">
               <label htmlFor="chassis-role-bonus">
-                Bonus de rôle (JSON, ex. {"{"}"weapon":1.15{"}"} — vide = aucun)
+                {t("chassisView.roleBonus")}
               </label>
               <textarea
                 id="chassis-role-bonus"
@@ -437,7 +458,7 @@ export function ChassisView() {
                 spellCheck={false}
               />
             </div>
-            <p className="muted small">Coût de construction</p>
+            <p className="muted small">{t("contentCommon.buildCost")}</p>
             <div className="stat-row">
               {RESOURCES.map((res) => (
                 <NumberInput
@@ -452,10 +473,12 @@ export function ChassisView() {
           </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
-              Annuler
+              {t("contentCommon.cancel")}
             </Button>
             <Button disabled={mutation.isPending} onClick={() => void submit()}>
-              {mutation.isPending ? "…" : "Enregistrer"}
+              {mutation.isPending
+                ? t("contentCommon.saving")
+                : t("contentCommon.save")}
             </Button>
           </Modal.Actions>
         </Modal>

@@ -10,6 +10,7 @@ import {
   Table,
   type TableColumn,
 } from "@spacesim/ui";
+import { useTranslation } from "react-i18next";
 
 interface EmpireSummary {
   id: string;
@@ -24,37 +25,10 @@ interface EmpireSummary {
   fleets: number;
 }
 
-function formatDate(ms: number | null): string {
-  return ms ? new Date(ms).toLocaleString("fr-FR") : "jamais";
-}
-
-const KIND_LABELS: Record<string, string> = { human: "Joueur", npc: "PNJ" };
-
-const EMPIRE_COLUMNS: TableColumn<EmpireSummary>[] = [
-  { key: "name", label: "Empire" },
-  {
-    key: "kind",
-    label: "Type",
-    render: (v) => KIND_LABELS[v as string] ?? (v as string),
-  },
-  {
-    key: "population",
-    label: "Population",
-    align: "right",
-    render: (_v, row) =>
-      Math.round(row.colonies.reduce((s, c) => s + c.population, 0)),
-  },
-  {
-    key: "colonyCount",
-    label: "Colonies",
-    align: "right",
-    render: (_v, row) => row.colonies.length,
-  },
-  { key: "claimed", label: "Systèmes revendiqués", align: "right" },
-  { key: "exploredCount", label: "Systèmes explorés", align: "right" },
-  { key: "researched", label: "Techs", align: "right" },
-  { key: "fleets", label: "Flottes", align: "right" },
-];
+const KIND_KEYS: Record<string, string> = {
+  human: "opsView.kindPlayer",
+  npc: "opsView.kindNpc",
+};
 
 /**
  * Tableau de bord ops (chantier 23.12) : additif, réservé au rôle "admin". `/ops/empires`
@@ -63,6 +37,43 @@ const EMPIRE_COLUMNS: TableColumn<EmpireSummary>[] = [
  * Client orval (chantier 27.15).
  */
 export function OpsView() {
+  const { t } = useTranslation();
+  const formatDate = (ms: number | null): string =>
+    ms ? new Date(ms).toLocaleString("fr-FR") : t("opsView.never");
+
+  const empireColumns: TableColumn<EmpireSummary>[] = [
+    { key: "name", label: t("opsView.colEmpire") },
+    {
+      key: "kind",
+      label: t("opsView.colType"),
+      render: (v) => {
+        const key = KIND_KEYS[v as string];
+        return key ? t(key) : (v as string);
+      },
+    },
+    {
+      key: "population",
+      label: t("opsView.colPopulation"),
+      align: "right",
+      render: (_v, row) =>
+        Math.round(row.colonies.reduce((s, c) => s + c.population, 0)),
+    },
+    {
+      key: "colonyCount",
+      label: t("opsView.colColonies"),
+      align: "right",
+      render: (_v, row) => row.colonies.length,
+    },
+    { key: "claimed", label: t("opsView.colClaimedSystems"), align: "right" },
+    {
+      key: "exploredCount",
+      label: t("opsView.colExploredSystems"),
+      align: "right",
+    },
+    { key: "researched", label: t("opsView.colTechs"), align: "right" },
+    { key: "fleets", label: t("opsView.colFleets"), align: "right" },
+  ];
+
   const healthQuery = useGetApiAdminOpsHealth();
   const empiresQuery = useGetApiAdminOpsEmpires();
   const health = healthQuery.data;
@@ -71,7 +82,7 @@ export function OpsView() {
   const loadError = firstError
     ? firstError instanceof Error
       ? firstError.message
-      : "Serveur injoignable"
+      : t("contentCommon.serverUnreachable")
     : null;
   const isPending = healthQuery.isPending || empiresQuery.isPending;
 
@@ -79,37 +90,42 @@ export function OpsView() {
     <div className="detail-stack">
       {loadError && <p className="auth-error">{loadError}</p>}
       {!loadError && isPending && (
-        <Skeleton variant="block" label="Chargement de la santé du moteur…" />
+        <Skeleton variant="block" label={t("opsView.loading")} />
       )}
 
       {!loadError && !isPending && health && (
-        <Panel title="Santé du moteur">
+        <Panel title={t("opsView.engineHealth")}>
           <div className="stat-row">
-            <Stat label="Tick" value={health.tick} />
-            <Stat label="Dernier tick" value={formatDate(health.lastTickAt)} />
+            <Stat label={t("opsView.tick")} value={health.tick} />
             <Stat
-              label="Dernière écriture DB"
+              label={t("opsView.lastTick")}
+              value={formatDate(health.lastTickAt)}
+            />
+            <Stat
+              label={t("opsView.lastDbWrite")}
               value={formatDate(health.lastFlushAt)}
               tone={health.lastFlushError ? "amber" : "ok"}
             />
           </div>
           {health.lastFlushError && (
             <p className="auth-error">
-              Échec d'écriture : {health.lastFlushError}
+              {t("opsView.writeFailure", { error: health.lastFlushError })}
             </p>
           )}
           <p className="muted small">
-            Croissance de l'univers — {health.galaxyCount} /{" "}
-            {health.maxGalaxies} galaxies ({health.frontierGalaxies} maintenues
-            vierges devant les joueurs)
+            {t("opsView.growth", {
+              count: health.galaxyCount,
+              max: health.maxGalaxies,
+              frontier: health.frontierGalaxies,
+            })}
           </p>
           <Gauge value={health.galaxyCount} capacity={health.maxGalaxies} />
         </Panel>
       )}
 
       {!loadError && !isPending && (
-        <Panel title="Empires">
-          <Table columns={EMPIRE_COLUMNS} rows={empires} />
+        <Panel title={t("opsView.empires")}>
+          <Table columns={empireColumns} rows={empires} />
         </Panel>
       )}
     </div>

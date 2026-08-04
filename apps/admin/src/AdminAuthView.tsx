@@ -1,5 +1,6 @@
 import { Button, Field } from "@spacesim/ui";
 import { type FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { AdminAuth } from "./useAdminAuth.js";
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 /** Écran de connexion admin : pas d'inscription ici — un rôle privilégié s'obtient par un
  *  geste manuel côté serveur (chantier 23.1), jamais par un flux libre-service. */
 export function AdminAuthView({ auth }: Props) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -27,12 +29,10 @@ export function AdminAuthView({ auth }: Props) {
     <div className="auth-screen">
       <form className="auth-panel" onSubmit={submit}>
         <h1 className="auth-brand">SPACESIM ADMIN</h1>
-        <p className="muted small auth-tagline">
-          Connexion réservée aux comptes habilités.
-        </p>
+        <p className="muted small auth-tagline">{t("adminAuthView.tagline")}</p>
 
         <Field
-          label="Adresse e-mail"
+          label={t("adminAuthView.email")}
           type="email"
           autoComplete="email"
           required
@@ -41,7 +41,7 @@ export function AdminAuthView({ auth }: Props) {
         />
 
         <Field
-          label="Mot de passe"
+          label={t("adminAuthView.password")}
           type="password"
           autoComplete="current-password"
           required
@@ -52,7 +52,7 @@ export function AdminAuthView({ auth }: Props) {
         {error && <p className="auth-error">{error}</p>}
 
         <Button type="submit" disabled={busy} className="auth-submit">
-          {busy ? "…" : "Se connecter"}
+          {busy ? "…" : t("adminAuthView.submit")}
         </Button>
       </form>
     </div>

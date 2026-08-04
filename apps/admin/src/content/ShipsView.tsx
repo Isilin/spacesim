@@ -17,6 +17,7 @@ import {
 } from "@spacesim/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Ship {
   id: string;
@@ -62,6 +63,7 @@ function formFromShip(s: Ship): UpsertShipInput {
  * Client orval (chantier 27.15).
  */
 export function ShipsView() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data, error, isPending } = useGetApiAdminContentShips();
   const ships = (data?.ships ?? []) as Ship[];
@@ -69,7 +71,7 @@ export function ShipsView() {
   const loadError = error
     ? error instanceof Error
       ? error.message
-      : "Serveur injoignable"
+      : t("contentCommon.serverUnreachable")
     : null;
 
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
@@ -96,7 +98,7 @@ export function ShipsView() {
     if (!editing) return;
     const id = editing.isNew ? newId.trim() : editing.id;
     if (!id) {
-      setSubmitError("Id requis");
+      setSubmitError(t("contentCommon.idRequired"));
       return;
     }
     setSubmitError(null);
@@ -105,7 +107,9 @@ export function ShipsView() {
       queryClient.setQueryData(getGetApiAdminContentShipsQueryKey(), result);
       setEditing(null);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
+      setSubmitError(
+        err instanceof Error ? err.message : t("contentCommon.serverError"),
+      );
     }
   };
 
@@ -114,28 +118,28 @@ export function ShipsView() {
   };
 
   const columns: TableColumn<Ship>[] = [
-    { key: "id", label: "Id" },
-    { key: "nameFr", label: "Nom" },
-    { key: "capacity", label: "Soute", align: "right" },
-    { key: "speedMult", label: "Vitesse ×", align: "right" },
-    { key: "fuelPerJump", label: "Carburant/saut", align: "right" },
+    { key: "id", label: t("contentCommon.id") },
+    { key: "nameFr", label: t("contentCommon.name") },
+    { key: "capacity", label: t("shipsView.colHold"), align: "right" },
+    { key: "speedMult", label: t("shipsView.colSpeed"), align: "right" },
+    { key: "fuelPerJump", label: t("shipsView.colFuel"), align: "right" },
     {
       key: "buildMs",
-      label: "Fabrication",
+      label: t("contentCommon.buildDuration"),
       align: "right",
       render: (v) => `${Math.round((v as number) / 1000)} s`,
     },
     {
       key: "requiresTech",
-      label: "Tech requise",
-      render: (v) => (v as string | null) ?? "—",
+      label: t("contentCommon.requiredTech"),
+      render: (v) => (v as string | null) ?? t("contentCommon.none"),
     },
     {
       key: "actions",
       label: "",
       render: (_v, row) => (
         <Button variant="link" onClick={() => openEdit(row)}>
-          Modifier
+          {t("contentCommon.edit")}
         </Button>
       ),
     },
@@ -143,12 +147,12 @@ export function ShipsView() {
 
   return (
     <Panel
-      title="Vaisseaux civils"
-      actions={<Button onClick={openCreate}>Nouveau</Button>}
+      title={t("shipsView.title")}
+      actions={<Button onClick={openCreate}>{t("shipsView.new")}</Button>}
     >
       {loadError && <p className="auth-error">{loadError}</p>}
       {!loadError && isPending && (
-        <Skeleton variant="block" label="Chargement des vaisseaux civils…" />
+        <Skeleton variant="block" label={t("shipsView.loading")} />
       )}
       {!loadError && !isPending && <Table columns={columns} rows={ships} />}
 
@@ -157,25 +161,25 @@ export function ShipsView() {
           <Modal.Header
             title={
               editing.isNew
-                ? "Nouveau vaisseau civil"
-                : `Modifier « ${editing.id} »`
+                ? t("shipsView.newTitle")
+                : t("contentCommon.editTitle", { id: editing.id })
             }
           />
           <Modal.Body>
             {editing.isNew && (
               <Field
-                label="Id (identifiant technique, ex. bulk_freighter)"
+                label={t("shipsView.idHint")}
                 value={newId}
                 onChange={(e) => setNewId(e.target.value)}
               />
             )}
             <Field
-              label="Nom"
+              label={t("contentCommon.name")}
               value={form.nameFr}
               onChange={(e) => setForm({ ...form, nameFr: e.target.value })}
             />
             <Field
-              label="Description"
+              label={t("contentCommon.description")}
               value={form.descriptionFr}
               onChange={(e) =>
                 setForm({ ...form, descriptionFr: e.target.value })
@@ -183,21 +187,21 @@ export function ShipsView() {
             />
             <div className="stat-row">
               <NumberInput
-                label="Soute"
+                label={t("shipsView.hold")}
                 value={form.capacity}
                 onChange={(e) =>
                   setForm({ ...form, capacity: Number(e.target.value) })
                 }
               />
               <NumberInput
-                label="Vitesse (× base)"
+                label={t("shipsView.speed")}
                 value={form.speedMult}
                 onChange={(e) =>
                   setForm({ ...form, speedMult: Number(e.target.value) })
                 }
               />
               <NumberInput
-                label="Carburant par saut"
+                label={t("shipsView.fuelPerJump")}
                 value={form.fuelPerJump}
                 onChange={(e) =>
                   setForm({ ...form, fuelPerJump: Number(e.target.value) })
@@ -205,14 +209,14 @@ export function ShipsView() {
               />
             </div>
             <NumberInput
-              label="Temps de fabrication (s)"
+              label={t("contentCommon.buildTime")}
               value={form.buildMs / 1000}
               onChange={(e) =>
                 setForm({ ...form, buildMs: Number(e.target.value) * 1000 })
               }
             />
             <Field
-              label="Tech requise (id, vide = aucune)"
+              label={t("contentCommon.requiredTechField")}
               value={form.requiresTech ?? ""}
               onChange={(e) =>
                 setForm({
@@ -221,7 +225,7 @@ export function ShipsView() {
                 })
               }
             />
-            <p className="muted small">Coût de construction</p>
+            <p className="muted small">{t("contentCommon.buildCost")}</p>
             <div className="stat-row">
               {RESOURCES.map((res) => (
                 <NumberInput
@@ -236,10 +240,12 @@ export function ShipsView() {
           </Modal.Body>
           <Modal.Actions>
             <Button variant="ghost" onClick={() => setEditing(null)}>
-              Annuler
+              {t("contentCommon.cancel")}
             </Button>
             <Button disabled={mutation.isPending} onClick={() => void submit()}>
-              {mutation.isPending ? "…" : "Enregistrer"}
+              {mutation.isPending
+                ? t("contentCommon.saving")
+                : t("contentCommon.save")}
             </Button>
           </Modal.Actions>
         </Modal>
