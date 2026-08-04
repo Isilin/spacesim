@@ -1,3 +1,8 @@
+import {
+  getGetApiAdminContentFactionsQueryKey,
+  useGetApiAdminContentFactions,
+  usePutApiAdminContentFactionsId,
+} from "../api/generated/admin.js";
 import type { UpsertFactionInput } from "@spacesim/protocol";
 import { RESOURCES, type ResourceId } from "@spacesim/shared";
 import {
@@ -7,10 +12,12 @@ import {
   Modal,
   NumberInput,
   Panel,
+  Skeleton,
   Table,
   type TableColumn,
 } from "@spacesim/ui";
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 interface Faction {
   id: string;
@@ -19,10 +26,6 @@ interface Faction {
   descriptionFr: string;
   produces: Record<string, number>;
   consumes: Record<string, number>;
-}
-
-interface Props {
-  token: string;
 }
 
 function summarize(resources: Record<string, number>): string {
@@ -53,34 +56,25 @@ function formFromFaction(f: Faction): UpsertFactionInput {
 }
 
 /** CMS de contenu (chantier 23.6) — factions marchandes PNJ, même recette que les
- *  vaisseaux de guerre (23.5) : `PUT .../factions/:id` upsert, id choisi par l'admin. */
-export function FactionsView({ token }: Props) {
-  const [factions, setFactions] = useState<Faction[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+ *  vaisseaux de guerre (23.5) : `PUT .../factions/:id` upsert, id choisi par l'admin.
+ *  Client orval (chantier 27.15). */
+export function FactionsView() {
+  const queryClient = useQueryClient();
+  const { data, error, isPending } = useGetApiAdminContentFactions();
+  const factions = (data?.factions ?? []) as Faction[];
+  const mutation = usePutApiAdminContentFactionsId();
+  const loadError = error
+    ? error instanceof Error
+      ? error.message
+      : "Serveur injoignable"
+    : null;
+
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
     null,
   );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<UpsertFactionInput>(emptyForm());
-  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const load = () => {
-    fetch("/api/admin/content/factions", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((body: { factions?: Faction[]; error?: string }) => {
-        if (body.error) {
-          setError(body.error);
-          return;
-        }
-        setFactions(body.factions ?? []);
-      })
-      .catch(() => setError("Serveur injoignable"));
-  };
-
-  useEffect(load, [token]);
 
   const openCreate = () => {
     setEditing({ id: "", isNew: true });
@@ -102,31 +96,13 @@ export function FactionsView({ token }: Props) {
       setSubmitError("Id requis");
       return;
     }
-    setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(
-        `/api/admin/content/factions/${encodeURIComponent(id)}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(form),
-        },
-      );
-      const body = await res.json();
-      if (!res.ok) {
-        setSubmitError(body.error ?? "Erreur serveur");
-        return;
-      }
-      setFactions(body.factions);
+      const result = await mutation.mutateAsync({ id, data: form });
+      queryClient.setQueryData(getGetApiAdminContentFactionsQueryKey(), result);
       setEditing(null);
-    } catch {
-      setSubmitError("Serveur injoignable");
-    } finally {
-      setSubmitting(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
     }
   };
 
@@ -178,9 +154,11 @@ export function FactionsView({ token }: Props) {
       title="Factions marchandes"
       actions={<Button onClick={openCreate}>Nouvelle</Button>}
     >
-      {error && <p className="auth-error">{error}</p>}
-      {!error && factions === null && <p className="muted">Chargement…</p>}
-      {!error && factions && <Table columns={columns} rows={factions} />}
+      {loadError && <p className="auth-error">{loadError}</p>}
+      {!loadError && isPending && (
+        <Skeleton variant="block" label="Chargement des factions…" />
+      )}
+      {!loadError && !isPending && <Table columns={columns} rows={factions} />}
 
       {editing && (
         <Modal open={editing !== null} onClose={() => setEditing(null)}>
@@ -246,8 +224,8 @@ export function FactionsView({ token }: Props) {
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler
             </Button>
-            <Button disabled={submitting} onClick={() => void submit()}>
-              {submitting ? "…" : "Enregistrer"}
+            <Button disabled={mutation.isPending} onClick={() => void submit()}>
+              {mutation.isPending ? "…" : "Enregistrer"}
             </Button>
           </Modal.Actions>
         </Modal>

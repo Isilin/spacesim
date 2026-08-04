@@ -1,3 +1,8 @@
+import {
+  getGetApiAdminContentConstantsQueryKey,
+  useGetApiAdminContentConstants,
+  usePutApiAdminContentConstantsKey,
+} from "../api/generated/admin.js";
 import type { UpsertConstantInput } from "@spacesim/protocol";
 import {
   Button,
@@ -5,19 +10,17 @@ import {
   Modal,
   NumberInput,
   Panel,
+  Skeleton,
   Table,
   type TableColumn,
 } from "@spacesim/ui";
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 interface Constant {
   key: string;
   value: number;
   descriptionFr: string;
-}
-
-interface Props {
-  token: string;
 }
 
 function formFromConstant(c: Constant): UpsertConstantInput {
@@ -28,31 +31,22 @@ function formFromConstant(c: Constant): UpsertConstantInput {
  * CMS de contenu (chantier 23.8) — scalaires d'équilibrage global. Comme les bâtiments,
  * pas de bouton "Nouveau" : la clé reste un des champs de `BalanceConstants`
  * (`packages/shared/src/balance.ts`), vérifiée côté serveur, pas un id libre.
+ * Client orval (chantier 27.15).
  */
-export function ConstantsView({ token }: Props) {
-  const [constants, setConstants] = useState<Constant[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function ConstantsView() {
+  const queryClient = useQueryClient();
+  const { data, error, isPending } = useGetApiAdminContentConstants();
+  const constants = (data?.constants ?? []) as Constant[];
+  const mutation = usePutApiAdminContentConstantsKey();
+  const loadError = error
+    ? error instanceof Error
+      ? error.message
+      : "Serveur injoignable"
+    : null;
+
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [form, setForm] = useState<UpsertConstantInput | null>(null);
-  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const load = () => {
-    fetch("/api/admin/content/constants", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((body: { constants?: Constant[]; error?: string }) => {
-        if (body.error) {
-          setError(body.error);
-          return;
-        }
-        setConstants(body.constants ?? []);
-      })
-      .catch(() => setError("Serveur injoignable"));
-  };
-
-  useEffect(load, [token]);
 
   const openEdit = (c: Constant) => {
     setEditingKey(c.key);
@@ -62,32 +56,20 @@ export function ConstantsView({ token }: Props) {
 
   const submit = async () => {
     if (!editingKey || !form) return;
-    setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(
-        `/api/admin/content/constants/${encodeURIComponent(editingKey)}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(form),
-        },
+      const result = await mutation.mutateAsync({
+        key: editingKey,
+        data: form,
+      });
+      queryClient.setQueryData(
+        getGetApiAdminContentConstantsQueryKey(),
+        result,
       );
-      const body = await res.json();
-      if (!res.ok) {
-        setSubmitError(body.error ?? "Erreur serveur");
-        return;
-      }
-      setConstants(body.constants);
       setEditingKey(null);
       setForm(null);
-    } catch {
-      setSubmitError("Serveur injoignable");
-    } finally {
-      setSubmitting(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
     }
   };
 
@@ -108,9 +90,11 @@ export function ConstantsView({ token }: Props) {
 
   return (
     <Panel title="Constantes d'équilibrage">
-      {error && <p className="auth-error">{error}</p>}
-      {!error && constants === null && <p className="muted">Chargement…</p>}
-      {!error && constants && <Table columns={columns} rows={constants} />}
+      {loadError && <p className="auth-error">{loadError}</p>}
+      {!loadError && isPending && (
+        <Skeleton variant="block" label="Chargement des constantes…" />
+      )}
+      {!loadError && !isPending && <Table columns={columns} rows={constants} />}
 
       {editingKey && form && (
         <Modal open={editingKey !== null} onClose={() => setEditingKey(null)}>
@@ -136,8 +120,8 @@ export function ConstantsView({ token }: Props) {
             <Button variant="ghost" onClick={() => setEditingKey(null)}>
               Annuler
             </Button>
-            <Button disabled={submitting} onClick={() => void submit()}>
-              {submitting ? "…" : "Enregistrer"}
+            <Button disabled={mutation.isPending} onClick={() => void submit()}>
+              {mutation.isPending ? "…" : "Enregistrer"}
             </Button>
           </Modal.Actions>
         </Modal>

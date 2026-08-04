@@ -1,3 +1,11 @@
+import {
+  CHASSIS_KINDS,
+  MILESTONE_METRICS,
+  MODULE_ROLES,
+  SHIP_DOMAINS,
+  SLOT_TYPES,
+  TECH_BRANCHES,
+} from "@spacesim/protocol";
 import type {
   CombatCategory,
   CombatDirective,
@@ -5,6 +13,22 @@ import type {
   ModuleEffects,
   TechEffects,
 } from "@spacesim/shared";
+
+export type ChassisKind = (typeof CHASSIS_KINDS)[number];
+export type ShipDomainKind = (typeof SHIP_DOMAINS)[number];
+export type ModuleRole = (typeof MODULE_ROLES)[number];
+export type SlotType = (typeof SLOT_TYPES)[number];
+export type MilestoneMetric = (typeof MILESTONE_METRICS)[number];
+export type TechBranch = (typeof TECH_BRANCHES)[number];
+
+/** Forme exacte de `slotCountsSchema` (packages/protocol/src/content.ts, non exporté) —
+ *  dupliquée ici plutôt qu'exportée depuis protocol pour ce seul usage de cast DB. */
+export interface ChassisSlots {
+  weapon: number;
+  defense: number;
+  propulsion: number;
+  utility: number;
+}
 
 /**
  * Contenu de jeu chargé depuis la DB (chantier 23.5+) — un domaine à la fois, en
@@ -104,7 +128,7 @@ export interface ContentTech {
   id: string;
   nameFr: string;
   descriptionFr: string;
-  branch: string;
+  branch: TechBranch;
   cost: number;
   durationMs: number;
   requires: string[];
@@ -119,18 +143,18 @@ export interface ContentChassis {
   id: string;
   nameFr: string;
   descriptionFr: string;
-  kind: string;
-  domain: string;
+  kind: ChassisKind;
+  domain: ShipDomainKind;
   hull: number;
   baseInitiative: number;
   power: number;
   tonnage: number;
   calc: number;
-  slots: Record<string, number>;
+  slots: ChassisSlots;
   baseSpeedMult: number;
   baseFuelPerJump: number;
   /** null = pas de spécialisation de rôle. */
-  roleBonus: Partial<Record<string, number>> | null;
+  roleBonus: Partial<Record<ModuleRole, number>> | null;
   cost: Record<string, number>;
   buildMs: number;
   /** null = aucune tech requise. */
@@ -142,8 +166,8 @@ export interface ContentModule {
   id: string;
   nameFr: string;
   descriptionFr: string;
-  slot: string;
-  role: string;
+  slot: SlotType;
+  role: ModuleRole;
   power: number;
   tonnage: number;
   calc: number;
@@ -174,7 +198,7 @@ export interface ContentPreset {
  */
 export interface ContentMilestone {
   id: string;
-  metric: string;
+  metric: MilestoneMetric;
   threshold: number;
 }
 
@@ -205,8 +229,8 @@ export interface ContentInstallation {
   outputs: Record<string, number> | null;
   /** null = aucune tech requise. */
   requiresTech: string | null;
-  /** "resourceMarket" | "blueprintMarket" | null (chantier 25). */
-  grants: string | null;
+  /** null = aucune capacité de marché conférée (chantier 25). */
+  grants: "resourceMarket" | "blueprintMarket" | null;
 }
 
 /** Contenu chargé en mémoire (`GameRuntime.content`) — remplacé en bloc à chaque édition

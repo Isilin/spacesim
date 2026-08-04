@@ -320,3 +320,87 @@ export const upsertInstallationSchema = z.object({
     .default(null),
 });
 export type UpsertInstallationInput = z.infer<typeof upsertInstallationSchema>;
+
+// ── Schémas de réponse (chantier 27.15) ──────────────────────────────────────
+// GET liste et PUT renvoient tous deux { <domaine>: Entrée[] } — nécessaire pour que le
+// spec OpenAPI (donc le client orval) documente une vraie forme, pas `void`.
+
+export const contentWarshipSchema = upsertWarshipSchema.extend({
+  id: z.string(),
+});
+export const warshipsListResponseSchema = z.object({
+  warships: z.array(contentWarshipSchema),
+});
+
+export const contentFactionSchema = upsertFactionSchema.extend({
+  id: z.string(),
+});
+export const factionsListResponseSchema = z.object({
+  factions: z.array(contentFactionSchema),
+});
+
+export const contentBuildingSchema = upsertBuildingSchema.extend({
+  id: z.string(),
+});
+export const buildingsListResponseSchema = z.object({
+  buildings: z.array(contentBuildingSchema),
+});
+
+export const contentShipSchema = upsertShipSchema.extend({ id: z.string() });
+export const shipsListResponseSchema = z.object({
+  ships: z.array(contentShipSchema),
+});
+
+export const contentConstantSchema = upsertConstantSchema.extend({
+  key: z.string(),
+});
+export const constantsListResponseSchema = z.object({
+  constants: z.array(contentConstantSchema),
+});
+
+export const contentTechSchema = upsertTechSchema.extend({ id: z.string() });
+export const techsListResponseSchema = z.object({
+  techs: z.array(contentTechSchema),
+});
+
+export const contentChassisSchema = upsertChassisSchema.extend({
+  id: z.string(),
+});
+export const chassisListResponseSchema = z.object({
+  chassis: z.array(contentChassisSchema),
+});
+
+export const contentModuleSchema = upsertModuleSchema.extend({
+  id: z.string(),
+});
+export const modulesListResponseSchema = z.object({
+  modules: z.array(contentModuleSchema),
+});
+
+export const contentPresetSchema = upsertPresetSchema.extend({
+  id: z.string(),
+});
+export const presetsListResponseSchema = z.object({
+  presets: z.array(contentPresetSchema),
+});
+
+export const contentMilestoneSchema = upsertMilestoneSchema.extend({
+  id: z.string(),
+});
+export const milestonesListResponseSchema = z.object({
+  milestones: z.array(contentMilestoneSchema),
+});
+
+export const contentZoneTypeSchema = upsertZoneTypeSchema.extend({
+  id: z.string(),
+});
+export const zoneTypesListResponseSchema = z.object({
+  zoneTypes: z.array(contentZoneTypeSchema),
+});
+
+export const contentInstallationSchema = upsertInstallationSchema.extend({
+  id: z.string(),
+});
+export const installationsListResponseSchema = z.object({
+  installations: z.array(contentInstallationSchema),
+});

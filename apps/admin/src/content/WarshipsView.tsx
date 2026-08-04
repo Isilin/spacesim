@@ -1,4 +1,9 @@
 import {
+  getGetApiAdminContentWarshipsQueryKey,
+  useGetApiAdminContentWarships,
+  usePutApiAdminContentWarshipsId,
+} from "../api/generated/admin.js";
+import {
   WARSHIP_CATEGORIES,
   type UpsertWarshipInput,
 } from "@spacesim/protocol";
@@ -10,10 +15,12 @@ import {
   NumberInput,
   Panel,
   Select,
+  Skeleton,
   Table,
   type TableColumn,
 } from "@spacesim/ui";
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 interface Warship {
   id: string;
@@ -28,10 +35,6 @@ interface Warship {
   buildMs: number;
   requiresTech: string | null;
   fleetDamageBonus: number | null;
-}
-
-interface Props {
-  token: string;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -76,35 +79,27 @@ function formFromWarship(w: Warship): UpsertWarshipInput {
 /**
  * CMS de contenu (chantier 23.5) — vaisseaux de guerre, domaine pilote. `PUT
  * /api/admin/content/warships/:id` fait office de create-ou-update : le formulaire de
- * création demande juste un id libre (id-minting, pas de mécanique dédiée).
+ * création demande juste un id libre (id-minting, pas de mécanique dédiée). Client orval
+ * (chantier 27.15) : plus de fetch()/token manuels, TanStack Query gère le cache, les
+ * requêtes obsolètes (AbortSignal) et l'état de chargement/erreur.
  */
-export function WarshipsView({ token }: Props) {
-  const [warships, setWarships] = useState<Warship[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function WarshipsView() {
+  const queryClient = useQueryClient();
+  const { data, error, isPending } = useGetApiAdminContentWarships();
+  const warships = (data?.warships ?? []) as Warship[];
+  const loadError = error
+    ? error instanceof Error
+      ? error.message
+      : "Serveur injoignable"
+    : null;
+  const mutation = usePutApiAdminContentWarshipsId();
+
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
     null,
   );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<UpsertWarshipInput>(emptyForm());
-  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const load = () => {
-    fetch("/api/admin/content/warships", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((body: { warships?: Warship[]; error?: string }) => {
-        if (body.error) {
-          setError(body.error);
-          return;
-        }
-        setWarships(body.warships ?? []);
-      })
-      .catch(() => setError("Serveur injoignable"));
-  };
-
-  useEffect(load, [token]);
 
   const openCreate = () => {
     setEditing({ id: "", isNew: true });
@@ -126,31 +121,13 @@ export function WarshipsView({ token }: Props) {
       setSubmitError("Id requis");
       return;
     }
-    setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(
-        `/api/admin/content/warships/${encodeURIComponent(id)}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(form),
-        },
-      );
-      const body = await res.json();
-      if (!res.ok) {
-        setSubmitError(body.error ?? "Erreur serveur");
-        return;
-      }
-      setWarships(body.warships);
+      const result = await mutation.mutateAsync({ id, data: form });
+      queryClient.setQueryData(getGetApiAdminContentWarshipsQueryKey(), result);
       setEditing(null);
-    } catch {
-      setSubmitError("Serveur injoignable");
-    } finally {
-      setSubmitting(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
     }
   };
 
@@ -196,9 +173,11 @@ export function WarshipsView({ token }: Props) {
       title="Vaisseaux de guerre"
       actions={<Button onClick={openCreate}>Nouveau</Button>}
     >
-      {error && <p className="auth-error">{error}</p>}
-      {!error && warships === null && <p className="muted">Chargement…</p>}
-      {!error && warships && <Table columns={columns} rows={warships} />}
+      {loadError && <p className="auth-error">{loadError}</p>}
+      {!loadError && isPending && (
+        <Skeleton variant="block" label="Chargement des vaisseaux de guerre…" />
+      )}
+      {!loadError && !isPending && <Table columns={columns} rows={warships} />}
 
       {editing && (
         <Modal open={editing !== null} onClose={() => setEditing(null)}>
@@ -347,8 +326,8 @@ export function WarshipsView({ token }: Props) {
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler
             </Button>
-            <Button disabled={submitting} onClick={() => void submit()}>
-              {submitting ? "…" : "Enregistrer"}
+            <Button disabled={mutation.isPending} onClick={() => void submit()}>
+              {mutation.isPending ? "…" : "Enregistrer"}
             </Button>
           </Modal.Actions>
         </Modal>

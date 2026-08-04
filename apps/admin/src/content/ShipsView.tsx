@@ -1,3 +1,8 @@
+import {
+  getGetApiAdminContentShipsQueryKey,
+  useGetApiAdminContentShips,
+  usePutApiAdminContentShipsId,
+} from "../api/generated/admin.js";
 import type { UpsertShipInput } from "@spacesim/protocol";
 import { RESOURCES, type ResourceId } from "@spacesim/shared";
 import {
@@ -6,10 +11,12 @@ import {
   Modal,
   NumberInput,
   Panel,
+  Skeleton,
   Table,
   type TableColumn,
 } from "@spacesim/ui";
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 interface Ship {
   id: string;
@@ -21,10 +28,6 @@ interface Ship {
   requiresTech: string | null;
   speedMult: number;
   fuelPerJump: number;
-}
-
-interface Props {
-  token: string;
 }
 
 function emptyForm(): UpsertShipInput {
@@ -56,34 +59,25 @@ function formFromShip(s: Ship): UpsertShipInput {
 /**
  * CMS de contenu (chantier 23.8) — vaisseaux civils historiques, même recette que les
  * vaisseaux de guerre (23.5) : `PUT .../ships/:id` upsert, id choisi par l'admin.
+ * Client orval (chantier 27.15).
  */
-export function ShipsView({ token }: Props) {
-  const [ships, setShips] = useState<Ship[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function ShipsView() {
+  const queryClient = useQueryClient();
+  const { data, error, isPending } = useGetApiAdminContentShips();
+  const ships = (data?.ships ?? []) as Ship[];
+  const mutation = usePutApiAdminContentShipsId();
+  const loadError = error
+    ? error instanceof Error
+      ? error.message
+      : "Serveur injoignable"
+    : null;
+
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
     null,
   );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<UpsertShipInput>(emptyForm());
-  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const load = () => {
-    fetch("/api/admin/content/ships", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((body: { ships?: Ship[]; error?: string }) => {
-        if (body.error) {
-          setError(body.error);
-          return;
-        }
-        setShips(body.ships ?? []);
-      })
-      .catch(() => setError("Serveur injoignable"));
-  };
-
-  useEffect(load, [token]);
 
   const openCreate = () => {
     setEditing({ id: "", isNew: true });
@@ -105,31 +99,13 @@ export function ShipsView({ token }: Props) {
       setSubmitError("Id requis");
       return;
     }
-    setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(
-        `/api/admin/content/ships/${encodeURIComponent(id)}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(form),
-        },
-      );
-      const body = await res.json();
-      if (!res.ok) {
-        setSubmitError(body.error ?? "Erreur serveur");
-        return;
-      }
-      setShips(body.ships);
+      const result = await mutation.mutateAsync({ id, data: form });
+      queryClient.setQueryData(getGetApiAdminContentShipsQueryKey(), result);
       setEditing(null);
-    } catch {
-      setSubmitError("Serveur injoignable");
-    } finally {
-      setSubmitting(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
     }
   };
 
@@ -170,9 +146,11 @@ export function ShipsView({ token }: Props) {
       title="Vaisseaux civils"
       actions={<Button onClick={openCreate}>Nouveau</Button>}
     >
-      {error && <p className="auth-error">{error}</p>}
-      {!error && ships === null && <p className="muted">Chargement…</p>}
-      {!error && ships && <Table columns={columns} rows={ships} />}
+      {loadError && <p className="auth-error">{loadError}</p>}
+      {!loadError && isPending && (
+        <Skeleton variant="block" label="Chargement des vaisseaux civils…" />
+      )}
+      {!loadError && !isPending && <Table columns={columns} rows={ships} />}
 
       {editing && (
         <Modal open={editing !== null} onClose={() => setEditing(null)}>
@@ -260,8 +238,8 @@ export function ShipsView({ token }: Props) {
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler
             </Button>
-            <Button disabled={submitting} onClick={() => void submit()}>
-              {submitting ? "…" : "Enregistrer"}
+            <Button disabled={mutation.isPending} onClick={() => void submit()}>
+              {mutation.isPending ? "…" : "Enregistrer"}
             </Button>
           </Modal.Actions>
         </Modal>

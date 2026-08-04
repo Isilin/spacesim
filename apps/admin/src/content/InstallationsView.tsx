@@ -1,3 +1,8 @@
+import {
+  getGetApiAdminContentInstallationsQueryKey,
+  useGetApiAdminContentInstallations,
+  usePutApiAdminContentInstallationsId,
+} from "../api/generated/admin.js";
 import type { UpsertInstallationInput } from "@spacesim/protocol";
 import { RESOURCES, type ResourceId } from "@spacesim/shared";
 import {
@@ -7,10 +12,12 @@ import {
   NumberInput,
   Panel,
   Select,
+  Skeleton,
   Table,
   type TableColumn,
 } from "@spacesim/ui";
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 type InstallationGrant = "resourceMarket" | "blueprintMarket";
 
@@ -31,10 +38,6 @@ interface Installation {
   outputs: Record<string, number> | null;
   requiresTech: string | null;
   grants: InstallationGrant | null;
-}
-
-interface Props {
-  token: string;
 }
 
 interface InstallationForm {
@@ -90,36 +93,25 @@ function summarize(resources: Record<string, number> | null): string {
  * qu'un module de vaisseau (id libre, id-minting, occupe un emplacement d'un type
  * précis — ici `zoneType` en id libre, comme `chassisId` sur les presets), mais avec
  * `inputs`/`outputs` par tick sur le patron d'un bâtiment de colonie.
+ * Client orval (chantier 27.15).
  */
-export function InstallationsView({ token }: Props) {
-  const [installations, setInstallations] = useState<Installation[] | null>(
-    null,
-  );
-  const [error, setError] = useState<string | null>(null);
+export function InstallationsView() {
+  const queryClient = useQueryClient();
+  const { data, error, isPending } = useGetApiAdminContentInstallations();
+  const installations = (data?.installations ?? []) as Installation[];
+  const mutation = usePutApiAdminContentInstallationsId();
+  const loadError = error
+    ? error instanceof Error
+      ? error.message
+      : "Serveur injoignable"
+    : null;
+
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
     null,
   );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<InstallationForm>(emptyForm());
-  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const load = () => {
-    fetch("/api/admin/content/installations", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((body: { installations?: Installation[]; error?: string }) => {
-        if (body.error) {
-          setError(body.error);
-          return;
-        }
-        setInstallations(body.installations ?? []);
-      })
-      .catch(() => setError("Serveur injoignable"));
-  };
-
-  useEffect(load, [token]);
 
   const openCreate = () => {
     setEditing({ id: "", isNew: true });
@@ -152,31 +144,16 @@ export function InstallationsView({ token }: Props) {
       requiresTech: form.requiresTech.trim() || null,
       grants: form.grants || null,
     };
-    setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(
-        `/api/admin/content/installations/${encodeURIComponent(id)}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        },
+      const result = await mutation.mutateAsync({ id, data: payload });
+      queryClient.setQueryData(
+        getGetApiAdminContentInstallationsQueryKey(),
+        result,
       );
-      const body = await res.json();
-      if (!res.ok) {
-        setSubmitError(body.error ?? "Erreur serveur");
-        return;
-      }
-      setInstallations(body.installations);
       setEditing(null);
-    } catch {
-      setSubmitError("Serveur injoignable");
-    } finally {
-      setSubmitting(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
     }
   };
 
@@ -233,9 +210,11 @@ export function InstallationsView({ token }: Props) {
       title="Installations"
       actions={<Button onClick={openCreate}>Nouveau</Button>}
     >
-      {error && <p className="auth-error">{error}</p>}
-      {!error && installations === null && <p className="muted">Chargement…</p>}
-      {!error && installations && (
+      {loadError && <p className="auth-error">{loadError}</p>}
+      {!loadError && isPending && (
+        <Skeleton variant="block" label="Chargement des installations…" />
+      )}
+      {!loadError && !isPending && (
         <Table columns={columns} rows={installations} />
       )}
 
@@ -341,8 +320,8 @@ export function InstallationsView({ token }: Props) {
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler
             </Button>
-            <Button disabled={submitting} onClick={() => void submit()}>
-              {submitting ? "…" : "Enregistrer"}
+            <Button disabled={mutation.isPending} onClick={() => void submit()}>
+              {mutation.isPending ? "…" : "Enregistrer"}
             </Button>
           </Modal.Actions>
         </Modal>

@@ -1,3 +1,8 @@
+import {
+  getGetApiAdminContentPresetsQueryKey,
+  useGetApiAdminContentPresets,
+  usePutApiAdminContentPresetsId,
+} from "../api/generated/admin.js";
 import type { UpsertPresetInput } from "@spacesim/protocol";
 import {
   Button,
@@ -5,10 +10,12 @@ import {
   Modal,
   Panel,
   Select,
+  Skeleton,
   Table,
   type TableColumn,
 } from "@spacesim/ui";
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 interface Preset {
   id: string;
@@ -17,10 +24,6 @@ interface Preset {
   chassisId: string;
   modules: string[];
   starter: boolean;
-}
-
-interface Props {
-  token: string;
 }
 
 interface PresetForm {
@@ -55,34 +58,25 @@ function formFromPreset(p: Preset): PresetForm {
  * CMS de contenu (chantier 23.11) — plans pré-conçus. `chassisId`/`modules` en texte
  * libre (ids séparés par virgule pour les modules) : la validation réelle vient de
  * `resolveBlueprint`/`validateBlueprint` côté serveur (23.10), pas de cette route.
+ * Client orval (chantier 27.15).
  */
-export function PresetsView({ token }: Props) {
-  const [presets, setPresets] = useState<Preset[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function PresetsView() {
+  const queryClient = useQueryClient();
+  const { data, error, isPending } = useGetApiAdminContentPresets();
+  const presets = (data?.presets ?? []) as Preset[];
+  const mutation = usePutApiAdminContentPresetsId();
+  const loadError = error
+    ? error instanceof Error
+      ? error.message
+      : "Serveur injoignable"
+    : null;
+
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
     null,
   );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<PresetForm>(emptyForm());
-  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const load = () => {
-    fetch("/api/admin/content/presets", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((body: { presets?: Preset[]; error?: string }) => {
-        if (body.error) {
-          setError(body.error);
-          return;
-        }
-        setPresets(body.presets ?? []);
-      })
-      .catch(() => setError("Serveur injoignable"));
-  };
-
-  useEffect(load, [token]);
 
   const openCreate = () => {
     setEditing({ id: "", isNew: true });
@@ -114,31 +108,13 @@ export function PresetsView({ token }: Props) {
         .filter(Boolean),
       starter: form.starter === "yes",
     };
-    setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(
-        `/api/admin/content/presets/${encodeURIComponent(id)}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        },
-      );
-      const body = await res.json();
-      if (!res.ok) {
-        setSubmitError(body.error ?? "Erreur serveur");
-        return;
-      }
-      setPresets(body.presets);
+      const result = await mutation.mutateAsync({ id, data: payload });
+      queryClient.setQueryData(getGetApiAdminContentPresetsQueryKey(), result);
       setEditing(null);
-    } catch {
-      setSubmitError("Serveur injoignable");
-    } finally {
-      setSubmitting(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
     }
   };
 
@@ -172,9 +148,11 @@ export function PresetsView({ token }: Props) {
       title="Plans pré-conçus"
       actions={<Button onClick={openCreate}>Nouveau</Button>}
     >
-      {error && <p className="auth-error">{error}</p>}
-      {!error && presets === null && <p className="muted">Chargement…</p>}
-      {!error && presets && <Table columns={columns} rows={presets} />}
+      {loadError && <p className="auth-error">{loadError}</p>}
+      {!loadError && isPending && (
+        <Skeleton variant="block" label="Chargement des plans pré-conçus…" />
+      )}
+      {!loadError && !isPending && <Table columns={columns} rows={presets} />}
 
       {editing && (
         <Modal open={editing !== null} onClose={() => setEditing(null)}>
@@ -232,8 +210,8 @@ export function PresetsView({ token }: Props) {
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler
             </Button>
-            <Button disabled={submitting} onClick={() => void submit()}>
-              {submitting ? "…" : "Enregistrer"}
+            <Button disabled={mutation.isPending} onClick={() => void submit()}>
+              {mutation.isPending ? "…" : "Enregistrer"}
             </Button>
           </Modal.Actions>
         </Modal>

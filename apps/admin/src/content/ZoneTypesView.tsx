@@ -1,3 +1,8 @@
+import {
+  getGetApiAdminContentZoneTypesQueryKey,
+  useGetApiAdminContentZoneTypes,
+  usePutApiAdminContentZoneTypesId,
+} from "../api/generated/admin.js";
 import type { UpsertZoneTypeInput } from "@spacesim/protocol";
 import { RESOURCES, type ResourceId } from "@spacesim/shared";
 import {
@@ -6,10 +11,12 @@ import {
   Modal,
   NumberInput,
   Panel,
+  Skeleton,
   Table,
   type TableColumn,
 } from "@spacesim/ui";
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 interface ZoneType {
   id: string;
@@ -18,10 +25,6 @@ interface ZoneType {
   cost: Record<string, number>;
   buildMs: number;
   requiresTech: string | null;
-}
-
-interface Props {
-  token: string;
 }
 
 interface ZoneTypeForm {
@@ -57,34 +60,25 @@ function formFromZoneType(z: ZoneType): ZoneTypeForm {
  * qu'un châssis/module (id libre, id-minting) mais sans emplacements ni effets : une
  * zone construite ajoute une instance positionnée sur la grille hexagonale de la
  * station (voir `Station.zones`, `sim/industry/station-layout`, chantier 26).
+ * Client orval (chantier 27.15).
  */
-export function ZoneTypesView({ token }: Props) {
-  const [zoneTypes, setZoneTypes] = useState<ZoneType[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function ZoneTypesView() {
+  const queryClient = useQueryClient();
+  const { data, error, isPending } = useGetApiAdminContentZoneTypes();
+  const zoneTypes = (data?.zoneTypes ?? []) as ZoneType[];
+  const mutation = usePutApiAdminContentZoneTypesId();
+  const loadError = error
+    ? error instanceof Error
+      ? error.message
+      : "Serveur injoignable"
+    : null;
+
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
     null,
   );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<ZoneTypeForm>(emptyForm());
-  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const load = () => {
-    fetch("/api/admin/content/zone-types", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((body: { zoneTypes?: ZoneType[]; error?: string }) => {
-        if (body.error) {
-          setError(body.error);
-          return;
-        }
-        setZoneTypes(body.zoneTypes ?? []);
-      })
-      .catch(() => setError("Serveur injoignable"));
-  };
-
-  useEffect(load, [token]);
 
   const openCreate = () => {
     setEditing({ id: "", isNew: true });
@@ -113,31 +107,16 @@ export function ZoneTypesView({ token }: Props) {
       buildMs: form.buildMs,
       requiresTech: form.requiresTech.trim() || null,
     };
-    setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(
-        `/api/admin/content/zone-types/${encodeURIComponent(id)}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        },
+      const result = await mutation.mutateAsync({ id, data: payload });
+      queryClient.setQueryData(
+        getGetApiAdminContentZoneTypesQueryKey(),
+        result,
       );
-      const body = await res.json();
-      if (!res.ok) {
-        setSubmitError(body.error ?? "Erreur serveur");
-        return;
-      }
-      setZoneTypes(body.zoneTypes);
       setEditing(null);
-    } catch {
-      setSubmitError("Serveur injoignable");
-    } finally {
-      setSubmitting(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
     }
   };
 
@@ -175,9 +154,11 @@ export function ZoneTypesView({ token }: Props) {
       title="Types de zone"
       actions={<Button onClick={openCreate}>Nouveau</Button>}
     >
-      {error && <p className="auth-error">{error}</p>}
-      {!error && zoneTypes === null && <p className="muted">Chargement…</p>}
-      {!error && zoneTypes && <Table columns={columns} rows={zoneTypes} />}
+      {loadError && <p className="auth-error">{loadError}</p>}
+      {!loadError && isPending && (
+        <Skeleton variant="block" label="Chargement des types de zone…" />
+      )}
+      {!loadError && !isPending && <Table columns={columns} rows={zoneTypes} />}
 
       {editing && (
         <Modal open={editing !== null} onClose={() => setEditing(null)}>
@@ -239,8 +220,8 @@ export function ZoneTypesView({ token }: Props) {
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler
             </Button>
-            <Button disabled={submitting} onClick={() => void submit()}>
-              {submitting ? "…" : "Enregistrer"}
+            <Button disabled={mutation.isPending} onClick={() => void submit()}>
+              {mutation.isPending ? "…" : "Enregistrer"}
             </Button>
           </Modal.Actions>
         </Modal>

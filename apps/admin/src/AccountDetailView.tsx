@@ -1,3 +1,8 @@
+import {
+  getGetApiAdminAccountsIdQueryKey,
+  useGetApiAdminAccountsId,
+  usePostApiAdminAccountsIdSanctions,
+} from "./api/generated/admin.js";
 import type { RoleId, SanctionKind } from "@spacesim/protocol";
 import {
   Badge,
@@ -7,13 +12,15 @@ import {
   Modal,
   Panel,
   Select,
+  Skeleton,
   Stat,
   Table,
   type TableColumn,
 } from "@spacesim/ui";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useModal } from "@spacesim/ui";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ColonyRow {
   name: string;
@@ -67,10 +74,6 @@ interface AccountDetail {
   sanctionHistory: SanctionEntry[];
 }
 
-interface Props {
-  token: string;
-}
-
 const COLONY_COLUMNS: TableColumn<ColonyRow>[] = [
   { key: "name", label: "Colonie" },
   { key: "systemId", label: "Système" },
@@ -120,71 +123,54 @@ function statusBadge(status: SanctionStatus) {
   return <Badge variant="ko">{label}</Badge>;
 }
 
-/** Détail d'un compte : identité, sessions, empire, sanctions (chantier 23.3/23.4). */
-export function AccountDetailView({ token }: Props) {
-  const { id } = useParams<{ id: string }>();
-  const [account, setAccount] = useState<AccountDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
+/** Détail d'un compte : identité, sessions, empire, sanctions (chantier 23.3/23.4).
+ *  Client orval (chantier 27.15). */
+export function AccountDetailView() {
+  const { id = "" } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
+  const { data, error, isPending } = useGetApiAdminAccountsId(id, {
+    query: { enabled: !!id },
+  });
+  const account = data as AccountDetail | undefined;
+  const loadError = error
+    ? error instanceof Error
+      ? error.message
+      : "Serveur injoignable"
+    : null;
+
   const { open, openModal, closeModal } = useModal();
   const [kind, setKind] = useState<SanctionKind>("warn");
   const [reason, setReason] = useState("");
   const [durationHours, setDurationHours] = useState(24);
-  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const load = () => {
-    fetch(`/api/admin/accounts/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((body: AccountDetail & { error?: string }) => {
-        if (body.error) {
-          setError(body.error);
-          return;
-        }
-        setAccount(body);
-      })
-      .catch(() => setError("Serveur injoignable"));
-  };
-
-  useEffect(load, [token, id]);
+  const mutation = usePostApiAdminAccountsIdSanctions();
 
   const submitSanction = async () => {
-    setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(`/api/admin/accounts/${id}/sanctions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+      const result = await mutation.mutateAsync({
+        id,
+        data: {
           kind,
           reason,
           durationMs: kind === "suspend" ? durationHours * 3600_000 : undefined,
-        }),
+        },
       });
-      const body = await res.json();
-      if (!res.ok) {
-        setSubmitError(body.error ?? "Erreur serveur");
-        return;
-      }
-      setAccount(body);
+      queryClient.setQueryData(getGetApiAdminAccountsIdQueryKey(id), result);
       closeModal();
       setReason("");
-    } catch {
-      setSubmitError("Serveur injoignable");
-    } finally {
-      setSubmitting(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
     }
   };
 
   return (
     <div className="detail-stack">
       <Link to="/accounts">← Retour aux comptes</Link>
-      {error && <p className="auth-error">{error}</p>}
-      {!error && !account && <p className="muted">Chargement…</p>}
+      {loadError && <p className="auth-error">{loadError}</p>}
+      {!loadError && isPending && (
+        <Skeleton variant="block" label="Chargement du compte…" />
+      )}
       {account && (
         <>
           <Panel
@@ -303,10 +289,10 @@ export function AccountDetailView({ token }: Props) {
               </Button>
               <Button
                 variant="danger"
-                disabled={submitting || !reason.trim()}
+                disabled={mutation.isPending || !reason.trim()}
                 onClick={() => void submitSanction()}
               >
-                {submitting ? "…" : "Confirmer"}
+                {mutation.isPending ? "…" : "Confirmer"}
               </Button>
             </Modal.Actions>
           </Modal>

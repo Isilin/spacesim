@@ -1,3 +1,8 @@
+import {
+  getGetApiAdminContentBuildingsQueryKey,
+  useGetApiAdminContentBuildings,
+  usePutApiAdminContentBuildingsId,
+} from "../api/generated/admin.js";
 import type { UpsertBuildingInput } from "@spacesim/protocol";
 import { RESOURCES, type ResourceId } from "@spacesim/shared";
 import {
@@ -7,10 +12,12 @@ import {
   NumberInput,
   Panel,
   Select,
+  Skeleton,
   Table,
   type TableColumn,
 } from "@spacesim/ui";
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 interface Building {
   id: string;
@@ -22,10 +29,6 @@ interface Building {
   inputs: Record<string, number> | null;
   depositScaled: string | null;
   jobsPerInstance: number | null;
-}
-
-interface Props {
-  token: string;
 }
 
 function summarize(resources: Record<string, number> | null): string {
@@ -55,31 +58,22 @@ const NO_DEPOSIT = "__none__";
  * CMS de contenu (chantier 23.7) — bâtiments de colonie. À la différence des vaisseaux/
  * factions (23.5/23.6), pas de bouton "Nouveau" : l'id reste un des 12 historiques pour
  * cette passe (`BuildingId` tissé dans `Colony`/protocole, desserrage hors périmètre).
+ * Client orval (chantier 27.15).
  */
-export function BuildingsView({ token }: Props) {
-  const [buildings, setBuildings] = useState<Building[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function BuildingsView() {
+  const queryClient = useQueryClient();
+  const { data, error, isPending } = useGetApiAdminContentBuildings();
+  const buildings = (data?.buildings ?? []) as Building[];
+  const mutation = usePutApiAdminContentBuildingsId();
+  const loadError = error
+    ? error instanceof Error
+      ? error.message
+      : "Serveur injoignable"
+    : null;
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<UpsertBuildingInput | null>(null);
-  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const load = () => {
-    fetch("/api/admin/content/buildings", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((body: { buildings?: Building[]; error?: string }) => {
-        if (body.error) {
-          setError(body.error);
-          return;
-        }
-        setBuildings(body.buildings ?? []);
-      })
-      .catch(() => setError("Serveur injoignable"));
-  };
-
-  useEffect(load, [token]);
 
   const openEdit = (b: Building) => {
     setEditingId(b.id);
@@ -89,32 +83,17 @@ export function BuildingsView({ token }: Props) {
 
   const submit = async () => {
     if (!editingId || !form) return;
-    setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(
-        `/api/admin/content/buildings/${encodeURIComponent(editingId)}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(form),
-        },
+      const result = await mutation.mutateAsync({ id: editingId, data: form });
+      queryClient.setQueryData(
+        getGetApiAdminContentBuildingsQueryKey(),
+        result,
       );
-      const body = await res.json();
-      if (!res.ok) {
-        setSubmitError(body.error ?? "Erreur serveur");
-        return;
-      }
-      setBuildings(body.buildings);
       setEditingId(null);
       setForm(null);
-    } catch {
-      setSubmitError("Serveur injoignable");
-    } finally {
-      setSubmitting(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
     }
   };
 
@@ -160,9 +139,11 @@ export function BuildingsView({ token }: Props) {
 
   return (
     <Panel title="Bâtiments">
-      {error && <p className="auth-error">{error}</p>}
-      {!error && buildings === null && <p className="muted">Chargement…</p>}
-      {!error && buildings && <Table columns={columns} rows={buildings} />}
+      {loadError && <p className="auth-error">{loadError}</p>}
+      {!loadError && isPending && (
+        <Skeleton variant="block" label="Chargement des bâtiments…" />
+      )}
+      {!loadError && !isPending && <Table columns={columns} rows={buildings} />}
 
       {editingId && form && (
         <Modal open={editingId !== null} onClose={() => setEditingId(null)}>
@@ -262,8 +243,8 @@ export function BuildingsView({ token }: Props) {
             <Button variant="ghost" onClick={() => setEditingId(null)}>
               Annuler
             </Button>
-            <Button disabled={submitting} onClick={() => void submit()}>
-              {submitting ? "…" : "Enregistrer"}
+            <Button disabled={mutation.isPending} onClick={() => void submit()}>
+              {mutation.isPending ? "…" : "Enregistrer"}
             </Button>
           </Modal.Actions>
         </Modal>

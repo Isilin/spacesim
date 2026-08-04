@@ -1,8 +1,14 @@
 import {
+  accountDetailResponseSchema,
+  accountsListResponseSchema,
   accountsQuerySchema,
   applySanctionSchema,
+  auditEntriesResponseSchema,
+  errorResponseSchema,
   hasPermission,
   idParamSchema,
+  opsEmpiresResponseSchema,
+  opsHealthResponseSchema,
   SANCTION_ACTIONS,
 } from "@spacesim/protocol";
 import type { FastifyInstance } from "fastify";
@@ -38,7 +44,10 @@ export function registerAdminRoutes(
       // qu'aucune fonctionnalité produit n'existe.
       admin.get(
         "/audit",
-        { config: { adminAction: "audit.read" } },
+        {
+          schema: { response: { 200: auditEntriesResponseSchema } },
+          config: { adminAction: "audit.read" },
+        },
         async () => ({
           entries: await listAuditEntries(),
         }),
@@ -50,7 +59,10 @@ export function registerAdminRoutes(
       admin.get(
         "/accounts",
         {
-          schema: { querystring: accountsQuerySchema },
+          schema: {
+            querystring: accountsQuerySchema,
+            response: { 200: accountsListResponseSchema },
+          },
           config: { adminAction: "account.view" },
         },
         async (request) => {
@@ -66,7 +78,13 @@ export function registerAdminRoutes(
       admin.get(
         "/accounts/:id",
         {
-          schema: { params: idParamSchema },
+          schema: {
+            params: idParamSchema,
+            response: {
+              200: accountDetailResponseSchema,
+              404: errorResponseSchema,
+            },
+          },
           config: { adminAction: "account.view" },
         },
         async (request, reply) => {
@@ -85,7 +103,15 @@ export function registerAdminRoutes(
       admin.post(
         "/accounts/:id/sanctions",
         {
-          schema: { params: idParamSchema, body: applySanctionSchema },
+          schema: {
+            params: idParamSchema,
+            body: applySanctionSchema,
+            response: {
+              200: accountDetailResponseSchema,
+              403: errorResponseSchema,
+              404: errorResponseSchema,
+            },
+          },
           config: { adminAction: "account.warn" },
         },
         async (request, reply) => {
@@ -116,7 +142,10 @@ export function registerAdminRoutes(
             targetId: id,
             reason: request.body.reason,
           });
-          return accountDetail(engine, id);
+          const updated = await accountDetail(engine, id);
+          if (!updated)
+            return reply.code(404).send({ error: "Compte inconnu" });
+          return updated;
         },
       );
 
@@ -128,14 +157,22 @@ export function registerAdminRoutes(
       // jusqu'ici visibles seulement dans les logs.
       admin.get(
         "/ops/empires",
-        { config: { adminAction: "ops.read" } },
+        {
+          schema: { response: { 200: opsEmpiresResponseSchema } },
+          config: { adminAction: "ops.read" },
+        },
         () => ({
           empires: engine.devEmpireSummaries(),
         }),
       );
 
-      admin.get("/ops/health", { config: { adminAction: "ops.read" } }, () =>
-        engine.opsHealth(),
+      admin.get(
+        "/ops/health",
+        {
+          schema: { response: { 200: opsHealthResponseSchema } },
+          config: { adminAction: "ops.read" },
+        },
+        () => engine.opsHealth(),
       );
     },
     { prefix: "/api/admin" },

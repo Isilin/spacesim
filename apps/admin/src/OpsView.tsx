@@ -1,15 +1,15 @@
-import { Gauge, Panel, Stat, Table, type TableColumn } from "@spacesim/ui";
-import { useEffect, useState } from "react";
-
-interface Health {
-  tick: number;
-  lastTickAt: number;
-  lastFlushAt: number | null;
-  lastFlushError: string | null;
-  galaxyCount: number;
-  maxGalaxies: number;
-  frontierGalaxies: number;
-}
+import {
+  useGetApiAdminOpsEmpires,
+  useGetApiAdminOpsHealth,
+} from "./api/generated/admin.js";
+import {
+  Gauge,
+  Panel,
+  Skeleton,
+  Stat,
+  Table,
+  type TableColumn,
+} from "@spacesim/ui";
 
 interface EmpireSummary {
   id: string;
@@ -22,10 +22,6 @@ interface EmpireSummary {
   exploredCount: number;
   colonies: { population: number }[];
   fleets: number;
-}
-
-interface Props {
-  token: string;
 }
 
 function formatDate(ms: number | null): string {
@@ -64,42 +60,29 @@ const EMPIRE_COLUMNS: TableColumn<EmpireSummary>[] = [
  * Tableau de bord ops (chantier 23.12) : additif, réservé au rôle "admin". `/ops/empires`
  * délègue à `devEmpireSummaries()` (même forme que `/dev/empires`) ; `/ops/health` expose
  * tick/flush/croissance de l'univers, jusqu'ici visibles seulement dans les logs serveur.
+ * Client orval (chantier 27.15).
  */
-export function OpsView({ token }: Props) {
-  const [health, setHealth] = useState<Health | null>(null);
-  const [empires, setEmpires] = useState<EmpireSummary[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const headers = { Authorization: `Bearer ${token}` };
-    Promise.all([
-      fetch("/api/admin/ops/health", { headers }).then((res) => res.json()),
-      fetch("/api/admin/ops/empires", { headers }).then((res) => res.json()),
-    ])
-      .then(([healthBody, empiresBody]) => {
-        if (cancelled) return;
-        if (healthBody.error || empiresBody.error) {
-          setError(healthBody.error ?? empiresBody.error);
-          return;
-        }
-        setHealth(healthBody);
-        setEmpires(empiresBody.empires ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setError("Serveur injoignable");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
+export function OpsView() {
+  const healthQuery = useGetApiAdminOpsHealth();
+  const empiresQuery = useGetApiAdminOpsEmpires();
+  const health = healthQuery.data;
+  const empires = (empiresQuery.data?.empires ?? []) as EmpireSummary[];
+  const firstError = healthQuery.error ?? empiresQuery.error;
+  const loadError = firstError
+    ? firstError instanceof Error
+      ? firstError.message
+      : "Serveur injoignable"
+    : null;
+  const isPending = healthQuery.isPending || empiresQuery.isPending;
 
   return (
     <div className="detail-stack">
-      {error && <p className="auth-error">{error}</p>}
-      {!error && !health && <p className="muted">Chargement…</p>}
+      {loadError && <p className="auth-error">{loadError}</p>}
+      {!loadError && isPending && (
+        <Skeleton variant="block" label="Chargement de la santé du moteur…" />
+      )}
 
-      {!error && health && (
+      {!loadError && !isPending && health && (
         <Panel title="Santé du moteur">
           <div className="stat-row">
             <Stat label="Tick" value={health.tick} />
@@ -124,7 +107,7 @@ export function OpsView({ token }: Props) {
         </Panel>
       )}
 
-      {!error && empires && (
+      {!loadError && !isPending && (
         <Panel title="Empires">
           <Table columns={EMPIRE_COLUMNS} rows={empires} />
         </Panel>

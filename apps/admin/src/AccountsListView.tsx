@@ -1,6 +1,7 @@
+import { useGetApiAdminAccounts } from "./api/generated/admin.js";
 import type { RoleId } from "@spacesim/protocol";
-import { Field, Panel, Table, type TableColumn } from "@spacesim/ui";
-import { useEffect, useState } from "react";
+import { Field, Panel, Skeleton, Table, type TableColumn } from "@spacesim/ui";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 interface AccountRow {
@@ -10,10 +11,6 @@ interface AccountRow {
   createdAt: number;
   lastLoginAt: number | null;
   empire: { id: string; name: string; color: string } | null;
-}
-
-interface Props {
-  token: string;
 }
 
 const COLUMNS: TableColumn<AccountRow>[] = [
@@ -43,39 +40,22 @@ const COLUMNS: TableColumn<AccountRow>[] = [
   },
 ];
 
-/** Recherche/liste de comptes (chantier 23.3). */
-export function AccountsListView({ token }: Props) {
+/** Recherche/liste de comptes (chantier 23.3). Client orval (chantier 27.15) : plus de
+ *  garde `cancelled` manuel — TanStack Query annule déjà les requêtes obsolètes via
+ *  AbortSignal (changer `query` rapidement ne peut plus faire flasher des résultats
+ *  périmés). */
+export function AccountsListView() {
   const [query, setQuery] = useState("");
-  const [accounts, setAccounts] = useState<AccountRow[] | null>(null);
-  const [total, setTotal] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const params = new URLSearchParams();
-    if (query) params.set("query", query);
-    fetch(`/api/admin/accounts?${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then(
-        (body: { accounts?: AccountRow[]; total?: number; error?: string }) => {
-          if (cancelled) return;
-          if (body.error) {
-            setError(body.error);
-            return;
-          }
-          setAccounts(body.accounts ?? []);
-          setTotal(body.total ?? 0);
-        },
-      )
-      .catch(() => {
-        if (!cancelled) setError("Serveur injoignable");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [token, query]);
+  const { data, error, isPending } = useGetApiAdminAccounts({
+    query: query || undefined,
+  });
+  const accounts = (data?.accounts ?? []) as AccountRow[];
+  const total = data?.total ?? 0;
+  const loadError = error
+    ? error instanceof Error
+      ? error.message
+      : "Serveur injoignable"
+    : null;
 
   return (
     <Panel title={`Comptes${total ? ` (${total})` : ""}`}>
@@ -85,9 +65,11 @@ export function AccountsListView({ token }: Props) {
         onChange={(e) => setQuery(e.target.value)}
         placeholder="pilote@exemple.fr"
       />
-      {error && <p className="auth-error">{error}</p>}
-      {!error && accounts === null && <p className="muted">Chargement…</p>}
-      {!error && accounts && <Table columns={COLUMNS} rows={accounts} />}
+      {loadError && <p className="auth-error">{loadError}</p>}
+      {!loadError && isPending && (
+        <Skeleton variant="block" label="Chargement des comptes…" />
+      )}
+      {!loadError && !isPending && <Table columns={COLUMNS} rows={accounts} />}
     </Panel>
   );
 }

@@ -1,4 +1,9 @@
 import {
+  getGetApiAdminContentMilestonesQueryKey,
+  useGetApiAdminContentMilestones,
+  usePutApiAdminContentMilestonesId,
+} from "../api/generated/admin.js";
+import {
   MILESTONE_METRICS,
   type UpsertMilestoneInput,
 } from "@spacesim/protocol";
@@ -9,19 +14,17 @@ import {
   NumberInput,
   Panel,
   Select,
+  Skeleton,
   Table,
   type TableColumn,
 } from "@spacesim/ui";
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 interface Milestone {
   id: string;
   metric: string;
   threshold: number;
-}
-
-interface Props {
-  token: string;
 }
 
 const METRIC_LABELS: Record<string, string> = {
@@ -50,34 +53,25 @@ function formFromMilestone(m: Milestone): MilestoneForm {
 /**
  * CMS de contenu (chantier 23.11) — jalons sandbox affichés sur l'écran Empire.
  * `metric` reste un enum fermé (4 valeurs calculées côté client, `apps/web/EmpireView.tsx`).
+ * Client orval (chantier 27.15).
  */
-export function MilestonesView({ token }: Props) {
-  const [milestones, setMilestones] = useState<Milestone[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function MilestonesView() {
+  const queryClient = useQueryClient();
+  const { data, error, isPending } = useGetApiAdminContentMilestones();
+  const milestones = (data?.milestones ?? []) as Milestone[];
+  const mutation = usePutApiAdminContentMilestonesId();
+  const loadError = error
+    ? error instanceof Error
+      ? error.message
+      : "Serveur injoignable"
+    : null;
+
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
     null,
   );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<MilestoneForm>(emptyForm());
-  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const load = () => {
-    fetch("/api/admin/content/milestones", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((body: { milestones?: Milestone[]; error?: string }) => {
-        if (body.error) {
-          setError(body.error);
-          return;
-        }
-        setMilestones(body.milestones ?? []);
-      })
-      .catch(() => setError("Serveur injoignable"));
-  };
-
-  useEffect(load, [token]);
 
   const openCreate = () => {
     setEditing({ id: "", isNew: true });
@@ -99,31 +93,16 @@ export function MilestonesView({ token }: Props) {
       setSubmitError("Id requis");
       return;
     }
-    setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(
-        `/api/admin/content/milestones/${encodeURIComponent(id)}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(form),
-        },
+      const result = await mutation.mutateAsync({ id, data: form });
+      queryClient.setQueryData(
+        getGetApiAdminContentMilestonesQueryKey(),
+        result,
       );
-      const body = await res.json();
-      if (!res.ok) {
-        setSubmitError(body.error ?? "Erreur serveur");
-        return;
-      }
-      setMilestones(body.milestones);
       setEditing(null);
-    } catch {
-      setSubmitError("Serveur injoignable");
-    } finally {
-      setSubmitting(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
     }
   };
 
@@ -151,9 +130,13 @@ export function MilestonesView({ token }: Props) {
       title="Jalons"
       actions={<Button onClick={openCreate}>Nouveau</Button>}
     >
-      {error && <p className="auth-error">{error}</p>}
-      {!error && milestones === null && <p className="muted">Chargement…</p>}
-      {!error && milestones && <Table columns={columns} rows={milestones} />}
+      {loadError && <p className="auth-error">{loadError}</p>}
+      {!loadError && isPending && (
+        <Skeleton variant="block" label="Chargement des jalons…" />
+      )}
+      {!loadError && !isPending && (
+        <Table columns={columns} rows={milestones} />
+      )}
 
       {editing && (
         <Modal open={editing !== null} onClose={() => setEditing(null)}>
@@ -197,8 +180,8 @@ export function MilestonesView({ token }: Props) {
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler
             </Button>
-            <Button disabled={submitting} onClick={() => void submit()}>
-              {submitting ? "…" : "Enregistrer"}
+            <Button disabled={mutation.isPending} onClick={() => void submit()}>
+              {mutation.isPending ? "…" : "Enregistrer"}
             </Button>
           </Modal.Actions>
         </Modal>

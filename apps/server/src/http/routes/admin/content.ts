@@ -1,6 +1,17 @@
 import {
+  buildingsListResponseSchema,
+  chassisListResponseSchema,
+  constantsListResponseSchema,
+  errorResponseSchema,
+  factionsListResponseSchema,
   idParamSchema,
+  installationsListResponseSchema,
   keyParamSchema,
+  milestonesListResponseSchema,
+  modulesListResponseSchema,
+  presetsListResponseSchema,
+  shipsListResponseSchema,
+  techsListResponseSchema,
   upsertBuildingSchema,
   upsertChassisSchema,
   upsertConstantSchema,
@@ -13,6 +24,8 @@ import {
   upsertTechSchema,
   upsertWarshipSchema,
   upsertZoneTypeSchema,
+  warshipsListResponseSchema,
+  zoneTypesListResponseSchema,
 } from "@spacesim/protocol";
 import {
   BUILDING_IDS,
@@ -55,7 +68,10 @@ export function registerContentRoutes(
 ): void {
   admin.get(
     "/content/warships",
-    { config: { adminAction: "content.warships.read" } },
+    {
+      schema: { response: { 200: warshipsListResponseSchema } },
+      config: { adminAction: "content.warships.read" },
+    },
     () => ({
       warships: Object.values(engine.content.warships),
     }),
@@ -73,7 +89,11 @@ export function registerContentRoutes(
   admin.put(
     "/content/warships/:id",
     {
-      schema: { params: idParamSchema, body: upsertWarshipSchema },
+      schema: {
+        params: idParamSchema,
+        body: upsertWarshipSchema,
+        response: { 200: warshipsListResponseSchema },
+      },
       config: { adminAction: "content.warships.write" },
     },
     async (request) => {
@@ -99,7 +119,10 @@ export function registerContentRoutes(
   // Factions (chantier 23.6) : même recette que les vaisseaux de guerre.
   admin.get(
     "/content/factions",
-    { config: { adminAction: "content.factions.read" } },
+    {
+      schema: { response: { 200: factionsListResponseSchema } },
+      config: { adminAction: "content.factions.read" },
+    },
     () => ({
       factions: Object.values(engine.content.factions),
     }),
@@ -108,7 +131,11 @@ export function registerContentRoutes(
   admin.put(
     "/content/factions/:id",
     {
-      schema: { params: idParamSchema, body: upsertFactionSchema },
+      schema: {
+        params: idParamSchema,
+        body: upsertFactionSchema,
+        response: { 200: factionsListResponseSchema },
+      },
       config: { adminAction: "content.factions.write" },
     },
     async (request) => {
@@ -136,7 +163,10 @@ export function registerContentRoutes(
   // un id qui n'en fait pas partie plutôt que de créer une entrée inutilisable en jeu.
   admin.get(
     "/content/buildings",
-    { config: { adminAction: "content.buildings.read" } },
+    {
+      schema: { response: { 200: buildingsListResponseSchema } },
+      config: { adminAction: "content.buildings.read" },
+    },
     () => ({
       buildings: Object.values(engine.content.buildings),
     }),
@@ -145,7 +175,14 @@ export function registerContentRoutes(
   admin.put(
     "/content/buildings/:id",
     {
-      schema: { params: idParamSchema, body: upsertBuildingSchema },
+      schema: {
+        params: idParamSchema,
+        body: upsertBuildingSchema,
+        response: {
+          200: buildingsListResponseSchema,
+          400: errorResponseSchema,
+        },
+      },
       config: { adminAction: "content.buildings.write" },
     },
     async (request, reply) => {
@@ -180,7 +217,10 @@ export function registerContentRoutes(
   // guerre/factions (id libre, id-minting).
   admin.get(
     "/content/ships",
-    { config: { adminAction: "content.ships.read" } },
+    {
+      schema: { response: { 200: shipsListResponseSchema } },
+      config: { adminAction: "content.ships.read" },
+    },
     () => ({
       ships: Object.values(engine.content.ships),
     }),
@@ -189,7 +229,11 @@ export function registerContentRoutes(
   admin.put(
     "/content/ships/:id",
     {
-      schema: { params: idParamSchema, body: upsertShipSchema },
+      schema: {
+        params: idParamSchema,
+        body: upsertShipSchema,
+        response: { 200: shipsListResponseSchema },
+      },
       config: { adminAction: "content.ships.write" },
     },
     async (request) => {
@@ -216,7 +260,10 @@ export function registerContentRoutes(
   // doit être un des champs de BalanceConstants, pas un id libre (pas d'id-minting).
   admin.get(
     "/content/constants",
-    { config: { adminAction: "content.constants.read" } },
+    {
+      schema: { response: { 200: constantsListResponseSchema } },
+      config: { adminAction: "content.constants.read" },
+    },
     () => ({
       constants: Object.values(engine.content.constants),
     }),
@@ -225,7 +272,14 @@ export function registerContentRoutes(
   admin.put(
     "/content/constants/:key",
     {
-      schema: { params: keyParamSchema, body: upsertConstantSchema },
+      schema: {
+        params: keyParamSchema,
+        body: upsertConstantSchema,
+        response: {
+          200: constantsListResponseSchema,
+          400: errorResponseSchema,
+        },
+      },
       config: { adminAction: "content.constants.write" },
     },
     async (request, reply) => {
@@ -258,7 +312,10 @@ export function registerContentRoutes(
   // garde-fou que le contrôle d'intégrité en CI, appliqué ici à l'admin en direct.
   admin.get(
     "/content/techs",
-    { config: { adminAction: "content.techs.read" } },
+    {
+      schema: { response: { 200: techsListResponseSchema } },
+      config: { adminAction: "content.techs.read" },
+    },
     () => ({
       techs: Object.values(engine.content.techs),
     }),
@@ -267,7 +324,11 @@ export function registerContentRoutes(
   admin.put(
     "/content/techs/:id",
     {
-      schema: { params: idParamSchema, body: upsertTechSchema },
+      schema: {
+        params: idParamSchema,
+        body: upsertTechSchema,
+        response: { 200: techsListResponseSchema, 400: errorResponseSchema },
+      },
       config: { adminAction: "content.techs.write" },
     },
     async (request, reply) => {
@@ -277,7 +338,9 @@ export function registerContentRoutes(
       const candidate = { ...engine.content.techs, [id]: tech };
       const problems = validateTree(techDefsFromContent(candidate));
       if (problems.length > 0) {
-        return reply.code(400).send({ error: problems[0] });
+        return reply
+          .code(400)
+          .send({ error: problems[0] ?? "Requête invalide" });
       }
       await repo.saveTech(tech);
       await engine.loadContent();
@@ -300,7 +363,10 @@ export function registerContentRoutes(
   // n'avait aucune injection avant ce chantier.
   admin.get(
     "/content/chassis",
-    { config: { adminAction: "content.chassis.read" } },
+    {
+      schema: { response: { 200: chassisListResponseSchema } },
+      config: { adminAction: "content.chassis.read" },
+    },
     () => ({
       chassis: Object.values(engine.content.chassis),
     }),
@@ -309,7 +375,11 @@ export function registerContentRoutes(
   admin.put(
     "/content/chassis/:id",
     {
-      schema: { params: idParamSchema, body: upsertChassisSchema },
+      schema: {
+        params: idParamSchema,
+        body: upsertChassisSchema,
+        response: { 200: chassisListResponseSchema },
+      },
       config: { adminAction: "content.chassis.write" },
     },
     async (request) => {
@@ -334,7 +404,10 @@ export function registerContentRoutes(
 
   admin.get(
     "/content/modules",
-    { config: { adminAction: "content.modules.read" } },
+    {
+      schema: { response: { 200: modulesListResponseSchema } },
+      config: { adminAction: "content.modules.read" },
+    },
     () => ({
       modules: Object.values(engine.content.modules),
     }),
@@ -343,7 +416,11 @@ export function registerContentRoutes(
   admin.put(
     "/content/modules/:id",
     {
-      schema: { params: idParamSchema, body: upsertModuleSchema },
+      schema: {
+        params: idParamSchema,
+        body: upsertModuleSchema,
+        response: { 200: modulesListResponseSchema },
+      },
       config: { adminAction: "content.modules.write" },
     },
     async (request) => {
@@ -370,7 +447,10 @@ export function registerContentRoutes(
   // validé par les tables injectables de 23.10 — pas de garde-fou dédié à rejouer ici.
   admin.get(
     "/content/presets",
-    { config: { adminAction: "content.presets.read" } },
+    {
+      schema: { response: { 200: presetsListResponseSchema } },
+      config: { adminAction: "content.presets.read" },
+    },
     () => ({
       presets: Object.values(engine.content.presets),
     }),
@@ -379,7 +459,11 @@ export function registerContentRoutes(
   admin.put(
     "/content/presets/:id",
     {
-      schema: { params: idParamSchema, body: upsertPresetSchema },
+      schema: {
+        params: idParamSchema,
+        body: upsertPresetSchema,
+        response: { 200: presetsListResponseSchema },
+      },
       config: { adminAction: "content.presets.write" },
     },
     async (request) => {
@@ -406,7 +490,10 @@ export function registerContentRoutes(
   // packages/protocol/src/content.ts) — dernier domaine de la première vague de contenu.
   admin.get(
     "/content/milestones",
-    { config: { adminAction: "content.milestones.read" } },
+    {
+      schema: { response: { 200: milestonesListResponseSchema } },
+      config: { adminAction: "content.milestones.read" },
+    },
     () => ({
       milestones: Object.values(engine.content.milestones),
     }),
@@ -415,7 +502,11 @@ export function registerContentRoutes(
   admin.put(
     "/content/milestones/:id",
     {
-      schema: { params: idParamSchema, body: upsertMilestoneSchema },
+      schema: {
+        params: idParamSchema,
+        body: upsertMilestoneSchema,
+        response: { 200: milestonesListResponseSchema },
+      },
       config: { adminAction: "content.milestones.write" },
     },
     async (request) => {
@@ -442,7 +533,10 @@ export function registerContentRoutes(
   // châssis/modules.
   admin.get(
     "/content/zone-types",
-    { config: { adminAction: "content.zoneTypes.read" } },
+    {
+      schema: { response: { 200: zoneTypesListResponseSchema } },
+      config: { adminAction: "content.zoneTypes.read" },
+    },
     () => ({
       zoneTypes: Object.values(engine.content.zoneTypes),
     }),
@@ -451,7 +545,11 @@ export function registerContentRoutes(
   admin.put(
     "/content/zone-types/:id",
     {
-      schema: { params: idParamSchema, body: upsertZoneTypeSchema },
+      schema: {
+        params: idParamSchema,
+        body: upsertZoneTypeSchema,
+        response: { 200: zoneTypesListResponseSchema },
+      },
       config: { adminAction: "content.zoneTypes.write" },
     },
     async (request) => {
@@ -480,14 +578,21 @@ export function registerContentRoutes(
   // rien de reconnu, sans casser l'écriture).
   admin.get(
     "/content/installations",
-    { config: { adminAction: "content.installations.read" } },
+    {
+      schema: { response: { 200: installationsListResponseSchema } },
+      config: { adminAction: "content.installations.read" },
+    },
     () => ({ installations: Object.values(engine.content.installations) }),
   );
 
   admin.put(
     "/content/installations/:id",
     {
-      schema: { params: idParamSchema, body: upsertInstallationSchema },
+      schema: {
+        params: idParamSchema,
+        body: upsertInstallationSchema,
+        response: { 200: installationsListResponseSchema },
+      },
       config: { adminAction: "content.installations.write" },
     },
     async (request) => {

@@ -23,6 +23,11 @@ export default defineConfig({
           path: "./src/api/mutator.ts",
           name: "customFetch",
         },
+        fetch: {
+          // customFetch renvoie le corps déjà parsé, pas une enveloppe { data, status,
+          // headers } — désactive le type par défaut d'orval pour matcher.
+          includeHttpResponseReturnType: false,
+        },
       },
     },
   },

@@ -1,4 +1,9 @@
 import {
+  getGetApiAdminContentModulesQueryKey,
+  useGetApiAdminContentModules,
+  usePutApiAdminContentModulesId,
+} from "../api/generated/admin.js";
+import {
   MODULE_ROLES,
   SLOT_TYPES,
   type UpsertModuleInput,
@@ -11,10 +16,12 @@ import {
   NumberInput,
   Panel,
   Select,
+  Skeleton,
   Table,
   type TableColumn,
 } from "@spacesim/ui";
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 interface Module {
   id: string;
@@ -29,10 +36,6 @@ interface Module {
   buildMs: number;
   requiresTech: string | null;
   effects: Record<string, unknown>;
-}
-
-interface Props {
-  token: string;
 }
 
 const SLOT_LABELS: Record<string, string> = {
@@ -102,34 +105,25 @@ function formFromModule(m: Module): ModuleForm {
 /**
  * CMS de contenu (chantier 23.10) — modules de vaisseau. `effects` en JSON brut (10
  * champs optionnels de `ModuleEffects`), même choix que les effets de tech (23.9).
+ * Client orval (chantier 27.15).
  */
-export function ModulesView({ token }: Props) {
-  const [modules, setModules] = useState<Module[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function ModulesView() {
+  const queryClient = useQueryClient();
+  const { data, error, isPending } = useGetApiAdminContentModules();
+  const modules = (data?.modules ?? []) as Module[];
+  const mutation = usePutApiAdminContentModulesId();
+  const loadError = error
+    ? error instanceof Error
+      ? error.message
+      : "Serveur injoignable"
+    : null;
+
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
     null,
   );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<ModuleForm>(emptyForm());
-  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const load = () => {
-    fetch("/api/admin/content/modules", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((body: { modules?: Module[]; error?: string }) => {
-        if (body.error) {
-          setError(body.error);
-          return;
-        }
-        setModules(body.modules ?? []);
-      })
-      .catch(() => setError("Serveur injoignable"));
-  };
-
-  useEffect(load, [token]);
 
   const openCreate = () => {
     setEditing({ id: "", isNew: true });
@@ -171,31 +165,13 @@ export function ModulesView({ token }: Props) {
       requiresTech: form.requiresTech.trim() || null,
       effects: effects as UpsertModuleInput["effects"],
     };
-    setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(
-        `/api/admin/content/modules/${encodeURIComponent(id)}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        },
-      );
-      const body = await res.json();
-      if (!res.ok) {
-        setSubmitError(body.error ?? "Erreur serveur");
-        return;
-      }
-      setModules(body.modules);
+      const result = await mutation.mutateAsync({ id, data: payload });
+      queryClient.setQueryData(getGetApiAdminContentModulesQueryKey(), result);
       setEditing(null);
-    } catch {
-      setSubmitError("Serveur injoignable");
-    } finally {
-      setSubmitting(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
     }
   };
 
@@ -237,9 +213,11 @@ export function ModulesView({ token }: Props) {
       title="Modules"
       actions={<Button onClick={openCreate}>Nouveau</Button>}
     >
-      {error && <p className="auth-error">{error}</p>}
-      {!error && modules === null && <p className="muted">Chargement…</p>}
-      {!error && modules && <Table columns={columns} rows={modules} />}
+      {loadError && <p className="auth-error">{loadError}</p>}
+      {!loadError && isPending && (
+        <Skeleton variant="block" label="Chargement des modules…" />
+      )}
+      {!loadError && !isPending && <Table columns={columns} rows={modules} />}
 
       {editing && (
         <Modal open={editing !== null} onClose={() => setEditing(null)}>
@@ -369,8 +347,8 @@ export function ModulesView({ token }: Props) {
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler
             </Button>
-            <Button disabled={submitting} onClick={() => void submit()}>
-              {submitting ? "…" : "Enregistrer"}
+            <Button disabled={mutation.isPending} onClick={() => void submit()}>
+              {mutation.isPending ? "…" : "Enregistrer"}
             </Button>
           </Modal.Actions>
         </Modal>

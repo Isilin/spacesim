@@ -160,3 +160,89 @@ export const accountsQuerySchema = z.object({
   offset: z.coerce.number().int().nonnegative().optional(),
 });
 export type AccountsQuery = z.infer<typeof accountsQuerySchema>;
+
+/** Forme d'erreur générique des routes admin ({ error: string }) — nécessaire dans le
+ *  schéma `response` (chantier 27.15) des routes qui renvoient un 400 explicite en plus
+ *  du 200 nominal, sinon `reply.code(400)` n'est plus assignable (le type provider Zod
+ *  ne connaît que les statuts déclarés). */
+export const errorResponseSchema = z.object({ error: z.string() });
+
+// ── Schémas de réponse comptes/audit/ops (chantier 27.15) ────────────────────
+// Même besoin que pour le contenu (27.8) : sans schéma de réponse, orval ne peut
+// documenter qu'un corps `void`, inutile pour le client généré.
+
+const empireIdentitySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string(),
+});
+
+const accountSummarySchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  role: roleSchema,
+  createdAt: z.number(),
+  lastLoginAt: z.number().nullable(),
+  empire: empireIdentitySchema.nullable(),
+});
+
+export const accountsListResponseSchema = z.object({
+  accounts: z.array(accountSummarySchema),
+  total: z.number(),
+});
+
+const sanctionStatusSchema = z.object({
+  active: z.boolean(),
+  kind: z.enum(["ban", "suspend"]).nullable(),
+  reason: z.string().nullable(),
+  expiresAt: z.number().nullable(),
+});
+
+const sanctionEntrySchema = z.object({
+  id: z.string(),
+  accountId: z.string(),
+  kind: z.enum(SANCTION_KINDS),
+  reason: z.string(),
+  actorAccountId: z.string(),
+  actorEmail: z.string(),
+  createdAt: z.number(),
+  expiresAt: z.number().nullable(),
+});
+
+/** `empireSummary` reste `z.unknown()` : `GameEngine.empireSummaryForAccount()` renvoie
+ *  `unknown` côté serveur (même chose pour `devEmpireSummaries()` plus bas) — pas une
+ *  hypothèse de forme à figer dans ce chantier, qui porte sur params/query, pas ce champ. */
+export const accountDetailResponseSchema = accountSummarySchema.extend({
+  activeSessions: z.number(),
+  empireSummary: z.unknown().nullable(),
+  sanctionStatus: sanctionStatusSchema,
+  sanctionHistory: z.array(sanctionEntrySchema),
+});
+
+export const auditEntriesResponseSchema = z.object({
+  entries: z.array(
+    z.object({
+      id: z.string(),
+      actorAccountId: z.string(),
+      actorEmail: z.string(),
+      action: z.enum(ADMIN_ACTIONS),
+      targetType: z.string().nullable(),
+      targetId: z.string().nullable(),
+      reason: z.string().nullable(),
+      metadata: z.string().nullable(),
+      createdAt: z.number(),
+    }),
+  ),
+});
+
+export const opsEmpiresResponseSchema = z.object({ empires: z.unknown() });
+
+export const opsHealthResponseSchema = z.object({
+  tick: z.number(),
+  lastTickAt: z.number(),
+  lastFlushAt: z.number().nullable(),
+  lastFlushError: z.string().nullable(),
+  galaxyCount: z.number(),
+  maxGalaxies: z.number(),
+  frontierGalaxies: z.number(),
+});

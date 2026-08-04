@@ -1,3 +1,8 @@
+import {
+  getGetApiAdminContentTechsQueryKey,
+  useGetApiAdminContentTechs,
+  usePutApiAdminContentTechsId,
+} from "../api/generated/admin.js";
 import { TECH_BRANCHES, type UpsertTechInput } from "@spacesim/protocol";
 import {
   Button,
@@ -6,10 +11,12 @@ import {
   NumberInput,
   Panel,
   Select,
+  Skeleton,
   Table,
   type TableColumn,
 } from "@spacesim/ui";
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 interface Tech {
   id: string;
@@ -20,10 +27,6 @@ interface Tech {
   durationMs: number;
   requires: string[];
   effects: Record<string, unknown>;
-}
-
-interface Props {
-  token: string;
 }
 
 const BRANCH_LABELS: Record<string, string> = {
@@ -73,34 +76,25 @@ function formFromTech(t: Tech): TechForm {
  * dans `@spacesim/ui`) ; `effects` en JSON brut (25 champs optionnels de `TechEffects`,
  * un formulaire à 25 champs serait disproportionné). Le serveur rejoue `validateTree`
  * (prérequis inconnus, cycles) à chaque écriture — les erreurs remontent telles quelles.
+ * Client orval (chantier 27.15).
  */
-export function TechsView({ token }: Props) {
-  const [techs, setTechs] = useState<Tech[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function TechsView() {
+  const queryClient = useQueryClient();
+  const { data, error, isPending } = useGetApiAdminContentTechs();
+  const techs = (data?.techs ?? []) as Tech[];
+  const mutation = usePutApiAdminContentTechsId();
+  const loadError = error
+    ? error instanceof Error
+      ? error.message
+      : "Serveur injoignable"
+    : null;
+
   const [editing, setEditing] = useState<{ id: string; isNew: boolean } | null>(
     null,
   );
   const [newId, setNewId] = useState("");
   const [form, setForm] = useState<TechForm>(emptyForm());
-  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const load = () => {
-    fetch("/api/admin/content/techs", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((body: { techs?: Tech[]; error?: string }) => {
-        if (body.error) {
-          setError(body.error);
-          return;
-        }
-        setTechs(body.techs ?? []);
-      })
-      .catch(() => setError("Serveur injoignable"));
-  };
-
-  useEffect(load, [token]);
 
   const openCreate = () => {
     setEditing({ id: "", isNew: true });
@@ -141,31 +135,13 @@ export function TechsView({ token }: Props) {
         .filter(Boolean),
       effects: effects as UpsertTechInput["effects"],
     };
-    setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(
-        `/api/admin/content/techs/${encodeURIComponent(id)}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        },
-      );
-      const body = await res.json();
-      if (!res.ok) {
-        setSubmitError(body.error ?? "Erreur serveur");
-        return;
-      }
-      setTechs(body.techs);
+      const result = await mutation.mutateAsync({ id, data: payload });
+      queryClient.setQueryData(getGetApiAdminContentTechsQueryKey(), result);
       setEditing(null);
-    } catch {
-      setSubmitError("Serveur injoignable");
-    } finally {
-      setSubmitting(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Erreur serveur");
     }
   };
 
@@ -206,9 +182,11 @@ export function TechsView({ token }: Props) {
       title="Arbre de recherche"
       actions={<Button onClick={openCreate}>Nouvelle</Button>}
     >
-      {error && <p className="auth-error">{error}</p>}
-      {!error && techs === null && <p className="muted">Chargement…</p>}
-      {!error && techs && <Table columns={columns} rows={techs} />}
+      {loadError && <p className="auth-error">{loadError}</p>}
+      {!loadError && isPending && (
+        <Skeleton variant="block" label="Chargement de l'arbre de recherche…" />
+      )}
+      {!loadError && !isPending && <Table columns={columns} rows={techs} />}
 
       {editing && (
         <Modal open={editing !== null} onClose={() => setEditing(null)}>
@@ -297,8 +275,8 @@ export function TechsView({ token }: Props) {
             <Button variant="ghost" onClick={() => setEditing(null)}>
               Annuler
             </Button>
-            <Button disabled={submitting} onClick={() => void submit()}>
-              {submitting ? "…" : "Enregistrer"}
+            <Button disabled={mutation.isPending} onClick={() => void submit()}>
+              {mutation.isPending ? "…" : "Enregistrer"}
             </Button>
           </Modal.Actions>
         </Modal>

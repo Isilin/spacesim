@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 import type {
+  ChassisKind,
   ContentBuilding,
   ContentChassis,
   ContentCombatTuning,
@@ -14,6 +15,11 @@ import type {
   ContentTech,
   ContentWarship,
   ContentZoneType,
+  MilestoneMetric,
+  ModuleRole,
+  ShipDomainKind,
+  SlotType,
+  TechBranch,
 } from "./content-types.js";
 
 /** Ligne unique de `content_combat_tuning` — id fixe, jamais une clé de contenu. */
@@ -177,7 +183,7 @@ function techFromRow(row: TechRow): ContentTech {
     id: row.id,
     nameFr: row.nameFr,
     descriptionFr: row.descriptionFr,
-    branch: row.branch,
+    branch: row.branch as TechBranch,
     cost: row.cost,
     durationMs: row.durationMs,
     requires: JSON.parse(row.requires),
@@ -203,14 +209,15 @@ function chassisFromRow(row: ChassisRow): ContentChassis {
     id: row.id,
     nameFr: row.nameFr,
     descriptionFr: row.descriptionFr,
-    kind: row.kind,
-    domain: row.domain,
+    kind: row.kind as ChassisKind,
+    domain: row.domain as ShipDomainKind,
     hull: row.hull,
     baseInitiative: row.baseInitiative,
     power: row.power,
     tonnage: row.tonnage,
     calc: row.calc,
     slots: JSON.parse(row.slots),
+
     baseSpeedMult: row.baseSpeedMult,
     baseFuelPerJump: row.baseFuelPerJump,
     roleBonus: row.roleBonus ? JSON.parse(row.roleBonus) : null,
@@ -247,8 +254,8 @@ function moduleFromRow(row: ModuleRow): ContentModule {
     id: row.id,
     nameFr: row.nameFr,
     descriptionFr: row.descriptionFr,
-    slot: row.slot,
-    role: row.role,
+    slot: row.slot as SlotType,
+    role: row.role as ModuleRole,
     power: row.power,
     tonnage: row.tonnage,
     calc: row.calc,
@@ -299,7 +306,11 @@ function rowFromPreset(p: ContentPreset) {
 }
 
 function milestoneFromRow(row: MilestoneRow): ContentMilestone {
-  return { id: row.id, metric: row.metric, threshold: row.threshold };
+  return {
+    id: row.id,
+    metric: row.metric as MilestoneMetric,
+    threshold: row.threshold,
+  };
 }
 
 function rowFromMilestone(m: ContentMilestone) {
@@ -339,7 +350,7 @@ function installationFromRow(row: InstallationRow): ContentInstallation {
     inputs: row.inputs ? JSON.parse(row.inputs) : null,
     outputs: row.outputs ? JSON.parse(row.outputs) : null,
     requiresTech: row.requiresTech,
-    grants: row.grants,
+    grants: row.grants as ContentInstallation["grants"],
   };
 }
 

@@ -1,4 +1,5 @@
 import { Button } from "@spacesim/ui";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -7,6 +8,14 @@ import { App } from "./App.js";
 import { useAdminAuth } from "./useAdminAuth.js";
 import "@spacesim/ui/styles.css";
 import "./styles.css";
+
+/** Un seul client pour toute l'app (chantier 27.15) — pas de config par écran. Retries
+ *  désactivés : une erreur 4xx (403/404/400, la grande majorité de nos erreurs API) ne
+ *  se résout jamais en réessayant, et customFetch (src/api/mutator.ts) ne distingue pas
+ *  encore les statuts entre eux. */
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
 
 /** Rien n'est monté tant que la session n'est pas validée par le serveur ET que le rôle
  *  n'est pas privilégié. Le check de rôle ici est de l'UX : la vraie frontière est
@@ -43,8 +52,10 @@ function AuthGate() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter>
-      <AuthGate />
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthGate />
+      </BrowserRouter>
+    </QueryClientProvider>
   </StrictMode>,
 );

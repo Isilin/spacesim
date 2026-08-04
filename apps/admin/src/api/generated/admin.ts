@@ -21,6 +21,64 @@ import type {
 } from "@tanstack/react-query";
 
 import { customFetch } from "../mutator";
+export type GetApiAdminAudit200EntriesItemAction =
+  (typeof GetApiAdminAudit200EntriesItemAction)[keyof typeof GetApiAdminAudit200EntriesItemAction];
+
+export const GetApiAdminAudit200EntriesItemAction = {
+  auditread: "audit.read",
+  accountview: "account.view",
+  accountwarn: "account.warn",
+  accountsuspend: "account.suspend",
+  accountban: "account.ban",
+  accountunban: "account.unban",
+  accountforce_logout: "account.force_logout",
+  contentwarshipsread: "content.warships.read",
+  contentwarshipswrite: "content.warships.write",
+  contentfactionsread: "content.factions.read",
+  contentfactionswrite: "content.factions.write",
+  contentbuildingsread: "content.buildings.read",
+  contentbuildingswrite: "content.buildings.write",
+  contentshipsread: "content.ships.read",
+  contentshipswrite: "content.ships.write",
+  contentconstantsread: "content.constants.read",
+  contentconstantswrite: "content.constants.write",
+  contenttechsread: "content.techs.read",
+  contenttechswrite: "content.techs.write",
+  contentchassisread: "content.chassis.read",
+  contentchassiswrite: "content.chassis.write",
+  contentmodulesread: "content.modules.read",
+  contentmoduleswrite: "content.modules.write",
+  contentpresetsread: "content.presets.read",
+  contentpresetswrite: "content.presets.write",
+  contentmilestonesread: "content.milestones.read",
+  contentmilestoneswrite: "content.milestones.write",
+  contentzoneTypesread: "content.zoneTypes.read",
+  contentzoneTypeswrite: "content.zoneTypes.write",
+  contentinstallationsread: "content.installations.read",
+  contentinstallationswrite: "content.installations.write",
+  opsread: "ops.read",
+} as const;
+
+export type GetApiAdminAudit200EntriesItem = {
+  id: string;
+  actorAccountId: string;
+  actorEmail: string;
+  action: GetApiAdminAudit200EntriesItemAction;
+  /** @nullable */
+  targetType: string | null;
+  /** @nullable */
+  targetId: string | null;
+  /** @nullable */
+  reason: string | null;
+  /** @nullable */
+  metadata: string | null;
+  createdAt: number;
+};
+
+export type GetApiAdminAudit200 = {
+  entries: GetApiAdminAudit200EntriesItem[];
+};
+
 export type GetApiAdminAccountsParams = {
   /**
    * @minLength 1
@@ -36,6 +94,124 @@ export type GetApiAdminAccountsParams = {
    * @maximum 9007199254740991
    */
   offset?: number;
+};
+
+export type GetApiAdminAccounts200AccountsItemRole =
+  (typeof GetApiAdminAccounts200AccountsItemRole)[keyof typeof GetApiAdminAccounts200AccountsItemRole];
+
+export const GetApiAdminAccounts200AccountsItemRole = {
+  player: "player",
+  moderator: "moderator",
+  content_editor: "content_editor",
+  admin: "admin",
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetApiAdminAccounts200AccountsItemEmpire = {
+  id: string;
+  name: string;
+  color: string;
+} | null;
+
+export type GetApiAdminAccounts200AccountsItem = {
+  id: string;
+  email: string;
+  role: GetApiAdminAccounts200AccountsItemRole;
+  createdAt: number;
+  /** @nullable */
+  lastLoginAt: number | null;
+  /** @nullable */
+  empire: GetApiAdminAccounts200AccountsItemEmpire;
+};
+
+export type GetApiAdminAccounts200 = {
+  accounts: GetApiAdminAccounts200AccountsItem[];
+  total: number;
+};
+
+export type GetApiAdminAccountsId200Role =
+  (typeof GetApiAdminAccountsId200Role)[keyof typeof GetApiAdminAccountsId200Role];
+
+export const GetApiAdminAccountsId200Role = {
+  player: "player",
+  moderator: "moderator",
+  content_editor: "content_editor",
+  admin: "admin",
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetApiAdminAccountsId200Empire = {
+  id: string;
+  name: string;
+  color: string;
+} | null;
+
+/**
+ * @nullable
+ */
+export type GetApiAdminAccountsId200SanctionStatusKind =
+  | (typeof GetApiAdminAccountsId200SanctionStatusKind)[keyof typeof GetApiAdminAccountsId200SanctionStatusKind]
+  | null;
+
+export const GetApiAdminAccountsId200SanctionStatusKind = {
+  ban: "ban",
+  suspend: "suspend",
+} as const;
+
+export type GetApiAdminAccountsId200SanctionStatus = {
+  active: boolean;
+  /** @nullable */
+  kind: GetApiAdminAccountsId200SanctionStatusKind;
+  /** @nullable */
+  reason: string | null;
+  /** @nullable */
+  expiresAt: number | null;
+};
+
+export type GetApiAdminAccountsId200SanctionHistoryItemKind =
+  (typeof GetApiAdminAccountsId200SanctionHistoryItemKind)[keyof typeof GetApiAdminAccountsId200SanctionHistoryItemKind];
+
+export const GetApiAdminAccountsId200SanctionHistoryItemKind = {
+  warn: "warn",
+  suspend: "suspend",
+  ban: "ban",
+  unban: "unban",
+  force_logout: "force_logout",
+} as const;
+
+export type GetApiAdminAccountsId200SanctionHistoryItem = {
+  id: string;
+  accountId: string;
+  kind: GetApiAdminAccountsId200SanctionHistoryItemKind;
+  reason: string;
+  actorAccountId: string;
+  actorEmail: string;
+  createdAt: number;
+  /** @nullable */
+  expiresAt: number | null;
+};
+
+export type GetApiAdminAccountsId200 = {
+  id: string;
+  email: string;
+  role: GetApiAdminAccountsId200Role;
+  createdAt: number;
+  /** @nullable */
+  lastLoginAt: number | null;
+  /** @nullable */
+  empire: GetApiAdminAccountsId200Empire;
+  activeSessions: number;
+  empireSummary: unknown | null;
+  sanctionStatus: GetApiAdminAccountsId200SanctionStatus;
+  sanctionHistory: GetApiAdminAccountsId200SanctionHistoryItem[];
+};
+
+export type GetApiAdminAccountsId404 = {
+  error: string;
 };
 
 export type PostApiAdminAccountsIdSanctionsBodyKind =
@@ -61,6 +237,154 @@ export type PostApiAdminAccountsIdSanctionsBody = {
    * @exclusiveMinimum 0
    */
   durationMs?: number;
+};
+
+export type PostApiAdminAccountsIdSanctions200Role =
+  (typeof PostApiAdminAccountsIdSanctions200Role)[keyof typeof PostApiAdminAccountsIdSanctions200Role];
+
+export const PostApiAdminAccountsIdSanctions200Role = {
+  player: "player",
+  moderator: "moderator",
+  content_editor: "content_editor",
+  admin: "admin",
+} as const;
+
+/**
+ * @nullable
+ */
+export type PostApiAdminAccountsIdSanctions200Empire = {
+  id: string;
+  name: string;
+  color: string;
+} | null;
+
+/**
+ * @nullable
+ */
+export type PostApiAdminAccountsIdSanctions200SanctionStatusKind =
+  | (typeof PostApiAdminAccountsIdSanctions200SanctionStatusKind)[keyof typeof PostApiAdminAccountsIdSanctions200SanctionStatusKind]
+  | null;
+
+export const PostApiAdminAccountsIdSanctions200SanctionStatusKind = {
+  ban: "ban",
+  suspend: "suspend",
+} as const;
+
+export type PostApiAdminAccountsIdSanctions200SanctionStatus = {
+  active: boolean;
+  /** @nullable */
+  kind: PostApiAdminAccountsIdSanctions200SanctionStatusKind;
+  /** @nullable */
+  reason: string | null;
+  /** @nullable */
+  expiresAt: number | null;
+};
+
+export type PostApiAdminAccountsIdSanctions200SanctionHistoryItemKind =
+  (typeof PostApiAdminAccountsIdSanctions200SanctionHistoryItemKind)[keyof typeof PostApiAdminAccountsIdSanctions200SanctionHistoryItemKind];
+
+export const PostApiAdminAccountsIdSanctions200SanctionHistoryItemKind = {
+  warn: "warn",
+  suspend: "suspend",
+  ban: "ban",
+  unban: "unban",
+  force_logout: "force_logout",
+} as const;
+
+export type PostApiAdminAccountsIdSanctions200SanctionHistoryItem = {
+  id: string;
+  accountId: string;
+  kind: PostApiAdminAccountsIdSanctions200SanctionHistoryItemKind;
+  reason: string;
+  actorAccountId: string;
+  actorEmail: string;
+  createdAt: number;
+  /** @nullable */
+  expiresAt: number | null;
+};
+
+export type PostApiAdminAccountsIdSanctions200 = {
+  id: string;
+  email: string;
+  role: PostApiAdminAccountsIdSanctions200Role;
+  createdAt: number;
+  /** @nullable */
+  lastLoginAt: number | null;
+  /** @nullable */
+  empire: PostApiAdminAccountsIdSanctions200Empire;
+  activeSessions: number;
+  empireSummary: unknown | null;
+  sanctionStatus: PostApiAdminAccountsIdSanctions200SanctionStatus;
+  sanctionHistory: PostApiAdminAccountsIdSanctions200SanctionHistoryItem[];
+};
+
+export type PostApiAdminAccountsIdSanctions403 = {
+  error: string;
+};
+
+export type PostApiAdminAccountsIdSanctions404 = {
+  error: string;
+};
+
+export type GetApiAdminContentWarships200WarshipsItemWeapons = {
+  /** @minimum 0 */
+  long: number;
+  /** @minimum 0 */
+  medium: number;
+  /** @minimum 0 */
+  short: number;
+};
+
+export type GetApiAdminContentWarships200WarshipsItemCategory =
+  (typeof GetApiAdminContentWarships200WarshipsItemCategory)[keyof typeof GetApiAdminContentWarships200WarshipsItemCategory];
+
+export const GetApiAdminContentWarships200WarshipsItemCategory = {
+  skirmisher: "skirmisher",
+  line: "line",
+  capital: "capital",
+  support: "support",
+} as const;
+
+export type GetApiAdminContentWarships200WarshipsItemCost = {
+  [key: string]: number;
+};
+
+export type GetApiAdminContentWarships200WarshipsItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  /** @exclusiveMinimum 0 */
+  hull: number;
+  /** @minimum 0 */
+  shield: number;
+  weapons: GetApiAdminContentWarships200WarshipsItemWeapons;
+  initiative: number;
+  category: GetApiAdminContentWarships200WarshipsItemCategory;
+  cost: GetApiAdminContentWarships200WarshipsItemCost;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  buildMs: number;
+  /**
+   * @minLength 1
+   * @nullable
+   */
+  requiresTech: string | null;
+  /**
+   * @minimum 0
+   * @nullable
+   */
+  fleetDamageBonus: number | null;
+  id: string;
+};
+
+export type GetApiAdminContentWarships200 = {
+  warships: GetApiAdminContentWarships200WarshipsItem[];
 };
 
 export type PutApiAdminContentWarshipsIdBodyWeapons = {
@@ -117,6 +441,94 @@ export type PutApiAdminContentWarshipsIdBody = {
   fleetDamageBonus: number | null;
 };
 
+export type PutApiAdminContentWarshipsId200WarshipsItemWeapons = {
+  /** @minimum 0 */
+  long: number;
+  /** @minimum 0 */
+  medium: number;
+  /** @minimum 0 */
+  short: number;
+};
+
+export type PutApiAdminContentWarshipsId200WarshipsItemCategory =
+  (typeof PutApiAdminContentWarshipsId200WarshipsItemCategory)[keyof typeof PutApiAdminContentWarshipsId200WarshipsItemCategory];
+
+export const PutApiAdminContentWarshipsId200WarshipsItemCategory = {
+  skirmisher: "skirmisher",
+  line: "line",
+  capital: "capital",
+  support: "support",
+} as const;
+
+export type PutApiAdminContentWarshipsId200WarshipsItemCost = {
+  [key: string]: number;
+};
+
+export type PutApiAdminContentWarshipsId200WarshipsItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  /** @exclusiveMinimum 0 */
+  hull: number;
+  /** @minimum 0 */
+  shield: number;
+  weapons: PutApiAdminContentWarshipsId200WarshipsItemWeapons;
+  initiative: number;
+  category: PutApiAdminContentWarshipsId200WarshipsItemCategory;
+  cost: PutApiAdminContentWarshipsId200WarshipsItemCost;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  buildMs: number;
+  /**
+   * @minLength 1
+   * @nullable
+   */
+  requiresTech: string | null;
+  /**
+   * @minimum 0
+   * @nullable
+   */
+  fleetDamageBonus: number | null;
+  id: string;
+};
+
+export type PutApiAdminContentWarshipsId200 = {
+  warships: PutApiAdminContentWarshipsId200WarshipsItem[];
+};
+
+export type GetApiAdminContentFactions200FactionsItemProduces = {
+  [key: string]: number;
+};
+
+export type GetApiAdminContentFactions200FactionsItemConsumes = {
+  [key: string]: number;
+};
+
+export type GetApiAdminContentFactions200FactionsItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  name: string;
+  /** @pattern ^#[0-9a-fA-F]{6}$ */
+  color: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  produces: GetApiAdminContentFactions200FactionsItemProduces;
+  consumes: GetApiAdminContentFactions200FactionsItemConsumes;
+  id: string;
+};
+
+export type GetApiAdminContentFactions200 = {
+  factions: GetApiAdminContentFactions200FactionsItem[];
+};
+
 export type PutApiAdminContentFactionsIdBodyProduces = {
   [key: string]: number;
 };
@@ -137,6 +549,87 @@ export type PutApiAdminContentFactionsIdBody = {
   descriptionFr?: string;
   produces: PutApiAdminContentFactionsIdBodyProduces;
   consumes: PutApiAdminContentFactionsIdBodyConsumes;
+};
+
+export type PutApiAdminContentFactionsId200FactionsItemProduces = {
+  [key: string]: number;
+};
+
+export type PutApiAdminContentFactionsId200FactionsItemConsumes = {
+  [key: string]: number;
+};
+
+export type PutApiAdminContentFactionsId200FactionsItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  name: string;
+  /** @pattern ^#[0-9a-fA-F]{6}$ */
+  color: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  produces: PutApiAdminContentFactionsId200FactionsItemProduces;
+  consumes: PutApiAdminContentFactionsId200FactionsItemConsumes;
+  id: string;
+};
+
+export type PutApiAdminContentFactionsId200 = {
+  factions: PutApiAdminContentFactionsId200FactionsItem[];
+};
+
+export type GetApiAdminContentBuildings200BuildingsItemCost = {
+  [key: string]: number;
+};
+
+/**
+ * @nullable
+ */
+export type GetApiAdminContentBuildings200BuildingsItemOutputs = {
+  [key: string]: number;
+} | null;
+
+/**
+ * @nullable
+ */
+export type GetApiAdminContentBuildings200BuildingsItemInputs = {
+  [key: string]: number;
+} | null;
+
+export type GetApiAdminContentBuildings200BuildingsItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  cost: GetApiAdminContentBuildings200BuildingsItemCost;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  buildMs: number;
+  /** @nullable */
+  outputs: GetApiAdminContentBuildings200BuildingsItemOutputs;
+  /** @nullable */
+  inputs: GetApiAdminContentBuildings200BuildingsItemInputs;
+  /**
+   * @minLength 1
+   * @nullable
+   */
+  depositScaled: string | null;
+  /**
+   * @minimum 0
+   * @maximum 9007199254740991
+   * @nullable
+   */
+  jobsPerInstance: number | null;
+  id: string;
+};
+
+export type GetApiAdminContentBuildings200 = {
+  buildings: GetApiAdminContentBuildings200BuildingsItem[];
 };
 
 export type PutApiAdminContentBuildingsIdBodyCost = { [key: string]: number };
@@ -186,6 +679,98 @@ export type PutApiAdminContentBuildingsIdBody = {
   jobsPerInstance: number | null;
 };
 
+export type PutApiAdminContentBuildingsId200BuildingsItemCost = {
+  [key: string]: number;
+};
+
+/**
+ * @nullable
+ */
+export type PutApiAdminContentBuildingsId200BuildingsItemOutputs = {
+  [key: string]: number;
+} | null;
+
+/**
+ * @nullable
+ */
+export type PutApiAdminContentBuildingsId200BuildingsItemInputs = {
+  [key: string]: number;
+} | null;
+
+export type PutApiAdminContentBuildingsId200BuildingsItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  cost: PutApiAdminContentBuildingsId200BuildingsItemCost;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  buildMs: number;
+  /** @nullable */
+  outputs: PutApiAdminContentBuildingsId200BuildingsItemOutputs;
+  /** @nullable */
+  inputs: PutApiAdminContentBuildingsId200BuildingsItemInputs;
+  /**
+   * @minLength 1
+   * @nullable
+   */
+  depositScaled: string | null;
+  /**
+   * @minimum 0
+   * @maximum 9007199254740991
+   * @nullable
+   */
+  jobsPerInstance: number | null;
+  id: string;
+};
+
+export type PutApiAdminContentBuildingsId200 = {
+  buildings: PutApiAdminContentBuildingsId200BuildingsItem[];
+};
+
+export type PutApiAdminContentBuildingsId400 = {
+  error: string;
+};
+
+export type GetApiAdminContentShips200ShipsItemCost = { [key: string]: number };
+
+export type GetApiAdminContentShips200ShipsItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  /** @minimum 0 */
+  capacity: number;
+  cost: GetApiAdminContentShips200ShipsItemCost;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  buildMs: number;
+  /**
+   * @minLength 1
+   * @nullable
+   */
+  requiresTech: string | null;
+  /** @exclusiveMinimum 0 */
+  speedMult: number;
+  /** @minimum 0 */
+  fuelPerJump: number;
+  id: string;
+};
+
+export type GetApiAdminContentShips200 = {
+  ships: GetApiAdminContentShips200ShipsItem[];
+};
+
 export type PutApiAdminContentShipsIdBodyCost = { [key: string]: number };
 
 export type PutApiAdminContentShipsIdBody = {
@@ -215,10 +800,156 @@ export type PutApiAdminContentShipsIdBody = {
   fuelPerJump: number;
 };
 
+export type PutApiAdminContentShipsId200ShipsItemCost = {
+  [key: string]: number;
+};
+
+export type PutApiAdminContentShipsId200ShipsItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  /** @minimum 0 */
+  capacity: number;
+  cost: PutApiAdminContentShipsId200ShipsItemCost;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  buildMs: number;
+  /**
+   * @minLength 1
+   * @nullable
+   */
+  requiresTech: string | null;
+  /** @exclusiveMinimum 0 */
+  speedMult: number;
+  /** @minimum 0 */
+  fuelPerJump: number;
+  id: string;
+};
+
+export type PutApiAdminContentShipsId200 = {
+  ships: PutApiAdminContentShipsId200ShipsItem[];
+};
+
+export type GetApiAdminContentConstants200ConstantsItem = {
+  value: number;
+  /** @maxLength 300 */
+  descriptionFr: string;
+  key: string;
+};
+
+export type GetApiAdminContentConstants200 = {
+  constants: GetApiAdminContentConstants200ConstantsItem[];
+};
+
 export type PutApiAdminContentConstantsKeyBody = {
   value: number;
   /** @maxLength 300 */
   descriptionFr?: string;
+};
+
+export type PutApiAdminContentConstantsKey200ConstantsItem = {
+  value: number;
+  /** @maxLength 300 */
+  descriptionFr: string;
+  key: string;
+};
+
+export type PutApiAdminContentConstantsKey200 = {
+  constants: PutApiAdminContentConstantsKey200ConstantsItem[];
+};
+
+export type PutApiAdminContentConstantsKey400 = {
+  error: string;
+};
+
+export type GetApiAdminContentTechs200TechsItemBranch =
+  (typeof GetApiAdminContentTechs200TechsItemBranch)[keyof typeof GetApiAdminContentTechs200TechsItemBranch];
+
+export const GetApiAdminContentTechs200TechsItemBranch = {
+  industry: "industry",
+  colonization: "colonization",
+  society: "society",
+  military: "military",
+} as const;
+
+export type GetApiAdminContentTechs200TechsItemEffectsOutputMult = {
+  [key: string]: number;
+};
+
+export type GetApiAdminContentTechs200TechsItemEffects = {
+  unlockBuildings?: string[];
+  outputMult?: GetApiAdminContentTechs200TechsItemEffectsOutputMult;
+  /** @exclusiveMinimum 0 */
+  outputMultAll?: number;
+  /** @exclusiveMinimum 0 */
+  housingMult?: number;
+  habitabilityBonus?: number;
+  queueBonus?: number;
+  /** @exclusiveMinimum 0 */
+  probeSpeedMult?: number;
+  /** @exclusiveMinimum 0 */
+  probeCostMult?: number;
+  /** @exclusiveMinimum 0 */
+  colonyShipSpeedMult?: number;
+  /** @exclusiveMinimum 0 */
+  transferSpeedMult?: number;
+  satisfactionBonus?: number;
+  /** @exclusiveMinimum 0 */
+  popGrowthMult?: number;
+  /** @exclusiveMinimum 0 */
+  goodsNeedMult?: number;
+  /** @exclusiveMinimum 0 */
+  creditsMult?: number;
+  /** @exclusiveMinimum 0 */
+  foodNeedMult?: number;
+  /** @exclusiveMinimum 0 */
+  storageMult?: number;
+  /** @exclusiveMinimum 0 */
+  buildSpeedMult?: number;
+  /** @exclusiveMinimum 0 */
+  shipBuildSpeedMult?: number;
+  /** @exclusiveMinimum 0 */
+  outpostYieldMult?: number;
+  /** @exclusiveMinimum 0 */
+  influenceMult?: number;
+  /** @exclusiveMinimum 0 */
+  liftCapacityMult?: number;
+  /** @exclusiveMinimum 0 */
+  liftThroughputMult?: number;
+  /** @exclusiveMinimum 0 */
+  fuelMult?: number;
+  tradeMargin?: number;
+};
+
+export type GetApiAdminContentTechs200TechsItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  branch: GetApiAdminContentTechs200TechsItemBranch;
+  /** @exclusiveMinimum 0 */
+  cost: number;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  durationMs: number;
+  requires: string[];
+  effects: GetApiAdminContentTechs200TechsItemEffects;
+  id: string;
+};
+
+export type GetApiAdminContentTechs200 = {
+  techs: GetApiAdminContentTechs200TechsItem[];
 };
 
 export type PutApiAdminContentTechsIdBodyBranch =
@@ -298,6 +1029,192 @@ export type PutApiAdminContentTechsIdBody = {
   durationMs: number;
   requires: string[];
   effects: PutApiAdminContentTechsIdBodyEffects;
+};
+
+export type PutApiAdminContentTechsId200TechsItemBranch =
+  (typeof PutApiAdminContentTechsId200TechsItemBranch)[keyof typeof PutApiAdminContentTechsId200TechsItemBranch];
+
+export const PutApiAdminContentTechsId200TechsItemBranch = {
+  industry: "industry",
+  colonization: "colonization",
+  society: "society",
+  military: "military",
+} as const;
+
+export type PutApiAdminContentTechsId200TechsItemEffectsOutputMult = {
+  [key: string]: number;
+};
+
+export type PutApiAdminContentTechsId200TechsItemEffects = {
+  unlockBuildings?: string[];
+  outputMult?: PutApiAdminContentTechsId200TechsItemEffectsOutputMult;
+  /** @exclusiveMinimum 0 */
+  outputMultAll?: number;
+  /** @exclusiveMinimum 0 */
+  housingMult?: number;
+  habitabilityBonus?: number;
+  queueBonus?: number;
+  /** @exclusiveMinimum 0 */
+  probeSpeedMult?: number;
+  /** @exclusiveMinimum 0 */
+  probeCostMult?: number;
+  /** @exclusiveMinimum 0 */
+  colonyShipSpeedMult?: number;
+  /** @exclusiveMinimum 0 */
+  transferSpeedMult?: number;
+  satisfactionBonus?: number;
+  /** @exclusiveMinimum 0 */
+  popGrowthMult?: number;
+  /** @exclusiveMinimum 0 */
+  goodsNeedMult?: number;
+  /** @exclusiveMinimum 0 */
+  creditsMult?: number;
+  /** @exclusiveMinimum 0 */
+  foodNeedMult?: number;
+  /** @exclusiveMinimum 0 */
+  storageMult?: number;
+  /** @exclusiveMinimum 0 */
+  buildSpeedMult?: number;
+  /** @exclusiveMinimum 0 */
+  shipBuildSpeedMult?: number;
+  /** @exclusiveMinimum 0 */
+  outpostYieldMult?: number;
+  /** @exclusiveMinimum 0 */
+  influenceMult?: number;
+  /** @exclusiveMinimum 0 */
+  liftCapacityMult?: number;
+  /** @exclusiveMinimum 0 */
+  liftThroughputMult?: number;
+  /** @exclusiveMinimum 0 */
+  fuelMult?: number;
+  tradeMargin?: number;
+};
+
+export type PutApiAdminContentTechsId200TechsItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  branch: PutApiAdminContentTechsId200TechsItemBranch;
+  /** @exclusiveMinimum 0 */
+  cost: number;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  durationMs: number;
+  requires: string[];
+  effects: PutApiAdminContentTechsId200TechsItemEffects;
+  id: string;
+};
+
+export type PutApiAdminContentTechsId200 = {
+  techs: PutApiAdminContentTechsId200TechsItem[];
+};
+
+export type PutApiAdminContentTechsId400 = {
+  error: string;
+};
+
+export type GetApiAdminContentChassis200ChassisItemKind =
+  (typeof GetApiAdminContentChassis200ChassisItemKind)[keyof typeof GetApiAdminContentChassis200ChassisItemKind];
+
+export const GetApiAdminContentChassis200ChassisItemKind = {
+  generic: "generic",
+  military: "military",
+  freighter: "freighter",
+  miner: "miner",
+  colonizer: "colonizer",
+  explorer: "explorer",
+} as const;
+
+export type GetApiAdminContentChassis200ChassisItemDomain =
+  (typeof GetApiAdminContentChassis200ChassisItemDomain)[keyof typeof GetApiAdminContentChassis200ChassisItemDomain];
+
+export const GetApiAdminContentChassis200ChassisItemDomain = {
+  fleet: "fleet",
+  colony: "colony",
+} as const;
+
+export type GetApiAdminContentChassis200ChassisItemSlots = {
+  /**
+   * @minimum 0
+   * @maximum 9007199254740991
+   */
+  weapon: number;
+  /**
+   * @minimum 0
+   * @maximum 9007199254740991
+   */
+  defense: number;
+  /**
+   * @minimum 0
+   * @maximum 9007199254740991
+   */
+  propulsion: number;
+  /**
+   * @minimum 0
+   * @maximum 9007199254740991
+   */
+  utility: number;
+};
+
+/**
+ * @nullable
+ */
+export type GetApiAdminContentChassis200ChassisItemRoleBonus = {
+  [key: string]: number;
+} | null;
+
+export type GetApiAdminContentChassis200ChassisItemCost = {
+  [key: string]: number;
+};
+
+export type GetApiAdminContentChassis200ChassisItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  kind: GetApiAdminContentChassis200ChassisItemKind;
+  domain: GetApiAdminContentChassis200ChassisItemDomain;
+  /** @exclusiveMinimum 0 */
+  hull: number;
+  baseInitiative: number;
+  /** @minimum 0 */
+  power: number;
+  /** @minimum 0 */
+  tonnage: number;
+  /** @minimum 0 */
+  calc: number;
+  slots: GetApiAdminContentChassis200ChassisItemSlots;
+  /** @exclusiveMinimum 0 */
+  baseSpeedMult: number;
+  /** @minimum 0 */
+  baseFuelPerJump: number;
+  /** @nullable */
+  roleBonus: GetApiAdminContentChassis200ChassisItemRoleBonus;
+  cost: GetApiAdminContentChassis200ChassisItemCost;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  buildMs: number;
+  /**
+   * @minLength 1
+   * @nullable
+   */
+  requiresTech: string | null;
+  id: string;
+};
+
+export type GetApiAdminContentChassis200 = {
+  chassis: GetApiAdminContentChassis200ChassisItem[];
 };
 
 export type PutApiAdminContentChassisIdBodyKind =
@@ -391,6 +1308,189 @@ export type PutApiAdminContentChassisIdBody = {
   requiresTech: string | null;
 };
 
+export type PutApiAdminContentChassisId200ChassisItemKind =
+  (typeof PutApiAdminContentChassisId200ChassisItemKind)[keyof typeof PutApiAdminContentChassisId200ChassisItemKind];
+
+export const PutApiAdminContentChassisId200ChassisItemKind = {
+  generic: "generic",
+  military: "military",
+  freighter: "freighter",
+  miner: "miner",
+  colonizer: "colonizer",
+  explorer: "explorer",
+} as const;
+
+export type PutApiAdminContentChassisId200ChassisItemDomain =
+  (typeof PutApiAdminContentChassisId200ChassisItemDomain)[keyof typeof PutApiAdminContentChassisId200ChassisItemDomain];
+
+export const PutApiAdminContentChassisId200ChassisItemDomain = {
+  fleet: "fleet",
+  colony: "colony",
+} as const;
+
+export type PutApiAdminContentChassisId200ChassisItemSlots = {
+  /**
+   * @minimum 0
+   * @maximum 9007199254740991
+   */
+  weapon: number;
+  /**
+   * @minimum 0
+   * @maximum 9007199254740991
+   */
+  defense: number;
+  /**
+   * @minimum 0
+   * @maximum 9007199254740991
+   */
+  propulsion: number;
+  /**
+   * @minimum 0
+   * @maximum 9007199254740991
+   */
+  utility: number;
+};
+
+/**
+ * @nullable
+ */
+export type PutApiAdminContentChassisId200ChassisItemRoleBonus = {
+  [key: string]: number;
+} | null;
+
+export type PutApiAdminContentChassisId200ChassisItemCost = {
+  [key: string]: number;
+};
+
+export type PutApiAdminContentChassisId200ChassisItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  kind: PutApiAdminContentChassisId200ChassisItemKind;
+  domain: PutApiAdminContentChassisId200ChassisItemDomain;
+  /** @exclusiveMinimum 0 */
+  hull: number;
+  baseInitiative: number;
+  /** @minimum 0 */
+  power: number;
+  /** @minimum 0 */
+  tonnage: number;
+  /** @minimum 0 */
+  calc: number;
+  slots: PutApiAdminContentChassisId200ChassisItemSlots;
+  /** @exclusiveMinimum 0 */
+  baseSpeedMult: number;
+  /** @minimum 0 */
+  baseFuelPerJump: number;
+  /** @nullable */
+  roleBonus: PutApiAdminContentChassisId200ChassisItemRoleBonus;
+  cost: PutApiAdminContentChassisId200ChassisItemCost;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  buildMs: number;
+  /**
+   * @minLength 1
+   * @nullable
+   */
+  requiresTech: string | null;
+  id: string;
+};
+
+export type PutApiAdminContentChassisId200 = {
+  chassis: PutApiAdminContentChassisId200ChassisItem[];
+};
+
+export type GetApiAdminContentModules200ModulesItemSlot =
+  (typeof GetApiAdminContentModules200ModulesItemSlot)[keyof typeof GetApiAdminContentModules200ModulesItemSlot];
+
+export const GetApiAdminContentModules200ModulesItemSlot = {
+  weapon: "weapon",
+  defense: "defense",
+  propulsion: "propulsion",
+  utility: "utility",
+} as const;
+
+export type GetApiAdminContentModules200ModulesItemRole =
+  (typeof GetApiAdminContentModules200ModulesItemRole)[keyof typeof GetApiAdminContentModules200ModulesItemRole];
+
+export const GetApiAdminContentModules200ModulesItemRole = {
+  weapon: "weapon",
+  defense: "defense",
+  propulsion: "propulsion",
+  cargo: "cargo",
+  mining: "mining",
+  habitat: "habitat",
+  support: "support",
+  sensor: "sensor",
+} as const;
+
+export type GetApiAdminContentModules200ModulesItemCost = {
+  [key: string]: number;
+};
+
+export type GetApiAdminContentModules200ModulesItemEffectsWeapons = {
+  /** @minimum 0 */
+  long?: number;
+  /** @minimum 0 */
+  medium?: number;
+  /** @minimum 0 */
+  short?: number;
+};
+
+export type GetApiAdminContentModules200ModulesItemEffects = {
+  weapons?: GetApiAdminContentModules200ModulesItemEffectsWeapons;
+  shield?: number;
+  hullBonus?: number;
+  initiative?: number;
+  capacity?: number;
+  speedMult?: number;
+  fuelDelta?: number;
+  miningYield?: number;
+  colonizer?: boolean;
+  fleetDamageBonus?: number;
+};
+
+export type GetApiAdminContentModules200ModulesItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  slot: GetApiAdminContentModules200ModulesItemSlot;
+  role: GetApiAdminContentModules200ModulesItemRole;
+  /** @minimum 0 */
+  power: number;
+  /** @minimum 0 */
+  tonnage: number;
+  /** @minimum 0 */
+  calc: number;
+  cost: GetApiAdminContentModules200ModulesItemCost;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  buildMs: number;
+  /**
+   * @minLength 1
+   * @nullable
+   */
+  requiresTech: string | null;
+  effects: GetApiAdminContentModules200ModulesItemEffects;
+  id: string;
+};
+
+export type GetApiAdminContentModules200 = {
+  modules: GetApiAdminContentModules200ModulesItem[];
+};
+
 export type PutApiAdminContentModulesIdBodySlot =
   (typeof PutApiAdminContentModulesIdBodySlot)[keyof typeof PutApiAdminContentModulesIdBodySlot];
 
@@ -469,6 +1569,110 @@ export type PutApiAdminContentModulesIdBody = {
   effects: PutApiAdminContentModulesIdBodyEffects;
 };
 
+export type PutApiAdminContentModulesId200ModulesItemSlot =
+  (typeof PutApiAdminContentModulesId200ModulesItemSlot)[keyof typeof PutApiAdminContentModulesId200ModulesItemSlot];
+
+export const PutApiAdminContentModulesId200ModulesItemSlot = {
+  weapon: "weapon",
+  defense: "defense",
+  propulsion: "propulsion",
+  utility: "utility",
+} as const;
+
+export type PutApiAdminContentModulesId200ModulesItemRole =
+  (typeof PutApiAdminContentModulesId200ModulesItemRole)[keyof typeof PutApiAdminContentModulesId200ModulesItemRole];
+
+export const PutApiAdminContentModulesId200ModulesItemRole = {
+  weapon: "weapon",
+  defense: "defense",
+  propulsion: "propulsion",
+  cargo: "cargo",
+  mining: "mining",
+  habitat: "habitat",
+  support: "support",
+  sensor: "sensor",
+} as const;
+
+export type PutApiAdminContentModulesId200ModulesItemCost = {
+  [key: string]: number;
+};
+
+export type PutApiAdminContentModulesId200ModulesItemEffectsWeapons = {
+  /** @minimum 0 */
+  long?: number;
+  /** @minimum 0 */
+  medium?: number;
+  /** @minimum 0 */
+  short?: number;
+};
+
+export type PutApiAdminContentModulesId200ModulesItemEffects = {
+  weapons?: PutApiAdminContentModulesId200ModulesItemEffectsWeapons;
+  shield?: number;
+  hullBonus?: number;
+  initiative?: number;
+  capacity?: number;
+  speedMult?: number;
+  fuelDelta?: number;
+  miningYield?: number;
+  colonizer?: boolean;
+  fleetDamageBonus?: number;
+};
+
+export type PutApiAdminContentModulesId200ModulesItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  slot: PutApiAdminContentModulesId200ModulesItemSlot;
+  role: PutApiAdminContentModulesId200ModulesItemRole;
+  /** @minimum 0 */
+  power: number;
+  /** @minimum 0 */
+  tonnage: number;
+  /** @minimum 0 */
+  calc: number;
+  cost: PutApiAdminContentModulesId200ModulesItemCost;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  buildMs: number;
+  /**
+   * @minLength 1
+   * @nullable
+   */
+  requiresTech: string | null;
+  effects: PutApiAdminContentModulesId200ModulesItemEffects;
+  id: string;
+};
+
+export type PutApiAdminContentModulesId200 = {
+  modules: PutApiAdminContentModulesId200ModulesItem[];
+};
+
+export type GetApiAdminContentPresets200PresetsItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  /** @minLength 1 */
+  chassisId: string;
+  modules: string[];
+  starter: boolean;
+  id: string;
+};
+
+export type GetApiAdminContentPresets200 = {
+  presets: GetApiAdminContentPresets200PresetsItem[];
+};
+
 export type PutApiAdminContentPresetsIdBody = {
   /**
    * @minLength 1
@@ -481,6 +1685,46 @@ export type PutApiAdminContentPresetsIdBody = {
   chassisId: string;
   modules: string[];
   starter: boolean;
+};
+
+export type PutApiAdminContentPresetsId200PresetsItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  /** @minLength 1 */
+  chassisId: string;
+  modules: string[];
+  starter: boolean;
+  id: string;
+};
+
+export type PutApiAdminContentPresetsId200 = {
+  presets: PutApiAdminContentPresetsId200PresetsItem[];
+};
+
+export type GetApiAdminContentMilestones200MilestonesItemMetric =
+  (typeof GetApiAdminContentMilestones200MilestonesItemMetric)[keyof typeof GetApiAdminContentMilestones200MilestonesItemMetric];
+
+export const GetApiAdminContentMilestones200MilestonesItemMetric = {
+  population: "population",
+  colonies: "colonies",
+  explored: "explored",
+  techs: "techs",
+} as const;
+
+export type GetApiAdminContentMilestones200MilestonesItem = {
+  metric: GetApiAdminContentMilestones200MilestonesItemMetric;
+  /** @exclusiveMinimum 0 */
+  threshold: number;
+  id: string;
+};
+
+export type GetApiAdminContentMilestones200 = {
+  milestones: GetApiAdminContentMilestones200MilestonesItem[];
 };
 
 export type PutApiAdminContentMilestonesIdBodyMetric =
@@ -497,6 +1741,57 @@ export type PutApiAdminContentMilestonesIdBody = {
   metric: PutApiAdminContentMilestonesIdBodyMetric;
   /** @exclusiveMinimum 0 */
   threshold: number;
+};
+
+export type PutApiAdminContentMilestonesId200MilestonesItemMetric =
+  (typeof PutApiAdminContentMilestonesId200MilestonesItemMetric)[keyof typeof PutApiAdminContentMilestonesId200MilestonesItemMetric];
+
+export const PutApiAdminContentMilestonesId200MilestonesItemMetric = {
+  population: "population",
+  colonies: "colonies",
+  explored: "explored",
+  techs: "techs",
+} as const;
+
+export type PutApiAdminContentMilestonesId200MilestonesItem = {
+  metric: PutApiAdminContentMilestonesId200MilestonesItemMetric;
+  /** @exclusiveMinimum 0 */
+  threshold: number;
+  id: string;
+};
+
+export type PutApiAdminContentMilestonesId200 = {
+  milestones: PutApiAdminContentMilestonesId200MilestonesItem[];
+};
+
+export type GetApiAdminContentZoneTypes200ZoneTypesItemCost = {
+  [key: string]: number;
+};
+
+export type GetApiAdminContentZoneTypes200ZoneTypesItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  cost: GetApiAdminContentZoneTypes200ZoneTypesItemCost;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  buildMs: number;
+  /**
+   * @minLength 1
+   * @nullable
+   */
+  requiresTech: string | null;
+  id: string;
+};
+
+export type GetApiAdminContentZoneTypes200 = {
+  zoneTypes: GetApiAdminContentZoneTypes200ZoneTypesItem[];
 };
 
 export type PutApiAdminContentZoneTypesIdBodyCost = { [key: string]: number };
@@ -520,6 +1815,100 @@ export type PutApiAdminContentZoneTypesIdBody = {
    * @nullable
    */
   requiresTech: string | null;
+};
+
+export type PutApiAdminContentZoneTypesId200ZoneTypesItemCost = {
+  [key: string]: number;
+};
+
+export type PutApiAdminContentZoneTypesId200ZoneTypesItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  cost: PutApiAdminContentZoneTypesId200ZoneTypesItemCost;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  buildMs: number;
+  /**
+   * @minLength 1
+   * @nullable
+   */
+  requiresTech: string | null;
+  id: string;
+};
+
+export type PutApiAdminContentZoneTypesId200 = {
+  zoneTypes: PutApiAdminContentZoneTypesId200ZoneTypesItem[];
+};
+
+export type GetApiAdminContentInstallations200InstallationsItemCost = {
+  [key: string]: number;
+};
+
+/**
+ * @nullable
+ */
+export type GetApiAdminContentInstallations200InstallationsItemInputs = {
+  [key: string]: number;
+} | null;
+
+/**
+ * @nullable
+ */
+export type GetApiAdminContentInstallations200InstallationsItemOutputs = {
+  [key: string]: number;
+} | null;
+
+/**
+ * @nullable
+ */
+export type GetApiAdminContentInstallations200InstallationsItemGrants =
+  | (typeof GetApiAdminContentInstallations200InstallationsItemGrants)[keyof typeof GetApiAdminContentInstallations200InstallationsItemGrants]
+  | null;
+
+export const GetApiAdminContentInstallations200InstallationsItemGrants = {
+  resourceMarket: "resourceMarket",
+  blueprintMarket: "blueprintMarket",
+} as const;
+
+export type GetApiAdminContentInstallations200InstallationsItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  /** @minLength 1 */
+  zoneType: string;
+  cost: GetApiAdminContentInstallations200InstallationsItemCost;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  buildMs: number;
+  /** @nullable */
+  inputs: GetApiAdminContentInstallations200InstallationsItemInputs;
+  /** @nullable */
+  outputs: GetApiAdminContentInstallations200InstallationsItemOutputs;
+  /**
+   * @minLength 1
+   * @nullable
+   */
+  requiresTech: string | null;
+  /** @nullable */
+  grants: GetApiAdminContentInstallations200InstallationsItemGrants;
+  id: string;
+};
+
+export type GetApiAdminContentInstallations200 = {
+  installations: GetApiAdminContentInstallations200InstallationsItem[];
 };
 
 export type PutApiAdminContentInstallationsIdBodyCost = {
@@ -581,6 +1970,86 @@ export type PutApiAdminContentInstallationsIdBody = {
   grants?: PutApiAdminContentInstallationsIdBodyGrants;
 };
 
+export type PutApiAdminContentInstallationsId200InstallationsItemCost = {
+  [key: string]: number;
+};
+
+/**
+ * @nullable
+ */
+export type PutApiAdminContentInstallationsId200InstallationsItemInputs = {
+  [key: string]: number;
+} | null;
+
+/**
+ * @nullable
+ */
+export type PutApiAdminContentInstallationsId200InstallationsItemOutputs = {
+  [key: string]: number;
+} | null;
+
+/**
+ * @nullable
+ */
+export type PutApiAdminContentInstallationsId200InstallationsItemGrants =
+  | (typeof PutApiAdminContentInstallationsId200InstallationsItemGrants)[keyof typeof PutApiAdminContentInstallationsId200InstallationsItemGrants]
+  | null;
+
+export const PutApiAdminContentInstallationsId200InstallationsItemGrants = {
+  resourceMarket: "resourceMarket",
+  blueprintMarket: "blueprintMarket",
+} as const;
+
+export type PutApiAdminContentInstallationsId200InstallationsItem = {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  nameFr: string;
+  /** @maxLength 500 */
+  descriptionFr: string;
+  /** @minLength 1 */
+  zoneType: string;
+  cost: PutApiAdminContentInstallationsId200InstallationsItemCost;
+  /**
+   * @maximum 9007199254740991
+   * @exclusiveMinimum 0
+   */
+  buildMs: number;
+  /** @nullable */
+  inputs: PutApiAdminContentInstallationsId200InstallationsItemInputs;
+  /** @nullable */
+  outputs: PutApiAdminContentInstallationsId200InstallationsItemOutputs;
+  /**
+   * @minLength 1
+   * @nullable
+   */
+  requiresTech: string | null;
+  /** @nullable */
+  grants: PutApiAdminContentInstallationsId200InstallationsItemGrants;
+  id: string;
+};
+
+export type PutApiAdminContentInstallationsId200 = {
+  installations: PutApiAdminContentInstallationsId200InstallationsItem[];
+};
+
+export type GetApiAdminOpsEmpires200 = {
+  empires: unknown;
+};
+
+export type GetApiAdminOpsHealth200 = {
+  tick: number;
+  lastTickAt: number;
+  /** @nullable */
+  lastFlushAt: number | null;
+  /** @nullable */
+  lastFlushError: string | null;
+  galaxyCount: number;
+  maxGalaxies: number;
+  frontierGalaxies: number;
+};
+
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 const withQueryKey = <T extends object, K>(
@@ -601,32 +2070,17 @@ const withQueryKey = <T extends object, K>(
   return result;
 };
 
-export type getDocumentationJsonResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getDocumentationJsonResponseSuccess =
-  getDocumentationJsonResponse200 & {
-    headers: Headers;
-  };
-
-export type getDocumentationJsonResponse = getDocumentationJsonResponseSuccess;
-
 export const getGetDocumentationJsonUrl = () => {
   return `/documentation/json`;
 };
 
 export const getDocumentationJson = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getDocumentationJsonResponse> => {
-  return customFetch<getDocumentationJsonResponse>(
-    getGetDocumentationJsonUrl(),
-    {
-      ...options,
-      method: "GET",
-    },
-  );
+): Promise<void> => {
+  return customFetch<void>(getGetDocumentationJsonUrl(), {
+    ...options,
+    method: "GET",
+  });
 };
 
 export const getGetDocumentationJsonQueryKey = () => {
@@ -765,25 +2219,14 @@ export function useGetDocumentationJson<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type getHealthResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getHealthResponseSuccess = getHealthResponse200 & {
-  headers: Headers;
-};
-
-export type getHealthResponse = getHealthResponseSuccess;
-
 export const getGetHealthUrl = () => {
   return `/health`;
 };
 
 export const getHealth = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getHealthResponse> => {
-  return customFetch<getHealthResponse>(getGetHealthUrl(), {
+): Promise<void> => {
+  return customFetch<void>(getGetHealthUrl(), {
     ...options,
     method: "GET",
   });
@@ -905,25 +2348,14 @@ export function useGetHealth<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type postAuthRegisterResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type postAuthRegisterResponseSuccess = postAuthRegisterResponse200 & {
-  headers: Headers;
-};
-
-export type postAuthRegisterResponse = postAuthRegisterResponseSuccess;
-
 export const getPostAuthRegisterUrl = () => {
   return `/auth/register`;
 };
 
 export const postAuthRegister = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<postAuthRegisterResponse> => {
-  return customFetch<postAuthRegisterResponse>(getPostAuthRegisterUrl(), {
+): Promise<void> => {
+  return customFetch<void>(getPostAuthRegisterUrl(), {
     ...options,
     method: "POST",
   });
@@ -991,25 +2423,14 @@ export const usePostAuthRegister = <TError = unknown, TContext = unknown>(
   return useMutation(getPostAuthRegisterMutationOptions(options), queryClient);
 };
 
-export type postAuthLoginResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type postAuthLoginResponseSuccess = postAuthLoginResponse200 & {
-  headers: Headers;
-};
-
-export type postAuthLoginResponse = postAuthLoginResponseSuccess;
-
 export const getPostAuthLoginUrl = () => {
   return `/auth/login`;
 };
 
 export const postAuthLogin = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<postAuthLoginResponse> => {
-  return customFetch<postAuthLoginResponse>(getPostAuthLoginUrl(), {
+): Promise<void> => {
+  return customFetch<void>(getPostAuthLoginUrl(), {
     ...options,
     method: "POST",
   });
@@ -1077,25 +2498,14 @@ export const usePostAuthLogin = <TError = unknown, TContext = unknown>(
   return useMutation(getPostAuthLoginMutationOptions(options), queryClient);
 };
 
-export type postAuthLogoutResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type postAuthLogoutResponseSuccess = postAuthLogoutResponse200 & {
-  headers: Headers;
-};
-
-export type postAuthLogoutResponse = postAuthLogoutResponseSuccess;
-
 export const getPostAuthLogoutUrl = () => {
   return `/auth/logout`;
 };
 
 export const postAuthLogout = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<postAuthLogoutResponse> => {
-  return customFetch<postAuthLogoutResponse>(getPostAuthLogoutUrl(), {
+): Promise<void> => {
+  return customFetch<void>(getPostAuthLogoutUrl(), {
     ...options,
     method: "POST",
   });
@@ -1163,25 +2573,14 @@ export const usePostAuthLogout = <TError = unknown, TContext = unknown>(
   return useMutation(getPostAuthLogoutMutationOptions(options), queryClient);
 };
 
-export type getAuthMeResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getAuthMeResponseSuccess = getAuthMeResponse200 & {
-  headers: Headers;
-};
-
-export type getAuthMeResponse = getAuthMeResponseSuccess;
-
 export const getGetAuthMeUrl = () => {
   return `/auth/me`;
 };
 
 export const getAuthMe = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getAuthMeResponse> => {
-  return customFetch<getAuthMeResponse>(getGetAuthMeUrl(), {
+): Promise<void> => {
+  return customFetch<void>(getGetAuthMeUrl(), {
     ...options,
     method: "GET",
   });
@@ -1303,25 +2702,14 @@ export function useGetAuthMe<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type postDevGrantResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type postDevGrantResponseSuccess = postDevGrantResponse200 & {
-  headers: Headers;
-};
-
-export type postDevGrantResponse = postDevGrantResponseSuccess;
-
 export const getPostDevGrantUrl = () => {
   return `/dev/grant`;
 };
 
 export const postDevGrant = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<postDevGrantResponse> => {
-  return customFetch<postDevGrantResponse>(getPostDevGrantUrl(), {
+): Promise<void> => {
+  return customFetch<void>(getPostDevGrantUrl(), {
     ...options,
     method: "POST",
   });
@@ -1389,26 +2777,14 @@ export const usePostDevGrant = <TError = unknown, TContext = unknown>(
   return useMutation(getPostDevGrantMutationOptions(options), queryClient);
 };
 
-export type postDevFastforwardResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type postDevFastforwardResponseSuccess =
-  postDevFastforwardResponse200 & {
-    headers: Headers;
-  };
-
-export type postDevFastforwardResponse = postDevFastforwardResponseSuccess;
-
 export const getPostDevFastforwardUrl = () => {
   return `/dev/fastforward`;
 };
 
 export const postDevFastforward = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<postDevFastforwardResponse> => {
-  return customFetch<postDevFastforwardResponse>(getPostDevFastforwardUrl(), {
+): Promise<void> => {
+  return customFetch<void>(getPostDevFastforwardUrl(), {
     ...options,
     method: "POST",
   });
@@ -1479,26 +2855,14 @@ export const usePostDevFastforward = <TError = unknown, TContext = unknown>(
   );
 };
 
-export type postDevFundgatewayResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type postDevFundgatewayResponseSuccess =
-  postDevFundgatewayResponse200 & {
-    headers: Headers;
-  };
-
-export type postDevFundgatewayResponse = postDevFundgatewayResponseSuccess;
-
 export const getPostDevFundgatewayUrl = () => {
   return `/dev/fundgateway`;
 };
 
 export const postDevFundgateway = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<postDevFundgatewayResponse> => {
-  return customFetch<postDevFundgatewayResponse>(getPostDevFundgatewayUrl(), {
+): Promise<void> => {
+  return customFetch<void>(getPostDevFundgatewayUrl(), {
     ...options,
     method: "POST",
   });
@@ -1569,26 +2933,14 @@ export const usePostDevFundgateway = <TError = unknown, TContext = unknown>(
   );
 };
 
-export type postDevSpawnpirateResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type postDevSpawnpirateResponseSuccess =
-  postDevSpawnpirateResponse200 & {
-    headers: Headers;
-  };
-
-export type postDevSpawnpirateResponse = postDevSpawnpirateResponseSuccess;
-
 export const getPostDevSpawnpirateUrl = () => {
   return `/dev/spawnpirate`;
 };
 
 export const postDevSpawnpirate = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<postDevSpawnpirateResponse> => {
-  return customFetch<postDevSpawnpirateResponse>(getPostDevSpawnpirateUrl(), {
+): Promise<void> => {
+  return customFetch<void>(getPostDevSpawnpirateUrl(), {
     ...options,
     method: "POST",
   });
@@ -1659,33 +3011,17 @@ export const usePostDevSpawnpirate = <TError = unknown, TContext = unknown>(
   );
 };
 
-export type postDevSetfactionmoodResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type postDevSetfactionmoodResponseSuccess =
-  postDevSetfactionmoodResponse200 & {
-    headers: Headers;
-  };
-
-export type postDevSetfactionmoodResponse =
-  postDevSetfactionmoodResponseSuccess;
-
 export const getPostDevSetfactionmoodUrl = () => {
   return `/dev/setfactionmood`;
 };
 
 export const postDevSetfactionmood = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<postDevSetfactionmoodResponse> => {
-  return customFetch<postDevSetfactionmoodResponse>(
-    getPostDevSetfactionmoodUrl(),
-    {
-      ...options,
-      method: "POST",
-    },
-  );
+): Promise<void> => {
+  return customFetch<void>(getPostDevSetfactionmoodUrl(), {
+    ...options,
+    method: "POST",
+  });
 };
 
 export const getPostDevSetfactionmoodMutationOptions = <
@@ -1753,33 +3089,17 @@ export const usePostDevSetfactionmood = <TError = unknown, TContext = unknown>(
   );
 };
 
-export type postDevTriggerworldeventResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type postDevTriggerworldeventResponseSuccess =
-  postDevTriggerworldeventResponse200 & {
-    headers: Headers;
-  };
-
-export type postDevTriggerworldeventResponse =
-  postDevTriggerworldeventResponseSuccess;
-
 export const getPostDevTriggerworldeventUrl = () => {
   return `/dev/triggerworldevent`;
 };
 
 export const postDevTriggerworldevent = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<postDevTriggerworldeventResponse> => {
-  return customFetch<postDevTriggerworldeventResponse>(
-    getPostDevTriggerworldeventUrl(),
-    {
-      ...options,
-      method: "POST",
-    },
-  );
+): Promise<void> => {
+  return customFetch<void>(getPostDevTriggerworldeventUrl(), {
+    ...options,
+    method: "POST",
+  });
 };
 
 export const getPostDevTriggerworldeventMutationOptions = <
@@ -1850,26 +3170,14 @@ export const usePostDevTriggerworldevent = <
   );
 };
 
-export type postDevSpawnempireResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type postDevSpawnempireResponseSuccess =
-  postDevSpawnempireResponse200 & {
-    headers: Headers;
-  };
-
-export type postDevSpawnempireResponse = postDevSpawnempireResponseSuccess;
-
 export const getPostDevSpawnempireUrl = () => {
   return `/dev/spawnempire`;
 };
 
 export const postDevSpawnempire = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<postDevSpawnempireResponse> => {
-  return customFetch<postDevSpawnempireResponse>(getPostDevSpawnempireUrl(), {
+): Promise<void> => {
+  return customFetch<void>(getPostDevSpawnempireUrl(), {
     ...options,
     method: "POST",
   });
@@ -1940,25 +3248,14 @@ export const usePostDevSpawnempire = <TError = unknown, TContext = unknown>(
   );
 };
 
-export type postDevSpawnnpcResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type postDevSpawnnpcResponseSuccess = postDevSpawnnpcResponse200 & {
-  headers: Headers;
-};
-
-export type postDevSpawnnpcResponse = postDevSpawnnpcResponseSuccess;
-
 export const getPostDevSpawnnpcUrl = () => {
   return `/dev/spawnnpc`;
 };
 
 export const postDevSpawnnpc = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<postDevSpawnnpcResponse> => {
-  return customFetch<postDevSpawnnpcResponse>(getPostDevSpawnnpcUrl(), {
+): Promise<void> => {
+  return customFetch<void>(getPostDevSpawnnpcUrl(), {
     ...options,
     method: "POST",
   });
@@ -2026,25 +3323,14 @@ export const usePostDevSpawnnpc = <TError = unknown, TContext = unknown>(
   return useMutation(getPostDevSpawnnpcMutationOptions(options), queryClient);
 };
 
-export type getDevEmpiresResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getDevEmpiresResponseSuccess = getDevEmpiresResponse200 & {
-  headers: Headers;
-};
-
-export type getDevEmpiresResponse = getDevEmpiresResponseSuccess;
-
 export const getGetDevEmpiresUrl = () => {
   return `/dev/empires`;
 };
 
 export const getDevEmpires = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getDevEmpiresResponse> => {
-  return customFetch<getDevEmpiresResponse>(getGetDevEmpiresUrl(), {
+): Promise<void> => {
+  return customFetch<void>(getGetDevEmpiresUrl(), {
     ...options,
     method: "GET",
   });
@@ -2166,25 +3452,14 @@ export function useGetDevEmpires<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type postDevArmfleetResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type postDevArmfleetResponseSuccess = postDevArmfleetResponse200 & {
-  headers: Headers;
-};
-
-export type postDevArmfleetResponse = postDevArmfleetResponseSuccess;
-
 export const getPostDevArmfleetUrl = () => {
   return `/dev/armfleet`;
 };
 
 export const postDevArmfleet = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<postDevArmfleetResponse> => {
-  return customFetch<postDevArmfleetResponse>(getPostDevArmfleetUrl(), {
+): Promise<void> => {
+  return customFetch<void>(getPostDevArmfleetUrl(), {
     ...options,
     method: "POST",
   });
@@ -2252,25 +3527,14 @@ export const usePostDevArmfleet = <TError = unknown, TContext = unknown>(
   return useMutation(getPostDevArmfleetMutationOptions(options), queryClient);
 };
 
-export type getApiAdminAuditResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminAuditResponseSuccess = getApiAdminAuditResponse200 & {
-  headers: Headers;
-};
-
-export type getApiAdminAuditResponse = getApiAdminAuditResponseSuccess;
-
 export const getGetApiAdminAuditUrl = () => {
   return `/api/admin/audit`;
 };
 
 export const getApiAdminAudit = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminAuditResponse> => {
-  return customFetch<getApiAdminAuditResponse>(getGetApiAdminAuditUrl(), {
+): Promise<GetApiAdminAudit200> => {
+  return customFetch<GetApiAdminAudit200>(getGetApiAdminAuditUrl(), {
     ...options,
     method: "GET",
   });
@@ -2408,18 +3672,6 @@ export function useGetApiAdminAudit<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type getApiAdminAccountsResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminAccountsResponseSuccess =
-  getApiAdminAccountsResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminAccountsResponse = getApiAdminAccountsResponseSuccess;
-
 export const getGetApiAdminAccountsUrl = (
   params?: GetApiAdminAccountsParams,
 ) => {
@@ -2441,8 +3693,8 @@ export const getGetApiAdminAccountsUrl = (
 export const getApiAdminAccounts = async (
   params?: GetApiAdminAccountsParams,
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminAccountsResponse> => {
-  return customFetch<getApiAdminAccountsResponse>(
+): Promise<GetApiAdminAccounts200> => {
+  return customFetch<GetApiAdminAccounts200>(
     getGetApiAdminAccountsUrl(params),
     {
       ...options,
@@ -2598,19 +3850,6 @@ export function useGetApiAdminAccounts<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type getApiAdminAccountsIdResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminAccountsIdResponseSuccess =
-  getApiAdminAccountsIdResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminAccountsIdResponse =
-  getApiAdminAccountsIdResponseSuccess;
-
 export const getGetApiAdminAccountsIdUrl = (id: string) => {
   return `/api/admin/accounts/${id}`;
 };
@@ -2618,8 +3857,8 @@ export const getGetApiAdminAccountsIdUrl = (id: string) => {
 export const getApiAdminAccountsId = async (
   id: string,
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminAccountsIdResponse> => {
-  return customFetch<getApiAdminAccountsIdResponse>(
+): Promise<GetApiAdminAccountsId200> => {
+  return customFetch<GetApiAdminAccountsId200>(
     getGetApiAdminAccountsIdUrl(id),
     {
       ...options,
@@ -2634,7 +3873,7 @@ export const getGetApiAdminAccountsIdQueryKey = (id: string) => {
 
 export const getGetApiAdminAccountsIdQueryOptions = <
   TData = Awaited<ReturnType<typeof getApiAdminAccountsId>>,
-  TError = unknown,
+  TError = GetApiAdminAccountsId404,
 >(
   id: string,
   options?: {
@@ -2672,11 +3911,11 @@ export const getGetApiAdminAccountsIdQueryOptions = <
 export type GetApiAdminAccountsIdQueryResult = NonNullable<
   Awaited<ReturnType<typeof getApiAdminAccountsId>>
 >;
-export type GetApiAdminAccountsIdQueryError = unknown;
+export type GetApiAdminAccountsIdQueryError = GetApiAdminAccountsId404;
 
 export function useGetApiAdminAccountsId<
   TData = Awaited<ReturnType<typeof getApiAdminAccountsId>>,
-  TError = unknown,
+  TError = GetApiAdminAccountsId404,
 >(
   id: string,
   options: {
@@ -2703,7 +3942,7 @@ export function useGetApiAdminAccountsId<
 };
 export function useGetApiAdminAccountsId<
   TData = Awaited<ReturnType<typeof getApiAdminAccountsId>>,
-  TError = unknown,
+  TError = GetApiAdminAccountsId404,
 >(
   id: string,
   options?: {
@@ -2730,7 +3969,7 @@ export function useGetApiAdminAccountsId<
 };
 export function useGetApiAdminAccountsId<
   TData = Awaited<ReturnType<typeof getApiAdminAccountsId>>,
-  TError = unknown,
+  TError = GetApiAdminAccountsId404,
 >(
   id: string,
   options?: {
@@ -2750,7 +3989,7 @@ export function useGetApiAdminAccountsId<
 
 export function useGetApiAdminAccountsId<
   TData = Awaited<ReturnType<typeof getApiAdminAccountsId>>,
-  TError = unknown,
+  TError = GetApiAdminAccountsId404,
 >(
   id: string,
   options?: {
@@ -2777,19 +4016,6 @@ export function useGetApiAdminAccountsId<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type postApiAdminAccountsIdSanctionsResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type postApiAdminAccountsIdSanctionsResponseSuccess =
-  postApiAdminAccountsIdSanctionsResponse200 & {
-    headers: Headers;
-  };
-
-export type postApiAdminAccountsIdSanctionsResponse =
-  postApiAdminAccountsIdSanctionsResponseSuccess;
-
 export const getPostApiAdminAccountsIdSanctionsUrl = (id: string) => {
   return `/api/admin/accounts/${id}/sanctions`;
 };
@@ -2798,8 +4024,8 @@ export const postApiAdminAccountsIdSanctions = async (
   id: string,
   postApiAdminAccountsIdSanctionsBody: PostApiAdminAccountsIdSanctionsBody,
   options?: Parameters<typeof customFetch>[1],
-): Promise<postApiAdminAccountsIdSanctionsResponse> => {
-  return customFetch<postApiAdminAccountsIdSanctionsResponse>(
+): Promise<PostApiAdminAccountsIdSanctions200> => {
+  return customFetch<PostApiAdminAccountsIdSanctions200>(
     getPostApiAdminAccountsIdSanctionsUrl(id),
     {
       ...options,
@@ -2811,7 +4037,9 @@ export const postApiAdminAccountsIdSanctions = async (
 };
 
 export const getPostApiAdminAccountsIdSanctionsMutationOptions = <
-  TError = unknown,
+  TError =
+    | PostApiAdminAccountsIdSanctions403
+    | PostApiAdminAccountsIdSanctions404,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2853,10 +4081,14 @@ export type PostApiAdminAccountsIdSanctionsMutationResult = NonNullable<
 >;
 export type PostApiAdminAccountsIdSanctionsMutationBody =
   PostApiAdminAccountsIdSanctionsBody;
-export type PostApiAdminAccountsIdSanctionsMutationError = unknown;
+export type PostApiAdminAccountsIdSanctionsMutationError =
+  | PostApiAdminAccountsIdSanctions403
+  | PostApiAdminAccountsIdSanctions404;
 
 export const usePostApiAdminAccountsIdSanctions = <
-  TError = unknown,
+  TError =
+    | PostApiAdminAccountsIdSanctions403
+    | PostApiAdminAccountsIdSanctions404,
   TContext = unknown,
 >(
   options?: {
@@ -2881,27 +4113,14 @@ export const usePostApiAdminAccountsIdSanctions = <
   );
 };
 
-export type getApiAdminContentWarshipsResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminContentWarshipsResponseSuccess =
-  getApiAdminContentWarshipsResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminContentWarshipsResponse =
-  getApiAdminContentWarshipsResponseSuccess;
-
 export const getGetApiAdminContentWarshipsUrl = () => {
   return `/api/admin/content/warships`;
 };
 
 export const getApiAdminContentWarships = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminContentWarshipsResponse> => {
-  return customFetch<getApiAdminContentWarshipsResponse>(
+): Promise<GetApiAdminContentWarships200> => {
+  return customFetch<GetApiAdminContentWarships200>(
     getGetApiAdminContentWarshipsUrl(),
     {
       ...options,
@@ -3047,33 +4266,17 @@ export function useGetApiAdminContentWarships<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type getApiAdminContentCombatTuningResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminContentCombatTuningResponseSuccess =
-  getApiAdminContentCombatTuningResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminContentCombatTuningResponse =
-  getApiAdminContentCombatTuningResponseSuccess;
-
 export const getGetApiAdminContentCombatTuningUrl = () => {
   return `/api/admin/content/combat-tuning`;
 };
 
 export const getApiAdminContentCombatTuning = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminContentCombatTuningResponse> => {
-  return customFetch<getApiAdminContentCombatTuningResponse>(
-    getGetApiAdminContentCombatTuningUrl(),
-    {
-      ...options,
-      method: "GET",
-    },
-  );
+): Promise<void> => {
+  return customFetch<void>(getGetApiAdminContentCombatTuningUrl(), {
+    ...options,
+    method: "GET",
+  });
 };
 
 export const getGetApiAdminContentCombatTuningQueryKey = () => {
@@ -3214,19 +4417,6 @@ export function useGetApiAdminContentCombatTuning<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type putApiAdminContentWarshipsIdResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type putApiAdminContentWarshipsIdResponseSuccess =
-  putApiAdminContentWarshipsIdResponse200 & {
-    headers: Headers;
-  };
-
-export type putApiAdminContentWarshipsIdResponse =
-  putApiAdminContentWarshipsIdResponseSuccess;
-
 export const getPutApiAdminContentWarshipsIdUrl = (id: string) => {
   return `/api/admin/content/warships/${id}`;
 };
@@ -3235,8 +4425,8 @@ export const putApiAdminContentWarshipsId = async (
   id: string,
   putApiAdminContentWarshipsIdBody: PutApiAdminContentWarshipsIdBody,
   options?: Parameters<typeof customFetch>[1],
-): Promise<putApiAdminContentWarshipsIdResponse> => {
-  return customFetch<putApiAdminContentWarshipsIdResponse>(
+): Promise<PutApiAdminContentWarshipsId200> => {
+  return customFetch<PutApiAdminContentWarshipsId200>(
     getPutApiAdminContentWarshipsIdUrl(id),
     {
       ...options,
@@ -3318,27 +4508,14 @@ export const usePutApiAdminContentWarshipsId = <
   );
 };
 
-export type getApiAdminContentFactionsResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminContentFactionsResponseSuccess =
-  getApiAdminContentFactionsResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminContentFactionsResponse =
-  getApiAdminContentFactionsResponseSuccess;
-
 export const getGetApiAdminContentFactionsUrl = () => {
   return `/api/admin/content/factions`;
 };
 
 export const getApiAdminContentFactions = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminContentFactionsResponse> => {
-  return customFetch<getApiAdminContentFactionsResponse>(
+): Promise<GetApiAdminContentFactions200> => {
+  return customFetch<GetApiAdminContentFactions200>(
     getGetApiAdminContentFactionsUrl(),
     {
       ...options,
@@ -3484,19 +4661,6 @@ export function useGetApiAdminContentFactions<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type putApiAdminContentFactionsIdResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type putApiAdminContentFactionsIdResponseSuccess =
-  putApiAdminContentFactionsIdResponse200 & {
-    headers: Headers;
-  };
-
-export type putApiAdminContentFactionsIdResponse =
-  putApiAdminContentFactionsIdResponseSuccess;
-
 export const getPutApiAdminContentFactionsIdUrl = (id: string) => {
   return `/api/admin/content/factions/${id}`;
 };
@@ -3505,8 +4669,8 @@ export const putApiAdminContentFactionsId = async (
   id: string,
   putApiAdminContentFactionsIdBody: PutApiAdminContentFactionsIdBody,
   options?: Parameters<typeof customFetch>[1],
-): Promise<putApiAdminContentFactionsIdResponse> => {
-  return customFetch<putApiAdminContentFactionsIdResponse>(
+): Promise<PutApiAdminContentFactionsId200> => {
+  return customFetch<PutApiAdminContentFactionsId200>(
     getPutApiAdminContentFactionsIdUrl(id),
     {
       ...options,
@@ -3588,27 +4752,14 @@ export const usePutApiAdminContentFactionsId = <
   );
 };
 
-export type getApiAdminContentBuildingsResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminContentBuildingsResponseSuccess =
-  getApiAdminContentBuildingsResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminContentBuildingsResponse =
-  getApiAdminContentBuildingsResponseSuccess;
-
 export const getGetApiAdminContentBuildingsUrl = () => {
   return `/api/admin/content/buildings`;
 };
 
 export const getApiAdminContentBuildings = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminContentBuildingsResponse> => {
-  return customFetch<getApiAdminContentBuildingsResponse>(
+): Promise<GetApiAdminContentBuildings200> => {
+  return customFetch<GetApiAdminContentBuildings200>(
     getGetApiAdminContentBuildingsUrl(),
     {
       ...options,
@@ -3755,19 +4906,6 @@ export function useGetApiAdminContentBuildings<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type putApiAdminContentBuildingsIdResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type putApiAdminContentBuildingsIdResponseSuccess =
-  putApiAdminContentBuildingsIdResponse200 & {
-    headers: Headers;
-  };
-
-export type putApiAdminContentBuildingsIdResponse =
-  putApiAdminContentBuildingsIdResponseSuccess;
-
 export const getPutApiAdminContentBuildingsIdUrl = (id: string) => {
   return `/api/admin/content/buildings/${id}`;
 };
@@ -3776,8 +4914,8 @@ export const putApiAdminContentBuildingsId = async (
   id: string,
   putApiAdminContentBuildingsIdBody: PutApiAdminContentBuildingsIdBody,
   options?: Parameters<typeof customFetch>[1],
-): Promise<putApiAdminContentBuildingsIdResponse> => {
-  return customFetch<putApiAdminContentBuildingsIdResponse>(
+): Promise<PutApiAdminContentBuildingsId200> => {
+  return customFetch<PutApiAdminContentBuildingsId200>(
     getPutApiAdminContentBuildingsIdUrl(id),
     {
       ...options,
@@ -3789,7 +4927,7 @@ export const putApiAdminContentBuildingsId = async (
 };
 
 export const getPutApiAdminContentBuildingsIdMutationOptions = <
-  TError = unknown,
+  TError = PutApiAdminContentBuildingsId400,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -3831,10 +4969,11 @@ export type PutApiAdminContentBuildingsIdMutationResult = NonNullable<
 >;
 export type PutApiAdminContentBuildingsIdMutationBody =
   PutApiAdminContentBuildingsIdBody;
-export type PutApiAdminContentBuildingsIdMutationError = unknown;
+export type PutApiAdminContentBuildingsIdMutationError =
+  PutApiAdminContentBuildingsId400;
 
 export const usePutApiAdminContentBuildingsId = <
-  TError = unknown,
+  TError = PutApiAdminContentBuildingsId400,
   TContext = unknown,
 >(
   options?: {
@@ -3859,27 +4998,14 @@ export const usePutApiAdminContentBuildingsId = <
   );
 };
 
-export type getApiAdminContentShipsResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminContentShipsResponseSuccess =
-  getApiAdminContentShipsResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminContentShipsResponse =
-  getApiAdminContentShipsResponseSuccess;
-
 export const getGetApiAdminContentShipsUrl = () => {
   return `/api/admin/content/ships`;
 };
 
 export const getApiAdminContentShips = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminContentShipsResponse> => {
-  return customFetch<getApiAdminContentShipsResponse>(
+): Promise<GetApiAdminContentShips200> => {
+  return customFetch<GetApiAdminContentShips200>(
     getGetApiAdminContentShipsUrl(),
     {
       ...options,
@@ -4025,19 +5151,6 @@ export function useGetApiAdminContentShips<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type putApiAdminContentShipsIdResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type putApiAdminContentShipsIdResponseSuccess =
-  putApiAdminContentShipsIdResponse200 & {
-    headers: Headers;
-  };
-
-export type putApiAdminContentShipsIdResponse =
-  putApiAdminContentShipsIdResponseSuccess;
-
 export const getPutApiAdminContentShipsIdUrl = (id: string) => {
   return `/api/admin/content/ships/${id}`;
 };
@@ -4046,8 +5159,8 @@ export const putApiAdminContentShipsId = async (
   id: string,
   putApiAdminContentShipsIdBody: PutApiAdminContentShipsIdBody,
   options?: Parameters<typeof customFetch>[1],
-): Promise<putApiAdminContentShipsIdResponse> => {
-  return customFetch<putApiAdminContentShipsIdResponse>(
+): Promise<PutApiAdminContentShipsId200> => {
+  return customFetch<PutApiAdminContentShipsId200>(
     getPutApiAdminContentShipsIdUrl(id),
     {
       ...options,
@@ -4129,27 +5242,14 @@ export const usePutApiAdminContentShipsId = <
   );
 };
 
-export type getApiAdminContentConstantsResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminContentConstantsResponseSuccess =
-  getApiAdminContentConstantsResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminContentConstantsResponse =
-  getApiAdminContentConstantsResponseSuccess;
-
 export const getGetApiAdminContentConstantsUrl = () => {
   return `/api/admin/content/constants`;
 };
 
 export const getApiAdminContentConstants = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminContentConstantsResponse> => {
-  return customFetch<getApiAdminContentConstantsResponse>(
+): Promise<GetApiAdminContentConstants200> => {
+  return customFetch<GetApiAdminContentConstants200>(
     getGetApiAdminContentConstantsUrl(),
     {
       ...options,
@@ -4296,19 +5396,6 @@ export function useGetApiAdminContentConstants<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type putApiAdminContentConstantsKeyResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type putApiAdminContentConstantsKeyResponseSuccess =
-  putApiAdminContentConstantsKeyResponse200 & {
-    headers: Headers;
-  };
-
-export type putApiAdminContentConstantsKeyResponse =
-  putApiAdminContentConstantsKeyResponseSuccess;
-
 export const getPutApiAdminContentConstantsKeyUrl = (key: string) => {
   return `/api/admin/content/constants/${key}`;
 };
@@ -4317,8 +5404,8 @@ export const putApiAdminContentConstantsKey = async (
   key: string,
   putApiAdminContentConstantsKeyBody: PutApiAdminContentConstantsKeyBody,
   options?: Parameters<typeof customFetch>[1],
-): Promise<putApiAdminContentConstantsKeyResponse> => {
-  return customFetch<putApiAdminContentConstantsKeyResponse>(
+): Promise<PutApiAdminContentConstantsKey200> => {
+  return customFetch<PutApiAdminContentConstantsKey200>(
     getPutApiAdminContentConstantsKeyUrl(key),
     {
       ...options,
@@ -4330,7 +5417,7 @@ export const putApiAdminContentConstantsKey = async (
 };
 
 export const getPutApiAdminContentConstantsKeyMutationOptions = <
-  TError = unknown,
+  TError = PutApiAdminContentConstantsKey400,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4372,10 +5459,11 @@ export type PutApiAdminContentConstantsKeyMutationResult = NonNullable<
 >;
 export type PutApiAdminContentConstantsKeyMutationBody =
   PutApiAdminContentConstantsKeyBody;
-export type PutApiAdminContentConstantsKeyMutationError = unknown;
+export type PutApiAdminContentConstantsKeyMutationError =
+  PutApiAdminContentConstantsKey400;
 
 export const usePutApiAdminContentConstantsKey = <
-  TError = unknown,
+  TError = PutApiAdminContentConstantsKey400,
   TContext = unknown,
 >(
   options?: {
@@ -4400,27 +5488,14 @@ export const usePutApiAdminContentConstantsKey = <
   );
 };
 
-export type getApiAdminContentTechsResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminContentTechsResponseSuccess =
-  getApiAdminContentTechsResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminContentTechsResponse =
-  getApiAdminContentTechsResponseSuccess;
-
 export const getGetApiAdminContentTechsUrl = () => {
   return `/api/admin/content/techs`;
 };
 
 export const getApiAdminContentTechs = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminContentTechsResponse> => {
-  return customFetch<getApiAdminContentTechsResponse>(
+): Promise<GetApiAdminContentTechs200> => {
+  return customFetch<GetApiAdminContentTechs200>(
     getGetApiAdminContentTechsUrl(),
     {
       ...options,
@@ -4566,19 +5641,6 @@ export function useGetApiAdminContentTechs<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type putApiAdminContentTechsIdResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type putApiAdminContentTechsIdResponseSuccess =
-  putApiAdminContentTechsIdResponse200 & {
-    headers: Headers;
-  };
-
-export type putApiAdminContentTechsIdResponse =
-  putApiAdminContentTechsIdResponseSuccess;
-
 export const getPutApiAdminContentTechsIdUrl = (id: string) => {
   return `/api/admin/content/techs/${id}`;
 };
@@ -4587,8 +5649,8 @@ export const putApiAdminContentTechsId = async (
   id: string,
   putApiAdminContentTechsIdBody: PutApiAdminContentTechsIdBody,
   options?: Parameters<typeof customFetch>[1],
-): Promise<putApiAdminContentTechsIdResponse> => {
-  return customFetch<putApiAdminContentTechsIdResponse>(
+): Promise<PutApiAdminContentTechsId200> => {
+  return customFetch<PutApiAdminContentTechsId200>(
     getPutApiAdminContentTechsIdUrl(id),
     {
       ...options,
@@ -4600,7 +5662,7 @@ export const putApiAdminContentTechsId = async (
 };
 
 export const getPutApiAdminContentTechsIdMutationOptions = <
-  TError = unknown,
+  TError = PutApiAdminContentTechsId400,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4642,10 +5704,11 @@ export type PutApiAdminContentTechsIdMutationResult = NonNullable<
 >;
 export type PutApiAdminContentTechsIdMutationBody =
   PutApiAdminContentTechsIdBody;
-export type PutApiAdminContentTechsIdMutationError = unknown;
+export type PutApiAdminContentTechsIdMutationError =
+  PutApiAdminContentTechsId400;
 
 export const usePutApiAdminContentTechsId = <
-  TError = unknown,
+  TError = PutApiAdminContentTechsId400,
   TContext = unknown,
 >(
   options?: {
@@ -4670,27 +5733,14 @@ export const usePutApiAdminContentTechsId = <
   );
 };
 
-export type getApiAdminContentChassisResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminContentChassisResponseSuccess =
-  getApiAdminContentChassisResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminContentChassisResponse =
-  getApiAdminContentChassisResponseSuccess;
-
 export const getGetApiAdminContentChassisUrl = () => {
   return `/api/admin/content/chassis`;
 };
 
 export const getApiAdminContentChassis = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminContentChassisResponse> => {
-  return customFetch<getApiAdminContentChassisResponse>(
+): Promise<GetApiAdminContentChassis200> => {
+  return customFetch<GetApiAdminContentChassis200>(
     getGetApiAdminContentChassisUrl(),
     {
       ...options,
@@ -4836,19 +5886,6 @@ export function useGetApiAdminContentChassis<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type putApiAdminContentChassisIdResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type putApiAdminContentChassisIdResponseSuccess =
-  putApiAdminContentChassisIdResponse200 & {
-    headers: Headers;
-  };
-
-export type putApiAdminContentChassisIdResponse =
-  putApiAdminContentChassisIdResponseSuccess;
-
 export const getPutApiAdminContentChassisIdUrl = (id: string) => {
   return `/api/admin/content/chassis/${id}`;
 };
@@ -4857,8 +5894,8 @@ export const putApiAdminContentChassisId = async (
   id: string,
   putApiAdminContentChassisIdBody: PutApiAdminContentChassisIdBody,
   options?: Parameters<typeof customFetch>[1],
-): Promise<putApiAdminContentChassisIdResponse> => {
-  return customFetch<putApiAdminContentChassisIdResponse>(
+): Promise<PutApiAdminContentChassisId200> => {
+  return customFetch<PutApiAdminContentChassisId200>(
     getPutApiAdminContentChassisIdUrl(id),
     {
       ...options,
@@ -4940,27 +5977,14 @@ export const usePutApiAdminContentChassisId = <
   );
 };
 
-export type getApiAdminContentModulesResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminContentModulesResponseSuccess =
-  getApiAdminContentModulesResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminContentModulesResponse =
-  getApiAdminContentModulesResponseSuccess;
-
 export const getGetApiAdminContentModulesUrl = () => {
   return `/api/admin/content/modules`;
 };
 
 export const getApiAdminContentModules = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminContentModulesResponse> => {
-  return customFetch<getApiAdminContentModulesResponse>(
+): Promise<GetApiAdminContentModules200> => {
+  return customFetch<GetApiAdminContentModules200>(
     getGetApiAdminContentModulesUrl(),
     {
       ...options,
@@ -5106,19 +6130,6 @@ export function useGetApiAdminContentModules<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type putApiAdminContentModulesIdResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type putApiAdminContentModulesIdResponseSuccess =
-  putApiAdminContentModulesIdResponse200 & {
-    headers: Headers;
-  };
-
-export type putApiAdminContentModulesIdResponse =
-  putApiAdminContentModulesIdResponseSuccess;
-
 export const getPutApiAdminContentModulesIdUrl = (id: string) => {
   return `/api/admin/content/modules/${id}`;
 };
@@ -5127,8 +6138,8 @@ export const putApiAdminContentModulesId = async (
   id: string,
   putApiAdminContentModulesIdBody: PutApiAdminContentModulesIdBody,
   options?: Parameters<typeof customFetch>[1],
-): Promise<putApiAdminContentModulesIdResponse> => {
-  return customFetch<putApiAdminContentModulesIdResponse>(
+): Promise<PutApiAdminContentModulesId200> => {
+  return customFetch<PutApiAdminContentModulesId200>(
     getPutApiAdminContentModulesIdUrl(id),
     {
       ...options,
@@ -5210,27 +6221,14 @@ export const usePutApiAdminContentModulesId = <
   );
 };
 
-export type getApiAdminContentPresetsResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminContentPresetsResponseSuccess =
-  getApiAdminContentPresetsResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminContentPresetsResponse =
-  getApiAdminContentPresetsResponseSuccess;
-
 export const getGetApiAdminContentPresetsUrl = () => {
   return `/api/admin/content/presets`;
 };
 
 export const getApiAdminContentPresets = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminContentPresetsResponse> => {
-  return customFetch<getApiAdminContentPresetsResponse>(
+): Promise<GetApiAdminContentPresets200> => {
+  return customFetch<GetApiAdminContentPresets200>(
     getGetApiAdminContentPresetsUrl(),
     {
       ...options,
@@ -5376,19 +6374,6 @@ export function useGetApiAdminContentPresets<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type putApiAdminContentPresetsIdResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type putApiAdminContentPresetsIdResponseSuccess =
-  putApiAdminContentPresetsIdResponse200 & {
-    headers: Headers;
-  };
-
-export type putApiAdminContentPresetsIdResponse =
-  putApiAdminContentPresetsIdResponseSuccess;
-
 export const getPutApiAdminContentPresetsIdUrl = (id: string) => {
   return `/api/admin/content/presets/${id}`;
 };
@@ -5397,8 +6382,8 @@ export const putApiAdminContentPresetsId = async (
   id: string,
   putApiAdminContentPresetsIdBody: PutApiAdminContentPresetsIdBody,
   options?: Parameters<typeof customFetch>[1],
-): Promise<putApiAdminContentPresetsIdResponse> => {
-  return customFetch<putApiAdminContentPresetsIdResponse>(
+): Promise<PutApiAdminContentPresetsId200> => {
+  return customFetch<PutApiAdminContentPresetsId200>(
     getPutApiAdminContentPresetsIdUrl(id),
     {
       ...options,
@@ -5480,27 +6465,14 @@ export const usePutApiAdminContentPresetsId = <
   );
 };
 
-export type getApiAdminContentMilestonesResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminContentMilestonesResponseSuccess =
-  getApiAdminContentMilestonesResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminContentMilestonesResponse =
-  getApiAdminContentMilestonesResponseSuccess;
-
 export const getGetApiAdminContentMilestonesUrl = () => {
   return `/api/admin/content/milestones`;
 };
 
 export const getApiAdminContentMilestones = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminContentMilestonesResponse> => {
-  return customFetch<getApiAdminContentMilestonesResponse>(
+): Promise<GetApiAdminContentMilestones200> => {
+  return customFetch<GetApiAdminContentMilestones200>(
     getGetApiAdminContentMilestonesUrl(),
     {
       ...options,
@@ -5647,19 +6619,6 @@ export function useGetApiAdminContentMilestones<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type putApiAdminContentMilestonesIdResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type putApiAdminContentMilestonesIdResponseSuccess =
-  putApiAdminContentMilestonesIdResponse200 & {
-    headers: Headers;
-  };
-
-export type putApiAdminContentMilestonesIdResponse =
-  putApiAdminContentMilestonesIdResponseSuccess;
-
 export const getPutApiAdminContentMilestonesIdUrl = (id: string) => {
   return `/api/admin/content/milestones/${id}`;
 };
@@ -5668,8 +6627,8 @@ export const putApiAdminContentMilestonesId = async (
   id: string,
   putApiAdminContentMilestonesIdBody: PutApiAdminContentMilestonesIdBody,
   options?: Parameters<typeof customFetch>[1],
-): Promise<putApiAdminContentMilestonesIdResponse> => {
-  return customFetch<putApiAdminContentMilestonesIdResponse>(
+): Promise<PutApiAdminContentMilestonesId200> => {
+  return customFetch<PutApiAdminContentMilestonesId200>(
     getPutApiAdminContentMilestonesIdUrl(id),
     {
       ...options,
@@ -5751,27 +6710,14 @@ export const usePutApiAdminContentMilestonesId = <
   );
 };
 
-export type getApiAdminContentZoneTypesResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminContentZoneTypesResponseSuccess =
-  getApiAdminContentZoneTypesResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminContentZoneTypesResponse =
-  getApiAdminContentZoneTypesResponseSuccess;
-
 export const getGetApiAdminContentZoneTypesUrl = () => {
   return `/api/admin/content/zone-types`;
 };
 
 export const getApiAdminContentZoneTypes = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminContentZoneTypesResponse> => {
-  return customFetch<getApiAdminContentZoneTypesResponse>(
+): Promise<GetApiAdminContentZoneTypes200> => {
+  return customFetch<GetApiAdminContentZoneTypes200>(
     getGetApiAdminContentZoneTypesUrl(),
     {
       ...options,
@@ -5918,19 +6864,6 @@ export function useGetApiAdminContentZoneTypes<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type putApiAdminContentZoneTypesIdResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type putApiAdminContentZoneTypesIdResponseSuccess =
-  putApiAdminContentZoneTypesIdResponse200 & {
-    headers: Headers;
-  };
-
-export type putApiAdminContentZoneTypesIdResponse =
-  putApiAdminContentZoneTypesIdResponseSuccess;
-
 export const getPutApiAdminContentZoneTypesIdUrl = (id: string) => {
   return `/api/admin/content/zone-types/${id}`;
 };
@@ -5939,8 +6872,8 @@ export const putApiAdminContentZoneTypesId = async (
   id: string,
   putApiAdminContentZoneTypesIdBody: PutApiAdminContentZoneTypesIdBody,
   options?: Parameters<typeof customFetch>[1],
-): Promise<putApiAdminContentZoneTypesIdResponse> => {
-  return customFetch<putApiAdminContentZoneTypesIdResponse>(
+): Promise<PutApiAdminContentZoneTypesId200> => {
+  return customFetch<PutApiAdminContentZoneTypesId200>(
     getPutApiAdminContentZoneTypesIdUrl(id),
     {
       ...options,
@@ -6022,27 +6955,14 @@ export const usePutApiAdminContentZoneTypesId = <
   );
 };
 
-export type getApiAdminContentInstallationsResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminContentInstallationsResponseSuccess =
-  getApiAdminContentInstallationsResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminContentInstallationsResponse =
-  getApiAdminContentInstallationsResponseSuccess;
-
 export const getGetApiAdminContentInstallationsUrl = () => {
   return `/api/admin/content/installations`;
 };
 
 export const getApiAdminContentInstallations = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminContentInstallationsResponse> => {
-  return customFetch<getApiAdminContentInstallationsResponse>(
+): Promise<GetApiAdminContentInstallations200> => {
+  return customFetch<GetApiAdminContentInstallations200>(
     getGetApiAdminContentInstallationsUrl(),
     {
       ...options,
@@ -6189,19 +7109,6 @@ export function useGetApiAdminContentInstallations<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type putApiAdminContentInstallationsIdResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type putApiAdminContentInstallationsIdResponseSuccess =
-  putApiAdminContentInstallationsIdResponse200 & {
-    headers: Headers;
-  };
-
-export type putApiAdminContentInstallationsIdResponse =
-  putApiAdminContentInstallationsIdResponseSuccess;
-
 export const getPutApiAdminContentInstallationsIdUrl = (id: string) => {
   return `/api/admin/content/installations/${id}`;
 };
@@ -6210,8 +7117,8 @@ export const putApiAdminContentInstallationsId = async (
   id: string,
   putApiAdminContentInstallationsIdBody: PutApiAdminContentInstallationsIdBody,
   options?: Parameters<typeof customFetch>[1],
-): Promise<putApiAdminContentInstallationsIdResponse> => {
-  return customFetch<putApiAdminContentInstallationsIdResponse>(
+): Promise<PutApiAdminContentInstallationsId200> => {
+  return customFetch<PutApiAdminContentInstallationsId200>(
     getPutApiAdminContentInstallationsIdUrl(id),
     {
       ...options,
@@ -6293,33 +7200,17 @@ export const usePutApiAdminContentInstallationsId = <
   );
 };
 
-export type getApiAdminOpsEmpiresResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminOpsEmpiresResponseSuccess =
-  getApiAdminOpsEmpiresResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminOpsEmpiresResponse =
-  getApiAdminOpsEmpiresResponseSuccess;
-
 export const getGetApiAdminOpsEmpiresUrl = () => {
   return `/api/admin/ops/empires`;
 };
 
 export const getApiAdminOpsEmpires = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminOpsEmpiresResponse> => {
-  return customFetch<getApiAdminOpsEmpiresResponse>(
-    getGetApiAdminOpsEmpiresUrl(),
-    {
-      ...options,
-      method: "GET",
-    },
-  );
+): Promise<GetApiAdminOpsEmpires200> => {
+  return customFetch<GetApiAdminOpsEmpires200>(getGetApiAdminOpsEmpiresUrl(), {
+    ...options,
+    method: "GET",
+  });
 };
 
 export const getGetApiAdminOpsEmpiresQueryKey = () => {
@@ -6458,32 +7349,17 @@ export function useGetApiAdminOpsEmpires<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type getApiAdminOpsHealthResponse200 = {
-  data: void;
-  status: 200;
-};
-
-export type getApiAdminOpsHealthResponseSuccess =
-  getApiAdminOpsHealthResponse200 & {
-    headers: Headers;
-  };
-
-export type getApiAdminOpsHealthResponse = getApiAdminOpsHealthResponseSuccess;
-
 export const getGetApiAdminOpsHealthUrl = () => {
   return `/api/admin/ops/health`;
 };
 
 export const getApiAdminOpsHealth = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<getApiAdminOpsHealthResponse> => {
-  return customFetch<getApiAdminOpsHealthResponse>(
-    getGetApiAdminOpsHealthUrl(),
-    {
-      ...options,
-      method: "GET",
-    },
-  );
+): Promise<GetApiAdminOpsHealth200> => {
+  return customFetch<GetApiAdminOpsHealth200>(getGetApiAdminOpsHealthUrl(), {
+    ...options,
+    method: "GET",
+  });
 };
 
 export const getGetApiAdminOpsHealthQueryKey = () => {
