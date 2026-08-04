@@ -1538,3 +1538,45 @@
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, var(--panel));
 }
+
+/* ── Responsive téléphone/tablette (chantier 27.22) ──────────────────────
+ * Les panneaux à largeur fixe ci-dessus (`.side-panel`, `.designer-editor`,
+ * `.research-detail`) sont posés à côté d'un contenu `flex: 1` sans jamais
+ * s'empiler — au-delà de ce seuil, ils passent sous le contenu principal au
+ * lieu de forcer un défilement horizontal. `.body-schema`/`.hull-diagram-wrap`
+ * dégradent déjà proprement (`.body-layout` a `flex-wrap: wrap`, les deux
+ * tiennent sous 375px) ; ils reçoivent juste un filet `max-width: 100%`. */
+@media (max-width: 720px) {
+  .content {
+    flex-direction: column;
+  }
+  .side-panel {
+    width: auto;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .designer-layout {
+    flex-direction: column;
+  }
+  .designer-editor {
+    width: auto;
+  }
+  .designer-preview {
+    flex-wrap: wrap;
+  }
+
+  .research-body {
+    flex-direction: column;
+  }
+  .research-detail {
+    width: auto;
+  }
+
+  .body-schema {
+    max-width: 100%;
+  }
+  .hull-diagram-wrap {
+    max-width: 100%;
+  }
+}
