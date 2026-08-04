@@ -1,4 +1,5 @@
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
 import websocket from "@fastify/websocket";
@@ -29,6 +30,17 @@ export async function buildApp(
   // Jeton de session jamais journalisé, même par erreur (chantier 20.5).
   const app = Fastify({
     logger: { level: config.logLevel, redact: ["req.headers.authorization"] },
+  });
+  // En-têtes de sécurité (chantier 27.11). `styleSrc` élargi : apps/web et packages/ui
+  // utilisent des `style={{...}}` inline (ex. point de couleur d'empire) — la CSP par
+  // défaut de Helmet les bloquerait sinon. Risque accepté sciemment, pas un oubli.
+  await app.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "style-src": ["'self'", "'unsafe-inline'"],
+      },
+    },
   });
   await app.register(websocket);
   await app.register(cors, { origin: config.corsOrigin });

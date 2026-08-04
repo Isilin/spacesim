@@ -142,4 +142,14 @@ describe("buildApp — routes HTTP", () => {
     for (let i = 1; i < 12; i++) last = await attempt();
     expect(last.statusCode).toBe(429);
   });
+
+  it("Helmet : en-têtes de sécurité présents, CSP autorise les styles inline (chantier 27.11)", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const res = await app.inject({ method: "GET", url: "/health" });
+    expect(res.headers["x-frame-options"]).toBeDefined();
+    expect(res.headers["x-content-type-options"]).toBe("nosniff");
+    expect(res.headers["content-security-policy"]).toContain(
+      "style-src 'self' 'unsafe-inline'",
+    );
+  });
 });
