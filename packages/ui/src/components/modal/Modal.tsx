@@ -67,9 +67,11 @@ const ModalDialog = ({
   };
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: fond cliquable pour fermer, Échap (géré ci-dessous sur le dialogue) est déjà l'équivalent clavier.
     <div className={styles.overlay} onClick={onClose}>
       <div
         ref={dialogRef}
+        // biome-ignore lint/a11y/useSemanticElements: <dialog> natif imposerait showModal()/close() et son propre focus/backdrop ; role="dialog" sur un div garde le piège à focus/l'animation gérés à la main (motif standard Radix/react-aria/MUI).
         className={styles.modal}
         role="dialog"
         aria-modal="true"

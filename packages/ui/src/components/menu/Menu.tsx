@@ -64,7 +64,10 @@ export function Menu({ items = [], style, onClose }: MenuProps) {
       <div className={styles.menuIn}>
         {items.map((it, i) =>
           it === "separator" ? (
-            <div key={i} role="separator" className={styles.menuSep} />
+            // Séparateur purement visuel : un menu HTML natif ne rend pas ses
+            // séparateurs focusables, `role="separator"` sans `aria-hidden`
+            // les y forcerait à tort (Biome lint/a11y/useFocusableInteractive).
+            <div key={i} aria-hidden="true" className={styles.menuSep} />
           ) : (
             <button
               key={i}

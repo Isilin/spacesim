@@ -67,6 +67,7 @@ export const commonFr = {
     noChassis: "Aucun châssis",
     editModule: "Modifier {{module}}",
     chooseModule: "Choisir un module ({{slot}})",
+    ariaLabel: "Schéma de coque : {{chassis}}",
   },
   stationsView: {
     noStation: "Aucune station — fondez-en une depuis la carte.",
@@ -594,6 +595,7 @@ export const commonEn: typeof commonFr = {
     noChassis: "No chassis",
     editModule: "Edit {{module}}",
     chooseModule: "Choose a module ({{slot}})",
+    ariaLabel: "Hull diagram: {{chassis}}",
   },
   stationsView: {
     noStation: "No station — found one from the map.",

@@ -24,6 +24,9 @@
     "enabled": true,
     "rules": {
       "recommended": false,
+      "a11y": {
+        "recommended": true
+      },
       "suspicious": {
         "noDebugger": "error"
       }

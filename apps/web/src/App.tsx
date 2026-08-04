@@ -193,13 +193,16 @@ function MapPage({
           onGo={goTo}
         />
         <nav className="breadcrumb">
-          <button onClick={() => navigate(`/map${colonyOnlySearch()}`)}>
+          <button
+            type="button"
+            onClick={() => navigate(`/map${colonyOnlySearch()}`)}
+          >
             {t("app.universe")}
           </button>
           {viewGalaxy && (
             <>
               <span className="muted">/</span>
-              <button onClick={() => openGalaxy(viewGalaxy.id)}>
+              <button type="button" onClick={() => openGalaxy(viewGalaxy.id)}>
                 {viewGalaxy.name}
               </button>
             </>
@@ -208,7 +211,7 @@ function MapPage({
             <>
               <span className="muted">/</span>
               {viewBody ? (
-                <button onClick={() => openSystem(viewSystem)}>
+                <button type="button" onClick={() => openSystem(viewSystem)}>
                   {viewSystem.name}
                 </button>
               ) : (

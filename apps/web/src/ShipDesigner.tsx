@@ -277,6 +277,7 @@ export function ShipDesigner({ effects }: Props) {
                       className="slot-connector"
                       width={HULL_SIZE}
                       height={HULL_HEIGHT}
+                      aria-hidden="true"
                     >
                       <line
                         x1={anchor.x}
@@ -317,7 +318,11 @@ export function ShipDesigner({ effects }: Props) {
                     <div className="slot-popover-head">
                       <strong>{slotLabel(selectedSlot.type)}</strong>
                       {selectedModule && (
-                        <button className="chip" onClick={removeSelected}>
+                        <button
+                          type="button"
+                          className="chip"
+                          onClick={removeSelected}
+                        >
                           {moduleLabel(selectedModule.m).name} —{" "}
                           {t("shipDesigner.remove")}
                         </button>
@@ -331,6 +336,7 @@ export function ShipDesigner({ effects }: Props) {
                       ).map((id) => (
                         <button
                           key={id}
+                          type="button"
                           className={`chip add ${selectedModule?.m === id ? "active" : ""}`}
                           title={moduleLabel(id).description}
                           onClick={() => pickModule(id)}
@@ -384,6 +390,7 @@ export function ShipDesigner({ effects }: Props) {
                         .map(({ m, i }) => (
                           <button
                             key={i}
+                            type="button"
                             className="chip"
                             onClick={() => removeModuleAt(i)}
                           >

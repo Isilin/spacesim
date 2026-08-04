@@ -224,8 +224,10 @@ export function ZoomableSvg({
         ref={svgRef}
         className={className}
         viewBox={`${view.x} ${view.y} ${view.width} ${view.height}`}
-        role="img"
+        // "application" (pas "img") : depuis le clavier ajouté au chantier 27.21, ce n'est plus une image statique mais un widget avec son propre modèle d'interaction (flèches/±/0).
+        role="application"
         aria-label={ariaLabel}
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: svg n'est pas nativement interactif, mais role="application" ci-dessus en fait justement un widget clavier à part entière (pan/zoom) — le tabIndex est l'affordance requise, pas une erreur.
         tabIndex={0}
         onWheel={onWheel}
         onPointerDown={onPointerDown}

@@ -422,10 +422,18 @@ export function FleetsView({
                 return (
                   <li key={b.id} className="queue-item">
                     <div
+                      // biome-ignore lint/a11y/useSemanticElements: un <button> natif hériterait du chrome navigateur (fond/bordure/padding) sur cette ligne badge+texte — role="button" + clavier est le motif WAI-ARIA APG documenté pour ce cas plutôt qu'une passe de reset CSS hors sujet ici.
                       className="queue-head battle-head"
+                      role="button"
+                      tabIndex={0}
                       onClick={() =>
                         setOpenBattle(openBattle === b.id ? null : b.id)
                       }
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter" && e.key !== " ") return;
+                        e.preventDefault();
+                        setOpenBattle(openBattle === b.id ? null : b.id);
+                      }}
                     >
                       <Badge variant={won ? "ok" : "ko"}>
                         {won

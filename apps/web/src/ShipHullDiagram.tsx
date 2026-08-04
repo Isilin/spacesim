@@ -9,7 +9,7 @@ import {
 } from "@spacesim/shared";
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
-import { moduleLabel, slotLabel } from "./labels.js";
+import { chassisLabel, moduleLabel, slotLabel } from "./labels.js";
 
 export interface SlotRef {
   type: SlotType;
@@ -406,7 +406,15 @@ export function ShipHullDiagram({
 
   return (
     <div className={`hull-diagram ${compact ? "compact" : ""}`}>
-      <svg viewBox="0 0 160 220" width={size} height={size * 1.375}>
+      <svg
+        viewBox="0 0 160 220"
+        width={size}
+        height={size * 1.375}
+        role="img"
+        aria-label={t("shipHullDiagram.ariaLabel", {
+          chassis: chassisLabel(chassis.id).name,
+        })}
+      >
         <defs>
           <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" className="hull-fill-stop-a" />

@@ -46,6 +46,7 @@ export function Popover({
 
   return (
     <div
+      // biome-ignore lint/a11y/useSemanticElements: <dialog> natif est modal par défaut (backdrop, showModal()) ; ce panneau est volontairement non modal, role="dialog" sur un div est le motif standard pour ce cas.
       ref={ref}
       role="dialog"
       aria-label={ariaLabel}

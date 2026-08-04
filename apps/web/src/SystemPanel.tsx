@@ -110,7 +110,18 @@ export function SystemPanel({
       <li
         key={p.id}
         className={`planet body-row ${p.kind === "moon" ? "moon-row" : ""}`}
+        role={onOpenBody ? "button" : undefined}
+        tabIndex={onOpenBody ? 0 : undefined}
         onClick={() => onOpenBody?.(p)}
+        onKeyDown={
+          onOpenBody
+            ? (e) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                onOpenBody(p);
+              }
+            : undefined
+        }
       >
         <div className="planet-head">
           <strong>
