@@ -1,0 +1,1 @@
+ALTER TABLE "contracts" ADD COLUMN "issuer_faction_id" text;

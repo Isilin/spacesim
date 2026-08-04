@@ -14,6 +14,9 @@ export class ContractRepository {
       id: row.id,
       issuerId: row.issuerId,
       issuerName: row.issuerName,
+      issuerFactionId: (row.issuerFactionId ?? undefined) as
+        | Contract["issuerFactionId"]
+        | undefined,
       issuerColor: row.issuerColor,
       colonyId: row.colonyId,
       colonyName: row.colonyName,
@@ -34,6 +37,7 @@ export class ContractRepository {
       gameId: this.gameId,
       issuerId: contract.issuerId,
       issuerName: contract.issuerName,
+      issuerFactionId: contract.issuerFactionId ?? null,
       issuerColor: contract.issuerColor,
       colonyId: contract.colonyId,
       colonyName: contract.colonyName,

@@ -10,7 +10,7 @@ import { useState } from "react";
 import { Badge, Button, NumberInput, Panel, Select } from "@spacesim/ui";
 import { useTranslation } from "react-i18next";
 import { formatDuration } from "./format.js";
-import { resourceLabel } from "./labels.js";
+import { factionLabel, resourceLabel } from "./labels.js";
 
 interface Props {
   contracts: Contract[];
@@ -123,7 +123,9 @@ export function ContractsView({
                 <li key={c.id} className="route-item">
                   <div className="queue-head">
                     <strong style={{ color: c.issuerColor }}>
-                      {c.issuerName}
+                      {c.issuerFactionId
+                        ? factionLabel(c.issuerFactionId).name
+                        : c.issuerName}
                     </strong>
                     <span className="small muted">
                       {t("contractsView.deadline", {

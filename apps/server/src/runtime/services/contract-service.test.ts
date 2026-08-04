@@ -266,9 +266,10 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
     const contract = engine.contracts.find((c) => c.issuerId === factionId);
     expect(contract).toBeDefined();
     expect(contract!.status).toBe("open");
-    expect(contract!.issuerName).toBe(
-      FACTIONS[factionId as keyof typeof FACTIONS].name,
-    );
+    // Le nom d'affichage se résout côté client par id (chantier 27.19) — issuerName
+    // reste un repli figé, mais issuerFactionId est la source de vérité pour un
+    // contrat de faction (jamais renseigné pour un contrat d'empire).
+    expect(contract!.issuerFactionId).toBe(factionId);
     expect(
       Object.keys(FACTIONS[factionId as keyof typeof FACTIONS].consumes),
     ).toContain(contract!.resource);

@@ -1,3 +1,4 @@
+import type { FactionId } from "../content/factions.js";
 import type { StationMarketAccess } from "./industry.js";
 import type { ResourceId } from "./resources.js";
 
@@ -104,7 +105,15 @@ export type ContractStatus = "open" | "fulfilled" | "expired" | "cancelled";
 export interface Contract {
   id: string;
   issuerId: string;
+  /** Nom figé à la publication — fiable pour un empire (nom choisi, mutable comme
+   *  `Empire.name`), mais jamais pour une faction PNJ : voir `issuerFactionId`. */
   issuerName: string;
+  /** Renseigné uniquement pour un contrat publié par une faction PNJ (chantier 15) —
+   *  le client résout le nom d'affichage par id via `FACTION_LABELS` au rendu plutôt
+   *  que de se fier à `issuerName`, figé dans la locale du serveur à la création
+   *  (chantier 27.19). Absent pour un contrat publié par un empire joueur/PNJ, où
+   *  `issuerName` reste la seule source (un nom d'empire n'est pas du contenu traduisible). */
+  issuerFactionId?: FactionId;
   issuerColor: string;
   colonyId: string;
   colonyName: string;

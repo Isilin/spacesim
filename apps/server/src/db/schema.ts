@@ -522,6 +522,9 @@ export const contracts = pgTable("contracts", {
   gameId: text("game_id").notNull(),
   issuerId: text("issuer_id").notNull(),
   issuerName: text("issuer_name").notNull(),
+  /** Renseigné seulement pour un contrat de faction PNJ (chantier 27.19) — voir
+   *  `Contract.issuerFactionId` côté `packages/shared`. */
+  issuerFactionId: text("issuer_faction_id"),
   issuerColor: text("issuer_color").notNull(),
   /** Colonie émettrice : destination de la livraison. */
   colonyId: text("colony_id").notNull(),
