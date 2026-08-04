@@ -37,9 +37,9 @@ const KIND_KEYS: Record<string, string> = {
  * Client orval (chantier 27.15).
  */
 export function OpsView() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const formatDate = (ms: number | null): string =>
-    ms ? new Date(ms).toLocaleString("fr-FR") : t("opsView.never");
+    ms ? new Date(ms).toLocaleString(i18n.language) : t("opsView.never");
 
   const empireColumns: TableColumn<EmpireSummary>[] = [
     { key: "name", label: t("opsView.colEmpire") },

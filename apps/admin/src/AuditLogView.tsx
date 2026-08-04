@@ -24,7 +24,7 @@ interface AuditEntry {
  * Client orval (chantier 27.15).
  */
 export function AuditLogView() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { data, error, isPending } = useGetApiAdminAudit();
   const entries = (data?.entries ?? []) as AuditEntry[];
   const loadError = error
@@ -37,7 +37,8 @@ export function AuditLogView() {
     {
       key: "createdAt",
       label: t("auditLogView.colDate"),
-      render: (value) => new Date(value as number).toLocaleString("fr-FR"),
+      render: (value) =>
+        new Date(value as number).toLocaleString(i18n.language),
     },
     { key: "actorEmail", label: t("auditLogView.colActor") },
     { key: "action", label: t("auditLogView.colAction") },

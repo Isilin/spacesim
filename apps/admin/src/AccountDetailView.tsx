@@ -86,6 +86,7 @@ const SANCTION_KEYS: Record<SanctionKind, string> = {
 function statusBadge(
   status: SanctionStatus,
   t: ReturnType<typeof useTranslation>["t"],
+  locale: string,
 ) {
   if (!status.active)
     return <Badge variant="ok">{t("accountDetailView.noSanction")}</Badge>;
@@ -93,7 +94,7 @@ function statusBadge(
     status.kind === "ban"
       ? t("accountDetailView.banned")
       : t("accountDetailView.suspendedUntil", {
-          date: new Date(status.expiresAt!).toLocaleString("fr-FR"),
+          date: new Date(status.expiresAt!).toLocaleString(locale),
         });
   return <Badge variant="ko">{label}</Badge>;
 }
@@ -101,7 +102,7 @@ function statusBadge(
 /** Détail d'un compte : identité, sessions, empire, sanctions (chantier 23.3/23.4).
  *  Client orval (chantier 27.15). */
 export function AccountDetailView() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id = "" } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const { data, error, isPending } = useGetApiAdminAccountsId(id, {
@@ -147,7 +148,8 @@ export function AccountDetailView() {
     {
       key: "createdAt",
       label: t("accountDetailView.colDate"),
-      render: (value) => new Date(value as number).toLocaleString("fr-FR"),
+      render: (value) =>
+        new Date(value as number).toLocaleString(i18n.language),
     },
   ];
 
@@ -197,7 +199,7 @@ export function AccountDetailView() {
                 >
                   {account.role}
                 </Badge>
-                {statusBadge(account.sanctionStatus, t)}
+                {statusBadge(account.sanctionStatus, t, i18n.language)}
                 <Button variant="primary" onClick={openModal}>
                   {t("accountDetailView.sanction")}
                 </Button>
@@ -207,13 +209,17 @@ export function AccountDetailView() {
             <div className="stat-row">
               <Stat
                 label={t("accountDetailView.registeredAt")}
-                value={new Date(account.createdAt).toLocaleDateString("fr-FR")}
+                value={new Date(account.createdAt).toLocaleDateString(
+                  i18n.language,
+                )}
               />
               <Stat
                 label={t("accountDetailView.lastLogin")}
                 value={
                   account.lastLoginAt
-                    ? new Date(account.lastLoginAt).toLocaleString("fr-FR")
+                    ? new Date(account.lastLoginAt).toLocaleString(
+                        i18n.language,
+                      )
                     : t("contentCommon.none")
                 }
               />

@@ -27,6 +27,21 @@ const SCRYPT_KEYLEN = 64;
 const MAX_FAILED_ATTEMPTS = 10;
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 
+/** Locales connues côté serveur (chantier 27.20) — juste assez pour formater une date
+ *  dans le message de sanction ; le reste du message reste en français (hors périmètre,
+ *  aucun autre message serveur n'est traduit). Pas de dépendance à `packages/i18n-config`
+ *  (react-i18next) ici : le serveur n'a besoin ni de détection ni de rendu, juste d'un tag
+ *  BCP-47 à transmettre à `Date.prototype.toLocaleString`. */
+export type Locale = "fr" | "en";
+const SUPPORTED_LOCALES: readonly Locale[] = ["fr", "en"];
+
+function normalizeLocale(locale: unknown): Locale {
+  return typeof locale === "string" &&
+    SUPPORTED_LOCALES.includes(locale as Locale)
+    ? (locale as Locale)
+    : "fr";
+}
+
 export interface Account {
   id: string;
   email: string;
@@ -287,6 +302,7 @@ export async function login(
   email: string,
   password: string,
   ip = "?",
+  locale: unknown = "fr",
 ): Promise<AuthResult> {
   if (isRateLimited(ip)) {
     return {
@@ -324,7 +340,7 @@ export async function login(
     const until =
       sanction.kind === "ban"
         ? ""
-        : ` jusqu'au ${new Date(sanction.expiresAt!).toLocaleString("fr-FR")}`;
+        : ` jusqu'au ${new Date(sanction.expiresAt!).toLocaleString(normalizeLocale(locale))}`;
     return {
       ok: false,
       error: `Compte ${sanction.kind === "ban" ? "banni" : "suspendu"}${until} : ${sanction.reason}`,

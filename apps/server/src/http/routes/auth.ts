@@ -62,11 +62,17 @@ export function registerAuthRoutes(
     "/auth/login",
     { config: STRICT_AUTH_LIMIT },
     async (request, reply) => {
-      const { email, password } = (request.body ?? {}) as {
+      const { email, password, locale } = (request.body ?? {}) as {
         email?: string;
         password?: string;
+        locale?: string;
       };
-      const result = await login(email ?? "", password ?? "", request.ip);
+      const result = await login(
+        email ?? "",
+        password ?? "",
+        request.ip,
+        locale,
+      );
       if (!result.ok) return reply.code(401).send({ error: result.error });
       // Compte sans empire (partie réinitialisée sous lui) : on lui en refait un.
       if (!engine.empireForAccount(result.account.id)) {

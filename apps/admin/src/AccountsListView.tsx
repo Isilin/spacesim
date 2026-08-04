@@ -19,7 +19,7 @@ interface AccountRow {
  *  AbortSignal (changer `query` rapidement ne peut plus faire flasher des résultats
  *  périmés). */
 export function AccountsListView() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [query, setQuery] = useState("");
   const { data, error, isPending } = useGetApiAdminAccounts({
     query: query || undefined,
@@ -49,14 +49,15 @@ export function AccountsListView() {
     {
       key: "createdAt",
       label: t("accountsListView.colRegisteredAt"),
-      render: (value) => new Date(value as number).toLocaleDateString("fr-FR"),
+      render: (value) =>
+        new Date(value as number).toLocaleDateString(i18n.language),
     },
     {
       key: "lastLoginAt",
       label: t("accountsListView.colLastLogin"),
       render: (value) =>
         value
-          ? new Date(value as number).toLocaleString("fr-FR")
+          ? new Date(value as number).toLocaleString(i18n.language)
           : t("contentCommon.none"),
     },
   ];

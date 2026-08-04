@@ -62,7 +62,7 @@ export function BodyView({
   onSelectBody,
   onOpenBody,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [searchParams] = useSearchParams();
   const activeColony = useGameStore(
     selectActiveColony(searchParams.get("colony")),
@@ -229,7 +229,7 @@ export function BodyView({
             <dl className="body-stats">
               <div>
                 <dt>{t("bodyView.radius")}</dt>
-                <dd>{physicals.radiusKm.toLocaleString("fr-FR")} km</dd>
+                <dd>{physicals.radiusKm.toLocaleString(i18n.language)} km</dd>
               </div>
               <div>
                 <dt>{t("bodyView.gravity")}</dt>

@@ -143,7 +143,7 @@ export function useAuth(): Auth {
 
   const login = useCallback(
     (email: string, password: string) =>
-      submit("/auth/login", { email, password }),
+      submit("/auth/login", { email, password, locale: i18n.language }),
     [submit],
   );
 
