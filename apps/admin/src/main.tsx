@@ -2,12 +2,20 @@ import { Button } from "@spacesim/ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { I18nextProvider, useTranslation } from "react-i18next";
 import { BrowserRouter } from "react-router-dom";
 import { AdminAuthView } from "./AdminAuthView.js";
 import { App } from "./App.js";
+import { i18n } from "./i18n.js";
 import { useAdminAuth } from "./useAdminAuth.js";
 import "@spacesim/ui/styles.css";
 import "./styles.css";
+
+// `<html lang>` suit la locale active plutôt que le "fr" en dur d'index.html (chantier 27.16).
+document.documentElement.lang = i18n.language;
+i18n.on("languageChanged", (lng) => {
+  document.documentElement.lang = lng;
+});
 
 /** Un seul client pour toute l'app (chantier 27.15) — pas de config par écran. Retries
  *  désactivés : une erreur 4xx (403/404/400, la grande majorité de nos erreurs API) ne
@@ -22,8 +30,9 @@ const queryClient = new QueryClient({
  *  `adminGuard` côté serveur sur chaque route `/api/admin/*`. */
 function AuthGate() {
   const auth = useAdminAuth();
+  const { t } = useTranslation();
   if (auth.status === "loading")
-    return <div className="loading">Vérification de la session…</div>;
+    return <div className="loading">{t("auth.checkingSession")}</div>;
   if (auth.status !== "authenticated" || !auth.token)
     return <AdminAuthView auth={auth} />;
   if (auth.insufficientRole) {
@@ -52,10 +61,12 @@ function AuthGate() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthGate />
-      </BrowserRouter>
-    </QueryClientProvider>
+    <I18nextProvider i18n={i18n}>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AuthGate />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </I18nextProvider>
   </StrictMode>,
 );

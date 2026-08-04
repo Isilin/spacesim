@@ -10,12 +10,14 @@
     "api:generate": "node scripts/generate-api.mjs"
   },
   "dependencies": {
+    "@spacesim/i18n-config": "workspace:*",
     "@spacesim/protocol": "workspace:*",
     "@spacesim/shared": "workspace:*",
     "@spacesim/ui": "workspace:*",
     "@tanstack/react-query": "^5.101.4",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-i18next": "^17.0.11",
     "react-router-dom": "^6.28.0"
   },
   "devDependencies": {

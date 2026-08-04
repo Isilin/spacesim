@@ -10,11 +10,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@spacesim/i18n-config": "workspace:*",
     "@spacesim/protocol": "workspace:*",
     "@spacesim/shared": "workspace:*",
     "@spacesim/ui": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-i18next": "^17.0.11",
     "react-router-dom": "^6.28.0",
     "zustand": "^5.0.0"
   },
