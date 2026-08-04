@@ -21,6 +21,8 @@ test("navigation profonde vers une URL de carte survit au rechargement", async (
 
   await expect(page).toHaveURL(deepUrl);
   // Le nom du système est le titre du <Panel> du panneau latéral (chantier 22.14) — h3,
-  // le niveau que Panel utilise partout dans le design system.
-  await expect(page.getByRole("heading", { level: 3 })).toBeVisible();
+  // le niveau que Panel utilise partout dans le design system. `.first()` : un système avec
+  // comptoir affiche aussi un second panneau (TradingPostPanel) avec son propre h3 — seul le
+  // premier (SystemPanel) importe pour ce test de survie du deep-link.
+  await expect(page.getByRole("heading", { level: 3 }).first()).toBeVisible();
 });
