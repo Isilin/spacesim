@@ -152,6 +152,7 @@ export function BuildingsView() {
       {editingId && form && (
         <Modal open={editingId !== null} onClose={() => setEditingId(null)}>
           <Modal.Header
+            closeLabel={t("contentCommon.close")}
             title={t("contentCommon.editTitle", { id: editingId })}
           />
           <Modal.Body>

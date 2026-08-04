@@ -172,6 +172,9 @@ export function UniverseMap({
       home={homeView}
       focus={focus}
       ariaLabel={t("universeMap.ariaLabel")}
+      zoomInLabel={t("zoomableSvg.zoomIn")}
+      zoomOutLabel={t("zoomableSvg.zoomOut")}
+      recenterLabel={t("zoomableSvg.recenter")}
       onViewChange={setView}
     >
       <defs>

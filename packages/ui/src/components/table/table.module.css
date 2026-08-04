@@ -33,3 +33,13 @@
 .table tbody tr:hover {
   background: color-mix(in oklch, var(--panel-2) 70%, transparent);
 }
+
+/* Cellules plus aérées sur pointeur imprécis (téléphone/tablette) : les actions rendues
+   dans une cellule (ex. Button "link") gagnent une marge de frappe sans changer la densité
+   HUD à la souris. */
+@media (pointer: coarse) {
+  .table th,
+  .table td {
+    padding: 12px 12px;
+  }
+}

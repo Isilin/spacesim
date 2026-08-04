@@ -158,6 +158,9 @@ export function ResearchView({ game, colonies, now, send }: Props) {
             className="tech-graph"
             home={home}
             ariaLabel={t("researchView.treeAriaLabel")}
+            zoomInLabel={t("zoomableSvg.zoomIn")}
+            zoomOutLabel={t("zoomableSvg.zoomOut")}
+            recenterLabel={t("zoomableSvg.recenter")}
           >
             {bands.map((band) => (
               <g key={band.branch}>

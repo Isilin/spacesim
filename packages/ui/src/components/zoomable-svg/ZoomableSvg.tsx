@@ -3,6 +3,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
   type WheelEvent as ReactWheelEvent,
@@ -38,6 +39,11 @@ export interface ZoomableSvgProps {
   focus?: ViewBox | null;
   /** Remonte le cadrage courant (rendu par niveau de détail — chantier 9.6). */
   onViewChange?: (view: ViewBox) => void;
+  /** Noms accessibles des boutons de contrôle (`aria-label`/`title`) — `packages/ui`
+   *  reste agnostique de la traduction, l'appelant fournit les libellés dans sa locale. */
+  zoomInLabel?: string;
+  zoomOutLabel?: string;
+  recenterLabel?: string;
 }
 
 /** Bornes de zoom, en facteur d'échelle par rapport au cadrage d'origine. */
@@ -62,6 +68,9 @@ export function ZoomableSvg({
   ariaLabel,
   focus,
   onViewChange,
+  zoomInLabel = "Zoom in",
+  zoomOutLabel = "Zoom out",
+  recenterLabel = "Recenter",
 }: ZoomableSvgProps) {
   const [view, setView] = useState<ViewBox>(home);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -169,6 +178,46 @@ export function ZoomableSvg({
     }
   };
 
+  /** Alternative clavier au pan/zoom à la souris (chantier 27.21) : flèches pour se
+   *  déplacer, +/- pour zoomer, 0 pour recentrer — utilisable une fois le SVG focus. */
+  const onKeyDown = (event: ReactKeyboardEvent<SVGSVGElement>) => {
+    const PAN_STEP = 0.08;
+    switch (event.key) {
+      case "ArrowUp":
+        event.preventDefault();
+        apply({ ...view, y: view.y - view.height * PAN_STEP });
+        break;
+      case "ArrowDown":
+        event.preventDefault();
+        apply({ ...view, y: view.y + view.height * PAN_STEP });
+        break;
+      case "ArrowLeft":
+        event.preventDefault();
+        apply({ ...view, x: view.x - view.width * PAN_STEP });
+        break;
+      case "ArrowRight":
+        event.preventDefault();
+        apply({ ...view, x: view.x + view.width * PAN_STEP });
+        break;
+      case "+":
+      case "=":
+        event.preventDefault();
+        zoomAround(1.4, center());
+        break;
+      case "-":
+      case "_":
+        event.preventDefault();
+        zoomAround(1 / 1.4, center());
+        break;
+      case "0":
+        event.preventDefault();
+        apply(home);
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
     <div className={styles.zoomable}>
       <svg
@@ -177,11 +226,13 @@ export function ZoomableSvg({
         viewBox={`${view.x} ${view.y} ${view.width} ${view.height}`}
         role="img"
         aria-label={ariaLabel}
+        tabIndex={0}
         onWheel={onWheel}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
+        onKeyDown={onKeyDown}
         // Un déplacement de carte ne doit pas se terminer en clic sur le nœud survolé.
         onClickCapture={(event) => {
           if (!movedRef.current) return;
@@ -196,19 +247,26 @@ export function ZoomableSvg({
       <div className={styles.controls}>
         <button
           type="button"
-          title="Zoom avant"
+          title={zoomInLabel}
+          aria-label={zoomInLabel}
           onClick={() => zoomAround(1.4, center())}
         >
           +
         </button>
         <button
           type="button"
-          title="Zoom arrière"
+          title={zoomOutLabel}
+          aria-label={zoomOutLabel}
           onClick={() => zoomAround(1 / 1.4, center())}
         >
           −
         </button>
-        <button type="button" title="Recentrer" onClick={() => apply(home)}>
+        <button
+          type="button"
+          title={recenterLabel}
+          aria-label={recenterLabel}
+          onClick={() => apply(home)}
+        >
           ⊙
         </button>
       </div>

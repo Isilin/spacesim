@@ -32,6 +32,7 @@ export const commonFr = {
     no: "Non",
     effectsField: "Effets",
     roleBonusField: "Bonus de rôle",
+    close: "Fermer",
   },
   contentLayout: {
     warships: "Vaisseaux de guerre",
@@ -365,6 +366,7 @@ export const commonEn: typeof commonFr = {
     no: "No",
     effectsField: "Effects",
     roleBonusField: "Role bonus",
+    close: "Close",
   },
   contentLayout: {
     warships: "Warships",

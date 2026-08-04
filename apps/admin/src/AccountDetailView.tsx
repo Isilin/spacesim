@@ -283,6 +283,7 @@ export function AccountDetailView() {
 
           <Modal open={open} onClose={closeModal}>
             <Modal.Header
+              closeLabel={t("contentCommon.close")}
               title={t("accountDetailView.sanctionModalTitle", {
                 email: account.email,
               })}

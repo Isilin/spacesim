@@ -175,6 +175,11 @@ export const commonFr = {
     losses: "Pertes : {{attacker}} / ennemi {{defender}}",
     survivors: "Survivants : {{survivors}}",
   },
+  zoomableSvg: {
+    zoomIn: "Zoom avant",
+    zoomOut: "Zoom arrière",
+    recenter: "Recentrer",
+  },
   shipDesigner: {
     chooseChassis: "Choisissez un châssis",
     blueprints: "Plans de vaisseaux",
@@ -696,6 +701,11 @@ export const commonEn: typeof commonFr = {
     defeat: "Defeat",
     losses: "Losses: {{attacker}} / enemy {{defender}}",
     survivors: "Survivors: {{survivors}}",
+  },
+  zoomableSvg: {
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
+    recenter: "Recenter",
   },
   shipDesigner: {
     chooseChassis: "Choose a chassis",

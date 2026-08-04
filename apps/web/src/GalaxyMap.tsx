@@ -86,6 +86,9 @@ export function GalaxyMap({
       className="galaxy-map"
       home={home}
       ariaLabel={t("galaxyMap.ariaLabel", { name: galaxy.name })}
+      zoomInLabel={t("zoomableSvg.zoomIn")}
+      zoomOutLabel={t("zoomableSvg.zoomOut")}
+      recenterLabel={t("zoomableSvg.recenter")}
     >
       {galaxy.links.map(([a, b]) => {
         const sa = byId.get(a);

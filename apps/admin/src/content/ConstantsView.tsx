@@ -103,6 +103,7 @@ export function ConstantsView() {
       {editingKey && form && (
         <Modal open={editingKey !== null} onClose={() => setEditingKey(null)}>
           <Modal.Header
+            closeLabel={t("contentCommon.close")}
             title={t("contentCommon.editTitle", { id: editingKey })}
           />
           <Modal.Body>

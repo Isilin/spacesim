@@ -167,6 +167,7 @@ export function ZoneTypesView() {
       {editing && (
         <Modal open={editing !== null} onClose={() => setEditing(null)}>
           <Modal.Header
+            closeLabel={t("contentCommon.close")}
             title={
               editing.isNew
                 ? t("zoneTypesView.newTitle")

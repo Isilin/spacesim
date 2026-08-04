@@ -162,6 +162,7 @@ export function PresetsView() {
       {editing && (
         <Modal open={editing !== null} onClose={() => setEditing(null)}>
           <Modal.Header
+            closeLabel={t("contentCommon.close")}
             title={
               editing.isNew
                 ? t("presetsView.newTitle")

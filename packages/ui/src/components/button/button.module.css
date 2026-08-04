@@ -81,3 +81,20 @@
   background: var(--ko);
   color: var(--bg);
 }
+
+/* Cibles tactiles plus généreuses sur pointeur imprécis (téléphone/tablette) — la densité
+   HUD à la souris reste inchangée. */
+@media (pointer: coarse) {
+  .button {
+    min-height: 44px;
+    padding: 12px 18px;
+  }
+  .button[data-size="sm"] {
+    min-height: 36px;
+    padding: 8px 14px;
+  }
+  .button[data-variant="link"] {
+    min-height: 0;
+    padding: 6px 0;
+  }
+}

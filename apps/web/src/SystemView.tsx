@@ -80,6 +80,9 @@ export function SystemView({
       className="galaxy-map"
       home={home}
       ariaLabel={t("systemView.ariaLabel", { name: system.name })}
+      zoomInLabel={t("zoomableSvg.zoomIn")}
+      zoomOutLabel={t("zoomableSvg.zoomOut")}
+      recenterLabel={t("zoomableSvg.recenter")}
     >
       <circle cx={c} cy={c} r={18} className="star-core" />
       <text x={c} y={c - 28} textAnchor="middle" className="system-label">

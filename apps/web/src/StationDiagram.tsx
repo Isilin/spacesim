@@ -108,6 +108,9 @@ export function StationDiagram({
         home={home}
         className="station-diagram-svg"
         ariaLabel={t("stationDiagram.stationPlan", { name: station.name })}
+        zoomInLabel={t("zoomableSvg.zoomIn")}
+        zoomOutLabel={t("zoomableSvg.zoomOut")}
+        recenterLabel={t("zoomableSvg.recenter")}
       >
         <defs>
           <filter id={gooId}>

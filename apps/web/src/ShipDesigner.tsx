@@ -309,7 +309,11 @@ export function ShipDesigner({ effects }: Props) {
                   style={{ "--notch-left": `${anchor.x}px` } as CSSProperties}
                 >
                   <div className="slot-popover-notch" />
-                  <Popover style={{ position: "relative" }}>
+                  <Popover
+                    style={{ position: "relative" }}
+                    aria-label={slotLabel(selectedSlot.type)}
+                    onClose={() => setSelectedSlot(null)}
+                  >
                     <div className="slot-popover-head">
                       <strong>{slotLabel(selectedSlot.type)}</strong>
                       {selectedModule && (
