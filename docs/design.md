@@ -1196,3 +1196,160 @@ d'autre ne peut démarrer sans elle).
 
 Chaque sous-chantier futur devra définir son propre DoD au moment de son ouverture (même
 convention que 7c → 7e).
+
+## Chantier 27 — Fondations plateforme (o11y, i18n, responsive, auth, typesafety, perf) (04/08/2026)
+
+Neuf vagues indépendantes ou faiblement couplées, décidées après un tour d'horizon large de ce
+qu'il fallait introduire pour viser une architecture moderne : toolchain (TS7/Zod4/React19),
+typesafety REST admin (Zod + OpenAPI + client orval généré), auth SSO joueur (fondation de
+schéma posée, câblage réel différé), durcissement (`@fastify/helmet`, Dependabot),
+observabilité gratuite (Sentry + Grafana Cloud, différée — nécessite des comptes que je ne peux
+pas créer), DX admin (Skeleton + TanStack Query via orval), i18n internationale (`react-i18next`,
+pas seulement française), et parité responsive téléphone/PC avec une passe d'accessibilité.
+Décision explicitement écartée : Effect.ts comme couche systémique (paradigme incompatible avec
+l'async/await + exceptions existant, taxe d'interop à chaque frontière). Le plan détaillé
+(séquencement par dépendance réelle, fichiers, vérifications) a vécu hors dépôt le temps de
+l'exécution, sur le même principe que les chantiers 8→12/23.
+
+**Numérotation** : le plus haut chantier existant dans l'historique étant 26.6-26.9, cette
+roadmap démarre à 27 plutôt que de renuméroter — 24/25/26 (comptes de stations, marché
+inter-empire, grille hexagonale de croissance) avaient été livrés sans que ce document soit tenu
+à jour ; combler cet écart pour 24-26 reste un chantier de documentation séparé, non traité ici.
+
+### Vague 0 — Refonte documentaire ✅
+
+CLAUDE.md (235 lignes) était devenu trop long pour un document relu à chaque session, et plusieurs
+affirmations y étaient fausses ou obsolètes (décompte de services, chantier 26 absent, surface
+`apps/admin` réduite à une phrase vague). Recadrage : CLAUDE.md redevient court (pitch, carte
+d'architecture en une ligne par paquet, invariants qui changent l'approche de n'importe quelle
+tâche, règles Karpathy, commandes, pointeurs) ; le détail part dans des documents secondaires.
+
+- **27.0a** — squelette `docs/adr/` (gabarit MADR-lite, convention de nommage, ADR 0000
+  documentant l'adoption des ADR elle-même).
+- **27.0b** — ADR rétroactifs pour les décisions déjà prises : pas de conteneur DI (composition
+  explicite au boot), univers matérialisé en DB, persistance write-behind, logistique en deux
+  stocks sol/orbite (`docs/adr/0001` à `0004`).
+- **27.0c** — nouveau `docs/architecture.md` : référence technique profonde (services réels,
+  `station-service.ts` et le CMS `runtime/content/` documentés, chantier 26 décrit, endpoints
+  `/dev/*` à jour, quirks Docker).
+- **27.0d** — réécriture de CLAUDE.md, version courte, pointant vers `docs/architecture.md`,
+  `docs/adr/` et `docs/ui-brief.md` (jamais cité jusqu'ici).
+
+### Vague A — Fondation toolchain ✅
+
+- **27.1** — catalogues pnpm (`catalog:` dans `pnpm-workspace.yaml` pour react/zod/typescript...,
+  refactor pur, zéro changement de version) : chaque bump futur devient une ligne au lieu de
+  6-7 fichiers.
+- **27.2** — TypeScript 7 (bump catalog, configs auditées).
+- **27.3** — Zod 4 (bump catalog) — prérequis dur de 27.8 (`fastify-type-provider-zod` v7
+  s'appuie sur les API `.encode()`/`.decode()` de Zod 4.1+).
+- **27.4** — React 19 (bump catalog ; zéro `forwardRef` dans `packages/ui`, coût de migration nul
+  pour le changement ref-as-prop).
+
+### Vague B — Vérification du budget de tick ✅
+
+- **27.5** — instrumentation `performance.now()` autour de `TickRunner.run()`/`runOne()`
+  (aucun usage de `performance.now()` dans le repo avant ce chantier).
+- **27.6** — benchmark du rattrapage au boot via `vitest bench` (Tinybench) : le risque réel
+  identifié était `GameEngine.catchUp()` (jusqu'à `MAX_CATCHUP_TICKS` rejoués de façon
+  synchrone au boot), pas le régime stationnaire.
+- **27.7** — harnais de charge HTTP/WS : autocannon pour REST/admin/health, script Node avec le
+  client `ws` + les schémas `ClientMessageSchema` pour `/ws` — nouveau service compose sous
+  `profiles: ["tools"]` (`docker compose run --rm loadtest`).
+
+### Vague C — Typesafety REST ("apigen") ✅
+
+- **27.8** — schémas Zod query/params manquants sur les ~46-47 handlers admin (casts `as` non
+  validés supprimés), `fastify-type-provider-zod` + `@fastify/swagger` (spec OpenAPI interne,
+  pas de `/documentation` publique — usage de codegen, pas d'API publique).
+- **27.8b** — orval : client TypeScript typé (hooks TanStack Query) généré depuis le spec, committé
+  dans `apps/admin/src/api/generated/` (même convention que les migrations Drizzle committées),
+  régénéré via script explicite.
+
+### Vague D — Auth (SSO joueur) — fondation posée, câblage réel bloqué
+
+- **27.9** ✅ — fondation du schéma d'identité : `accounts.passwordHash` devient nullable, nouvelle
+  table `account_identities` (`provider`, `providerUserId`, unique sur la paire),
+  `findOrCreateAccountByIdentity()` testé contre un faux provider.
+- **27.10** ⏳ **bloqué** — câblage OAuth réel (Discord + Google) : nécessite des identifiants
+  client par fournisseur que je ne peux pas générer moi-même. Le schéma (27.9) est déjà
+  agnostique du fournisseur ; reste à faire dès que les identifiants existent.
+
+### Vague E — Durcissement & ops ✅ / ⏳
+
+- **27.11** ✅ — `@fastify/helmet` juste après `Fastify({...})`, avant `websocket`/`cors`/
+  `rateLimit` ; CSP compatible avec les `style={{...}}` inline existants d'`apps/web`.
+- **27.12** ⏳ **bloqué** — observabilité Sentry (suivi d'erreurs, palier Developer gratuit) +
+  Grafana Cloud (métriques via `prom-client` + Alloy, palier gratuit) : nécessite la création de
+  comptes chez les deux fournisseurs, hors de portée pour un agent. Réutiliserait directement la
+  mesure de durée de tick de 27.5 comme première métrique custom une fois débloqué.
+- **27.13** ✅ — Dependabot, config repo seule, délibérément après la vague A pour ne pas ouvrir de
+  PR concurrentes sur les bumps majeurs faits à la main.
+
+### Vague F — DX admin ✅
+
+- **27.14** — composant `Skeleton` dans `packages/ui` (CSS Modules + `data-variant`, label
+  accessible fourni par l'appelant — `packages/ui` reste agnostique de la traduction).
+- **27.15** — `apps/admin` consomme le client orval (33 appels `fetch()` bruts remplacés par les
+  hooks générés), `Skeleton` déployé sur les écrans « Chargement… » ad hoc, garde `cancelled`
+  manuel retiré (`AccountsListView`/`AuditLogView`/`OpsView`) — TanStack Query annule déjà les
+  requêtes obsolètes via `AbortSignal`.
+
+### Vague G — i18n ✅
+
+- **27.16** — `react-i18next` + `i18next-browser-languagedetector`, un `createI18n()` partagé
+  (`packages/i18n-config`) instancié séparément par `apps/web` et `apps/admin`, français en
+  défaut/repli, `<html lang>` dynamique.
+- **27.17** — extraction des chaînes `apps/web` (~40 fichiers, `labels.ts` réécrit de tables
+  statiques en fonctions `xLabel(id)` adossées à `i18n.t()`) — le plus gros morceau mécanique du
+  chantier.
+- **27.18** — extraction des chaînes `apps/admin` (22 fichiers), séquencée après 27.15
+  spécifiquement pour ne pas remanier le JSX sous les nouveaux appels `t()` deux fois.
+- **27.19** — correctif de fond trouvé en creusant l'i18n : `FACTIONS[id].name` (français) était
+  figé dans `contracts.issuer_name` à la création et persisté tel quel — traduire `factions.ts`
+  seul n'aurait rien changé aux contrats déjà émis. Ajout de `issuerFactionId?: FactionId` au
+  contrat, résolu côté client par id au rendu (migration `0016`). Vérifié dans le même passage
+  que `PresetDef.name` n'avait *pas* le même bug : `preset.nameFr` est persisté dans le champ
+  `Blueprint.name`, librement renommable par le joueur — même catégorie que `Empire.name`, pas
+  du contenu traduisible re-diffusé à chaque tick.
+- **27.20** — formatage sensible à la locale : 9 sites `"fr-FR"` en dur remplacés par
+  `i18n.language` côté client ; côté serveur (message de sanction dans `login()`), le serveur
+  n'avait aucune notion de locale de l'appelant — `locale` transite maintenant du corps de
+  `/auth/login` jusqu'à `login()` via un petit gabarit `Record<Locale, ...>` fait à la main,
+  sans tirer `react-i18next` côté serveur pour une seule chaîne.
+
+### Vague H — Responsive & accessibilité ✅
+
+- **27.21** — `packages/ui`, passe combinée taille tactile + accessibilité. `Modal` (juste une
+  div overlay + portail avant ce chantier) gagne `role="dialog"`/`aria-modal`/
+  `aria-labelledby`, piège à focus (Tab/Shift+Tab), fermeture Échap, restauration du focus sur le
+  déclencheur. `Menu` (`role="menu"`/`"menuitem"`, navigation flèches/Home/End) et `Popover`
+  (`role="dialog"` non modal, Échap, focus initial) reçoivent le même traitement. `ZoomableSvg`
+  gagne une alternative clavier au pan/zoom souris (flèches, +/-, 0) et des `aria-label` sur ses
+  boutons de contrôle. `Button`/`Table` reçoivent une passe `@media (pointer: coarse)` (cibles
+  ≥44px, cellules plus aérées) sans toucher à la densité HUD à la souris.
+- **27.22** — `apps/web`, breakpoints de mise en page : `.content`/`.side-panel` (340px),
+  `.designer-layout`/`.designer-editor` (380px), `.research-body`/`.research-detail` (280px)
+  passaient côte à côte sans jamais s'empiler — `@media (max-width: 720px)` les fait passer en
+  colonne. `.body-schema`/`.hull-diagram-wrap` dégradaient déjà proprement (`.body-layout` a
+  `flex-wrap: wrap`) et reçoivent juste un filet `max-width: 100%`.
+- **27.23** — `apps/admin`, vérification ciblée : déjà flex/pourcentage (`max-width: 380px` sûr
+  sur le panneau d'auth), confirmé sans régression à 375px sur les écrans vérifiés
+  (contenu+Modal, comptes, détail compte, journal d'audit, ops) — aucun changement de code requis.
+- **27.24** — activation du groupe de règles `a11y` de Biome (`recommended: false` global
+  jusqu'ici, seul `noDebugger` actif) : corriger d'abord (27.21-27.23), verrouiller ensuite.
+  15 violations trouvées et corrigées sur le JSX touché par 27.16-27.22 (`type="button"` sur des
+  boutons sans formulaire, `role="button"`+clavier sur des lignes cliquables, `aria-hidden`/
+  `aria-label` sur des SVG décoratifs vs porteurs de sens, `role="application"` plutôt que `"img"`
+  sur `ZoomableSvg` devenu interactif au clavier) ; trois suppressions documentées où le natif
+  suggéré par Biome (`<dialog>`) coûterait plus qu'il n'apporterait face au piège à focus/
+  l'animation déjà gérés à la main dans `Modal`/`Popover`.
+
+**Chemin critique réel** : `27.0 → 27.1 → {27.2, 27.3, 27.4} → 27.3 → 27.8 → 27.8b →
+{27.8b, 27.14} → 27.15 → 27.18 → 27.16 → {27.17, 27.18, 27.20} → 27.21 → {27.22, 27.23, 27.24}`,
+avec `27.5 → {27.6, 27.7}` et `27.9` comme branches indépendantes. Toutes les cases exécutables
+sont cochées ; seules **27.10** (SSO — identifiants OAuth Discord/Google à fournir) et **27.12**
+(Sentry + Grafana Cloud — comptes à créer) restent ouvertes, bloquées sur des ressources externes
+qu'un agent ne peut pas produire lui-même. Prochaine action à leur déblocage : reprendre
+directement à 27.10 (le schéma 27.9 est déjà prêt) et 27.12 (la mesure de tick 27.5 est déjà en
+place pour la première métrique custom).
