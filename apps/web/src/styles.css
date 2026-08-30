@@ -1645,6 +1645,17 @@
 @media (max-width: 720px) {
   .map3d {
     flex-direction: column;
+    /* Hauteur non définie ici : la scène et la liste s'empilent selon leur contenu. */
+    height: auto;
+  }
+
+  /* Hauteur EXPLICITE, pas seulement un minimum : en colonne, la section n'hérite
+     d'aucune hauteur définie, R3F ne mesure rien et le canvas retombe sur ses 150 px
+     par défaut — une carte de 150 px n'est pas une carte. */
+  .map-canvas {
+    flex: 0 0 auto;
+    height: 55vh;
+    min-height: 320px;
   }
 
   .map-list {
