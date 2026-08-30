@@ -73,6 +73,7 @@ export const commonFr = {
     ariaLabel: "Schéma de coque : {{chassis}}",
   },
   stationsView: {
+    preview3d: "Aperçu 3D de la station",
     noStation: "Aucune station — fondez-en une depuis la carte.",
     buildQueue: "File de construction — {{count}}",
     noBuild: "Aucune construction en cours.",
@@ -185,6 +186,7 @@ export const commonFr = {
     recenter: "Recentrer",
   },
   shipDesigner: {
+    preview3d: "Aperçu 3D du vaisseau",
     chooseChassis: "Choisissez un châssis",
     blueprints: "Plans de vaisseaux",
     newBlueprint: "+ Nouveau plan",
@@ -319,6 +321,9 @@ export const commonFr = {
     buildOutpost: "Construire un avant-poste",
     missionOrigin:
       "Origine des missions : {{name}}. Vaisseau colonial : {{cost}}.",
+  },
+  modelPreview: {
+    hint: "Aperçu 3D en rotation. Les détails chiffrés sont dans le panneau à côté.",
   },
   mapCanvas: {
     keyboardHint:
@@ -626,6 +631,7 @@ export const commonEn: typeof commonFr = {
     ariaLabel: "Hull diagram: {{chassis}}",
   },
   stationsView: {
+    preview3d: "3D preview of the station",
     noStation: "No station — found one from the map.",
     buildQueue: "Build queue — {{count}}",
     noBuild: "No construction in progress.",
@@ -738,6 +744,7 @@ export const commonEn: typeof commonFr = {
     recenter: "Recenter",
   },
   shipDesigner: {
+    preview3d: "3D preview of the ship",
     chooseChassis: "Choose a chassis",
     blueprints: "Ship blueprints",
     newBlueprint: "+ New blueprint",
@@ -892,6 +899,9 @@ export const commonEn: typeof commonFr = {
     outpostCost: "Cost: {{cost}}",
     buildOutpost: "Build an outpost",
     missionOrigin: "Mission origin: {{name}}. Colony ship: {{cost}}.",
+  },
+  modelPreview: {
+    hint: "Rotating 3D preview. Numeric details are in the panel alongside.",
   },
   mapCanvas: {
     keyboardHint:

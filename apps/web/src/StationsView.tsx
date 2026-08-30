@@ -41,6 +41,8 @@ import {
   StationBuildPicker,
   type BuildSelection,
 } from "./StationBuildPicker.js";
+import { ModelPreview } from "./map3d/ModelPreview.js";
+import { StationModel } from "./map3d/StationModel.js";
 import { StationDiagram } from "./StationDiagram.js";
 import {
   installationLabel,
@@ -128,6 +130,15 @@ export function StationsView({ effects, universe, portalLinks }: Props) {
           </div>
         ))}
       </div>
+
+      {/* Aperçu 3D (chantier 31.21) : la silhouette réellement bâtie. Le diagramme
+          reste l'éditeur — on y clique un point de croissance. */}
+      <ModelPreview
+        ariaLabel={t("stationsView.preview3d")}
+        distance={Math.max(8, station.zones.length * 2.4)}
+      >
+        <StationModel station={station} />
+      </ModelPreview>
 
       <StationDiagram
         station={station}

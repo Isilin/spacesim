@@ -32,6 +32,8 @@ import {
   resourceLabel,
   slotLabel,
 } from "./labels.js";
+import { ModelPreview } from "./map3d/ModelPreview.js";
+import { ShipModel } from "./map3d/ShipModel.js";
 import {
   ShipHullDiagram,
   slotPixelPosition,
@@ -265,6 +267,20 @@ export function ShipDesigner({ effects }: Props) {
               </p>
 
               <div className="designer-preview">
+                {/* Aperçu 3D (chantier 31.20) : il COMPLÈTE le diagramme, qui reste
+                    l'éditeur — on y clique un emplacement, geste qu'une vue en
+                    rotation ferait perdre. */}
+                {draft.chassisId && (
+                  <ModelPreview
+                    ariaLabel={t("shipDesigner.preview3d")}
+                    distance={7}
+                  >
+                    <ShipModel
+                      chassisId={draft.chassisId}
+                      modules={draft.modules}
+                    />
+                  </ModelPreview>
+                )}
                 <div className="hull-diagram-wrap">
                   <ShipHullDiagram
                     chassisId={draft.chassisId}
