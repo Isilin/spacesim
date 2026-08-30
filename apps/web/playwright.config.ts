@@ -18,7 +18,10 @@ export default defineConfig({
   webServer: {
     command:
       'sh -c "(cd ../.. && SPACESIM_DB=:memory: pnpm --filter @spacesim/server dev) & pnpm exec vite --host 127.0.0.1"',
-    url: "http://127.0.0.1:5173",
+    // Attendre /health (proxifié vers le serveur de jeu) et non la racine Vite :
+    // Vite répond en ~250 ms quand le serveur migre encore et génère son univers,
+    // et les workers partaient alors sur un ECONNREFUSED sur /auth/register.
+    url: "http://127.0.0.1:5173/health",
     reuseExistingServer: false,
     timeout: 90_000,
     stdout: "pipe",
