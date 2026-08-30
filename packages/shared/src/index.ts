@@ -430,6 +430,13 @@ export {
   type ConvoyStat,
 } from "./sim/exploration/travel.js";
 export {
+  angularSpeedOf,
+  bodyPositionAt,
+  distance3,
+  orbitalPeriodTicks,
+  type Vec3,
+} from "./sim/exploration/geometry.js";
+export {
   CONTIGUOUS_CLAIM_BONUS,
   systemNeighbors,
   contiguousClaims,

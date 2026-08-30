@@ -40,6 +40,17 @@ export const MAX_GALAXIES = 200;
 /** Dimension de la vue système (viewBox SVG carré, étoile au centre). */
 export const SYSTEM_VIEW_SIZE = 900;
 
+/**
+ * Constantes de Kepler simplifié (chantier 31.5) : `ω = K / r^1.5` radians par tick.
+ *
+ * Valeurs de départ, **non calibrées** — le chantier 31.9 fixe l'échelle de temps une
+ * fois qu'on peut mesurer l'effet sur des trajets réels. Ordres de grandeur actuels, à
+ * `TICK_MS = 5000` (720 ticks par heure réelle) : planète interne (`r = 70`) ≈ 6 h,
+ * planète externe (`r ≈ 290`) ≈ 2 jours, lune interne (`r = 16`) ≈ 2 h.
+ */
+export const PLANET_KEPLER_CONSTANT = 0.8517;
+export const MOON_KEPLER_CONSTANT = 0.2792;
+
 /** Capacité de stockage de base par ressource, + bonus par niveau d'entrepôt. */
 export const BASE_STORAGE = 1000;
 export const STORAGE_PER_DEPOT = 1000;
