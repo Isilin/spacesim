@@ -1410,12 +1410,18 @@ corps saliraient le `WriteSet` à chaque tick, en contradiction avec l'ADR 0003.
 aspatial (`resolveBattle()` inchangé). Régénération de l'univers libre : aucun serveur officiel
 n'est lancé.
 
-**Échéance dure : avant le lancement du serveur officiel.** La régénération de l'univers et le
-recalibrage économique qu'entraîne le passage aux distances pondérées sont l'un et l'autre
-gratuits tant qu'aucun joueur n'existe, et irréalisables ensuite. C'est ce qui justifie de
-passer devant les chantiers 28 (Effect.ts), 29 (AdonisJS) et 30 (remplacement de
-`composeEngine`), déjà numérotés — même précédent qu'au chantier 27, on alloue le numéro
-suivant plutôt que de renuméroter.
+**Échéance dure sur les vagues A→C : avant le lancement du serveur officiel.** La régénération
+de l'univers et le recalibrage économique qu'entraîne le passage aux distances pondérées sont
+l'un et l'autre gratuits tant qu'aucun joueur n'existe, et irréalisables ensuite. C'est ce qui
+justifie de passer devant les chantiers 28 (Effect.ts), 29 (AdonisJS) et 30 (remplacement de
+`composeEngine`), déjà numérotés — même précédent qu'au chantier 27, on alloue le numéro suivant
+plutôt que de renuméroter.
+
+**La géométrie doit produire une décision, pas seulement un nombre.** Des arêtes pondérées sans
+choix d'itinéraire ne changeraient rien pour le joueur : le solveur choisirait seul et la
+géométrie resterait invisible. D'où 31.10, et avec lui la calibration temporelle (31.9) sans
+laquelle les ETA variables de 31.8 gigotent ou passent inaperçues, et le scan intra-système
+(31.11) qui donne une raison d'être au volume qu'on vient de créer.
 
 **Ordre de grandeur** : `MAX_GALAXIES = 200`, 7-13 systèmes par galaxie (14 pour la mère), 2-5
 planètes plus lunes et 0-2 ceintures par système — soit ~2 000 systèmes et ~12 000 corps à
@@ -1424,9 +1430,10 @@ dans une vue système. Le sujet de ce chantier est le design, pas le GPU.
 
 ### Vague A — Modèle et génération
 
-- **31.1** — `z` sur `Galaxy` et `StarSystem` ; `inclination`, `ascendingNode` et vitesse
-  angulaire `ω` (dérivée du rayon) sur `Planet` et `AsteroidBelt`. Types et tests seulement, le
-  générateur ne bouge pas encore.
+- **31.1** — `z` sur `Galaxy` et `StarSystem` ; `inclination` et `ascendingNode` sur `Planet` et
+  `AsteroidBelt`. `orbitAngle` garde son nom mais change de sens (angle à t=0). La vitesse
+  angulaire `ω` n'est **pas** un champ : dérivée de `orbitRadius`, donc ni persistée ni
+  transmise sur le fil.
 - **31.2** — générateur volumétrique : la spirale d'angle d'or devient un disque galactique
   épais (`z` gaussien atténué par le rayon, pas un cube uniforme — un univers plausible est
   aplati) ; l'échantillonnage par rejet des systèmes passe en 3D, `minDist` devenant une
@@ -1434,19 +1441,22 @@ dans une vue système. Le sujet de ce chantier est le design, pas le GPU.
 - **31.3** — bump de `GENERATOR_VERSION` et régénération de `universe.fixture.json` **dans le
   même commit**, contrainte imposée par `universe.fixture.test.ts`.
 - **31.4** — migration Drizzle : colonnes `z` sur `universe_galaxies`/`universe_systems`,
-  `inclination`/`ascending_node` sur `universe_planets`/`universe_belts`, et les repositories
-  d'univers qui les lisent et les écrivent.
+  `inclination`/`ascending_node` sur `universe_planets`/`universe_belts`, et `universe-store.ts`
+  qui les propage dans les deux sens.
 
 ### Vague B — Géométrie pure
 
-- **31.5** — `bodyPositionAt(body, tick)`, `systemPositionOf()`, `galaxyPositionOf()` : fonctions
-  pures et testées dans `packages/shared`, seul point de vérité géométrique, consommé aussi bien
-  par la simulation que par le rendu.
-- **31.6** — `jumpDistanceInUniverse()` passe du BFS au Dijkstra pondéré. Poids **normalisé de
-  sorte que l'arête moyenne vaille 1** : la valeur retournée reste à l'échelle du compte de
-  sauts actuel, ce qui garde 31.7 dans le registre du réglage plutôt que de la réécriture.
+- **31.5** — `bodyPositionAt(system, bodyId, tick)`, `angularSpeedOf()`, `systemPositionOf()`,
+  `galaxyPositionOf()`, `distance3()` : fonctions pures et testées dans `packages/shared`, seul
+  point de vérité géométrique, consommé aussi bien par la simulation que par le rendu.
+- **31.6** — `jumpDistanceInUniverse()` passe du BFS au Dijkstra pondéré et devient
+  `travelCostInUniverse()` — elle ne retourne plus des sauts. Poids **normalisé de sorte que
+  l'arête moyenne vaille 1** : la valeur retournée reste à l'échelle du compte de sauts actuel,
+  ce qui garde 31.7 dans le registre du réglage plutôt que de la réécriture. Les liens de
+  portail reçoivent un poids forfaitaire, jamais leur distance réelle — un trou de ver
+  inter-galactique rendrait sinon toute galaxie voisine inatteignable.
 
-### Vague C — Coûts et recalibrage
+### Vague C — Coûts, décisions, contenu de l'espace
 
 - **31.7** — recalibrage des six services appelants (`contract`, `exploration`, `fleet`,
   `gateway`, `industry`, `logistics`), mesuré avant/après avec le harnais de charge (27.7) et
@@ -1454,28 +1464,126 @@ dans une vue système. Le sujet de ce chantier est le design, pas le GPU.
 - **31.8** — coût de transfert intra-système fonction de la position orbitale au tick de départ
   (`LogisticsService`). Les ETA deviennent variables : le protocole et l'UI doivent les exposer.
   L'ascenseur orbital (ADR 0004) n'est pas concerné, il est vertical.
+- **31.9** — calibration orbitale : fixer l'échelle de temps des orbites face à `TICK_MS = 5000`,
+  avec une cible jouable assumée et mesurée. Trop rapide, les ETA de 31.8 gigotent sans que le
+  joueur comprenne ; trop lent, la mécanique est invisible et payée pour rien.
+- **31.10** — choix d'itinéraire : `travelCostInUniverse()` retourne le chemin en plus du coût,
+  le serveur propose plusieurs candidats (le moins cher, le moins de portes, l'évitement de
+  territoires hostiles en réutilisant `Territory`/`Relation`), le joueur tranche, la carte
+  l'affiche. C'est ce qui transforme une pondération d'arêtes en boucle de navigation.
+- **31.11** — scan intra-système : anomalies, épaves et sites cachés à trouver dans le volume,
+  en étendant `probeDurationMs` et `fog.ts` déjà en place, positions dérivées du seed comme le
+  reste de l'univers.
 
-### Vague D — Rendu react-three-fiber
+### Vague D — Rendu react-three-fiber, primitives neutres
 
-- **31.9** — dépendance `react-three-fiber` dans `apps/web`, socle `<Canvas>`, caméra partagée,
-  pont vers les routes imbriquées existantes (`/map/galaxy/:id/system/:id/body/:id`).
-- **31.10** — vue univers : les galaxies matérialisées dans le disque, portails actifs.
-- **31.11** — vue galaxie : systèmes et arêtes de saut en volume, longueur d'arête enfin
-  lisible puisqu'elle porte désormais le coût.
-- **31.12** — vue système : orbites animées, corps positionnés par `bodyPositionAt`.
-- **31.13** — parité d'accessibilité avec 27.21 : un canvas est opaque aux lecteurs d'écran, il
+Livrée volontairement **sans habillage** — sphères, points, boîtes : on valide caméra, picking,
+orbites, routage et performances sur une base nue avant d'ajouter la couche visuelle. Un
+problème de performance et un problème d'art ne se déboguent pas ensemble.
+
+- **31.12** — dépendances `three`/`@react-three/fiber`/`@react-three/drei` déclarées dans les
+  catalogues pnpm (convention 27.1), socle `<Canvas>`, caméra partagée, pont vers les routes
+  imbriquées existantes (`/map/galaxy/:id/system/:id/body/:id`) — le routage ne change pas.
+- **31.13** — vue univers : les galaxies matérialisées dans le disque, portails actifs.
+- **31.14** — vue galaxie : systèmes et arêtes de saut en volume, itinéraires de 31.10 affichés,
+  longueur d'arête enfin lisible puisqu'elle porte désormais le coût.
+- **31.15** — vue système : orbites animées, corps positionnés par `bodyPositionAt`, sites de
+  31.11.
+- **31.16** — parité d'accessibilité avec 27.21 : un canvas est opaque aux lecteurs d'écran, il
   faut une liste DOM parallèle **en plus** d'une caméra pilotable au clavier — le simple portage
-  des raccourcis de `ZoomableSvg` ne suffit pas.
-- **31.14** — perf et responsive mobile sous WebGL, pour tenir les acquis de 27.22.
+  des raccourcis de `ZoomableSvg` ne suffit pas. `ZoomableSvg` n'est pas supprimé pour autant :
+  `ResearchView` et `StationDiagram` l'utilisent toujours.
+- **31.17** — perf et responsive mobile sous WebGL, pour tenir les acquis de 27.22 et servir de
+  référence à 31.23.
 
-**Chemin critique** : `31.1 → 31.2 → 31.3 → 31.4 → 31.5`, puis deux branches indépendantes —
-`31.6 → 31.7` et `31.8` côté règles, `31.9 → {31.10, 31.11, 31.12} → {31.13, 31.14}` côté rendu.
-31.5 est le point de jonction : la géométrie pure sert les deux branches, et rien de sérieux ne
-démarre avant elle.
+### Vague E — Habillage 3D
+
+Décision tracée dans l'ADR [0007](adr/0007-habillage-3d-procedural-et-parametrique.md).
+Aucun fichier `.glb`, aucune texture bitmap : l'astronomique est procédural (dérivé du seed), le
+manufacturé est paramétrique (dérivé du contenu). C'est le prolongement direct de ce que font
+déjà `ShipHullDiagram.tsx` et `StationDiagram.tsx` en 2D, et ça préserve le lien « mon vaisseau
+ressemble au plan que j'ai conçu ». Deux registres visuels : abstrait et schématique aux niveaux
+univers et galaxie (c'est une carte de commandement, elle prolonge le HUD du `ui-brief`),
+semi-réaliste aux niveaux système et corps (c'est là qu'on regarde vraiment).
+
+- **31.18** — socle d'habillage : registre d'apparence côté client (type → forme, teinte,
+  échelle) avec repli générique obligatoire, et bascule des deux registres selon le niveau.
+- **31.19** — astronomique procédural : planètes par shader selon les 6 `PlanetType` modulées
+  par `habitability` et `deposits`, étoiles émissives, astéroïdes en icosphères déformées
+  seedées par id, galaxies en nuages de points.
+- **31.20** — vaisseaux paramétriques : portage 3D de la logique de `ShipHullDiagram.tsx`,
+  géométrie dérivée du `ChassisKind` et des modules montés par `SlotType`.
+- **31.21** — stations paramétriques : extrusion de la grille hexagonale existante
+  (`station-layout.ts`) plus une géométrie par type de zone et par installation.
+- **31.22** — apparence éditable dans le CMS, séquencée **après** 31.20-31.21 : impossible
+  d'exposer un champ « forme de base » avant de savoir quelles formes le moteur sait rendre.
+  Champs d'apparence sur les domaines de contenu manufacturés qui ont déjà une table, chaîne
+  complète depuis les defs par défaut jusqu'aux écrans admin en passant par la régénération du
+  client orval (27.8b). Les corps astronomiques restent hors périmètre : `PLANET_TYPES` est une
+  énumération de modèle, pas un domaine CMS.
+- **31.23** — passe de performance sous habillage : instanciation des astéroïdes et des points
+  de galaxie, LOD par niveau de carte, re-mesure mobile contre la référence de 31.17.
+
+**Chemin critique** : `31.1 → 31.2 → 31.3 → 31.4 → 31.5`, puis des branches indépendantes —
+`31.6 → {31.7, 31.10}`, `31.8 → 31.9`, `31.11`, et `31.12 → {31.13, 31.14, 31.15} → {31.16,
+31.17}` côté rendu, la vague E venant ensuite (`31.18 → {31.19, 31.20 → 31.22, 31.21 → 31.22}
+→ 31.23`). 31.5 est le verrou : la géométrie pure sert les deux branches et rien de sérieux ne
+démarre avant elle. 31.14 consomme 31.10, 31.15 consomme 31.11.
+
+La vague D livre une carte 3D fonctionnelle quoique nue : si la vague E s'étire, elle peut
+devenir un chantier autonome sans laisser le dépôt dans un état intermédiaire — au contraire des
+vagues A→C, indissociables entre elles.
 
 ### Vérification du chantier
 
 31.1-31.5 sont du code pur : couverts par des tests unitaires déterministes, comme le reste de
-`packages/shared`. 31.6-31.8 exigent une mesure avant/après explicite (harnais 27.7), pas
-seulement des tests verts — un recalibrage qui passe les tests peut rendre le jeu injouable.
-31.9-31.14 se vérifient au navigateur, e2e compris pour les trois niveaux de carte.
+`packages/shared` ; `universe.fixture.test.ts` doit échouer avant le bump de
+`GENERATOR_VERSION` et passer après. 31.6-31.11 exigent une mesure avant/après explicite
+(harnais 27.7), pas seulement des tests verts — un recalibrage qui passe les tests peut rendre
+le jeu injouable. 31.12-31.23 se vérifient au navigateur, e2e compris pour les quatre niveaux de
+carte, avec un relevé d'images par seconde en mobile émulé comme référence de performance.
+
+## Chantier 32 — Tissu social et profondeur économique (planification 30/08/2026)
+
+Le chantier 31 installe la topologie d'EVE — graphe de portes entre systèmes, espace continu
+dans un système — mais c'est un chantier de **fidélité spatiale** : il rend la géométrie vraie,
+il ne produit pas à lui seul les décisions de joueur qui font le genre. Ce chantier-ci s'attaque
+à ce qui manque réellement, mesuré dans le dépôt :
+
+| Manque | État constaté |
+|---|---|
+| Organisations de joueurs | `Relation` est une paire empire↔empire. Ni corporation, ni portefeuille partagé, ni rôles, ni hangar commun — mais `marketAccess: "alliance"` lit déjà les relations, le concept est à moitié là. |
+| Communication | Zéro. Ni chat, ni courrier. `proposeRelation` est un bouton sans conversation possible. |
+| Agence du défenseur | `resolveBattle` s'exécute dans le handler de commande : hors ligne, aucun contre-jeu et aucune notification. |
+| Profondeur de marché | Pas de carnet d'ordres. Le prix est une courbe `stock / TARGET_STOCK` bornée à 0,4–2,5 : ni ordre limite, ni market-making, ni arbitrage. `Contract` couvre le pair-à-pair en coup unique. |
+| Aucune spécialisation forcée | Un empire mine, construit, cherche, combat et commerce. Rien n'oblige à dépendre d'autrui — or l'interdépendance est ce qui produit les corporations, donc la politique. |
+
+Grain volontairement plus grossier que le chantier 31 : la forme exacte dépendra de ce qu'aura
+appris la 3D. Ce chantier aura sa propre ADR à son ouverture, et il est assez gros pour être
+scindé à ce moment-là — la frontière naturelle passe après la vague C.
+
+- **Vague A — boîte de réception d'empire.** Meilleur rapport valeur/ligne du lot et préalable
+  de tout le reste : sans canal d'événements durables, aucune mécanique suivante n'est
+  perceptible par un joueur hors ligne. `StoredBattle` est déjà archivé et poussé dans le
+  snapshot ; il manque un flux d'événements (attaque subie, contrat honoré, recherche finie,
+  claim perdu) et un digest « pendant ton absence » à la reconnexion.
+- **Vague B — corporations.** Entité de premier rang : membres, rôles et permissions (le
+  vocabulaire de `packages/protocol/src/admin.ts` est directement réutilisable), portefeuille
+  partagé, hangar commun.
+- **Vague C — communication.** Canaux et courrier asynchrone. Rouvre la modération : le mute de
+  chat était hors périmètre en 23.4 faute de chat, il redevient nécessaire le jour où le chat
+  existe et doit être livré **avec**, pas après.
+- **Vague D — relations et standings.** Au-delà de la paire `nap`/`alliance` : relations
+  corp↔corp, standings gradués, réputation lisible par des tiers.
+- **Vague E — profondeur de marché.** Carnet d'ordres pour les places **joueur** ; les comptoirs
+  PNJ gardent leur courbe, qui est exactement ce qu'on attend d'une liquidité PNJ. Le morceau le
+  plus lourd, et celui qui crée le plus de jeu pour les joueurs non combattants.
+- **Vague F — spécialisation et interdépendance.** Le plus difficile à concevoir et le plus
+  déterminant : tant qu'un empire peut tout faire seul, corporations et marché restent
+  décoratifs. Branches technologiques exclusives, paliers de coût infranchissables seul, chaînes
+  de production dont les intrants ne coexistent pas dans une même région — à trancher avec une
+  ADR dédiée, c'est une décision d'équilibrage structurelle.
+
+**Ordre** : `A → B → C → D` est une chaîne, chaque étage ayant besoin du précédent pour être
+perceptible et gouvernable. `E` ne dépend que de `A`. `F` conditionne l'intérêt de `B` et `E`
+mais peut être conçu en dernier, une fois qu'on voit ce que les joueurs font des deux autres.
