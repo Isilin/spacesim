@@ -14,6 +14,7 @@ import {
   gatewayCovered,
   gatewayLinks,
   idleShips,
+  intraSystemCost,
   travelCostInUniverse,
   legacyCapacity,
   legacyConvoyStat,
@@ -247,6 +248,7 @@ export class LogisticsService {
     if (!from) return "Colonie inconnue";
 
     let toSystemId: string;
+    let toBodyId: string;
     if (toKind === "colony") {
       const to = empire.colonyMap.get(toId);
       if (!to) return "Colonie inconnue";
@@ -254,10 +256,12 @@ export class LogisticsService {
       const toPlanet = this.runtime.planetsById.get(to.planetId);
       if (!toPlanet) return "Planète inconnue";
       toSystemId = toPlanet.systemId;
+      toBodyId = toPlanet.id;
     } else {
       const toStation = empire.stationMap.get(toId);
       if (!toStation) return "Station inconnue";
       toSystemId = toStation.systemId;
+      toBodyId = toStation.bodyId;
     }
 
     const cargo: Partial<Record<ResourceId, number>> = {};
@@ -272,13 +276,20 @@ export class LogisticsService {
 
     const fromPlanet = this.runtime.planetsById.get(from.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const jumps = travelCostInUniverse(
+    const graphCost = travelCostInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
       toSystemId,
       this.portalLinks,
     );
-    if (jumps < 0) return "Destination inaccessible";
+    if (graphCost < 0) return "Destination inaccessible";
+    // Trajet local (chantier 31.8) : dans un même système, le coût de graphe est nul et
+    // seule la position orbitale du moment décide. Deux corps en conjonction coûtent
+    // près de dix fois moins qu'en opposition — c'est la seule mécanique du jeu où
+    // attendre le bon moment paie.
+    const jumps =
+      graphCost +
+      this.localCost(fromPlanet.systemId, fromPlanet.id, toSystemId, toBodyId);
     const portals = this.portalsCrossed(fromPlanet.systemId, toSystemId);
 
     // La cargaison se prend en ORBITE : le stock au sol ne peut pas se substituer
@@ -366,6 +377,32 @@ export class LogisticsService {
     const to = this.runtime.galaxyIndexOfSystem.get(toSystemId);
     if (from === undefined || to === undefined || from === to) return 0;
     return from === 0 || to === 0 ? 1 : 2;
+  }
+
+  /**
+   * Surcoût orbital d'un trajet local (chantier 31.8), en équivalent-saut.
+   *
+   * Seulement quand origine et destination partagent un système : c'est là que le coût
+   * de graphe vaut 0 et que la position orbitale décide de tout. Sur un trajet
+   * interstellaire, les tronçons locaux de départ et d'arrivée restent négligés — les
+   * ajouter renchérirait tous les voyages existants et invaliderait la calibration
+   * mesurée au chantier 31.7, pour un effet de second ordre. À rouvrir en 31.9.
+   */
+  private localCost(
+    fromSystemId: string,
+    fromBodyId: string,
+    toSystemId: string,
+    toBodyId: string,
+  ): number {
+    if (fromSystemId !== toSystemId) return 0;
+    const system = this.runtime.systemsById.get(fromSystemId);
+    if (!system) return 0;
+    return intraSystemCost(
+      system,
+      fromBodyId,
+      toBodyId,
+      this.runtime.clock.tick,
+    );
   }
 
   /** Action joueur : fonder un avant-poste minier sur une ceinture. */

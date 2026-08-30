@@ -1,9 +1,13 @@
 import { DEFAULT_BALANCE, type BalanceConstants } from "../../balance.js";
-import { GATEWAY_JUMP_WEIGHT, JUMP_REFERENCE_LENGTH } from "../../constants.js";
+import {
+  GATEWAY_JUMP_WEIGHT,
+  INTRA_SYSTEM_REFERENCE_LENGTH,
+  JUMP_REFERENCE_LENGTH,
+} from "../../constants.js";
 import { SHIPS, type ShipDef } from "../../content/ships.js";
-import type { Galaxy, Universe } from "../../model/universe.js";
+import type { Galaxy, StarSystem, Universe } from "../../model/universe.js";
 import { findGalaxyOfSystem } from "../../universe.js";
-import { distance3 } from "./geometry.js";
+import { bodyPositionAt, distance3 } from "./geometry.js";
 
 /**
  * Coût de trajet (chantier 31.6). Ce n'est plus un compte de sauts : chaque arête pèse
@@ -161,6 +165,39 @@ export function travelCostInUniverse(
   for (const [a, b] of extraLinks) addArc(graph, a, b, GATEWAY_JUMP_WEIGHT);
 
   return shortestCost(graph, fromSystemId, toSystemId);
+}
+
+/**
+ * Coût du trajet **entre deux corps d'un même système**, en équivalent-saut (chantier
+ * 31.8). Additionnable au coût de graphe : une seule unité, donc les formules qui
+ * multiplient `jumps` restent inchangées.
+ *
+ * Dépend du tick : les corps orbitent, deux planètes en conjonction sont bien plus
+ * proches qu'en opposition. C'est la seule mécanique du jeu où attendre le bon moment
+ * paie.
+ *
+ * `INTRA_SYSTEM_REFERENCE_LENGTH` est délibérément très supérieure à
+ * `JUMP_REFERENCE_LENGTH` : traverser un système doit rester une fraction du prix d'un
+ * saut interstellaire, jamais son équivalent. Retourne 0 si un corps est inconnu —
+ * l'appelant a déjà validé ses entités, et un coût nul dégrade proprement vers le
+ * comportement d'avant le chantier 31.
+ */
+export function intraSystemCost(
+  system: StarSystem,
+  fromBodyId: string,
+  toBodyId: string,
+  tick: number,
+): number {
+  if (fromBodyId === toBodyId) return 0;
+  const from = system.planets.find((p) => p.id === fromBodyId);
+  const to = system.planets.find((p) => p.id === toBodyId);
+  if (!from || !to) return 0;
+  return (
+    distance3(
+      bodyPositionAt(system, from, tick),
+      bodyPositionAt(system, to, tick),
+    ) / INTRA_SYSTEM_REFERENCE_LENGTH
+  );
 }
 
 export function transferDurationMs(

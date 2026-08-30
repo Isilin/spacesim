@@ -6,12 +6,18 @@ import {
   TRANSFER_MS_PER_JUMP,
 } from "../../constants.js";
 import { SHIPS } from "../../content/ships.js";
-import type { Galaxy, Universe } from "../../model/universe.js";
+import type {
+  Galaxy,
+  Planet,
+  StarSystem,
+  Universe,
+} from "../../model/universe.js";
 import {
   convoyCapacity,
   convoyDurationMs,
   convoyFees,
   convoyFuel,
+  intraSystemCost,
   travelCostInGalaxy,
   travelCostInUniverse,
   legacyConvoyStat,
@@ -231,5 +237,76 @@ describe("convois (chantier 12)", () => {
         legacyConvoyStat(id, customShips),
       ),
     ).toBe(9999);
+  });
+});
+
+describe("intraSystemCost (chantier 31.8)", () => {
+  /** Deux planètes sur des orbites différentes, sans inclinaison pour un calcul lisible. */
+  function planet(id: string, orbitRadius: number, orbitAngle: number): Planet {
+    return {
+      id,
+      systemId: "sys-0",
+      name: id,
+      kind: "planet",
+      type: "telluric",
+      habitability: 50,
+      slots: 8,
+      deposits: {},
+      orbitRadius,
+      orbitAngle,
+      inclination: 0,
+      ascendingNode: 0,
+    };
+  }
+
+  function systemOf(planets: Planet[]): StarSystem {
+    return {
+      id: "sys-0",
+      name: "sys-0",
+      x: 0,
+      y: 0,
+      z: 0,
+      planets,
+      belts: [],
+    };
+  }
+
+  it("un corps vers lui-même ne coûte rien", () => {
+    const sys = systemOf([planet("p1", 100, 0)]);
+    expect(intraSystemCost(sys, "p1", "p1", 0)).toBe(0);
+  });
+
+  it("un corps inconnu dégrade vers zéro plutôt que de casser", () => {
+    const sys = systemOf([planet("p1", 100, 0)]);
+    expect(intraSystemCost(sys, "p1", "absent", 0)).toBe(0);
+    expect(intraSystemCost(sys, "absent", "p1", 0)).toBe(0);
+  });
+
+  it("l'opposition coûte bien plus cher que la conjonction", () => {
+    // Même paire d'orbites : angles égaux (conjonction) contre opposés (opposition).
+    const conjonction = systemOf([planet("a", 70, 0), planet("b", 290, 0)]);
+    const opposition = systemOf([
+      planet("a", 70, 0),
+      planet("b", 290, Math.PI),
+    ]);
+    const proche = intraSystemCost(conjonction, "a", "b", 0);
+    const loin = intraSystemCost(opposition, "a", "b", 0);
+    expect(loin).toBeGreaterThan(proche * 1.5);
+  });
+
+  it("reste une fraction du prix d'un saut interstellaire", () => {
+    // Le pire cas du générateur : deux orbites externes en opposition.
+    const pire = systemOf([planet("a", 290, 0), planet("b", 290, Math.PI)]);
+    const cout = intraSystemCost(pire, "a", "b", 0);
+    expect(cout).toBeGreaterThan(0);
+    expect(cout).toBeLessThan(0.5);
+  });
+
+  it("dépend du tick : les corps orbitent, le coût suit", () => {
+    const sys = systemOf([planet("a", 70, 0), planet("b", 290, 0)]);
+    const couts = [0, 500, 1000, 2000, 3000].map((t) =>
+      intraSystemCost(sys, "a", "b", t),
+    );
+    expect(Math.max(...couts)).toBeGreaterThan(Math.min(...couts) * 1.2);
   });
 });

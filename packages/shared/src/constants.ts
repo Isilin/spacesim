@@ -39,6 +39,19 @@ export const JUMP_REFERENCE_LENGTH = 205;
  * pas par la distance. À 1, le barème d'avant le chantier 31 est préservé.
  */
 export const GATEWAY_JUMP_WEIGHT = 1;
+
+/**
+ * Normalisation du coût intra-système (chantier 31.8). Très supérieure à
+ * `JUMP_REFERENCE_LENGTH` à dessein : traverser un système doit rester une fraction du
+ * prix d'un saut interstellaire, jamais son équivalent.
+ *
+ * Calage de départ, affiné au chantier 31.9 : les orbites vont de 70 à ~290, donc deux
+ * planètes externes en opposition sont séparées d'environ 580 — soit ≈ 0,29 saut, un
+ * peu moins que la moitié de `transferBaseMs`. Les mêmes en conjonction tombent vers
+ * 0,03. C'est ce facteur dix qui doit rendre la conjonction lisible sans jamais faire
+ * d'un trajet local le prix d'un voyage entre étoiles.
+ */
+export const INTRA_SYSTEM_REFERENCE_LENGTH = 2000;
 /**
  * Amplitude verticale du disque d'univers (chantier 31.2). L'écart au plan décroît avec
  * le rayon : bulbe épais au centre, disque mince vers la périphérie.

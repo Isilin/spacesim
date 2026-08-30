@@ -419,6 +419,7 @@ export {
 export {
   travelCostInGalaxy,
   travelCostInUniverse,
+  intraSystemCost,
   transferDurationMs,
   transferCostCredits,
   legacyConvoyStat,

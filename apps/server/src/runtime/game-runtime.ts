@@ -1,6 +1,7 @@
 import {
   allBelts,
   allPlanets,
+  allSystems,
   allTradingPosts,
   galaxyIndexOfId,
 } from "@spacesim/shared";
@@ -14,6 +15,7 @@ import type {
   PirateLair,
   Relation,
   RelationProposal,
+  StarSystem,
   Stocks,
   StoredBattle,
   TradingPost,
@@ -38,6 +40,8 @@ export class GameRuntime {
   /** Horloge et identité de l'univers partagé. */
   clock: Clock;
   planetsById: Map<string, Planet>;
+  /** Systèmes par id — nécessaire aux positions orbitales (chantier 31.8). */
+  systemsById: Map<string, StarSystem>;
   tradingPostsById: Map<string, TradingPost>;
   beltsById: Map<string, AsteroidBelt>;
   /** Index de galaxie par système — sert aux règles d'expansion (chantier 9). */
@@ -85,6 +89,7 @@ export class GameRuntime {
     this.clock = { ...clock };
     this.universe = universe;
     this.planetsById = new Map();
+    this.systemsById = new Map();
     this.tradingPostsById = new Map();
     this.beltsById = new Map();
     this.reindexUniverse();
@@ -93,6 +98,7 @@ export class GameRuntime {
   /** (Ré)indexe les entités d'univers — appelé à la construction et après chaque extension. */
   reindexUniverse(): void {
     this.planetsById = new Map(allPlanets(this.universe).map((p) => [p.id, p]));
+    this.systemsById = new Map(allSystems(this.universe).map((s) => [s.id, s]));
     this.tradingPostsById = new Map(
       allTradingPosts(this.universe).map((s) => [s.id, s]),
     );
