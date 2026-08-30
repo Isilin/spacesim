@@ -24,21 +24,43 @@ interface Props {
 
 /** Rayon du disque d'une galaxie dans la scène. */
 const DISC = 55;
-/** Étoiles figurées par galaxie. Assez pour lire une spirale, assez peu pour que les
- *  200 galaxies d'un univers plein tiennent le budget d'images du chantier 31.17. */
-const STARS_PER_GALAXY = 160;
+/**
+ * Étoiles figurées par galaxie (chantier 31.23). Le compte DÉCROÎT avec la taille de
+ * l'univers : à 160 étoiles fixes, les 200 galaxies d'un univers plein en dessineraient
+ * 32 000 alors qu'aucune n'occupe plus de quelques pixels à cette distance. On borne le
+ * total plutôt que le détail unitaire — une galaxie isolée reste dense, un amas reste
+ * lisible, et le budget d'images du chantier 31.17 tient dans les deux cas.
+ */
+const STAR_BUDGET = 6000;
+const MIN_STARS = 40;
+const MAX_STARS = 160;
+
+function starsPerGalaxy(galaxyCount: number): number {
+  return Math.max(
+    MIN_STARS,
+    Math.min(MAX_STARS, Math.floor(STAR_BUDGET / Math.max(1, galaxyCount))),
+  );
+}
 
 /**
  * Nuage d'étoiles d'une galaxie (chantier 31.19) : une spirale à deux bras, dérivée de
  * l'identifiant de la galaxie. Aucun asset, aucune persistance — deux galaxies diffèrent
  * parce que leurs ids diffèrent, comme partout ailleurs dans la génération.
  */
-function GalaxyCloud({ id, color }: { id: string; color: string }) {
+function GalaxyCloud({
+  id,
+  color,
+  stars,
+}: {
+  id: string;
+  color: string;
+  stars: number;
+}) {
   const positions = useMemo(() => {
     const seed = seedOf(id);
-    const out = new Float32Array(STARS_PER_GALAXY * 3);
-    for (let i = 0; i < STARS_PER_GALAXY; i++) {
-      const t = i / STARS_PER_GALAXY;
+    const out = new Float32Array(stars * 3);
+    for (let i = 0; i < stars; i++) {
+      const t = i / stars;
       // Deux bras, enroulés d'un tour et demi, plus une dispersion qui croît vers le bord.
       const arm = i % 2 === 0 ? 0 : Math.PI;
       const angle = t * Math.PI * 3 + arm + seed * 6.283;
@@ -50,7 +72,7 @@ function GalaxyCloud({ id, color }: { id: string; color: string }) {
       out[i * 3 + 2] = (seedOf(`${id}:z${i}`) - 0.5) * DISC * 0.3 * (1 - t);
     }
     return out;
-  }, [id]);
+  }, [id, stars]);
 
   return (
     <points>
@@ -120,6 +142,8 @@ export function UniverseScene({
     [universe],
   );
 
+  const stars = starsPerGalaxy(universe.galaxies.length);
+
   // La caméra doit embrasser l'amas entier : son rayon croît en √n (spirale d'or).
   const distance = Math.max(
     600,
@@ -155,6 +179,7 @@ export function UniverseScene({
                 <lineBasicMaterial color="#2a3a4a" />
               </line>
               <GalaxyCloud
+                stars={stars}
                 id={galaxy.id}
                 color={
                   selected

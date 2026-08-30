@@ -77,6 +77,7 @@ export function ProceduralBody({
   selected: boolean;
 }) {
   const look = bodyAppearance(type);
+  const segments = radius < 4 ? 12 : radius < 8 ? 20 : 32;
   const uniforms = useMemo(
     () => ({
       uColor: { value: new Color(look.color) },
@@ -91,7 +92,10 @@ export function ProceduralBody({
   return (
     <>
       <mesh>
-        <sphereGeometry args={[radius, 32, 32]} />
+        {/* Détail proportionné au rayon (chantier 31.23) : une lune de 3 unités n'a pas
+            besoin des 32 segments d'une géante gazeuse — à l'écran elle fait quelques
+            pixels, et un système en compte jusqu'à une quinzaine. */}
+        <sphereGeometry args={[radius, segments, segments]} />
         <shaderMaterial
           vertexShader={VERTEX}
           fragmentShader={FRAGMENT}
@@ -102,7 +106,7 @@ export function ProceduralBody({
           la surface — celle-ci porte déjà l'information du type. */}
       {selected && (
         <mesh>
-          <sphereGeometry args={[radius * 1.35, 24, 24]} />
+          <sphereGeometry args={[radius * 1.35, segments, segments]} />
           <meshBasicMaterial
             color="#4fc1ff"
             wireframe

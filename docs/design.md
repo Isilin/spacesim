@@ -1552,6 +1552,38 @@ La vague D livre une carte 3D fonctionnelle quoique nue : si la vague E s'étire
 devenir un chantier autonome sans laisser le dépôt dans un état intermédiaire — au contraire des
 vagues A→C, indissociables entre elles.
 
+### Bilan (31/08/2026)
+
+**Vagues A à E livrées** — 31.1 à 31.23, à l'exception des choix de périmètre notés
+ci-dessous. Trois verrous de calibration cohabitent désormais, tous sur le modèle du
+chantier 18 : `universe.fixture.test.ts` (flux du générateur), `travel.calibration.test.ts`
+(coût inter-système), `orbits.calibration.test.ts` (échelle de temps orbital). Ce sont
+les trois endroits où une modification anodine ferait dériver l'économie en silence.
+
+Deux mesures ont conclu « ne rien changer », et c'est le résultat qui comptait : le coût
+moyen n'a dérivé que de -1,1 % au passage aux distances pondérées (31.7), et les trois
+critères de jouabilité orbitale étaient tenus sans toucher une constante (31.9).
+
+Performance après habillage : 42-51 images/s au niveau univers, 50-51 au niveau système,
+contre 35-49 et 31-48 sous primitives — la passe de LOD (31.23) a bien payé sur la vue
+système, la plus chargée.
+
+**Périmètres volontairement restreints, à ne pas confondre avec des oublis :**
+
+- Les tronçons locaux d'un trajet **interstellaire** restent ignorés (tranché en 31.9) :
+  ils n'offrent aucune décision au joueur, qui ne choisit ni où est sa colonie ni où
+  l'attend sa destination.
+- Les **ceintures d'astéroïdes** n'ont pas de position ponctuelle : un anneau n'a pas UNE
+  position et `buildOutpost` raisonne au niveau système. Rien à inventer tant qu'un
+  avant-poste n'a pas de position propre.
+- L'apparence CMS (31.22) ne couvre que **châssis et types de zone**, les deux domaines
+  qu'un rendu paramétrique consomme réellement.
+- **`apps/web` ne voit pas l'apparence éditée** : le client lit le contenu statique de
+  `packages/shared` et le protocole ne transporte aucune définition de contenu. C'est
+  vrai depuis le chantier 23 et pas propre à l'apparence — éditer le coût d'un bâtiment
+  ne change pas non plus son affichage côté joueur. Publier le contenu sur le fil est un
+  chantier en soi.
+
 ### Vérification du chantier
 
 31.1-31.5 sont du code pur : couverts par des tests unitaires déterministes, comme le reste de
