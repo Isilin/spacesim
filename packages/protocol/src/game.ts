@@ -44,6 +44,12 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     toKind: z.enum(["colony", "station"]).optional(),
     resources: resourcesSchema,
     ships: shipsSchema.optional(),
+    /**
+     * Itinéraire choisi par le joueur (chantier 31.10), systèmes traversés dans
+     * l'ordre. Absent = le serveur prend le chemin le moins cher. Toujours revalidé
+     * et retarifé côté serveur : le prix ne vient jamais du client.
+     */
+    route: z.array(idSchema).optional(),
   }),
   z.object({
     type: z.literal("probe"),
@@ -199,6 +205,8 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("moveFleet"),
     fleetId: idSchema,
     toSystemId: idSchema,
+    /** Itinéraire choisi (chantier 31.10) — voir `transfer`. */
+    route: z.array(idSchema).optional(),
   }),
   z.object({
     type: z.literal("attackLair"),

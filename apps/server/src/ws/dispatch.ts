@@ -24,6 +24,7 @@ export function dispatchClientMessage(
         msg.toKind ?? "colony",
         msg.resources,
         msg.ships,
+        msg.route,
       );
     case "probe":
       return engine.exploration.probe(empire, msg.colonyId, msg.systemId);
@@ -209,7 +210,12 @@ export function dispatchClientMessage(
         msg.directives,
       );
     case "moveFleet":
-      return engine.fleetService.moveFleet(empire, msg.fleetId, msg.toSystemId);
+      return engine.fleetService.moveFleet(
+        empire,
+        msg.fleetId,
+        msg.toSystemId,
+        msg.route,
+      );
     case "attackLair":
       return engine.fleetService.attackLair(empire, msg.fleetId, msg.lairId);
     case "attackFleet":

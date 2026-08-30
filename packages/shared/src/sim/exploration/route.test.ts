@@ -3,6 +3,7 @@ import { GATEWAY_JUMP_WEIGHT, JUMP_REFERENCE_LENGTH } from "../../constants.js";
 import type { Galaxy, Universe } from "../../model/universe.js";
 import {
   galaxyGraph,
+  planTravel,
   priceOf,
   routeCandidates,
   shortestPath,
@@ -176,5 +177,50 @@ describe("routeCandidates", () => {
 
   it("rend une liste vide si la destination est inaccessible", () => {
     expect(routeCandidates(galaxyGraph(galaxy), "a", "inconnu")).toEqual([]);
+  });
+});
+
+describe("planTravel", () => {
+  const universe: Universe = { seed: "t", galaxies: [galaxy] };
+
+  it("sans itinéraire imposé, prend le chemin le moins cher", () => {
+    const plan = planTravel(universe, "a", "d");
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    expect(plan.path).toEqual(["a", "b", "c", "d"]);
+    expect(plan.cost).toBeCloseTo(3, 9);
+  });
+
+  it("accepte un itinéraire imposé plus cher et le facture à son vrai prix", () => {
+    // Le joueur a le droit de choisir le détour ; il le paie.
+    const plan = planTravel(universe, "a", "d", [], ["a", "haut", "d"]);
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    expect(plan.path).toEqual(["a", "haut", "d"]);
+    expect(plan.cost).toBeGreaterThan(3);
+  });
+
+  it("refuse un itinéraire dont une étape n'est pas une arête réelle", () => {
+    // « a → d » n'existe pas : un client qui forge ce chemin obtiendrait sinon un
+    // trajet gratuit entre deux systèmes non reliés.
+    const plan = planTravel(universe, "a", "d", [], ["a", "d"]);
+    expect(plan).toEqual({ ok: false, reason: "invalidRoute" });
+  });
+
+  it("refuse un itinéraire qui ne part pas de l'origine annoncée", () => {
+    const plan = planTravel(universe, "a", "d", [], ["b", "c", "d"]);
+    expect(plan).toEqual({ ok: false, reason: "invalidRoute" });
+  });
+
+  it("refuse un itinéraire qui n'aboutit pas à la destination annoncée", () => {
+    const plan = planTravel(universe, "a", "d", [], ["a", "b", "c"]);
+    expect(plan).toEqual({ ok: false, reason: "invalidRoute" });
+  });
+
+  it("distingue une destination inaccessible d'un itinéraire invalide", () => {
+    expect(planTravel(universe, "a", "inconnu")).toEqual({
+      ok: false,
+      reason: "unreachable",
+    });
   });
 });

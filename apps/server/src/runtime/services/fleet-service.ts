@@ -2,8 +2,8 @@ import {
   combatDefFromStats,
   createRng,
   fleetIsEmpty,
-  travelCostInUniverse,
   gatewayLinks,
+  planTravel,
   PIRATE_SPAWN_CHANCE,
   PIRATE_TAX_PER_TICK,
   pirateBounty,
@@ -222,19 +222,25 @@ export class FleetService {
     empire: Empire,
     fleetId: string,
     toSystemId: string,
+    route?: readonly string[],
   ): string | null {
     const fleet = empire.fleetMap.get(fleetId);
     if (!fleet) return "Flotte inconnue";
     if (fleet.movement) return "Flotte déjà en déplacement";
     if (fleet.queue.length > 0) return "Production en cours au chantier";
     if (toSystemId === fleet.systemId) return "Déjà sur place";
-    const jumps = travelCostInUniverse(
+    const plan = planTravel(
       this.runtime.universe,
       fleet.systemId,
       toSystemId,
       this.portalLinks,
+      route,
     );
-    if (jumps < 0) return "Système inaccessible";
+    if (!plan.ok)
+      return plan.reason === "invalidRoute"
+        ? "Itinéraire invalide"
+        : "Système inaccessible";
+    const jumps = plan.cost;
     const now = Date.now();
     const next: Fleet = {
       ...fleet,

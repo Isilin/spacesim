@@ -15,6 +15,7 @@ import {
   gatewayLinks,
   idleShips,
   intraSystemCost,
+  planTravel,
   travelCostInUniverse,
   legacyCapacity,
   legacyConvoyStat,
@@ -243,6 +244,7 @@ export class LogisticsService {
     toKind: "colony" | "station",
     wanted: Partial<Record<ResourceId, number>>,
     convoy?: Partial<Record<ShipId, number>>,
+    route?: readonly string[],
   ): string | null {
     const from = empire.colonyMap.get(fromColonyId);
     if (!from) return "Colonie inconnue";
@@ -276,13 +278,18 @@ export class LogisticsService {
 
     const fromPlanet = this.runtime.planetsById.get(from.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const graphCost = travelCostInUniverse(
+    const plan = planTravel(
       this.runtime.universe,
       fromPlanet.systemId,
       toSystemId,
       this.portalLinks,
+      route,
     );
-    if (graphCost < 0) return "Destination inaccessible";
+    if (!plan.ok)
+      return plan.reason === "invalidRoute"
+        ? "Itinéraire invalide"
+        : "Destination inaccessible";
+    const graphCost = plan.cost;
     // Trajet local (chantier 31.8) : dans un même système, le coût de graphe est nul et
     // seule la position orbitale du moment décide. Deux corps en conjonction coûtent
     // près de dix fois moins qu'en opposition — c'est la seule mécanique du jeu où

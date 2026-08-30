@@ -256,3 +256,38 @@ export function routeCandidates(
   }
   return routes;
 }
+
+/** Résultat d'une demande de trajet : coût réel, ou la raison du refus. */
+export type TravelPlan =
+  | { ok: true; cost: number; gates: number; path: string[] }
+  | { ok: false; reason: "unreachable" | "invalidRoute" };
+
+/**
+ * Tarifie un trajet, avec ou sans itinéraire imposé (chantier 31.10).
+ *
+ * Sans `route`, prend le chemin le moins cher — comportement d'avant le choix
+ * d'itinéraire. Avec `route`, le chemin fourni est **validé puis retarifé sur le graphe
+ * réel** : le serveur ne fait jamais confiance au client sur le prix, et un chemin dont
+ * une étape n'est pas une arête existante est refusé. C'est ce qui rend sûr de laisser
+ * le client calculer les itinéraires qu'il propose.
+ */
+export function planTravel(
+  universe: Universe,
+  fromSystemId: string,
+  toSystemId: string,
+  extraLinks: readonly [string, string][] = [],
+  route?: readonly string[],
+): TravelPlan {
+  const graph = universeGraph(universe, extraLinks);
+  if (route && route.length > 0) {
+    if (route[0] !== fromSystemId || route[route.length - 1] !== toSystemId)
+      return { ok: false, reason: "invalidRoute" };
+    const priced = priceOf(graph, route);
+    if (!priced) return { ok: false, reason: "invalidRoute" };
+    return { ok: true, ...priced, path: [...route] };
+  }
+  const path = shortestPath(graph, fromSystemId, toSystemId);
+  const priced = path && priceOf(graph, path);
+  if (!path || !priced) return { ok: false, reason: "unreachable" };
+  return { ok: true, ...priced, path };
+}

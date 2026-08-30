@@ -319,3 +319,46 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     }
   });
 });
+
+describe("GameEngine — choix d'itinéraire (chantier 31.10)", () => {
+  it("moveFleet refuse un itinéraire forgé et accepte un itinéraire réel", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
+    const empire = empireFor(engine, "navigateur");
+    const galaxy = engine.universe.galaxies[0]!;
+    const from = galaxy.systems[0]!.id;
+    // Un voisin réel du système de départ, donc une arête qui existe.
+    const link = galaxy.links.find(([a, b]) => a === from || b === from)!;
+    const neighbour = link[0] === from ? link[1] : link[0];
+    const fleetId = engine.devArmFleet(empire, from, { [WARSHIP]: 1 });
+
+    // Chemin forgé : deux systèmes non reliés dans le graphe. Sans validation, le
+    // joueur obtiendrait un trajet direct entre deux points quelconques.
+    const forge = galaxy.systems.find(
+      (s) =>
+        s.id !== from &&
+        s.id !== neighbour &&
+        !galaxy.links.some(
+          ([a, b]) => (a === from && b === s.id) || (b === from && a === s.id),
+        ),
+    )!;
+    expect(
+      engine.fleetService.moveFleet(empire, fleetId, forge.id, [
+        from,
+        forge.id,
+      ]),
+    ).toBe("Itinéraire invalide");
+
+    // Un itinéraire qui n'aboutit pas à la destination annoncée est refusé aussi.
+    expect(
+      engine.fleetService.moveFleet(empire, fleetId, neighbour, [from]),
+    ).toBe("Itinéraire invalide");
+
+    // Le même trajet, avec l'arête réelle, passe.
+    expect(
+      engine.fleetService.moveFleet(empire, fleetId, neighbour, [
+        from,
+        neighbour,
+      ]),
+    ).toBeNull();
+  });
+});

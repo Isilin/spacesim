@@ -441,10 +441,12 @@ export {
   shortestPath,
   priceOf,
   routeCandidates,
+  planTravel,
   type Arc,
   type Graph,
   type RouteKind,
   type TravelRoute,
+  type TravelPlan,
 } from "./sim/exploration/route.js";
 export {
   angularSpeedOf,
