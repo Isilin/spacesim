@@ -4,7 +4,7 @@ import {
   embargoBlocks,
   factionTick,
   gatewayLinks,
-  jumpDistanceInUniverse,
+  travelCostInUniverse,
   initialStocks,
   marketTick,
   moodRebateBonus,
@@ -203,7 +203,7 @@ export class MarketService {
 
     const fromPlanet = this.runtime.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const jumps = jumpDistanceInUniverse(
+    const jumps = travelCostInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
       comptoir.systemId,
@@ -271,7 +271,7 @@ export class MarketService {
 
     const fromPlanet = this.runtime.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const jumps = jumpDistanceInUniverse(
+    const jumps = travelCostInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
       comptoir.systemId,
@@ -322,7 +322,7 @@ export class MarketService {
         this.runtime.galaxyIndexOfSystem.get(comptoir.systemId) !== galaxyIndex
       )
         continue;
-      const jumps = jumpDistanceInUniverse(
+      const jumps = travelCostInUniverse(
         this.runtime.universe,
         systemId,
         comptoir.systemId,

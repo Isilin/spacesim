@@ -1,7 +1,7 @@
 import type { ClientMessage } from "@spacesim/protocol";
 import {
   BASE_PRICES,
-  jumpDistanceInUniverse,
+  travelCostInUniverse,
   MARKET_RESOURCES,
   maxConvoyCapacity,
   repBonus,
@@ -88,7 +88,7 @@ export function TradingPostPanel({
     ? systemIdOf(universe, activeColony.planetId)
     : undefined;
   const jumps = fromSystem
-    ? jumpDistanceInUniverse(
+    ? travelCostInUniverse(
         universe,
         fromSystem,
         tradingPost.systemId,

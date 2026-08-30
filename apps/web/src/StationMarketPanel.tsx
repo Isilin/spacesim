@@ -2,7 +2,7 @@ import type { ClientMessage } from "@spacesim/protocol";
 import {
   BASE_PRICES,
   canTradeAtStation,
-  jumpDistanceInUniverse,
+  travelCostInUniverse,
   MARKET_RESOURCES,
   maxConvoyCapacity,
   resolvePurchase,
@@ -113,7 +113,7 @@ export function StationMarketPanel({
     ? systemIdOf(universe, activeColony.planetId)
     : undefined;
   const jumps = fromSystem
-    ? jumpDistanceInUniverse(universe, fromSystem, systemId, portalLinks)
+    ? travelCostInUniverse(universe, fromSystem, systemId, portalLinks)
     : -1;
   const fee = jumps >= 0 ? transferCostCredits(jumps) : 0;
   const eta = jumps >= 0 ? transferDurationMs(jumps) * transferSpeedMult : 0;

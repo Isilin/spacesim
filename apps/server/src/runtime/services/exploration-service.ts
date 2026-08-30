@@ -8,7 +8,7 @@ import {
   galaxiesToAdd,
   generateGalaxyAt,
   influencePerTick,
-  jumpDistanceInUniverse,
+  travelCostInUniverse,
   gatewayLinks,
   probeDurationMs,
   COLONY_SHIP_COST,
@@ -91,7 +91,7 @@ export class ExplorationService {
     if (colony.resources.credits < cost) {
       return `Crédits insuffisants (coût : ${cost})`;
     }
-    const jumps = jumpDistanceInUniverse(
+    const jumps = travelCostInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
       systemId,
@@ -137,7 +137,7 @@ export class ExplorationService {
     }
     const fromPlanet = this.runtime.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const jumps = jumpDistanceInUniverse(
+    const jumps = travelCostInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
       target.systemId,

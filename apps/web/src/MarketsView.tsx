@@ -7,7 +7,7 @@ import {
   convoyFuel,
   findGalaxyOfSystem,
   hasResourceMarket,
-  jumpDistanceInUniverse,
+  travelCostInUniverse,
   MARKET_RESOURCES,
   tradingPostPrice,
   type Colony,
@@ -151,7 +151,7 @@ export function MarketsView({
           factionId: venue.factionId,
         });
         const jumps = fromSystem
-          ? jumpDistanceInUniverse(
+          ? travelCostInUniverse(
               universe,
               fromSystem,
               venue.systemId,

@@ -417,8 +417,8 @@ export {
   type HexCoord,
 } from "./sim/industry/station-layout.js";
 export {
-  jumpDistance,
-  jumpDistanceInUniverse,
+  travelCostInGalaxy,
+  travelCostInUniverse,
   transferDurationMs,
   transferCostCredits,
   legacyConvoyStat,

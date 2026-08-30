@@ -1,44 +1,138 @@
 import { DEFAULT_BALANCE, type BalanceConstants } from "../../balance.js";
+import { GATEWAY_JUMP_WEIGHT, JUMP_REFERENCE_LENGTH } from "../../constants.js";
 import { SHIPS, type ShipDef } from "../../content/ships.js";
 import type { Galaxy, Universe } from "../../model/universe.js";
 import { findGalaxyOfSystem } from "../../universe.js";
+import { distance3 } from "./geometry.js";
 
-/** Distance en sauts entre deux systèmes d'une galaxie (BFS), -1 si inaccessible. */
-export function jumpDistance(
+/**
+ * Coût de trajet (chantier 31.6). Ce n'est plus un compte de sauts : chaque arête pèse
+ * sa longueur 3D réelle, divisée par `JUMP_REFERENCE_LENGTH` — calée pour que l'arête
+ * moyenne d'un univers généré vaille ≈ 1. La valeur retournée reste donc à l'échelle du
+ * compte de sauts d'avant, ce qui laisse intactes les constantes de `balance.ts` qui la
+ * multiplient. Une arête courte coûte ~0,5, une longue ~1,9 : la géométrie pèse enfin.
+ *
+ * Voir [ADR 0006](../../../../../docs/adr/0006-univers-volumetrique-deux-echelles.md).
+ */
+type Arc = { readonly to: string; readonly weight: number };
+type Graph = Map<string, Arc[]>;
+
+function addArc(graph: Graph, a: string, b: string, weight: number): void {
+  graph.set(a, [...(graph.get(a) ?? []), { to: b, weight }]);
+  graph.set(b, [...(graph.get(b) ?? []), { to: a, weight }]);
+}
+
+/**
+ * Tas binaire minimal — Dijkstra sur ~2 000 systèmes tournerait en O(V²) avec un balayage
+ * linéaire, soit 4 M d'opérations à chaque commande de déplacement.
+ */
+class MinHeap {
+  private readonly items: { cost: number; id: string }[] = [];
+
+  get size(): number {
+    return this.items.length;
+  }
+
+  push(cost: number, id: string): void {
+    this.items.push({ cost, id });
+    let i = this.items.length - 1;
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (this.items[parent]!.cost <= this.items[i]!.cost) break;
+      [this.items[parent], this.items[i]] = [
+        this.items[i]!,
+        this.items[parent]!,
+      ];
+      i = parent;
+    }
+  }
+
+  pop(): { cost: number; id: string } | undefined {
+    const top = this.items[0];
+    const last = this.items.pop();
+    if (this.items.length > 0 && last) {
+      this.items[0] = last;
+      let i = 0;
+      for (;;) {
+        const left = 2 * i + 1;
+        const right = left + 1;
+        let smallest = i;
+        if (
+          left < this.items.length &&
+          this.items[left]!.cost < this.items[smallest]!.cost
+        )
+          smallest = left;
+        if (
+          right < this.items.length &&
+          this.items[right]!.cost < this.items[smallest]!.cost
+        )
+          smallest = right;
+        if (smallest === i) break;
+        [this.items[smallest], this.items[i]] = [
+          this.items[i]!,
+          this.items[smallest]!,
+        ];
+        i = smallest;
+      }
+    }
+    return top;
+  }
+}
+
+/** Dijkstra : coût du plus court chemin, -1 si la cible est inaccessible. */
+function shortestCost(graph: Graph, from: string, to: string): number {
+  if (from === to) return 0;
+  const best = new Map<string, number>([[from, 0]]);
+  const heap = new MinHeap();
+  heap.push(0, from);
+  const settled = new Set<string>();
+
+  while (heap.size > 0) {
+    const current = heap.pop()!;
+    if (settled.has(current.id)) continue;
+    settled.add(current.id);
+    if (current.id === to) return current.cost;
+
+    for (const arc of graph.get(current.id) ?? []) {
+      if (settled.has(arc.to)) continue;
+      const candidate = current.cost + arc.weight;
+      if (candidate < (best.get(arc.to) ?? Number.POSITIVE_INFINITY)) {
+        best.set(arc.to, candidate);
+        heap.push(candidate, arc.to);
+      }
+    }
+  }
+  return -1;
+}
+
+/** Coût de trajet entre deux systèmes d'une même galaxie, -1 si inaccessible. */
+export function travelCostInGalaxy(
   galaxy: Galaxy,
   fromSystemId: string,
   toSystemId: string,
 ): number {
   if (fromSystemId === toSystemId) return 0;
-  const adjacency = new Map<string, string[]>();
+  const byId = new Map(galaxy.systems.map((s) => [s.id, s]));
+  const graph: Graph = new Map();
   for (const [a, b] of galaxy.links) {
-    adjacency.set(a, [...(adjacency.get(a) ?? []), b]);
-    adjacency.set(b, [...(adjacency.get(b) ?? []), a]);
+    const sa = byId.get(a);
+    const sb = byId.get(b);
+    if (sa && sb)
+      addArc(graph, a, b, distance3(sa, sb) / JUMP_REFERENCE_LENGTH);
   }
-  const visited = new Set([fromSystemId]);
-  let frontier = [fromSystemId];
-  let depth = 0;
-  while (frontier.length > 0) {
-    depth++;
-    const next: string[] = [];
-    for (const id of frontier) {
-      for (const neighbor of adjacency.get(id) ?? []) {
-        if (visited.has(neighbor)) continue;
-        if (neighbor === toSystemId) return depth;
-        visited.add(neighbor);
-        next.push(neighbor);
-      }
-    }
-    frontier = next;
-  }
-  return -1;
+  return shortestCost(graph, fromSystemId, toSystemId);
 }
 
 /**
- * Distance en sauts dans l'univers. `extraLinks` = liaisons de portail actives
+ * Coût de trajet dans l'univers. `extraLinks` = liaisons de portail actives
  * (sim/gateways) ; sans elles, les galaxies restent isolées (-1 entre galaxies).
+ *
+ * Les portails reçoivent un poids **forfaitaire** (`GATEWAY_JUMP_WEIGHT`) et non leur
+ * longueur réelle : un trou de ver inter-galactique mesure des centaines de milliers
+ * d'unités, l'utiliser tel quel rendrait toute galaxie voisine inatteignable. Le prix du
+ * passage est porté par `gatewayTollCredits`, pas par la distance.
  */
-export function jumpDistanceInUniverse(
+export function travelCostInUniverse(
   universe: Universe,
   fromSystemId: string,
   toSystemId: string,
@@ -49,37 +143,24 @@ export function jumpDistanceInUniverse(
   if (!from || !to) return -1;
   // Cas courant : même galaxie, pas besoin du graphe global.
   if (from.id === to.id && extraLinks.length === 0) {
-    return jumpDistance(from, fromSystemId, toSystemId);
+    return travelCostInGalaxy(from, fromSystemId, toSystemId);
   }
 
-  const adjacency = new Map<string, string[]>();
-  const addLink = (a: string, b: string) => {
-    adjacency.set(a, [...(adjacency.get(a) ?? []), b]);
-    adjacency.set(b, [...(adjacency.get(b) ?? []), a]);
-  };
+  const byId = new Map(
+    universe.galaxies.flatMap((g) => g.systems.map((s) => [s.id, s] as const)),
+  );
+  const graph: Graph = new Map();
   for (const galaxy of universe.galaxies) {
-    for (const [a, b] of galaxy.links) addLink(a, b);
-  }
-  for (const [a, b] of extraLinks) addLink(a, b);
-
-  if (fromSystemId === toSystemId) return 0;
-  const visited = new Set([fromSystemId]);
-  let frontier = [fromSystemId];
-  let depth = 0;
-  while (frontier.length > 0) {
-    depth++;
-    const next: string[] = [];
-    for (const id of frontier) {
-      for (const neighbor of adjacency.get(id) ?? []) {
-        if (visited.has(neighbor)) continue;
-        if (neighbor === toSystemId) return depth;
-        visited.add(neighbor);
-        next.push(neighbor);
-      }
+    for (const [a, b] of galaxy.links) {
+      const sa = byId.get(a);
+      const sb = byId.get(b);
+      if (sa && sb)
+        addArc(graph, a, b, distance3(sa, sb) / JUMP_REFERENCE_LENGTH);
     }
-    frontier = next;
   }
-  return -1;
+  for (const [a, b] of extraLinks) addArc(graph, a, b, GATEWAY_JUMP_WEIGHT);
+
+  return shortestCost(graph, fromSystemId, toSystemId);
 }
 
 export function transferDurationMs(

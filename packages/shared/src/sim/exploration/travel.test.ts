@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { TRANSFER_BASE_MS, TRANSFER_MS_PER_JUMP } from "../../constants.js";
+import {
+  GATEWAY_JUMP_WEIGHT,
+  JUMP_REFERENCE_LENGTH,
+  TRANSFER_BASE_MS,
+  TRANSFER_MS_PER_JUMP,
+} from "../../constants.js";
 import { SHIPS } from "../../content/ships.js";
 import type { Galaxy, Universe } from "../../model/universe.js";
 import {
@@ -7,16 +12,18 @@ import {
   convoyDurationMs,
   convoyFees,
   convoyFuel,
-  jumpDistance,
-  jumpDistanceInUniverse,
+  travelCostInGalaxy,
+  travelCostInUniverse,
   legacyConvoyStat,
   transferCostCredits,
   transferDurationMs,
 } from "./travel.js";
 
+type SystemSpec = { id: string; x: number; y?: number; z?: number };
+
 function makeGalaxy(
   id: string,
-  systemIds: string[],
+  specs: SystemSpec[],
   links: [string, string][],
 ): Galaxy {
   return {
@@ -25,66 +32,136 @@ function makeGalaxy(
     x: 0,
     y: 0,
     z: 0,
-    systems: systemIds.map((sid) => ({
-      id: sid,
-      name: sid,
-      x: 0,
-      y: 0,
-      z: 0,
+    systems: specs.map((s) => ({
+      id: s.id,
+      name: s.id,
+      x: s.x,
+      y: s.y ?? 0,
+      z: s.z ?? 0,
       planets: [],
       belts: [],
     })),
     links,
-    anchorSystemId: systemIds[0]!,
+    anchorSystemId: specs[0]!.id,
     depositBonus: 1,
   };
 }
 
-// a—b—c—d, plus raccourci a—c
-const galaxy = makeGalaxy(
+const R = JUMP_REFERENCE_LENGTH;
+
+/**
+ * Chaîne a—b—c—d dont chaque arête mesure exactement `JUMP_REFERENCE_LENGTH` : chaque
+ * saut pèse donc 1, et le coût pondéré doit retomber sur le compte de sauts d'avant le
+ * chantier 31.6. C'est le harnais de non-régression du passage BFS → Dijkstra.
+ */
+const uniforme = makeGalaxy(
   "g1",
-  ["a", "b", "c", "d"],
+  [
+    { id: "a", x: 0 },
+    { id: "b", x: R },
+    { id: "c", x: 2 * R },
+    { id: "d", x: 3 * R },
+  ],
   [
     ["a", "b"],
     ["b", "c"],
     ["c", "d"],
-    ["a", "c"],
   ],
 );
 
 const universe: Universe = {
   seed: "t",
-  galaxies: [galaxy, makeGalaxy("g2", ["z"], [])],
+  galaxies: [uniforme, makeGalaxy("g2", [{ id: "z", x: 500_000 }], [])],
 };
 
-describe("jumpDistance", () => {
+describe("travelCostInGalaxy", () => {
   it("même système = 0", () => {
-    expect(jumpDistance(galaxy, "a", "a")).toBe(0);
+    expect(travelCostInGalaxy(uniforme, "a", "a")).toBe(0);
   });
 
-  it("prend le plus court chemin", () => {
-    expect(jumpDistance(galaxy, "a", "d")).toBe(2); // a→c→d
-    expect(jumpDistance(galaxy, "b", "d")).toBe(2);
+  it("arêtes toutes unitaires : le coût pondéré retombe sur le compte de sauts", () => {
+    expect(travelCostInGalaxy(uniforme, "a", "b")).toBeCloseTo(1, 9);
+    expect(travelCostInGalaxy(uniforme, "a", "c")).toBeCloseTo(2, 9);
+    expect(travelCostInGalaxy(uniforme, "a", "d")).toBeCloseTo(3, 9);
   });
 
   it("-1 si inaccessible", () => {
-    expect(jumpDistance(galaxy, "a", "zzz")).toBe(-1);
+    expect(travelCostInGalaxy(uniforme, "a", "zzz")).toBe(-1);
+  });
+
+  it("une arête courte coûte moins qu'une longue — la géométrie pèse", () => {
+    const inegale = makeGalaxy(
+      "gi",
+      [
+        { id: "s", x: 0 },
+        { id: "proche", x: R / 2 },
+        { id: "loin", x: -2 * R },
+      ],
+      [
+        ["s", "proche"],
+        ["s", "loin"],
+      ],
+    );
+    expect(travelCostInGalaxy(inegale, "s", "proche")).toBeCloseTo(0.5, 9);
+    expect(travelCostInGalaxy(inegale, "s", "loin")).toBeCloseTo(2, 9);
+  });
+
+  it("préfère un détour de 4 sauts courts à un saut unique très long", () => {
+    // Un BFS aurait choisi s→ecart→t (2 sauts) ; le coût réel le disqualifie.
+    const detour = makeGalaxy(
+      "gd",
+      [
+        { id: "s", x: 0 },
+        { id: "m1", x: 100 },
+        { id: "m2", x: 200 },
+        { id: "m3", x: 300 },
+        { id: "t", x: 400 },
+        { id: "ecart", x: 0, z: 3000 },
+      ],
+      [
+        ["s", "m1"],
+        ["m1", "m2"],
+        ["m2", "m3"],
+        ["m3", "t"],
+        ["s", "ecart"],
+        ["ecart", "t"],
+      ],
+    );
+    expect(travelCostInGalaxy(detour, "s", "t")).toBeCloseTo(400 / R, 9);
+  });
+
+  it("compte la troisième dimension : deux systèmes ne différant que par z", () => {
+    const vertical = makeGalaxy(
+      "gv",
+      [
+        { id: "bas", x: 0, z: 0 },
+        { id: "haut", x: 0, z: R },
+      ],
+      [["bas", "haut"]],
+    );
+    expect(travelCostInGalaxy(vertical, "bas", "haut")).toBeCloseTo(1, 9);
   });
 });
 
-describe("jumpDistanceInUniverse", () => {
+describe("travelCostInUniverse", () => {
   it("route dans la même galaxie", () => {
-    expect(jumpDistanceInUniverse(universe, "a", "d")).toBe(2);
+    expect(travelCostInUniverse(universe, "a", "d")).toBeCloseTo(3, 9);
   });
 
   it("-1 entre galaxies sans portail", () => {
-    expect(jumpDistanceInUniverse(universe, "a", "z")).toBe(-1);
+    expect(travelCostInUniverse(universe, "a", "z")).toBe(-1);
   });
 
-  it("traverse les galaxies via une liaison de portail", () => {
-    // Portail a ↔ z : b → a → z = 2 sauts.
-    expect(jumpDistanceInUniverse(universe, "b", "z", [["a", "z"]])).toBe(2);
-    expect(jumpDistanceInUniverse(universe, "a", "z", [["a", "z"]])).toBe(1);
+  it("un portail coûte un forfait, jamais sa longueur réelle", () => {
+    // `z` est à 500 000 unités : facturé au réel, il serait inatteignable.
+    expect(travelCostInUniverse(universe, "a", "z", [["a", "z"]])).toBeCloseTo(
+      GATEWAY_JUMP_WEIGHT,
+      9,
+    );
+    expect(travelCostInUniverse(universe, "b", "z", [["a", "z"]])).toBeCloseTo(
+      1 + GATEWAY_JUMP_WEIGHT,
+      9,
+    );
   });
 });
 

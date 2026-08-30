@@ -6,7 +6,7 @@ import {
   convoyFuel,
   findGalaxyOfSystem,
   idleShips,
-  jumpDistanceInUniverse,
+  travelCostInUniverse,
   maxConvoyCapacity,
   SHIP_IDS,
   type Colony,
@@ -88,7 +88,7 @@ export function TransferPanel({
     : undefined;
   const jumps =
     fromSystem && toSystem
-      ? jumpDistanceInUniverse(universe, fromSystem, toSystem, portalLinks)
+      ? travelCostInUniverse(universe, fromSystem, toSystem, portalLinks)
       : -1;
 
   const cargo: Partial<Record<ResourceId, number>> = {};

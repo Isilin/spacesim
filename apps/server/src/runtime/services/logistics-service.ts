@@ -14,7 +14,7 @@ import {
   gatewayCovered,
   gatewayLinks,
   idleShips,
-  jumpDistanceInUniverse,
+  travelCostInUniverse,
   legacyCapacity,
   legacyConvoyStat,
   MARKET_RESOURCES,
@@ -272,7 +272,7 @@ export class LogisticsService {
 
     const fromPlanet = this.runtime.planetsById.get(from.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const jumps = jumpDistanceInUniverse(
+    const jumps = travelCostInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
       toSystemId,
@@ -391,7 +391,7 @@ export class LogisticsService {
     }
     const fromPlanet = this.runtime.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const jumps = jumpDistanceInUniverse(
+    const jumps = travelCostInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
       belt.systemId,
@@ -505,7 +505,7 @@ export class LogisticsService {
     }
 
     if (
-      jumpDistanceInUniverse(
+      travelCostInUniverse(
         this.runtime.universe,
         fromSystemId,
         toSystemId,
@@ -640,7 +640,7 @@ export class LogisticsService {
             )?.systemId
           : this.runtime.tradingPostsById.get(current.toId)?.systemId;
       if (!toSystemId) continue;
-      const jumps = jumpDistanceInUniverse(
+      const jumps = travelCostInUniverse(
         this.runtime.universe,
         fromSystemId,
         toSystemId,

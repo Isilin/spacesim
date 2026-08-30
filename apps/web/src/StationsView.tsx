@@ -8,7 +8,7 @@ import {
   findGalaxyOfSystem,
   hexKey,
   idleShips,
-  jumpDistanceInUniverse,
+  travelCostInUniverse,
   maxConvoyCapacity,
   RESOURCES,
   SHIP_IDS,
@@ -343,7 +343,7 @@ function StationTransferForm({
   const fromSystem = source ? systemIdOf(universe, source.planetId) : undefined;
   const jumps =
     fromSystem && station.systemId
-      ? jumpDistanceInUniverse(
+      ? travelCostInUniverse(
           universe,
           fromSystem,
           station.systemId,

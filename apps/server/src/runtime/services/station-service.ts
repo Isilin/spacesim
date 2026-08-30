@@ -8,7 +8,7 @@ import {
   gatewayLinks,
   hasBlueprintMarket,
   hasResourceMarket,
-  jumpDistanceInUniverse,
+  travelCostInUniverse,
   MARKET_RESOURCES,
   relationKey,
   resolveInstallQueue,
@@ -153,7 +153,7 @@ export class StationService {
     }
     const fromPlanet = this.runtime.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const jumps = jumpDistanceInUniverse(
+    const jumps = travelCostInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
       target.systemId,
@@ -287,7 +287,7 @@ export class StationService {
     }
     const fromPlanet = this.runtime.planetsById.get(colony.planetId);
     if (!fromPlanet) return { ok: false, reason: "Planète inconnue" };
-    const jumps = jumpDistanceInUniverse(
+    const jumps = travelCostInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
       station.systemId,

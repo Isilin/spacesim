@@ -6,7 +6,7 @@ import {
   convoyFees,
   convoyFuel,
   isContractExpired,
-  jumpDistanceInUniverse,
+  travelCostInUniverse,
   gatewayLinks,
   legacyConvoyStat,
   MARKET_RESOURCES,
@@ -183,7 +183,7 @@ export class ContractService {
 
     const fromPlanet = this.runtime.planetsById.get(colony.planetId);
     if (!fromPlanet) return "Planète inconnue";
-    const jumps = jumpDistanceInUniverse(
+    const jumps = travelCostInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
       contract.systemId,

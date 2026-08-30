@@ -2,7 +2,7 @@ import {
   combatDefFromStats,
   createRng,
   fleetIsEmpty,
-  jumpDistanceInUniverse,
+  travelCostInUniverse,
   gatewayLinks,
   PIRATE_SPAWN_CHANCE,
   PIRATE_TAX_PER_TICK,
@@ -228,7 +228,7 @@ export class FleetService {
     if (fleet.movement) return "Flotte déjà en déplacement";
     if (fleet.queue.length > 0) return "Production en cours au chantier";
     if (toSystemId === fleet.systemId) return "Déjà sur place";
-    const jumps = jumpDistanceInUniverse(
+    const jumps = travelCostInUniverse(
       this.runtime.universe,
       fleet.systemId,
       toSystemId,

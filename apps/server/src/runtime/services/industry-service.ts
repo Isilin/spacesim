@@ -12,7 +12,7 @@ import {
   enqueueShipFromStats,
   gatewayLinks,
   idleShips,
-  jumpDistanceInUniverse,
+  travelCostInUniverse,
   researchPath,
   resolveBlueprint,
   resolveQueue,
@@ -364,7 +364,7 @@ export class IndustryService {
     if (!comptoir) return -1;
     const fromPlanet = this.runtime.planetsById.get(colony.planetId);
     if (!fromPlanet) return -1;
-    return jumpDistanceInUniverse(
+    return travelCostInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
       comptoir.systemId,

@@ -3,7 +3,7 @@ import {
   gatewayLinks,
   galaxyParentIndex,
   gatewayRemaining,
-  jumpDistanceInUniverse,
+  travelCostInUniverse,
   transferCostCredits,
   transferDurationMs,
   type BalanceConstants,
@@ -105,7 +105,7 @@ export class GatewayService {
       parentIndex === null
         ? this.runtime.universe.galaxies[0]!.anchorSystemId
         : this.runtime.universe.galaxies[parentIndex]!.anchorSystemId;
-    const jumps = jumpDistanceInUniverse(
+    const jumps = travelCostInUniverse(
       this.runtime.universe,
       fromPlanet.systemId,
       anchorId,

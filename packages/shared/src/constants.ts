@@ -22,6 +22,23 @@ export const UNIVERSE_CENTER_X = MAP_WIDTH / 2;
 export const UNIVERSE_CENTER_Y = MAP_HEIGHT / 2;
 /** Écart moyen entre deux galaxies voisines sur la spirale. */
 export const GALAXY_SPACING = 260;
+
+/**
+ * Normalisation du coût de trajet (chantier 31.6) : une arête pèse sa longueur 3D
+ * divisée par cette référence. Calée sur la longueur d'arête **moyenne** d'un univers
+ * généré (mesurée : moyenne 205, médiane 198, étendue 96-388) pour que l'arête typique
+ * vaille ≈ 1 — la valeur retournée reste ainsi à l'échelle du compte de sauts d'avant,
+ * et les constantes de `balance.ts` qui la multiplient gardent leur ordre de grandeur.
+ */
+export const JUMP_REFERENCE_LENGTH = 205;
+
+/**
+ * Poids d'un saut de portail inter-galactique, forfaitaire (chantier 31.6). Sa longueur
+ * réelle se compte en centaines de milliers d'unités : la facturer rendrait toute
+ * galaxie voisine inatteignable. Le prix du passage est porté par `gatewayTollCredits`,
+ * pas par la distance. À 1, le barème d'avant le chantier 31 est préservé.
+ */
+export const GATEWAY_JUMP_WEIGHT = 1;
 /**
  * Amplitude verticale du disque d'univers (chantier 31.2). L'écart au plan décroît avec
  * le rayon : bulbe épais au centre, disque mince vers la périphérie.
