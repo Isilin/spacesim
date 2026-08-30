@@ -59,7 +59,7 @@ function whereClause(
   pkNames: readonly string[],
   pk: readonly unknown[],
 ) {
-  // biome-ignore lint/suspicious/noExplicitAny: table dynamique, colonnes indexées par nom
+  // `any` assumé : table dynamique, colonnes indexées par nom
   const t = table as any;
   const conditions = pkNames.map((name, i) => eq(t[name], pk[i]));
   return conditions.length === 1 ? conditions[0] : and(...conditions);
@@ -72,7 +72,7 @@ function whereClause(
  * ligne toujours complète (voir son commentaire). `.returning()` (plutôt que
  * `rowCount`) pour rester portable entre les deux dialectes pg (node-postgres, PGlite).
  */
-// biome-ignore lint/suspicious/noExplicitAny: transaction dynamique table par table
+// `any` assumé : transaction dynamique table par table
 async function applyUpsert(tx: any, entry: DrainedUpsert): Promise<void> {
   const { table, pkNames } = tableFor(entry.table);
   const where = whereClause(table, pkNames, entry.pk);
@@ -86,7 +86,7 @@ async function applyUpsert(tx: any, entry: DrainedUpsert): Promise<void> {
   }
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: transaction dynamique table par table
+// `any` assumé : transaction dynamique table par table
 async function applyDelete(tx: any, entry: DrainedDelete): Promise<void> {
   const { table, pkNames } = tableFor(entry.table);
   const where = whereClause(table, pkNames, entry.pk);

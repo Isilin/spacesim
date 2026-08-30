@@ -79,7 +79,7 @@ let transactionTail: Promise<unknown> = Promise.resolve();
 
 export function withTransaction<T>(run: (tx: Db) => Promise<T>): Promise<T> {
   const result = transactionTail.then(() =>
-    // biome-ignore lint/suspicious/noExplicitAny: `db.transaction` diffère entre les deux dialectes pg (node-postgres/PGlite)
+    // `any` assumé : `db.transaction` diffère entre les deux dialectes pg (node-postgres/PGlite)
     (db as any).transaction(run),
   );
   // La file continue même si cette transaction échoue — seul l'appelant doit voir l'erreur.
