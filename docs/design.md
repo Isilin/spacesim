@@ -1458,9 +1458,15 @@ dans une vue système. Le sujet de ce chantier est le design, pas le GPU.
 
 ### Vague C — Coûts, décisions, contenu de l'espace
 
-- **31.7** — recalibrage des six services appelants (`contract`, `exploration`, `fleet`,
-  `gateway`, `industry`, `logistics`), mesuré avant/après avec le harnais de charge (27.7) et
-  l'instrumentation de durée de tick (27.5).
+- **31.7** ✅ — recalibrage des services appelants. **Mesuré : aucune constante à toucher.** Sur
+  211 trajets d'un univers généré, le coût pondéré moyen vaut 3,16 contre 3,20 sauts avant, soit
+  une dérive de **-1,1 %** ; le ratio médian est de 0,98 et seuls 3,3 % des trajets s'écartent de
+  plus de ±50 % du barème de sauts. La normalisation de 31.6 a donc fait exactement ce pour quoi
+  elle était conçue, et `balance.ts` reste intact. Pris un à un, les trajets varient bien de 0,45
+  à 1,83 fois leur ancien barème : la géométrie pèse, sans que l'économie globale bouge. Le
+  relevé est figé dans `travel.calibration.test.ts`, sur le modèle du verrou de fixture du
+  chantier 18 — changer `MAP_DEPTH`, l'espacement des systèmes ou la règle de liaison casserait
+  la calibration sans rien casser d'autre, et l'économie dériverait en silence.
 - **31.8** — coût de transfert intra-système fonction de la position orbitale au tick de départ
   (`LogisticsService`). Les ETA deviennent variables : le protocole et l'UI doivent les exposer.
   L'ascenseur orbital (ADR 0004) n'est pas concerné, il est vertical.
