@@ -1397,3 +1397,85 @@ touche — accepté sciemment (voir ADR 0005).
 étape s'appuie sur la précédente, le pilote 28.6 s'appuie sur 28.5. Seul point d'arrêt possible
 autre que la fin : 28.0 négatif (TS7 incompatible), auquel cas la suite s'ajuste avant de
 continuer.
+
+## Chantier 31 — Univers volumétrique (3D) (30/08/2026)
+
+L'univers devient réellement tridimensionnel, dans l'interface **et** dans les mécaniques.
+Décision et alternatives écartées tracées dans l'ADR
+[0006](adr/0006-univers-volumetrique-deux-echelles.md). Deux échelles : le graphe de sauts
+survit **entre** systèmes, avec des arêtes pondérées par leur longueur 3D réelle ; **dans** un
+système, l'espace est continu et les corps orbitent dans le temps. Les positions orbitales sont
+dérivées du numéro de tick (`angle(t) = angle₀ + ω·t`), jamais persistées — sans quoi ~12 000
+corps saliraient le `WriteSet` à chaque tick, en contradiction avec l'ADR 0003. Le combat reste
+aspatial (`resolveBattle()` inchangé). Régénération de l'univers libre : aucun serveur officiel
+n'est lancé.
+
+**Échéance dure : avant le lancement du serveur officiel.** La régénération de l'univers et le
+recalibrage économique qu'entraîne le passage aux distances pondérées sont l'un et l'autre
+gratuits tant qu'aucun joueur n'existe, et irréalisables ensuite. C'est ce qui justifie de
+passer devant les chantiers 28 (Effect.ts), 29 (AdonisJS) et 30 (remplacement de
+`composeEngine`), déjà numérotés — même précédent qu'au chantier 27, on alloue le numéro
+suivant plutôt que de renuméroter.
+
+**Ordre de grandeur** : `MAX_GALAXIES = 200`, 7-13 systèmes par galaxie (14 pour la mère), 2-5
+planètes plus lunes et 0-2 ceintures par système — soit ~2 000 systèmes et ~12 000 corps à
+univers plein, mais seulement ~200 objets dans la vue univers, ~10 dans une vue galaxie et ~6
+dans une vue système. Le sujet de ce chantier est le design, pas le GPU.
+
+### Vague A — Modèle et génération
+
+- **31.1** — `z` sur `Galaxy` et `StarSystem` ; `inclination`, `ascendingNode` et vitesse
+  angulaire `ω` (dérivée du rayon) sur `Planet` et `AsteroidBelt`. Types et tests seulement, le
+  générateur ne bouge pas encore.
+- **31.2** — générateur volumétrique : la spirale d'angle d'or devient un disque galactique
+  épais (`z` gaussien atténué par le rayon, pas un cube uniforme — un univers plausible est
+  aplati) ; l'échantillonnage par rejet des systèmes passe en 3D, `minDist` devenant une
+  distance volumétrique.
+- **31.3** — bump de `GENERATOR_VERSION` et régénération de `universe.fixture.json` **dans le
+  même commit**, contrainte imposée par `universe.fixture.test.ts`.
+- **31.4** — migration Drizzle : colonnes `z` sur `universe_galaxies`/`universe_systems`,
+  `inclination`/`ascending_node` sur `universe_planets`/`universe_belts`, et les repositories
+  d'univers qui les lisent et les écrivent.
+
+### Vague B — Géométrie pure
+
+- **31.5** — `bodyPositionAt(body, tick)`, `systemPositionOf()`, `galaxyPositionOf()` : fonctions
+  pures et testées dans `packages/shared`, seul point de vérité géométrique, consommé aussi bien
+  par la simulation que par le rendu.
+- **31.6** — `jumpDistanceInUniverse()` passe du BFS au Dijkstra pondéré. Poids **normalisé de
+  sorte que l'arête moyenne vaille 1** : la valeur retournée reste à l'échelle du compte de
+  sauts actuel, ce qui garde 31.7 dans le registre du réglage plutôt que de la réécriture.
+
+### Vague C — Coûts et recalibrage
+
+- **31.7** — recalibrage des six services appelants (`contract`, `exploration`, `fleet`,
+  `gateway`, `industry`, `logistics`), mesuré avant/après avec le harnais de charge (27.7) et
+  l'instrumentation de durée de tick (27.5).
+- **31.8** — coût de transfert intra-système fonction de la position orbitale au tick de départ
+  (`LogisticsService`). Les ETA deviennent variables : le protocole et l'UI doivent les exposer.
+  L'ascenseur orbital (ADR 0004) n'est pas concerné, il est vertical.
+
+### Vague D — Rendu react-three-fiber
+
+- **31.9** — dépendance `react-three-fiber` dans `apps/web`, socle `<Canvas>`, caméra partagée,
+  pont vers les routes imbriquées existantes (`/map/galaxy/:id/system/:id/body/:id`).
+- **31.10** — vue univers : les galaxies matérialisées dans le disque, portails actifs.
+- **31.11** — vue galaxie : systèmes et arêtes de saut en volume, longueur d'arête enfin
+  lisible puisqu'elle porte désormais le coût.
+- **31.12** — vue système : orbites animées, corps positionnés par `bodyPositionAt`.
+- **31.13** — parité d'accessibilité avec 27.21 : un canvas est opaque aux lecteurs d'écran, il
+  faut une liste DOM parallèle **en plus** d'une caméra pilotable au clavier — le simple portage
+  des raccourcis de `ZoomableSvg` ne suffit pas.
+- **31.14** — perf et responsive mobile sous WebGL, pour tenir les acquis de 27.22.
+
+**Chemin critique** : `31.1 → 31.2 → 31.3 → 31.4 → 31.5`, puis deux branches indépendantes —
+`31.6 → 31.7` et `31.8` côté règles, `31.9 → {31.10, 31.11, 31.12} → {31.13, 31.14}` côté rendu.
+31.5 est le point de jonction : la géométrie pure sert les deux branches, et rien de sérieux ne
+démarre avant elle.
+
+### Vérification du chantier
+
+31.1-31.5 sont du code pur : couverts par des tests unitaires déterministes, comme le reste de
+`packages/shared`. 31.6-31.8 exigent une mesure avant/après explicite (harnais 27.7), pas
+seulement des tests verts — un recalibrage qui passe les tests peut rendre le jeu injouable.
+31.9-31.14 se vérifient au navigateur, e2e compris pour les trois niveaux de carte.
