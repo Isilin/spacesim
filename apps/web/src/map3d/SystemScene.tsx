@@ -7,11 +7,13 @@ import {
   type SystemSite,
 } from "@spacesim/shared";
 import { useFrame } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import type { Group } from "three";
+import { type Group, type InstancedMesh, Object3D } from "three";
+import { seedOf, siteColor } from "./appearance.js";
 import { MapCanvas } from "./MapCanvas.js";
 import { MapList } from "./MapList.js";
+import { ProceduralBody } from "./ProceduralBody.js";
 
 interface Props {
   system: StarSystem;
@@ -24,21 +26,6 @@ interface Props {
   onSelectBody: (planet: Planet) => void;
   onOpenBody: (planet: Planet) => void;
 }
-
-const PLANET_COLORS: Record<string, string> = {
-  telluric: "#7fb069",
-  oceanic: "#4f8fc1",
-  volcanic: "#c1574f",
-  frozen: "#a8c6dd",
-  arid: "#c1a05a",
-  gas: "#b08fc9",
-};
-
-const SITE_COLORS: Record<string, string> = {
-  wreck: "#e0b64f",
-  anomaly: "#b48fe0",
-  cache: "#56d364",
-};
 
 function radiusOf(planet: Planet): number {
   if (planet.kind === "moon") return 3;
@@ -79,15 +66,58 @@ function OrbitingBody({
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: objet de scène three.js, ni
           focusable ni clavier — le chemin accessible est la liste DOM parallèle
           (chantier 31.16). */}
-      <mesh onClick={onSelect} onDoubleClick={onOpen}>
-        <sphereGeometry args={[radiusOf(body), 24, 24]} />
-        <meshStandardMaterial
-          color={PLANET_COLORS[body.type] ?? "#888"}
-          emissive={selected ? "#4fc1ff" : "#000"}
-          emissiveIntensity={selected ? 0.6 : 0}
-          roughness={0.8}
+      <group onClick={onSelect} onDoubleClick={onOpen}>
+        <ProceduralBody
+          id={body.id}
+          type={body.type}
+          radius={radiusOf(body)}
+          selected={selected}
         />
-      </mesh>
+      </group>
+    </group>
+  );
+}
+
+/**
+ * Ceinture d'astéroïdes en rochers instanciés (chantier 31.19). Une seule géométrie
+ * dessinée `ASTEROIDS` fois : sans instanciation, une ceinture coûterait autant de
+ * commandes de dessin que de rochers.
+ */
+const ASTEROIDS = 90;
+
+function AsteroidBelt({ belt }: { belt: StarSystem["belts"][number] }) {
+  const ref = useRef<InstancedMesh>(null);
+  useEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const dummy = new Object3D();
+    for (let i = 0; i < ASTEROIDS; i++) {
+      const angle = (i / ASTEROIDS) * Math.PI * 2;
+      // Dispersion dérivée de l'id : deux ceintures ne se ressemblent pas.
+      const spread = (seedOf(`${belt.id}:${i}`) - 0.5) * 14;
+      const radius = belt.orbitRadius + spread;
+      dummy.position.set(
+        Math.cos(angle) * radius,
+        Math.sin(angle) * radius,
+        (seedOf(`${belt.id}:z${i}`) - 0.5) * 8,
+      );
+      const scale = 0.8 + seedOf(`${belt.id}:s${i}`) * 2.2;
+      dummy.scale.setScalar(scale);
+      dummy.rotation.set(angle, spread, i);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  }, [belt]);
+
+  return (
+    <group rotation={[belt.inclination, 0, belt.ascendingNode]}>
+      <instancedMesh ref={ref} args={[undefined, undefined, ASTEROIDS]}>
+        {/* Icosaèdre non subdivisé : anguleux comme un caillou, trois fois moins de
+            sommets qu'une sphère. */}
+        <icosahedronGeometry args={[1.6, 0]} />
+        <meshStandardMaterial color="#6b5a44" roughness={1} />
+      </instancedMesh>
     </group>
   );
 }
@@ -149,21 +179,23 @@ export function SystemScene({
           <sphereGeometry args={[16, 32, 32]} />
           <meshBasicMaterial color="#ffd27f" />
         </mesh>
+        {/* Couronne : deux coques translucides suffisent à donner à l'étoile sa
+            présence, sans post-traitement ni passe de bloom. */}
+        <mesh>
+          <sphereGeometry args={[22, 24, 24]} />
+          <meshBasicMaterial color="#ffb347" transparent opacity={0.22} />
+        </mesh>
+        <mesh>
+          <sphereGeometry args={[30, 24, 24]} />
+          <meshBasicMaterial color="#ff9640" transparent opacity={0.1} />
+        </mesh>
 
         {planets.map((planet) => (
           <OrbitRing key={`ring-${planet.id}`} body={planet} />
         ))}
 
         {system.belts.map((belt) => (
-          <mesh
-            key={belt.id}
-            rotation={[belt.inclination, 0, belt.ascendingNode]}
-          >
-            <ringGeometry
-              args={[belt.orbitRadius - 6, belt.orbitRadius + 6, 96]}
-            />
-            <meshBasicMaterial color="#4a3f30" transparent opacity={0.5} />
-          </mesh>
+          <AsteroidBelt key={belt.id} belt={belt} />
         ))}
 
         {system.planets.map((body) => (
@@ -184,7 +216,7 @@ export function SystemScene({
           return (
             <mesh key={site.id} position={[p.x, p.y, p.z]}>
               <octahedronGeometry args={[5]} />
-              <meshBasicMaterial color={SITE_COLORS[site.kind] ?? "#fff"} />
+              <meshBasicMaterial color={siteColor(site.kind)} />
             </mesh>
           );
         })}

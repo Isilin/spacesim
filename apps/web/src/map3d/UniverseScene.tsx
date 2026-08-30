@@ -9,6 +9,7 @@ import {
 } from "@spacesim/shared";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { seedOf } from "./appearance.js";
 import { MapCanvas } from "./MapCanvas.js";
 import { MapList } from "./MapList.js";
 
@@ -23,6 +24,49 @@ interface Props {
 
 /** Rayon du disque d'une galaxie dans la scène. */
 const DISC = 55;
+/** Étoiles figurées par galaxie. Assez pour lire une spirale, assez peu pour que les
+ *  200 galaxies d'un univers plein tiennent le budget d'images du chantier 31.17. */
+const STARS_PER_GALAXY = 160;
+
+/**
+ * Nuage d'étoiles d'une galaxie (chantier 31.19) : une spirale à deux bras, dérivée de
+ * l'identifiant de la galaxie. Aucun asset, aucune persistance — deux galaxies diffèrent
+ * parce que leurs ids diffèrent, comme partout ailleurs dans la génération.
+ */
+function GalaxyCloud({ id, color }: { id: string; color: string }) {
+  const positions = useMemo(() => {
+    const seed = seedOf(id);
+    const out = new Float32Array(STARS_PER_GALAXY * 3);
+    for (let i = 0; i < STARS_PER_GALAXY; i++) {
+      const t = i / STARS_PER_GALAXY;
+      // Deux bras, enroulés d'un tour et demi, plus une dispersion qui croît vers le bord.
+      const arm = i % 2 === 0 ? 0 : Math.PI;
+      const angle = t * Math.PI * 3 + arm + seed * 6.283;
+      const radius = DISC * (0.15 + t * 0.85);
+      const jitter = (seedOf(`${id}:${i}`) - 0.5) * DISC * 0.28 * t;
+      out[i * 3] = Math.cos(angle) * radius + jitter;
+      out[i * 3 + 1] = Math.sin(angle) * radius + jitter;
+      // Le disque s'aplatit vers l'extérieur : bulbe épais au centre.
+      out[i * 3 + 2] = (seedOf(`${id}:z${i}`) - 0.5) * DISC * 0.3 * (1 - t);
+    }
+    return out;
+  }, [id]);
+
+  return (
+    <points>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        color={color}
+        size={2.4}
+        sizeAttenuation
+        transparent
+        opacity={0.9}
+      />
+    </points>
+  );
+}
 
 /**
  * Repère de scène : le générateur pose les galaxies autour de
@@ -110,8 +154,22 @@ export function UniverseScene({
                 </bufferGeometry>
                 <lineBasicMaterial color="#2a3a4a" />
               </line>
-              {/* biome-ignore lint/a11y/useKeyWithClickEvents: `mesh` est un objet
-                  de scène three.js, pas un nœud DOM — il ne peut recevoir ni focus ni
+              <GalaxyCloud
+                id={galaxy.id}
+                color={
+                  selected
+                    ? "#9fdcff"
+                    : colonized
+                      ? "#8fe6a0"
+                      : activeGatewayIds.has(galaxy.id)
+                        ? "#cbb0ee"
+                        : "#7f95ad"
+                }
+              />
+              {/* Disque de saisie : quasi invisible, il porte le clic là où le nuage
+                  de points serait trop épars pour être visé. */}
+              {/* biome-ignore lint/a11y/useKeyWithClickEvents: `mesh` est un objet de
+                  scène three.js, pas un nœud DOM — il ne peut recevoir ni focus ni
                   événement clavier. Le chemin accessible est la liste DOM parallèle
                   rendue à côté (chantier 31.16), qui porte les mêmes actions. */}
               <mesh
@@ -130,7 +188,7 @@ export function UniverseScene({
                           : "#2f3d4d"
                   }
                   transparent
-                  opacity={selected ? 0.95 : 0.65}
+                  opacity={selected ? 0.28 : 0.12}
                 />
               </mesh>
             </group>
