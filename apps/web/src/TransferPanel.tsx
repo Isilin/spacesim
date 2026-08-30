@@ -4,16 +4,20 @@ import {
   convoyDurationMs,
   convoyFees,
   convoyFuel,
-  findGalaxyOfSystem,
+  hostileSystemIds,
   idleShips,
-  travelCostInUniverse,
   maxConvoyCapacity,
+  routeCandidates,
+  universeGraph,
   SHIP_IDS,
   type Colony,
   type ResourceId,
+  type Relation,
   type Route,
   type ShipId,
+  type Territory,
   type Transfer,
+  type TravelRoute,
   type Universe,
 } from "@spacesim/shared";
 import { useState } from "react";
@@ -32,6 +36,12 @@ interface Props {
   routes: Route[];
   /** Liaisons des portails actifs (distances inter-galactiques). */
   portalLinks: [string, string][];
+  /** Systèmes revendiqués visibles — sert à repérer l'espace hostile (chantier 31.10). */
+  territories: Territory[];
+  /** Relations de l'empire — seule la guerre rend un territoire évitable. */
+  relations: Relation[];
+  /** Empire du joueur, pour savoir avec qui il est en guerre. */
+  empireId: string;
   now: number;
   send: (msg: ClientMessage) => void;
 }
@@ -52,6 +62,9 @@ export function TransferPanel({
   transferSpeedMult,
   routes,
   portalLinks,
+  territories,
+  relations,
+  empireId,
   now,
   send,
 }: Props) {
@@ -64,17 +77,7 @@ export function TransferPanel({
   const [shipCounts, setShipCounts] = useState<Partial<Record<ShipId, string>>>(
     {},
   );
-
-  /**
-   * Portails empruntés : tous partent de l'ancrage de la galaxie d'origine, donc
-   * rejoindre une galaxie lointaine en traverse un, en relier deux en traverse deux.
-   */
-  const portalsBetween = (fromSystemId: string, toSystemId: string): number => {
-    const a = findGalaxyOfSystem(universe, fromSystemId)?.id;
-    const b = findGalaxyOfSystem(universe, toSystemId)?.id;
-    if (!a || !b || a === b) return 0;
-    return a === "gal-0" || b === "gal-0" ? 1 : 2;
-  };
+  const [routeKind, setRouteKind] = useState("");
 
   const related = transfers.filter(
     (t) => t.fromColonyId === colony.id || t.toId === colony.id,
@@ -86,10 +89,23 @@ export function TransferPanel({
   const toSystem = destination
     ? systemIdOf(universe, destination.planetId)
     : undefined;
-  const jumps =
+  /**
+   * Itinéraires proposés (chantier 31.10). Calculés ici plutôt que demandés au serveur :
+   * le client dispose déjà de l'univers et des mêmes fonctions de coût, et le serveur
+   * revalide de toute façon le chemin reçu — il n'y a donc rien à gagner à un
+   * aller-retour réseau. Une seule option = pas de choix affiché, pas de faux choix.
+   */
+  const candidates: TravelRoute[] =
     fromSystem && toSystem
-      ? travelCostInUniverse(universe, fromSystem, toSystem, portalLinks)
-      : -1;
+      ? routeCandidates(
+          universeGraph(universe, portalLinks),
+          fromSystem,
+          toSystem,
+          hostileSystemIds(territories, relations, empireId),
+        )
+      : [];
+  const chosen = candidates.find((c) => c.kind === routeKind) ?? candidates[0];
+  const jumps = chosen ? chosen.cost : -1;
 
   const cargo: Partial<Record<ResourceId, number>> = {};
   for (const res of CARGO_RESOURCES) {
@@ -113,10 +129,10 @@ export function TransferPanel({
   const overCapacity = totalCargo > capacity;
 
   // Devis du voyage : durée du plus lent, carburant pris en orbite, frais et péages.
-  const portals =
-    jumps > 0 && fromSystem && toSystem
-      ? portalsBetween(fromSystem, toSystem)
-      : 0;
+  // Portails réellement empruntés par l'itinéraire retenu, et non plus déduits des
+  // galaxies d'extrémité : deux itinéraires vers la même destination peuvent en
+  // traverser un nombre différent, c'est tout l'intérêt du choix.
+  const portals = chosen ? chosen.gates : 0;
   const eta =
     jumps >= 0 ? convoyDurationMs(jumps, convoy) * transferSpeedMult : 0;
   const fuel =
@@ -167,6 +183,22 @@ export function TransferPanel({
             onChange={(e) => setDestinationId(e.target.value)}
             options={others.map((c) => ({ value: c.id, label: c.name }))}
           />
+          {/* Un seul itinéraire possible : pas de sélecteur, ce serait un faux choix. */}
+          {candidates.length > 1 && (
+            <Select
+              label={t("transferPanel.route")}
+              value={chosen?.kind ?? ""}
+              onChange={(e) => setRouteKind(e.target.value)}
+              options={candidates.map((c) => ({
+                value: c.kind,
+                label: t("transferPanel.routeOption", {
+                  kind: t(`transferPanel.routeKind.${c.kind}`),
+                  jumps: c.cost.toFixed(1),
+                  gates: c.gates,
+                }),
+              }))}
+            />
+          )}
           {/* La cargaison part de l'orbite : c'est ce stock-là qui borne la saisie. */}
           {CARGO_RESOURCES.map((res) => (
             <NumberInput
@@ -254,6 +286,7 @@ export function TransferPanel({
                 toId: destination.id,
                 resources: cargo,
                 ...(hasConvoy ? { ships: convoy } : {}),
+                ...(chosen ? { route: chosen.path } : {}),
               });
               setAmounts({});
               setShipCounts({});

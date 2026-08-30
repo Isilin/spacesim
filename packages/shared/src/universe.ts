@@ -340,6 +340,16 @@ function generateBodies(
  * Tirage gaussien centré réduit (Box-Muller), borné à ±3σ pour éviter les valeurs
  * aberrantes. Consomme deux valeurs du flux RNG.
  */
+/**
+ * Arrondi normalisant le zéro négatif. `Math.round(-0.3)` vaut `-0` en JavaScript ;
+ * persisté puis relu, il revient en `0`, et l'égalité stricte des tests de round-trip
+ * distingue les deux. Un `z` légèrement négatif suffisait donc à faire échouer le
+ * rechargement d'univers de façon intermittente.
+ */
+function roundCoord(value: number): number {
+  return Math.round(value) || 0;
+}
+
 function gaussian(rng: Rng): number {
   const u = Math.max(1e-9, rng());
   const v = rng();
@@ -368,9 +378,9 @@ function generatePositions(
     );
     if (!tooClose)
       positions.push({
-        x: Math.round(x),
-        y: Math.round(y),
-        z: Math.round(z),
+        x: roundCoord(x),
+        y: roundCoord(y),
+        z: roundCoord(z),
       });
   }
   return positions;
@@ -467,7 +477,7 @@ export function galaxyDefAt(seed: string, index: number): GalaxyDef {
     name: seriesName(nameOffset, index),
     x: Math.round(UNIVERSE_CENTER_X + Math.cos(angle) * radius),
     y: Math.round(UNIVERSE_CENTER_Y + Math.sin(angle) * radius),
-    z: Math.round(gaussian(createRng(`${seed}:galaxy-z:${index}`)) * thickness),
+    z: roundCoord(gaussian(createRng(`${seed}:galaxy-z:${index}`)) * thickness),
     systems:
       index === 0
         ? HOME_GALAXY_SYSTEMS

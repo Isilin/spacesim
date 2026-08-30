@@ -442,6 +442,7 @@ export {
   priceOf,
   routeCandidates,
   planTravel,
+  hostileSystemIds,
   type Arc,
   type Graph,
   type RouteKind,

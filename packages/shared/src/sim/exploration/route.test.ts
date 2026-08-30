@@ -3,6 +3,7 @@ import { GATEWAY_JUMP_WEIGHT, JUMP_REFERENCE_LENGTH } from "../../constants.js";
 import type { Galaxy, Universe } from "../../model/universe.js";
 import {
   galaxyGraph,
+  hostileSystemIds,
   planTravel,
   priceOf,
   routeCandidates,
@@ -222,5 +223,44 @@ describe("planTravel", () => {
       ok: false,
       reason: "unreachable",
     });
+  });
+});
+
+describe("hostileSystemIds", () => {
+  const territories = [
+    { systemId: "s1", ownerId: "ennemi" },
+    { systemId: "s2", ownerId: "ami" },
+    { systemId: "s3", ownerId: "neutre" },
+  ];
+
+  it("ne retient que les territoires des empires en guerre", () => {
+    const hostile = hostileSystemIds(
+      territories,
+      [
+        { empireA: "moi", empireB: "ennemi", state: "war" },
+        { empireA: "moi", empireB: "ami", state: "alliance" },
+      ],
+      "moi",
+    );
+    expect([...hostile]).toEqual(["s1"]);
+  });
+
+  it("un pacte de non-agression ne rend pas un territoire évitable", () => {
+    // Sinon le contournement deviendrait le défaut partout dès la première trêve.
+    const hostile = hostileSystemIds(
+      territories,
+      [{ empireA: "moi", empireB: "neutre", state: "nap" }],
+      "moi",
+    );
+    expect(hostile.size).toBe(0);
+  });
+
+  it("ignore les guerres entre tiers", () => {
+    const hostile = hostileSystemIds(
+      territories,
+      [{ empireA: "ami", empireB: "ennemi", state: "war" }],
+      "moi",
+    );
+    expect(hostile.size).toBe(0);
   });
 });

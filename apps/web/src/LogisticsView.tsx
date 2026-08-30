@@ -48,6 +48,8 @@ export function LogisticsView({ effects, portalLinks, now }: Props) {
     foreignStations,
     leaderboard,
     playerId,
+    territories,
+    relations,
     send,
   } = useGameStore();
   const [tab, setTab] = useState<Tab>("routes");
@@ -85,6 +87,9 @@ export function LogisticsView({ effects, portalLinks, now }: Props) {
             transferSpeedMult={effects.transferSpeedMult}
             routes={routes}
             portalLinks={portalLinks}
+            territories={territories}
+            relations={relations}
+            empireId={playerId ?? ""}
             now={now}
             send={send}
           />

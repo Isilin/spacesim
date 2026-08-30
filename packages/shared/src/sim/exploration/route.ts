@@ -291,3 +291,28 @@ export function planTravel(
   if (!path || !priced) return { ok: false, reason: "unreachable" };
   return { ok: true, ...priced, path };
 }
+
+/**
+ * Systèmes tenus par un empire avec lequel on est en guerre (chantier 31.10).
+ *
+ * Alimente le critère « le plus sûr » de `routeCandidates`. Volontairement limité à
+ * l'état `war` : un empire neutre ou sous pacte de non-agression n'a pas à rendre son
+ * territoire évitable, sans quoi le contournement deviendrait le défaut partout.
+ */
+export function hostileSystemIds(
+  territories: readonly { systemId: string; ownerId: string }[],
+  relations: readonly { empireA: string; empireB: string; state: string }[],
+  selfEmpireId: string,
+): Set<string> {
+  const enemies = new Set<string>();
+  for (const relation of relations) {
+    if (relation.state !== "war") continue;
+    if (relation.empireA === selfEmpireId) enemies.add(relation.empireB);
+    else if (relation.empireB === selfEmpireId) enemies.add(relation.empireA);
+  }
+  const systems = new Set<string>();
+  for (const territory of territories) {
+    if (enemies.has(territory.ownerId)) systems.add(territory.systemId);
+  }
+  return systems;
+}

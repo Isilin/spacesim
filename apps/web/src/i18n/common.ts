@@ -409,6 +409,13 @@ export const commonFr = {
   },
   transferPanel: {
     title: "Convois",
+    route: "Itinéraire",
+    routeOption: "{{kind}} — {{jumps}} sauts · {{gates}} portail(s)",
+    routeKind: {
+      cheapest: "Le moins cher",
+      fewestGates: "Le moins de portails",
+      safest: "Le plus sûr",
+    },
     resourceOrbit: "{{resource}} (orbite : {{amount}})",
     noSecondColony: "Fondez une seconde colonie pour envoyer des convois.",
     destination: "Destination",
@@ -954,6 +961,13 @@ export const commonEn: typeof commonFr = {
   },
   transferPanel: {
     title: "Convoys",
+    route: "Route",
+    routeOption: "{{kind}} — {{jumps}} jumps · {{gates}} gate(s)",
+    routeKind: {
+      cheapest: "Cheapest",
+      fewestGates: "Fewest gates",
+      safest: "Safest",
+    },
     resourceOrbit: "{{resource}} (orbit: {{amount}})",
     noSecondColony: "Found a second colony to send convoys.",
     destination: "Destination",
