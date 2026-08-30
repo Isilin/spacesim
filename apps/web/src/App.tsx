@@ -14,6 +14,7 @@ import {
   type Planet,
   type StarSystem,
   type Station,
+  type SystemSite,
   type TechId,
   type Territory,
   type Universe,
@@ -32,7 +33,7 @@ import {
 import { BodyView } from "./BodyView.js";
 import { ColonyView } from "./ColonyView.js";
 import { EmpireView } from "./EmpireView.js";
-import { GalaxyMap } from "./GalaxyMap.js";
+import { GalaxyScene } from "./map3d/GalaxyScene.js";
 import { FleetsView } from "./FleetsView.js";
 import { ShipDesigner } from "./ShipDesigner.js";
 import { GatewaysPanel } from "./GatewaysPanel.js";
@@ -42,7 +43,7 @@ import { ResearchView } from "./ResearchView.js";
 import { LogisticsView } from "./LogisticsView.js";
 import { StationsView } from "./StationsView.js";
 import { SystemPanel } from "./SystemPanel.js";
-import { SystemView } from "./SystemView.js";
+import { SystemScene } from "./map3d/SystemScene.js";
 import { UniverseScene } from "./map3d/UniverseScene.js";
 import { useGameConnection } from "./hooks/useGameConnection.js";
 import { useGameStore } from "./state/game-store.js";
@@ -73,6 +74,8 @@ interface MapPageProps {
   foreignStations: ForeignStation[];
   missions: Mission[];
   exploredSystemIds: string[];
+  /** Sites révélés par les scans (chantier 31.11), rendus dans la vue système. */
+  sites: SystemSite[];
   gateways: Gateway[];
   contracts: Contract[];
   territories: Territory[];
@@ -96,6 +99,7 @@ function MapPage({
   foreignStations,
   missions,
   exploredSystemIds,
+  sites,
   gateways,
   contracts,
   territories,
@@ -236,12 +240,11 @@ function MapPage({
             onOpenGalaxy={(g) => openGalaxy(g.id)}
           />
         ) : level === "galaxy" && viewGalaxy ? (
-          <GalaxyMap
+          <GalaxyScene
             galaxy={viewGalaxy}
             colonies={colonies}
             stations={stations}
             foreignStations={foreignStations}
-            missions={missions}
             exploredSystemIds={exploredSystemIds}
             claimedSystemIds={game.claimedSystemIds}
             territories={territories}
@@ -260,8 +263,11 @@ function MapPage({
             onOpenBody={openBody}
           />
         ) : viewSystem ? (
-          <SystemView
+          <SystemScene
             system={viewSystem}
+            sites={sites.filter((site) => site.systemId === viewSystem.id)}
+            tick={game.tick}
+            lastTickAt={game.lastTickAt}
             selectedBodyId={focus}
             onSelectBody={(body) => setFocus(body.id)}
             onOpenBody={openBody}
@@ -311,6 +317,7 @@ export function App({ auth }: Props) {
     transfers,
     missions,
     exploredSystemIds,
+    sites,
     gateways,
     contracts,
     factionStates,
@@ -563,6 +570,7 @@ export function App({ auth }: Props) {
                 foreignStations={foreignStations}
                 missions={missions}
                 exploredSystemIds={exploredSystemIds}
+                sites={sites}
                 gateways={gateways}
                 contracts={contracts}
                 territories={territories}

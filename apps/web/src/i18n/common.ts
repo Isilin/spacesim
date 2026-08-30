@@ -41,6 +41,9 @@ export const commonFr = {
   },
   galaxyMap: {
     ariaLabel: "Galaxie {{name}}",
+    colonized: "colonisé",
+    explored: "exploré",
+    unexplored: "inexploré",
   },
   app: {
     universe: "Univers",
@@ -235,6 +238,8 @@ export const commonFr = {
   systemView: {
     ariaLabel: "Système {{name}}",
     notExplored: "Système non exploré — envoyez une sonde.",
+    moon: "lune",
+    habitability: "habitabilité {{value}}",
   },
   stationMarketPanel: {
     access: "Accès : {{access}}",
@@ -775,6 +780,9 @@ export const commonEn: typeof commonFr = {
   },
   galaxyMap: {
     ariaLabel: "Galaxy {{name}}",
+    colonized: "colonized",
+    explored: "explored",
+    unexplored: "unexplored",
   },
   useAuth: {
     unreadableResponse: "Unreadable server response",
@@ -800,6 +808,8 @@ export const commonEn: typeof commonFr = {
   systemView: {
     ariaLabel: "System {{name}}",
     notExplored: "System not explored — send a probe.",
+    moon: "moon",
+    habitability: "habitability {{value}}",
   },
   stationMarketPanel: {
     access: "Access: {{access}}",
