@@ -1652,3 +1652,22 @@
     max-height: 180px;
   }
 }
+
+/* Texte réservé aux lecteurs d'écran : retiré du flux visuel sans `display: none`,
+   qui le retirerait aussi de l'arbre d'accessibilité. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.map-canvas:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}

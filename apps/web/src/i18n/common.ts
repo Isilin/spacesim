@@ -320,6 +320,10 @@ export const commonFr = {
     missionOrigin:
       "Origine des missions : {{name}}. Vaisseau colonial : {{cost}}.",
   },
+  mapCanvas: {
+    keyboardHint:
+      "Vue 3D : flèches pour se déplacer, plus et moins pour zoomer, zéro pour recadrer. La liste à côté donne accès aux mêmes objets.",
+  },
   universeMap: {
     ariaLabel: "Carte de l'univers",
     colonized: "colonisée",
@@ -888,6 +892,10 @@ export const commonEn: typeof commonFr = {
     outpostCost: "Cost: {{cost}}",
     buildOutpost: "Build an outpost",
     missionOrigin: "Mission origin: {{name}}. Colony ship: {{cost}}.",
+  },
+  mapCanvas: {
+    keyboardHint:
+      "3D view: arrow keys to move, plus and minus to zoom, zero to recentre. The list alongside reaches the same objects.",
   },
   universeMap: {
     ariaLabel: "Map of the universe",
