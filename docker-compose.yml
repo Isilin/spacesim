@@ -53,6 +53,9 @@ services:
               pnpm --filter @spacesim/admin dev --host 0.0.0.0)"
     environment:
       DATABASE_URL: postgres://spacesim:spacesim@postgres:5432/spacesim
+      # Le serveur bind 127.0.0.1 par défaut (posture prod) ; en conteneur cela rend
+      # le port publié 3001 inatteignable depuis la machine hôte.
+      HOST: "0.0.0.0"
       # Bind mount hôte Windows → conteneur Linux : les événements fs natifs ne
       # remontent pas de façon fiable (Docker Desktop/WSL2). tsx watch et Vite
       # utilisent chokidar en interne, qui lit ces deux variables pour basculer

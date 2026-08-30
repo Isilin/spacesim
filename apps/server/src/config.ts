@@ -9,6 +9,8 @@ import { z } from "zod";
  */
 const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
+  /** Interface de bind : loopback par défaut, "0.0.0.0" en conteneur (docker-compose). */
+  HOST: z.string().min(1).default("127.0.0.1"),
   DATABASE_URL: z.string().min(1).optional(),
   SPACESIM_DB: z.string().min(1).optional(),
   NODE_ENV: z
@@ -42,6 +44,7 @@ const env = parseEnv();
 
 export const config = {
   port: env.PORT,
+  host: env.HOST,
   /** URL/chemin de connexion DB : `DATABASE_URL` (postgres://…) sinon `SPACESIM_DB` (chemin SQLite / ":memory:") sinon fichier par défaut. */
   databaseUrl: env.DATABASE_URL ?? env.SPACESIM_DB ?? "./spacesim-pgdata",
   nodeEnv: env.NODE_ENV,

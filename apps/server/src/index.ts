@@ -28,7 +28,7 @@ await purgeExpiredSessions();
 
 const app = await buildApp(engine);
 
-await app.listen({ port: config.port, host: "127.0.0.1" });
+await app.listen({ port: config.port, host: config.host });
 console.log(
-  `[server] http://127.0.0.1:${config.port} — partie ${engine.game.id} (seed ${engine.game.seed}), tick ${engine.game.tick}`,
+  `[server] http://${config.host}:${config.port} — partie ${engine.game.id} (seed ${engine.game.seed}), tick ${engine.game.tick}`,
 );
