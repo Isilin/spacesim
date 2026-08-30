@@ -184,3 +184,20 @@ export const STATION_SHIP_COST = {
 } as const;
 export const STATION_SHIP_BASE_MS = 60_000;
 export const STATION_SHIP_MS_PER_JUMP = 90_000;
+
+/**
+ * Pénalité de recherche appliquée à un portail quand le joueur demande l'itinéraire
+ * qui en emprunte le moins (chantier 31.10). Grande devant un trajet ordinaire (~3
+ * équivalents-sauts) pour dominer le critère, mais finie : si la seule route passe par
+ * un portail, elle reste trouvée. N'entre JAMAIS dans le prix affiché — le chemin est
+ * retarifé au coût réel.
+ */
+export const GATE_AVOIDANCE_PENALTY = 1000;
+
+/**
+ * Pénalité de recherche par système hostile traversé, pour l'itinéraire « le plus sûr »
+ * (chantier 31.10). Du même ordre qu'un trajet moyen : contourner vaut la peine, mais
+ * traverser reste possible quand le détour coûterait plus cher que le risque. Comme
+ * ci-dessus, jamais facturée au joueur.
+ */
+export const HOSTILE_SYSTEM_PENALTY = 3;

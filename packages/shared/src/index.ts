@@ -75,6 +75,11 @@ export {
   UNIVERSE_CENTER_X,
   UNIVERSE_CENTER_Y,
   GALAXY_SPACING,
+  JUMP_REFERENCE_LENGTH,
+  GATEWAY_JUMP_WEIGHT,
+  GATE_AVOIDANCE_PENALTY,
+  HOSTILE_SYSTEM_PENALTY,
+  INTRA_SYSTEM_REFERENCE_LENGTH,
   INITIAL_GALAXIES,
   FRONTIER_GALAXIES,
   MAX_EMPIRES_PER_GALAXY,
@@ -430,6 +435,17 @@ export {
   type ConvoyShips,
   type ConvoyStat,
 } from "./sim/exploration/travel.js";
+export {
+  galaxyGraph,
+  universeGraph,
+  shortestPath,
+  priceOf,
+  routeCandidates,
+  type Arc,
+  type Graph,
+  type RouteKind,
+  type TravelRoute,
+} from "./sim/exploration/route.js";
 export {
   angularSpeedOf,
   bodyPositionAt,

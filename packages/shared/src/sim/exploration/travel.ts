@@ -1,13 +1,10 @@
 import { DEFAULT_BALANCE, type BalanceConstants } from "../../balance.js";
-import {
-  GATEWAY_JUMP_WEIGHT,
-  INTRA_SYSTEM_REFERENCE_LENGTH,
-  JUMP_REFERENCE_LENGTH,
-} from "../../constants.js";
+import { INTRA_SYSTEM_REFERENCE_LENGTH } from "../../constants.js";
 import { SHIPS, type ShipDef } from "../../content/ships.js";
 import type { Galaxy, StarSystem, Universe } from "../../model/universe.js";
 import { findGalaxyOfSystem } from "../../universe.js";
 import { bodyPositionAt, distance3 } from "./geometry.js";
+import { galaxyGraph, priceOf, shortestPath, universeGraph } from "./route.js";
 
 /**
  * Coût de trajet (chantier 31.6). Ce n'est plus un compte de sauts : chaque arête pèse
@@ -18,97 +15,6 @@ import { bodyPositionAt, distance3 } from "./geometry.js";
  *
  * Voir [ADR 0006](../../../../../docs/adr/0006-univers-volumetrique-deux-echelles.md).
  */
-type Arc = { readonly to: string; readonly weight: number };
-type Graph = Map<string, Arc[]>;
-
-function addArc(graph: Graph, a: string, b: string, weight: number): void {
-  graph.set(a, [...(graph.get(a) ?? []), { to: b, weight }]);
-  graph.set(b, [...(graph.get(b) ?? []), { to: a, weight }]);
-}
-
-/**
- * Tas binaire minimal — Dijkstra sur ~2 000 systèmes tournerait en O(V²) avec un balayage
- * linéaire, soit 4 M d'opérations à chaque commande de déplacement.
- */
-class MinHeap {
-  private readonly items: { cost: number; id: string }[] = [];
-
-  get size(): number {
-    return this.items.length;
-  }
-
-  push(cost: number, id: string): void {
-    this.items.push({ cost, id });
-    let i = this.items.length - 1;
-    while (i > 0) {
-      const parent = (i - 1) >> 1;
-      if (this.items[parent]!.cost <= this.items[i]!.cost) break;
-      [this.items[parent], this.items[i]] = [
-        this.items[i]!,
-        this.items[parent]!,
-      ];
-      i = parent;
-    }
-  }
-
-  pop(): { cost: number; id: string } | undefined {
-    const top = this.items[0];
-    const last = this.items.pop();
-    if (this.items.length > 0 && last) {
-      this.items[0] = last;
-      let i = 0;
-      for (;;) {
-        const left = 2 * i + 1;
-        const right = left + 1;
-        let smallest = i;
-        if (
-          left < this.items.length &&
-          this.items[left]!.cost < this.items[smallest]!.cost
-        )
-          smallest = left;
-        if (
-          right < this.items.length &&
-          this.items[right]!.cost < this.items[smallest]!.cost
-        )
-          smallest = right;
-        if (smallest === i) break;
-        [this.items[smallest], this.items[i]] = [
-          this.items[i]!,
-          this.items[smallest]!,
-        ];
-        i = smallest;
-      }
-    }
-    return top;
-  }
-}
-
-/** Dijkstra : coût du plus court chemin, -1 si la cible est inaccessible. */
-function shortestCost(graph: Graph, from: string, to: string): number {
-  if (from === to) return 0;
-  const best = new Map<string, number>([[from, 0]]);
-  const heap = new MinHeap();
-  heap.push(0, from);
-  const settled = new Set<string>();
-
-  while (heap.size > 0) {
-    const current = heap.pop()!;
-    if (settled.has(current.id)) continue;
-    settled.add(current.id);
-    if (current.id === to) return current.cost;
-
-    for (const arc of graph.get(current.id) ?? []) {
-      if (settled.has(arc.to)) continue;
-      const candidate = current.cost + arc.weight;
-      if (candidate < (best.get(arc.to) ?? Number.POSITIVE_INFINITY)) {
-        best.set(arc.to, candidate);
-        heap.push(candidate, arc.to);
-      }
-    }
-  }
-  return -1;
-}
-
 /** Coût de trajet entre deux systèmes d'une même galaxie, -1 si inaccessible. */
 export function travelCostInGalaxy(
   galaxy: Galaxy,
@@ -116,25 +22,19 @@ export function travelCostInGalaxy(
   toSystemId: string,
 ): number {
   if (fromSystemId === toSystemId) return 0;
-  const byId = new Map(galaxy.systems.map((s) => [s.id, s]));
-  const graph: Graph = new Map();
-  for (const [a, b] of galaxy.links) {
-    const sa = byId.get(a);
-    const sb = byId.get(b);
-    if (sa && sb)
-      addArc(graph, a, b, distance3(sa, sb) / JUMP_REFERENCE_LENGTH);
-  }
-  return shortestCost(graph, fromSystemId, toSystemId);
+  const graph = galaxyGraph(galaxy);
+  const path = shortestPath(graph, fromSystemId, toSystemId);
+  const priced = path && priceOf(graph, path);
+  return priced ? priced.cost : -1;
 }
 
 /**
  * Coût de trajet dans l'univers. `extraLinks` = liaisons de portail actives
  * (sim/gateways) ; sans elles, les galaxies restent isolées (-1 entre galaxies).
  *
- * Les portails reçoivent un poids **forfaitaire** (`GATEWAY_JUMP_WEIGHT`) et non leur
- * longueur réelle : un trou de ver inter-galactique mesure des centaines de milliers
- * d'unités, l'utiliser tel quel rendrait toute galaxie voisine inatteignable. Le prix du
- * passage est porté par `gatewayTollCredits`, pas par la distance.
+ * Retourne le coût du chemin le moins cher. Pour proposer un CHOIX au joueur (éviter
+ * les portails, contourner un territoire hostile), voir `routeCandidates` — le solveur
+ * ne doit pas trancher seul, sans quoi la géométrie ne produit aucune décision.
  */
 export function travelCostInUniverse(
   universe: Universe,
@@ -149,22 +49,10 @@ export function travelCostInUniverse(
   if (from.id === to.id && extraLinks.length === 0) {
     return travelCostInGalaxy(from, fromSystemId, toSystemId);
   }
-
-  const byId = new Map(
-    universe.galaxies.flatMap((g) => g.systems.map((s) => [s.id, s] as const)),
-  );
-  const graph: Graph = new Map();
-  for (const galaxy of universe.galaxies) {
-    for (const [a, b] of galaxy.links) {
-      const sa = byId.get(a);
-      const sb = byId.get(b);
-      if (sa && sb)
-        addArc(graph, a, b, distance3(sa, sb) / JUMP_REFERENCE_LENGTH);
-    }
-  }
-  for (const [a, b] of extraLinks) addArc(graph, a, b, GATEWAY_JUMP_WEIGHT);
-
-  return shortestCost(graph, fromSystemId, toSystemId);
+  const graph = universeGraph(universe, extraLinks);
+  const path = shortestPath(graph, fromSystemId, toSystemId);
+  const priced = path && priceOf(graph, path);
+  return priced ? priced.cost : -1;
 }
 
 /**
