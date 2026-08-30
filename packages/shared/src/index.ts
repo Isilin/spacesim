@@ -436,6 +436,14 @@ export {
   type ConvoyStat,
 } from "./sim/exploration/travel.js";
 export {
+  SITE_KINDS,
+  sitesOfSystem,
+  sitePosition,
+  sitesReward,
+  type SiteKind,
+  type SystemSite,
+} from "./sim/exploration/sites.js";
+export {
   galaxyGraph,
   universeGraph,
   shortestPath,
@@ -454,6 +462,8 @@ export {
   bodyPositionAt,
   distance3,
   orbitalPeriodTicks,
+  orbitPosition,
+  type OrbitalElements,
   type Vec3,
 } from "./sim/exploration/geometry.js";
 export {

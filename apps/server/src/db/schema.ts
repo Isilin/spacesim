@@ -264,6 +264,8 @@ export const players = pgTable("players", {
   factionRep: text("faction_rep").notNull().default("{}"),
   /** JSON : ids des systèmes explorés (brouillard propre au joueur). */
   explored: text("explored").notNull().default("[]"),
+  /** Systèmes scannés (chantier 31.11), même forme que `explored`. */
+  scanned: text("scanned").notNull().default("[]"),
 });
 
 /**

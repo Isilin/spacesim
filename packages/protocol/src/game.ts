@@ -57,6 +57,12 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     systemId: idSchema,
   }),
   z.object({
+    /** Scan intra-système (chantier 31.11) : révèle épaves, anomalies et caches. */
+    type: z.literal("scanSystem"),
+    colonyId: idSchema,
+    systemId: idSchema,
+  }),
+  z.object({
     type: z.literal("colonize"),
     colonyId: idSchema,
     planetId: idSchema,

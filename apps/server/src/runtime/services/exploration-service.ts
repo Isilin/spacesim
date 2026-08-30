@@ -32,6 +32,10 @@ import { stageGalaxies, withParentIndexes } from "../universe-store.js";
  * injecté depuis Logistics plutôt que d'y référer directement, à l'identique du
  * patron déjà utilisé par les autres services.
  */
+/** Un scan coûte et dure plus qu'une sonde : il ratisse le volume, pas les orbites. */
+const SCAN_COST_MULT = 2.5;
+const SCAN_DURATION_MULT = 1.5;
+
 export class ExplorationService {
   private readonly claimRepo: ClaimRepository;
   private readonly playerRepo: PlayerRepository;
@@ -111,6 +115,68 @@ export class ExplorationService {
       colonyId,
       systemId,
       probeDurationMs(jumps, balance) * empire.effects.probeSpeedMult,
+    );
+    this.notify();
+    return null;
+  }
+
+  /**
+   * Action joueur : scanner un système déjà exploré (chantier 31.11). Révèle les
+   * épaves, anomalies et caches qui dérivent au-delà des orbites connues, et en remet
+   * le butin une fois.
+   *
+   * Exiger que le système soit déjà exploré est délibéré : la sonde catalogue les
+   * corps, le scan fouille le vide entre eux. Deux gestes distincts, deux coûts.
+   */
+  scanSystem(
+    empire: Empire,
+    colonyId: string,
+    systemId: string,
+  ): string | null {
+    const colony = empire.colonyMap.get(colonyId);
+    if (!colony) return "Colonie inconnue";
+    if (!empire.explored.has(systemId)) return "Système non exploré";
+    if (empire.scanned.has(systemId)) return "Système déjà scanné";
+    if (
+      [...empire.missionMap.values()].some(
+        (m) => m.kind === "scan" && m.targetId === systemId,
+      )
+    ) {
+      return "Scan déjà en route";
+    }
+    const fromPlanet = this.runtime.planetsById.get(colony.planetId);
+    if (!fromPlanet) return "Planète inconnue";
+
+    const balance = this.balance;
+    // Un scan fouille plus large qu'une sonde : le tarif suit.
+    const cost = Math.round(
+      balance.probeCostCredits * SCAN_COST_MULT * empire.effects.probeCostMult,
+    );
+    if (colony.resources.credits < cost)
+      return `Crédits insuffisants (coût : ${cost})`;
+
+    const jumps = travelCostInUniverse(
+      this.runtime.universe,
+      fromPlanet.systemId,
+      systemId,
+      this.portalLinks,
+    );
+    if (jumps < 0) return "Système inaccessible";
+
+    const resources = {
+      ...colony.resources,
+      credits: colony.resources.credits - cost,
+    };
+    empire.colonyMap.set(colony.id, { ...colony, resources });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
+    this.insertMission(
+      empire,
+      "scan",
+      colonyId,
+      systemId,
+      probeDurationMs(jumps, balance) *
+        SCAN_DURATION_MULT *
+        empire.effects.probeSpeedMult,
     );
     this.notify();
     return null;
@@ -360,6 +426,14 @@ export class ExplorationService {
   markExplored(empire: Empire, systemId: string): void {
     if (empire.explored.has(systemId)) return;
     empire.explored.add(systemId);
+    empire.explorationDirty = true;
+    this.playerRepo.saveExplored(empire);
+  }
+
+  /** Jumeau de `markExplored` pour les scans (chantier 31.11). */
+  markScanned(empire: Empire, systemId: string): void {
+    if (empire.scanned.has(systemId)) return;
+    empire.scanned.add(systemId);
     empire.explorationDirty = true;
     this.playerRepo.saveExplored(empire);
   }

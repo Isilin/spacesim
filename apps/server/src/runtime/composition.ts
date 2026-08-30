@@ -145,6 +145,7 @@ export function composeEngine(
     (colony) => industry.persistColony(colony),
     (empire, colony) => bootstrap.insertColony(empire, colony),
     (empire, systemId) => exploration.markExplored(empire, systemId),
+    (empire, systemId) => exploration.markScanned(empire, systemId),
     (colonyId) => bootstrap.empireOfColony(colonyId),
     {
       resolveSaleAt: (tradingPostId, cargo) =>

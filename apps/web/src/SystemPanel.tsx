@@ -61,12 +61,22 @@ export function SystemPanel({
     game,
     routes,
     blueprints,
+    scannedSystemIds,
+    sites,
     send,
   } = useGameStore();
   const probeMission = missions.find(
     (m) => m.kind === "probe" && m.targetId === system.id,
   );
   const probeCost = Math.round(PROBE_COST_CREDITS * effects.probeCostMult);
+  // Scan (chantier 31.11) : fouille le volume entre les orbites, là où la sonde n'a
+  // catalogué que les corps. Plus cher, et jamais deux fois sur le même système.
+  const scanned = scannedSystemIds.includes(system.id);
+  const scanMission = missions.find(
+    (m) => m.kind === "scan" && m.targetId === system.id,
+  );
+  const scanCost = Math.round(probeCost * 2.5);
+  const systemSites = sites.filter((site) => site.systemId === system.id);
 
   if (!universe || !game) return null;
 
@@ -184,6 +194,51 @@ export function SystemPanel({
             : ""}
           {system.station ? t("systemPanel.stationSuffix") : ""}
         </p>
+        {scanned ? (
+          <p className="small">
+            {systemSites.length > 0
+              ? t("systemPanel.sitesFound", { count: systemSites.length })
+              : t("systemPanel.sitesEmpty")}
+          </p>
+        ) : scanMission ? (
+          <p className="small ok">
+            {t("systemPanel.scanEnRoute", {
+              duration: formatDuration(scanMission.arrivesAt - now),
+            })}
+          </p>
+        ) : (
+          <Button
+            disabled={
+              !activeColony || activeColony.resources.credits < scanCost
+            }
+            onClick={() =>
+              activeColony &&
+              send({
+                type: "scanSystem",
+                colonyId: activeColony.id,
+                systemId: system.id,
+              })
+            }
+          >
+            {t("systemPanel.scan", { cost: scanCost })}
+          </Button>
+        )}
+        {systemSites.length > 0 && (
+          <ul className="body-list">
+            {systemSites.map((site) => (
+              <li key={site.id} className="planet moon-row">
+                <div className="planet-head">
+                  <strong>◈ {t(`systemPanel.siteKind.${site.kind}`)}</strong>
+                  <span className="muted">
+                    {t("systemPanel.siteOrbit", {
+                      radius: Math.round(site.orbitRadius),
+                    })}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
         {claimed ? (
           <p className="small claim-badge">
             {t("systemPanel.claimed")}{" "}

@@ -121,6 +121,7 @@ export class BootstrapService {
       empire.influence = p.influence;
       empire.factionRep = p.factionRep;
       empire.explored = new Set(p.explored);
+      empire.scanned = new Set(p.scanned);
       empire.claimedSystemIds = await this.claimRepo.systemIdsOwnedBy(p.id);
       empire.effects = computeEffects(
         empire.researched,

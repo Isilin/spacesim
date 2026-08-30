@@ -14,8 +14,11 @@ import {
   gatewayCovered,
   gatewayLinks,
   idleShips,
+  findGalaxyOfSystem,
   intraSystemCost,
   planTravel,
+  sitesOfSystem,
+  sitesReward,
   travelCostInUniverse,
   legacyCapacity,
   legacyConvoyStat,
@@ -78,6 +81,7 @@ export class LogisticsService {
     private readonly persistColony: (colony: Colony) => void,
     private readonly insertColony: (empire: Empire, colony: Colony) => void,
     private readonly markExplored: (empire: Empire, systemId: string) => void,
+    private readonly markScanned: (empire: Empire, systemId: string) => void,
     private readonly empireOfColony: (colonyId: string) => Empire,
     private readonly market: {
       resolveSaleAt: (
@@ -865,6 +869,37 @@ export class LogisticsService {
         case "probe":
           this.markExplored(empire, mission.targetId);
           break;
+        case "scan": {
+          // Le butin des sites révélés atterrit au sol de la colonie qui a payé le
+          // scan : c'est elle qui a immobilisé le vaisseau et les crédits.
+          const system = this.runtime.systemsById.get(mission.targetId);
+          const origin = empire.colonyMap.get(mission.fromColonyId);
+          if (system && origin && !empire.scanned.has(mission.targetId)) {
+            const galaxy = findGalaxyOfSystem(
+              this.runtime.universe,
+              mission.targetId,
+            );
+            const reward = sitesReward(
+              sitesOfSystem(
+                this.runtime.clock.seed,
+                system,
+                galaxy?.depositBonus ?? 1,
+              ),
+            );
+            this.markScanned(empire, mission.targetId);
+            const resources = { ...origin.resources };
+            for (const [res, amount] of Object.entries(reward) as [
+              ResourceId,
+              number,
+            ][]) {
+              resources[res] = (resources[res] ?? 0) + amount;
+            }
+            const updated = { ...origin, resources };
+            empire.colonyMap.set(origin.id, updated);
+            this.persistColony(updated);
+          }
+          break;
+        }
         case "colonize": {
           const planet = this.runtime.planetsById.get(mission.targetId);
           const alreadyColonized = [...empire.colonyMap.values()].some(

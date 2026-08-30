@@ -127,6 +127,13 @@
       "when": 1788118117544,
       "tag": "0017_grey_blink",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788124445454,
+      "tag": "0018_moaning_jackpot",
+      "breakpoints": true
     }
   ]
 }

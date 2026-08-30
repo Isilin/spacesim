@@ -362,3 +362,57 @@ describe("GameEngine — choix d'itinéraire (chantier 31.10)", () => {
     ).toBeNull();
   });
 });
+
+describe("GameEngine — scan intra-système (chantier 31.11)", () => {
+  it("scanne un système exploré, encaisse le butin, refuse le doublon", async () => {
+    const engine = await GameEngine.loadOrBootstrap();
+    const empire = empireFor(engine, "scanneur");
+    const colonyId = engine.snapshotForEmpire(empire).colonies[0]!.id;
+    const home = engine.snapshotForEmpire(empire).exploredSystemIds[0]!;
+
+    // Un système non exploré ne se scanne pas : la sonde catalogue les corps, le scan
+    // fouille le vide entre eux — deux gestes distincts.
+    const galaxy = engine.universe.galaxies[0]!;
+    const inconnu = galaxy.systems.find(
+      (s) => !engine.snapshotForEmpire(empire).exploredSystemIds.includes(s.id),
+    );
+    if (inconnu) {
+      expect(engine.exploration.scanSystem(empire, colonyId, inconnu.id)).toBe(
+        "Système non exploré",
+      );
+    }
+
+    const colony = empire.colonyMap.get(colonyId)!;
+    empire.colonyMap.set(colonyId, {
+      ...colony,
+      resources: { ...colony.resources, credits: 10_000 },
+    });
+    const avant = empire.colonyMap.get(colonyId)!.resources.credits;
+
+    expect(engine.exploration.scanSystem(empire, colonyId, home)).toBeNull();
+    // Le scan est payé d'avance.
+    expect(empire.colonyMap.get(colonyId)!.resources.credits).toBeLessThan(
+      avant,
+    );
+    // Un second scan du même système pendant que le premier est en route est refusé.
+    expect(engine.exploration.scanSystem(empire, colonyId, home)).toBe(
+      "Scan déjà en route",
+    );
+
+    // `devFastForward` compte en SECONDES et ne décale que l'empire par défaut — celui
+    // qu'adopte le premier compte, donc bien celui-ci. Le scan d'un système sur place
+    // dure 30 s (probeBaseMs × SCAN_DURATION_MULT).
+    engine.devFastForward(120);
+    expect(empire.scanned.has(home)).toBe(true);
+    // Une fois révélé, on ne rescanne pas : le butin est à usage unique.
+    expect(engine.exploration.scanSystem(empire, colonyId, home)).toBe(
+      "Système déjà scanné",
+    );
+    // Les sites du système scanné apparaissent dans le snapshot, jamais avant.
+    const snapshot = engine.snapshotForEmpire(empire);
+    expect(snapshot.scannedSystemIds).toContain(home);
+    for (const site of snapshot.sites) {
+      expect(snapshot.scannedSystemIds).toContain(site.systemId);
+    }
+  });
+});

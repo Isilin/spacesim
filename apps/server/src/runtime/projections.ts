@@ -1,9 +1,11 @@
 import {
+  findGalaxyOfSystem,
   hasBlueprintMarket,
   hasResourceMarket,
   MARKET_RESOURCES,
   redactUniverse,
   relationKey,
+  sitesOfSystem,
   type ForeignColony,
   type ForeignFleet,
   type ForeignStation,
@@ -254,6 +256,19 @@ export function snapshotForEmpire(
     transfers: [...empire.transferMap.values()],
     missions: [...empire.missionMap.values()],
     exploredSystemIds: [...empire.explored],
+    scannedSystemIds: [...empire.scanned],
+    // Seuls les sites des systèmes scannés : un site non découvert n'existe pas encore
+    // pour cet empire, et le fuir dans le snapshot le rendrait visible sans le scan.
+    sites: [...empire.scanned].flatMap((systemId) => {
+      const system = runtime.systemsById.get(systemId);
+      if (!system) return [];
+      const galaxy = findGalaxyOfSystem(runtime.universe, systemId);
+      return sitesOfSystem(
+        runtime.clock.seed,
+        system,
+        galaxy?.depositBonus ?? 1,
+      );
+    }),
     markets: marketsForEmpire(runtime, empire),
     routes: [...empire.routeMap.values()],
     outposts: [...empire.outpostMap.values()],

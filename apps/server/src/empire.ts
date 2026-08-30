@@ -56,6 +56,8 @@ export class Empire {
   effects: EmpireEffects = computeEffects([]);
   /** Brouillard : systèmes explorés par cet empire. */
   explored = new Set<string>();
+  /** Systèmes déjà scannés (chantier 31.11) — leurs sites sont révélés et déjà récoltés. */
+  scanned = new Set<string>();
   /** Marqueur : l'exploration a changé depuis la dernière notification. */
   explorationDirty = false;
   /**

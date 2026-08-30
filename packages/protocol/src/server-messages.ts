@@ -19,6 +19,7 @@ import type {
   Route,
   Station,
   StoredBattle,
+  SystemSite,
   Territory,
   TradingPostMarket,
   Transfer,
@@ -35,6 +36,10 @@ export interface EmpireSnapshot {
   transfers: Transfer[];
   missions: Mission[];
   exploredSystemIds: string[];
+  /** Systèmes déjà scannés par l'empire (chantier 31.11). */
+  scannedSystemIds: string[];
+  /** Sites révélés par les scans — épaves, anomalies, caches dans le volume. */
+  sites: SystemSite[];
   /** Marchés des comptoirs situés dans des systèmes explorés. */
   markets: TradingPostMarket[];
   routes: Route[];

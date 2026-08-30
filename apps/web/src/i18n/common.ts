@@ -281,6 +281,17 @@ export const commonFr = {
     noSlot: "Aucun emplacement exploitable.",
   },
   systemPanel: {
+    scan: "Scanner le système ({{cost}} cr)",
+    scanEnRoute: "Scan en cours — {{duration}}",
+    sitesFound: "{{count}} site(s) repéré(s) dans le vide",
+    sitesEmpty: "Système scanné — rien à signaler",
+    siteOrbit: "orbite {{radius}}",
+    siteKind: {
+      wreck: "Épave",
+      anomaly: "Anomalie",
+      cache: "Cache",
+    },
+
     notExplored: "Système non exploré.",
     probeEnRoute: "Sonde en route — {{duration}}",
     probe: "Sonder ({{cost}} crédits)",
@@ -834,6 +845,17 @@ export const commonEn: typeof commonFr = {
     noSlot: "No usable slot.",
   },
   systemPanel: {
+    scan: "Scan system ({{cost}} cr)",
+    scanEnRoute: "Scan under way — {{duration}}",
+    sitesFound: "{{count}} site(s) spotted in the void",
+    sitesEmpty: "System scanned — nothing to report",
+    siteOrbit: "orbit {{radius}}",
+    siteKind: {
+      wreck: "Wreck",
+      anomaly: "Anomaly",
+      cache: "Cache",
+    },
+
     notExplored: "System not explored.",
     probeEnRoute: "Probe en route — {{duration}}",
     probe: "Probe ({{cost}} credits)",

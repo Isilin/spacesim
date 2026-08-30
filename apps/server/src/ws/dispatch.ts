@@ -28,6 +28,8 @@ export function dispatchClientMessage(
       );
     case "probe":
       return engine.exploration.probe(empire, msg.colonyId, msg.systemId);
+    case "scanSystem":
+      return engine.exploration.scanSystem(empire, msg.colonyId, msg.systemId);
     case "colonize":
       return engine.exploration.colonize(empire, msg.colonyId, msg.planetId);
     case "foundStation":

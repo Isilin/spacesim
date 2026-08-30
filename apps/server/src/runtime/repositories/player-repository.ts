@@ -17,6 +17,7 @@ export interface PlayerRecord {
   influence: number;
   factionRep: Empire["factionRep"];
   explored: string[];
+  scanned: string[];
 }
 
 /**
@@ -48,6 +49,7 @@ export class PlayerRepository {
       influence: row.influence,
       factionRep: JSON.parse(row.factionRep),
       explored: JSON.parse(row.explored),
+      scanned: JSON.parse(row.scanned),
     };
   }
 
@@ -91,6 +93,7 @@ export class PlayerRepository {
       influence: 0,
       factionRep: "{}",
       explored: "[]",
+      scanned: "[]",
     };
   }
 
@@ -160,6 +163,7 @@ export class PlayerRepository {
       influence: empire.influence,
       factionRep: JSON.stringify(empire.factionRep),
       explored: JSON.stringify([...empire.explored]),
+      scanned: JSON.stringify([...empire.scanned]),
     };
   }
 }

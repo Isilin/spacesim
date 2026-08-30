@@ -24,6 +24,7 @@ import type {
   Route,
   Station,
   StoredBattle,
+  SystemSite,
   Territory,
   TradingPostMarket,
   Transfer,
@@ -40,6 +41,8 @@ export interface GameStoreState {
   transfers: Transfer[];
   missions: Mission[];
   exploredSystemIds: string[];
+  scannedSystemIds: string[];
+  sites: SystemSite[];
   markets: TradingPostMarket[];
   routes: Route[];
   outposts: MiningOutpost[];
@@ -98,6 +101,8 @@ function snapshotFields(msg: EmpireSnapshot): SnapshotFields {
     transfers: msg.transfers,
     missions: msg.missions,
     exploredSystemIds: msg.exploredSystemIds,
+    scannedSystemIds: msg.scannedSystemIds,
+    sites: msg.sites,
     markets: msg.markets,
     routes: msg.routes,
     outposts: msg.outposts,
@@ -134,6 +139,8 @@ const initialState: SnapshotFields & {
   transfers: [],
   missions: [],
   exploredSystemIds: [],
+  scannedSystemIds: [],
+  sites: [],
   markets: [],
   routes: [],
   outposts: [],

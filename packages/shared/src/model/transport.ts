@@ -74,6 +74,7 @@ export interface Mission {
   id: string;
   kind:
     | "probe"
+    | "scan"
     | "colonize"
     | "found_station"
     | "sell"

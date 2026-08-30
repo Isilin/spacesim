@@ -22,6 +22,47 @@ export interface Vec3 {
   z: number;
 }
 
+/**
+ * Éléments décrivant une orbite circulaire inclinée. Partagés par les corps du
+ * générateur et les sites découvrables au scan (chantier 31.11), qui ont besoin d'une
+ * position dans le volume sans être des planètes.
+ */
+export interface OrbitalElements {
+  orbitRadius: number;
+  /** Angle à t=0, en radians. */
+  orbitAngle: number;
+  inclination: number;
+  ascendingNode: number;
+}
+
+/**
+ * Position sur une orbite, dans le repère de ce qu'elle entoure. `angleOffset` est
+ * l'avance angulaire accumulée depuis t=0 — nulle pour un objet immobile.
+ *
+ * L'orbite est un cercle de rayon `orbitRadius` incliné de `inclination` puis pivoté de
+ * `ascendingNode` : deux rotations, dans cet ordre.
+ */
+export function orbitPosition(el: OrbitalElements, angleOffset = 0): Vec3 {
+  const theta = el.orbitAngle + angleOffset;
+  const px = el.orbitRadius * Math.cos(theta);
+  const py = el.orbitRadius * Math.sin(theta);
+
+  // Inclinaison : rotation autour de l'axe X du plan orbital.
+  const cosI = Math.cos(el.inclination);
+  const sinI = Math.sin(el.inclination);
+  const yTilted = py * cosI;
+  const z = py * sinI;
+
+  // Nœud ascendant : rotation autour de l'axe Z, oriente le plan dans le système.
+  const cosN = Math.cos(el.ascendingNode);
+  const sinN = Math.sin(el.ascendingNode);
+  return {
+    x: px * cosN - yTilted * sinN,
+    y: px * sinN + yTilted * cosN,
+    z,
+  };
+}
+
 /** Une lune orbite sa planète parente ; une planète orbite l'étoile. */
 function isMoon(body: Planet): boolean {
   return body.kind === "moon";
@@ -45,32 +86,9 @@ export function orbitalPeriodTicks(body: Planet): number {
   return (2 * Math.PI) / angularSpeedOf(body);
 }
 
-/**
- * Position d'un corps sur son orbite propre, dans le repère de ce qu'il orbite
- * (l'étoile, ou sa planète parente pour une lune).
- *
- * L'orbite est un cercle de rayon `orbitRadius` incliné de `inclination` puis pivoté de
- * `ascendingNode` — deux rotations, dans cet ordre, à partir du plan de référence.
- */
+/** Position d'un corps sur sa propre orbite, à un tick donné. */
 function localPositionAt(body: Planet, tick: number): Vec3 {
-  const theta = body.orbitAngle + angularSpeedOf(body) * tick;
-  const px = body.orbitRadius * Math.cos(theta);
-  const py = body.orbitRadius * Math.sin(theta);
-
-  // Inclinaison : rotation autour de l'axe X du plan orbital.
-  const cosI = Math.cos(body.inclination);
-  const sinI = Math.sin(body.inclination);
-  const yTilted = py * cosI;
-  const z = py * sinI;
-
-  // Nœud ascendant : rotation autour de l'axe Z, oriente le plan dans le système.
-  const cosN = Math.cos(body.ascendingNode);
-  const sinN = Math.sin(body.ascendingNode);
-  return {
-    x: px * cosN - yTilted * sinN,
-    y: px * sinN + yTilted * cosN,
-    z,
-  };
+  return orbitPosition(body, angularSpeedOf(body) * tick);
 }
 
 /**
