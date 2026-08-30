@@ -1470,9 +1470,21 @@ dans une vue système. Le sujet de ce chantier est le design, pas le GPU.
 - **31.8** — coût de transfert intra-système fonction de la position orbitale au tick de départ
   (`LogisticsService`). Les ETA deviennent variables : le protocole et l'UI doivent les exposer.
   L'ascenseur orbital (ADR 0004) n'est pas concerné, il est vertical.
-- **31.9** — calibration orbitale : fixer l'échelle de temps des orbites face à `TICK_MS = 5000`,
-  avec une cible jouable assumée et mesurée. Trop rapide, les ETA de 31.8 gigotent sans que le
-  joueur comprenne ; trop lent, la mécanique est invisible et payée pour rien.
+- **31.9** ✅ — calibration orbitale. **Mesurée : les trois critères sont tenus sans toucher une
+  constante.** La grandeur qui gouverne la mécanique n'est pas la période d'une planète mais la
+  période **synodique** d'une paire — le temps entre deux conjonctions : médiane **19,5 h**
+  (q25 8 h, q75 37 h), non commensurable avec 24 h, donc la configuration dérive d'un jour sur
+  l'autre au lieu de se répéter à heure fixe. Attendre la conjonction fait gagner **21 % de
+  durée en médiane** (10 % au minimum, 46 % au maximum) : assez pour que le moment du départ
+  soit une décision, pas assez pour faire du jeu un jeu d'attente — cohérent avec le choix
+  d'orbites simulées plutôt que de fenêtres de transfert. Enfin, l'orbite la plus rapide (5 h)
+  vaut 200 fois la durée d'un transfert d'un saut, donc un ETA annoncé au départ reste exact :
+  pas d'ETA qui gigote. Relevé figé dans `orbits.calibration.test.ts`.
+  **Tranché au passage** : les tronçons locaux d'un trajet interstellaire restent ignorés, et
+  définitivement. Pas pour le coût de calcul, mais parce qu'ils n'offrent aucune décision — le
+  joueur ne choisit ni l'emplacement de sa colonie ni celui de sa destination, il subirait un
+  surcoût sans levier. Les compter partout invaliderait de surcroît la calibration verrouillée
+  en 31.7.
 - **31.10** — choix d'itinéraire : `travelCostInUniverse()` retourne le chemin en plus du coût,
   le serveur propose plusieurs candidats (le moins cher, le moins de portes, l'évitement de
   territoires hostiles en réutilisant `Territory`/`Relation`), le joueur tranche, la carte

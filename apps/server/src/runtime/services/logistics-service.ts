@@ -383,10 +383,15 @@ export class LogisticsService {
    * Surcoût orbital d'un trajet local (chantier 31.8), en équivalent-saut.
    *
    * Seulement quand origine et destination partagent un système : c'est là que le coût
-   * de graphe vaut 0 et que la position orbitale décide de tout. Sur un trajet
-   * interstellaire, les tronçons locaux de départ et d'arrivée restent négligés — les
-   * ajouter renchérirait tous les voyages existants et invaliderait la calibration
-   * mesurée au chantier 31.7, pour un effet de second ordre. À rouvrir en 31.9.
+   * de graphe vaut 0 et que la position orbitale décide de tout.
+   *
+   * Les tronçons locaux d'un trajet **interstellaire** restent délibérément ignorés
+   * (tranché au chantier 31.9). La raison n'est pas le coût de calcul mais le fait
+   * qu'ils n'offrent aucune décision : le joueur ne choisit ni où se trouve sa colonie
+   * ni où l'attend sa destination, il subirait donc un surcoût sans levier. Sur un
+   * trajet local au contraire, attendre la conjonction est un vrai choix — 21 % de
+   * durée gagnée en médiane. Les compter partout renchérirait de surcroît tous les
+   * voyages existants et invaliderait la calibration verrouillée au chantier 31.7.
    */
   private localCost(
     fromSystemId: string,

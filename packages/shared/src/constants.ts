@@ -45,11 +45,13 @@ export const GATEWAY_JUMP_WEIGHT = 1;
  * `JUMP_REFERENCE_LENGTH` à dessein : traverser un système doit rester une fraction du
  * prix d'un saut interstellaire, jamais son équivalent.
  *
- * Calage de départ, affiné au chantier 31.9 : les orbites vont de 70 à ~290, donc deux
- * planètes externes en opposition sont séparées d'environ 580 — soit ≈ 0,29 saut, un
- * peu moins que la moitié de `transferBaseMs`. Les mêmes en conjonction tombent vers
- * 0,03. C'est ce facteur dix qui doit rendre la conjonction lisible sans jamais faire
- * d'un trajet local le prix d'un voyage entre étoiles.
+ * **Confirmée au chantier 31.9** par mesure : sur 254 paires de corps colonisables,
+ * attendre la conjonction fait gagner 21 % de la durée de transfert en médiane (10 % au
+ * minimum, 46 % au maximum). Assez pour que le moment du départ soit une décision, pas
+ * assez pour transformer le jeu en jeu d'attente — ce que la conception a explicitement
+ * écarté en préférant des orbites simulées aux fenêtres de transfert.
+ *
+ * Verrou : `orbits.calibration.test.ts`.
  */
 export const INTRA_SYSTEM_REFERENCE_LENGTH = 2000;
 /**
@@ -73,10 +75,17 @@ export const SYSTEM_VIEW_SIZE = 900;
 /**
  * Constantes de Kepler simplifié (chantier 31.5) : `ω = K / r^1.5` radians par tick.
  *
- * Valeurs de départ, **non calibrées** — le chantier 31.9 fixe l'échelle de temps une
- * fois qu'on peut mesurer l'effet sur des trajets réels. Ordres de grandeur actuels, à
- * `TICK_MS = 5000` (720 ticks par heure réelle) : planète interne (`r = 70`) ≈ 6 h,
- * planète externe (`r ≈ 290`) ≈ 2 jours, lune interne (`r = 16`) ≈ 2 h.
+ * **Calibrées au chantier 31.9**, sur mesure d'un univers généré. La grandeur qui
+ * gouverne la mécanique n'est pas la période d'une planète mais la période
+ * **synodique** d'une paire — le temps entre deux conjonctions : médiane 19,5 h
+ * (q25 8 h, q75 37 h). Volontairement non commensurable avec 24 h, sans quoi un joueur
+ * jouant toujours à la même heure verrait toujours la même configuration.
+ *
+ * Périodes orbitales correspondantes, à `TICK_MS = 5000` : de 5 h pour l'orbite la plus
+ * interne à 53 h pour la plus externe, médiane 15 h. Le rapport à la durée d'un
+ * transfert (dizaines de secondes) garantit qu'un ETA annoncé au départ reste exact.
+ *
+ * Verrou : `orbits.calibration.test.ts`.
  */
 export const PLANET_KEPLER_CONSTANT = 0.8517;
 export const MOON_KEPLER_CONSTANT = 0.2792;
