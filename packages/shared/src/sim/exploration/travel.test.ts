@@ -24,11 +24,13 @@ function makeGalaxy(
     name: id,
     x: 0,
     y: 0,
+    z: 0,
     systems: systemIds.map((sid) => ({
       id: sid,
       name: sid,
       x: 0,
       y: 0,
+      z: 0,
       planets: [],
       belts: [],
     })),

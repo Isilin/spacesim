@@ -44,6 +44,8 @@ export const universeGalaxies = pgTable("universe_galaxies", {
   name: text("name").notNull(),
   x: integer("x").notNull(),
   y: integer("y").notNull(),
+  /** Écart au plan de l'univers (chantier 31.4). */
+  z: integer("z").notNull().default(0),
   depositBonus: doublePrecision("deposit_bonus").notNull(),
   anchorSystemId: text("anchor_system_id").notNull(),
   /**
@@ -67,6 +69,8 @@ export const universeSystems = pgTable("universe_systems", {
   name: text("name").notNull(),
   x: integer("x").notNull(),
   y: integer("y").notNull(),
+  /** Écart au plan galactique (chantier 31.4). */
+  z: integer("z").notNull().default(0),
 });
 
 export const universeLinks = pgTable(
@@ -107,7 +111,10 @@ export const universeBodies = pgTable("universe_bodies", {
   /** JSON Deposits. */
   deposits: text("deposits").notNull().default("{}"),
   orbitRadius: doublePrecision("orbit_radius").notNull(),
+  /** Angle à t=0 : le corps orbite, l'angle courant se dérive du tick (ADR 0006). */
   orbitAngle: doublePrecision("orbit_angle").notNull(),
+  inclination: doublePrecision("inclination").notNull().default(0),
+  ascendingNode: doublePrecision("ascending_node").notNull().default(0),
 });
 
 export const universeBelts = pgTable("universe_belts", {
@@ -120,6 +127,8 @@ export const universeBelts = pgTable("universe_belts", {
   beltIndex: integer("belt_index").notNull(),
   name: text("name").notNull(),
   orbitRadius: doublePrecision("orbit_radius").notNull(),
+  inclination: doublePrecision("inclination").notNull().default(0),
+  ascendingNode: doublePrecision("ascending_node").notNull().default(0),
   /** JSON Deposits. */
   deposits: text("deposits").notNull().default("{}"),
 });

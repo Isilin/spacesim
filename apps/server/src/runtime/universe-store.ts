@@ -54,6 +54,7 @@ function galaxyRows(galaxy: Galaxy, gameId: string, now: number) {
       name: galaxy.name,
       x: galaxy.x,
       y: galaxy.y,
+      z: galaxy.z,
       depositBonus: galaxy.depositBonus,
       anchorSystemId: galaxy.anchorSystemId,
       parentGalaxyIndex: galaxy.parentIndex ?? null,
@@ -67,6 +68,7 @@ function galaxyRows(galaxy: Galaxy, gameId: string, now: number) {
       name: system.name,
       x: system.x,
       y: system.y,
+      z: system.z,
     })),
     bodies: galaxy.systems.flatMap((system) =>
       system.planets.map((body, bodyIndex) => ({
@@ -82,6 +84,8 @@ function galaxyRows(galaxy: Galaxy, gameId: string, now: number) {
         deposits: JSON.stringify(body.deposits),
         orbitRadius: body.orbitRadius,
         orbitAngle: body.orbitAngle,
+        inclination: body.inclination,
+        ascendingNode: body.ascendingNode,
       })),
     ),
     belts: galaxy.systems.flatMap((system) =>
@@ -91,6 +95,8 @@ function galaxyRows(galaxy: Galaxy, gameId: string, now: number) {
         beltIndex,
         name: belt.name,
         orbitRadius: belt.orbitRadius,
+        inclination: belt.inclination,
+        ascendingNode: belt.ascendingNode,
         deposits: JSON.stringify(belt.deposits),
       })),
     ),
@@ -255,6 +261,8 @@ export async function loadUniverse(
             deposits: JSON.parse(body.deposits),
             orbitRadius: body.orbitRadius,
             orbitAngle: body.orbitAngle,
+            inclination: body.inclination,
+            ascendingNode: body.ascendingNode,
           }));
         const belts: AsteroidBelt[] = (beltsBySystem.get(systemRow.id) ?? [])
           .sort((a, b) => a.beltIndex - b.beltIndex)
@@ -263,6 +271,8 @@ export async function loadUniverse(
             systemId: systemRow.id,
             name: belt.name,
             orbitRadius: belt.orbitRadius,
+            inclination: belt.inclination,
+            ascendingNode: belt.ascendingNode,
             deposits: JSON.parse(belt.deposits),
           }));
         const tradingPostRow = tradingPostBySystem.get(systemRow.id);
@@ -279,6 +289,7 @@ export async function loadUniverse(
           name: systemRow.name,
           x: systemRow.x,
           y: systemRow.y,
+          z: systemRow.z,
           planets,
           belts,
           ...(comptoir ? { station: comptoir } : {}),
@@ -289,6 +300,7 @@ export async function loadUniverse(
       name: galaxyRow.name,
       x: galaxyRow.x,
       y: galaxyRow.y,
+      z: galaxyRow.z,
       systems,
       links: (linksByGalaxy.get(galaxyRow.id) ?? [])
         .sort((a, b) => a.linkIndex - b.linkIndex)

@@ -31,6 +31,8 @@ const planet: Planet = {
   deposits: { ore: 1.5, food: 1.0 },
   orbitRadius: 100,
   orbitAngle: 0,
+  inclination: 0,
+  ascendingNode: 0,
 };
 
 function makeColony(overrides: Partial<Colony> = {}): Colony {

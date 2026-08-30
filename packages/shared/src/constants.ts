@@ -7,6 +7,12 @@ export const MAX_CATCHUP_TICKS = (24 * 3600 * 1000) / TICK_MS;
 /** Dimensions de la carte galaxie (viewBox SVG) — espace de coordonnées interne à une galaxie. */
 export const MAP_WIDTH = 1000;
 export const MAP_HEIGHT = 700;
+/**
+ * Épaisseur de la couche de systèmes dans une galaxie (chantier 31.2). Volontairement
+ * très inférieure à `MAP_WIDTH`/`MAP_HEIGHT` : une galaxie est un disque, pas un cube.
+ * Les systèmes sont centrés sur `z = 0`, le plan galactique.
+ */
+export const MAP_DEPTH = 200;
 
 /**
  * Carte univers (chantier 9) : les galaxies sont posées sur une spirale d'angle d'or
@@ -16,6 +22,11 @@ export const UNIVERSE_CENTER_X = MAP_WIDTH / 2;
 export const UNIVERSE_CENTER_Y = MAP_HEIGHT / 2;
 /** Écart moyen entre deux galaxies voisines sur la spirale. */
 export const GALAXY_SPACING = 260;
+/**
+ * Amplitude verticale du disque d'univers (chantier 31.2). L'écart au plan décroît avec
+ * le rayon : bulbe épais au centre, disque mince vers la périphérie.
+ */
+export const UNIVERSE_DISC_THICKNESS = 90;
 
 /** Galaxies générées pour une partie neuve : la galaxie d'origine + la frontière vierge. */
 export const INITIAL_GALAXIES = 4;

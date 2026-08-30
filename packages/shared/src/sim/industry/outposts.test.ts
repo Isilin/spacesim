@@ -13,6 +13,8 @@ const belt: AsteroidBelt = {
   systemId: "s1",
   name: "Ceinture Test",
   orbitRadius: 300,
+  inclination: 0,
+  ascendingNode: 0,
   deposits: { ore: 1.6 },
 };
 

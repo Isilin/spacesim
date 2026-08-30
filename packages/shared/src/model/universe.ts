@@ -30,8 +30,17 @@ export interface Planet {
   deposits: Deposits;
   /** Rayon d'orbite (autour de l'étoile, ou de la planète parente pour une lune). */
   orbitRadius: number;
-  /** Position angulaire sur l'orbite, en radians. */
+  /**
+   * Position angulaire **à t=0**, en radians (chantier 31.1). Le corps orbite désormais :
+   * l'angle courant est `orbitAngle + ω·tick`, calculé par `bodyPositionAt()` et jamais
+   * persisté — voir [ADR 0006](../../../../docs/adr/0006-univers-volumetrique-deux-echelles.md).
+   * `ω` n'est pas un champ non plus : elle se dérive de `orbitRadius`.
+   */
   orbitAngle: number;
+  /** Inclinaison du plan orbital sur le plan du système, en radians (chantier 31.1). */
+  inclination: number;
+  /** Longitude du nœud ascendant : orientation du plan orbital, en radians. */
+  ascendingNode: number;
 }
 
 /** Ceinture d'astéroïdes — décor riche en gisements (exploitation minière : v2). */
@@ -40,6 +49,10 @@ export interface AsteroidBelt {
   systemId: string;
   name: string;
   orbitRadius: number;
+  /** Inclinaison du plan de la ceinture, en radians (chantier 31.1). */
+  inclination: number;
+  /** Longitude du nœud ascendant : orientation du plan de la ceinture, en radians. */
+  ascendingNode: number;
   deposits: Deposits;
 }
 
@@ -56,6 +69,8 @@ export interface StarSystem {
   name: string;
   x: number;
   y: number;
+  /** Écart au plan galactique (chantier 31.1) — centré sur 0, borné par `MAP_DEPTH`. */
+  z: number;
   /** Planètes et lunes (les lunes référencent leur parente via parentPlanetId). */
   planets: Planet[];
   belts: AsteroidBelt[];
@@ -74,6 +89,12 @@ export interface Galaxy {
   /** Position sur la carte de l'univers. */
   x: number;
   y: number;
+  /**
+   * Écart au plan de l'univers (chantier 31.1). Comme `x`/`y`, dérivé de la seule paire
+   * seed+index — jamais d'un flux RNG partagé, sans quoi matérialiser une galaxie de
+   * frontière dépendrait de celles déjà tirées (ADR 0002).
+   */
+  z: number;
   systems: StarSystem[];
   /** Liaisons de saut intra-galactiques (graphe non orienté, connexe). */
   links: [string, string][];

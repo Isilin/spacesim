@@ -1,10 +1,12 @@
 import {
   GALAXY_SPACING,
   INITIAL_GALAXIES,
+  MAP_DEPTH,
   MAP_HEIGHT,
   MAP_WIDTH,
   UNIVERSE_CENTER_X,
   UNIVERSE_CENTER_Y,
+  UNIVERSE_DISC_THICKNESS,
 } from "./constants.js";
 import { FACTION_IDS } from "./content/factions.js";
 import {
@@ -33,13 +35,19 @@ import type {
  * bumper cette version vont ensemble, dans le même commit. Les galaxies déjà
  * matérialisées en DB gardent la version qui les a produites et ne changent jamais.
  */
-export const GENERATOR_VERSION = 1;
+export const GENERATOR_VERSION = 2;
 
 /** Part des systèmes accueillant un comptoir commercial PNJ. */
 const TRADING_POST_PROBABILITY = 0.35;
 
 /** Systèmes de la galaxie d'origine (index 0) : plus vaste, c'est le berceau des empires. */
 const HOME_GALAXY_SYSTEMS = 14;
+
+/**
+ * Inclinaison orbitale maximale des corps, en radians (chantier 31.2). Faible à dessein :
+ * un système doit lire comme un plan légèrement gauchi, pas comme un essaim.
+ */
+const MAX_INCLINATION = 0.15;
 
 /** Angle d'or : pose les galaxies en spirale de tournesol (densité constante, extension infinie). */
 const GOLDEN_ANGLE = 2.399963229728653;
@@ -272,6 +280,8 @@ function generateMoons(
       deposits: generateDeposits(rng, type, depositBonus),
       orbitRadius: 16 + i * 10,
       orbitAngle: rng() * Math.PI * 2,
+      inclination: (rng() - 0.5) * 2 * MAX_INCLINATION,
+      ascendingNode: rng() * Math.PI * 2,
     });
   }
   return moons;
@@ -301,6 +311,8 @@ function generateBodies(
       deposits: generateDeposits(rng, type, depositBonus),
       orbitRadius: 70 + (i - 1) * 55 + randInt(rng, -8, 8),
       orbitAngle: rng() * Math.PI * 2,
+      inclination: (rng() - 0.5) * 2 * MAX_INCLINATION,
+      ascendingNode: rng() * Math.PI * 2,
     };
     planets.push(planet, ...generateMoons(rng, planet, depositBonus));
   }
@@ -313,6 +325,8 @@ function generateBodies(
       systemId: system.id,
       name: `Ceinture ${system.name} ${romanNumeral(i)}`,
       orbitRadius: 70 + count * 55 + i * 40 + randInt(rng, -10, 10),
+      inclination: (rng() - 0.5) * 2 * MAX_INCLINATION,
+      ascendingNode: rng() * Math.PI * 2,
       deposits: {
         ore: Math.round((1.2 + rng() * 0.8) * depositBonus * 100) / 100,
       },
@@ -322,21 +336,42 @@ function generateBodies(
   return { planets, belts };
 }
 
-/** Positions avec distance minimale entre systèmes (rejection sampling déterministe). */
+/**
+ * Tirage gaussien centré réduit (Box-Muller), borné à ±3σ pour éviter les valeurs
+ * aberrantes. Consomme deux valeurs du flux RNG.
+ */
+function gaussian(rng: Rng): number {
+  const u = Math.max(1e-9, rng());
+  const v = rng();
+  const g = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  return Math.max(-3, Math.min(3, g));
+}
+
+/**
+ * Positions avec distance minimale entre systèmes (rejection sampling déterministe).
+ * Volumétrique depuis le chantier 31.2 : `z` est centré sur 0 (le plan galactique) et
+ * borné par `MAP_DEPTH`, très inférieur à la largeur — une galaxie est un disque.
+ */
 function generatePositions(
   rng: Rng,
   count: number,
-): { x: number; y: number }[] {
+): { x: number; y: number; z: number }[] {
   const margin = 60;
   const minDist = 90;
-  const positions: { x: number; y: number }[] = [];
+  const positions: { x: number; y: number; z: number }[] = [];
   while (positions.length < count) {
     const x = margin + rng() * (MAP_WIDTH - 2 * margin);
     const y = margin + rng() * (MAP_HEIGHT - 2 * margin);
+    const z = (rng() - 0.5) * MAP_DEPTH;
     const tooClose = positions.some(
-      (p) => Math.hypot(p.x - x, p.y - y) < minDist,
+      (p) => Math.hypot(p.x - x, p.y - y, p.z - z) < minDist,
     );
-    if (!tooClose) positions.push({ x: Math.round(x), y: Math.round(y) });
+    if (!tooClose)
+      positions.push({
+        x: Math.round(x),
+        y: Math.round(y),
+        z: Math.round(z),
+      });
   }
   return positions;
 }
@@ -346,7 +381,7 @@ function generateLinks(systems: StarSystem[]): [string, string][] {
   const links = new Set<string>();
   const key = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
   const dist = (a: StarSystem, b: StarSystem) =>
-    Math.hypot(a.x - b.x, a.y - b.y);
+    Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
 
   for (const sys of systems) {
     const neighbors = systems
@@ -402,6 +437,8 @@ export interface GalaxyDef {
   /** Position sur la spirale d'univers. */
   x: number;
   y: number;
+  /** Écart au plan de l'univers (chantier 31.2). */
+  z: number;
   systems: number;
   depositBonus: number;
 }
@@ -410,7 +447,12 @@ export interface GalaxyDef {
  * Décrit la galaxie `index` sans la générer (nom, position, taille, richesse).
  *
  * Position : spirale d'angle d'or `r = ESPACEMENT × √index`, qui garde une densité
- * constante et s'étend sans borne — la galaxie 0 est au centre.
+ * constante et s'étend sans borne — la galaxie 0 est au centre. Depuis le chantier 31.2,
+ * `z` écarte la galaxie du plan selon une gaussienne dont l'amplitude **décroît** avec le
+ * rayon : bulbe épais au centre, disque mince en périphérie. Ce tirage a son propre flux
+ * RNG dérivé de seed+index (même idiome que `galaxy-size`) et jamais le flux partagé —
+ * c'est ce qui permet de matérialiser une galaxie de frontière sans dépendre des
+ * précédentes (ADR 0002).
  * Richesse : croît avec l'éloignement (les anneaux lointains sont la récompense).
  */
 export function galaxyDefAt(seed: string, index: number): GalaxyDef {
@@ -418,11 +460,14 @@ export function galaxyDefAt(seed: string, index: number): GalaxyDef {
   const angle = index * GOLDEN_ANGLE;
   // Décalage de nommage propre à la seed : deux parties ne nomment pas pareil.
   const nameOffset = hashSeed(`${seed}:galaxies`) % NAME_SPACE;
+  const thickness =
+    UNIVERSE_DISC_THICKNESS / (1 + (0.35 * radius) / GALAXY_SPACING);
   return {
     index,
     name: seriesName(nameOffset, index),
     x: Math.round(UNIVERSE_CENTER_X + Math.cos(angle) * radius),
     y: Math.round(UNIVERSE_CENTER_Y + Math.sin(angle) * radius),
+    z: Math.round(gaussian(createRng(`${seed}:galaxy-z:${index}`)) * thickness),
     systems:
       index === 0
         ? HOME_GALAXY_SYSTEMS
@@ -459,6 +504,7 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
       name,
       x: pos.x,
       y: pos.y,
+      z: pos.z,
       planets: [],
       belts: [],
     };
@@ -477,11 +523,13 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
     host.station = makeTradingPost(rng, host);
   }
 
-  // Ancrage de portail : le système le plus excentré (bord de galaxie).
+  // Ancrage de portail : le système le plus excentré (bord de galaxie), en volume.
   const cx = systems.reduce((s, sys) => s + sys.x, 0) / systems.length;
   const cy = systems.reduce((s, sys) => s + sys.y, 0) / systems.length;
+  const cz = systems.reduce((s, sys) => s + sys.z, 0) / systems.length;
   const anchor = systems.reduce((best, sys) =>
-    Math.hypot(sys.x - cx, sys.y - cy) > Math.hypot(best.x - cx, best.y - cy)
+    Math.hypot(sys.x - cx, sys.y - cy, sys.z - cz) >
+    Math.hypot(best.x - cx, best.y - cy, best.z - cz)
       ? sys
       : best,
   );
@@ -491,6 +539,7 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
     name: def.name,
     x: def.x,
     y: def.y,
+    z: def.z,
     systems,
     links: generateLinks(systems),
     anchorSystemId: anchor.id,

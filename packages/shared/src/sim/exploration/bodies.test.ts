@@ -16,6 +16,8 @@ function body(
     deposits: {},
     orbitRadius: 180,
     orbitAngle: 0,
+    inclination: 0,
+    ascendingNode: 0,
     ...over,
   };
 }
