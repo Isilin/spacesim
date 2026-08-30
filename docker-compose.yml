@@ -1,6 +1,7 @@
 # Environnement de dev SpaceSim conteneurisé — aucune install Node sur l'hôte.
 #
 #   docker compose up app            → Postgres + serveur (3001) + client web (5173) + admin (5174)
+#                                      ports hôte surchargeables, voir `ports:` du service `app`
 #   docker compose run --rm test     → tests unitaires de la simulation (PGlite mémoire)
 #   docker compose run --rm typecheck→ tsc sur les 3 packages
 #   docker compose run --rm e2e      → Playwright (pile serveur+web en base mémoire)
@@ -66,10 +67,26 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Ports HÔTE surchargeables. D'autres projets de la machine servent sur les mêmes
+    # (un Vite prend 5173 par défaut, une API Node 3001) — et le conflit ne se signale
+    # PAS forcément par une erreur :
+    #
+    #   Un Vite lancé nativement bind `127.0.0.1:5173`, plus spécifique que le
+    #   `0.0.0.0:5173` de Docker ; Docker garde `[::]:5173`. Les deux serveurs
+    #   coexistent alors sans que rien ne proteste, et ce qu'on obtient dépend de la
+    #   résolution de `localhost` : IPv4 → l'autre projet, IPv6 → celui-ci. Un
+    #   navigateur et un curl peuvent voir deux applications différentes.
+    #
+    # Diagnostic : `curl -4 http://127.0.0.1:5173/` contre `curl -g http://[::1]:5173/`.
+    # Correctif : `SPACESIM_WEB_PORT=5273` dans un `.env` à la racine (déjà ignoré par
+    # git), Compose le lit tout seul — penser alors à `.claude/launch.json`, qui code
+    # les valeurs par défaut ci-dessous en dur.
+    #
+    # Les ports INTERNES ne bougent jamais : les proxys Vite pointent sur 127.0.0.1:3001.
     ports:
-      - "5173:5173"
-      - "5174:5174"
-      - "3001:3001"
+      - "${SPACESIM_WEB_PORT:-5173}:5173"
+      - "${SPACESIM_ADMIN_PORT:-5174}:5174"
+      - "${SPACESIM_SERVER_PORT:-3001}:3001"
 
   # Tests unitaires de la simulation (packages/shared).
   test:
