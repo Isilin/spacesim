@@ -1173,6 +1173,24 @@ export type GetApiAdminContentChassis200ChassisItemCost = {
   [key: string]: number;
 };
 
+/**
+ * @nullable
+ */
+export type GetApiAdminContentChassis200ChassisItemAppearance = {
+  /** @pattern ^#[0-9a-fA-F]{6}$ */
+  color: string;
+  /**
+   * @nullable
+   * @pattern ^#[0-9a-fA-F]{6}$
+   */
+  accent: string | null;
+  /**
+   * @maximum 5
+   * @exclusiveMinimum 0
+   */
+  scale: number;
+} | null;
+
 export type GetApiAdminContentChassis200ChassisItem = {
   /**
    * @minLength 1
@@ -1210,6 +1228,8 @@ export type GetApiAdminContentChassis200ChassisItem = {
    * @nullable
    */
   requiresTech: string | null;
+  /** @nullable */
+  appearance: GetApiAdminContentChassis200ChassisItemAppearance;
   id: string;
 };
 
@@ -1269,6 +1289,24 @@ export type PutApiAdminContentChassisIdBodyRoleBonus = {
 
 export type PutApiAdminContentChassisIdBodyCost = { [key: string]: number };
 
+/**
+ * @nullable
+ */
+export type PutApiAdminContentChassisIdBodyAppearance = {
+  /** @pattern ^#[0-9a-fA-F]{6}$ */
+  color: string;
+  /**
+   * @nullable
+   * @pattern ^#[0-9a-fA-F]{6}$
+   */
+  accent: string | null;
+  /**
+   * @maximum 5
+   * @exclusiveMinimum 0
+   */
+  scale: number;
+} | null;
+
 export type PutApiAdminContentChassisIdBody = {
   /**
    * @minLength 1
@@ -1306,6 +1344,8 @@ export type PutApiAdminContentChassisIdBody = {
    * @nullable
    */
   requiresTech: string | null;
+  /** @nullable */
+  appearance?: PutApiAdminContentChassisIdBodyAppearance;
 };
 
 export type PutApiAdminContentChassisId200ChassisItemKind =
@@ -1362,6 +1402,24 @@ export type PutApiAdminContentChassisId200ChassisItemCost = {
   [key: string]: number;
 };
 
+/**
+ * @nullable
+ */
+export type PutApiAdminContentChassisId200ChassisItemAppearance = {
+  /** @pattern ^#[0-9a-fA-F]{6}$ */
+  color: string;
+  /**
+   * @nullable
+   * @pattern ^#[0-9a-fA-F]{6}$
+   */
+  accent: string | null;
+  /**
+   * @maximum 5
+   * @exclusiveMinimum 0
+   */
+  scale: number;
+} | null;
+
 export type PutApiAdminContentChassisId200ChassisItem = {
   /**
    * @minLength 1
@@ -1399,6 +1457,8 @@ export type PutApiAdminContentChassisId200ChassisItem = {
    * @nullable
    */
   requiresTech: string | null;
+  /** @nullable */
+  appearance: PutApiAdminContentChassisId200ChassisItemAppearance;
   id: string;
 };
 
@@ -1768,6 +1828,24 @@ export type GetApiAdminContentZoneTypes200ZoneTypesItemCost = {
   [key: string]: number;
 };
 
+/**
+ * @nullable
+ */
+export type GetApiAdminContentZoneTypes200ZoneTypesItemAppearance = {
+  /** @pattern ^#[0-9a-fA-F]{6}$ */
+  color: string;
+  /**
+   * @nullable
+   * @pattern ^#[0-9a-fA-F]{6}$
+   */
+  accent: string | null;
+  /**
+   * @maximum 5
+   * @exclusiveMinimum 0
+   */
+  scale: number;
+} | null;
+
 export type GetApiAdminContentZoneTypes200ZoneTypesItem = {
   /**
    * @minLength 1
@@ -1787,6 +1865,8 @@ export type GetApiAdminContentZoneTypes200ZoneTypesItem = {
    * @nullable
    */
   requiresTech: string | null;
+  /** @nullable */
+  appearance: GetApiAdminContentZoneTypes200ZoneTypesItemAppearance;
   id: string;
 };
 
@@ -1795,6 +1875,24 @@ export type GetApiAdminContentZoneTypes200 = {
 };
 
 export type PutApiAdminContentZoneTypesIdBodyCost = { [key: string]: number };
+
+/**
+ * @nullable
+ */
+export type PutApiAdminContentZoneTypesIdBodyAppearance = {
+  /** @pattern ^#[0-9a-fA-F]{6}$ */
+  color: string;
+  /**
+   * @nullable
+   * @pattern ^#[0-9a-fA-F]{6}$
+   */
+  accent: string | null;
+  /**
+   * @maximum 5
+   * @exclusiveMinimum 0
+   */
+  scale: number;
+} | null;
 
 export type PutApiAdminContentZoneTypesIdBody = {
   /**
@@ -1815,11 +1913,31 @@ export type PutApiAdminContentZoneTypesIdBody = {
    * @nullable
    */
   requiresTech: string | null;
+  /** @nullable */
+  appearance?: PutApiAdminContentZoneTypesIdBodyAppearance;
 };
 
 export type PutApiAdminContentZoneTypesId200ZoneTypesItemCost = {
   [key: string]: number;
 };
+
+/**
+ * @nullable
+ */
+export type PutApiAdminContentZoneTypesId200ZoneTypesItemAppearance = {
+  /** @pattern ^#[0-9a-fA-F]{6}$ */
+  color: string;
+  /**
+   * @nullable
+   * @pattern ^#[0-9a-fA-F]{6}$
+   */
+  accent: string | null;
+  /**
+   * @maximum 5
+   * @exclusiveMinimum 0
+   */
+  scale: number;
+} | null;
 
 export type PutApiAdminContentZoneTypesId200ZoneTypesItem = {
   /**
@@ -1840,6 +1958,8 @@ export type PutApiAdminContentZoneTypesId200ZoneTypesItem = {
    * @nullable
    */
   requiresTech: string | null;
+  /** @nullable */
+  appearance: PutApiAdminContentZoneTypesId200ZoneTypesItemAppearance;
   id: string;
 };
 

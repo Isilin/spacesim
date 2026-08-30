@@ -202,6 +202,32 @@ export const MODULE_ROLES = [
 ] as const;
 export const moduleRoleSchema = z.enum(MODULE_ROLES);
 
+/**
+ * Apparence 3D d'une entrée de contenu manufacturé (chantier 31.22). Optionnelle et
+ * nullable : une entrée créée depuis l'admin sans la renseigner retombe sur le repli
+ * générique du moteur de rendu plutôt que de disparaître de la scène — c'est la
+ * condition pour que le CMS du chantier 23 tienne sa promesse jusqu'au visuel.
+ *
+ * Volontairement réduite à ce qu'un rendu paramétrique sait consommer : une teinte, une
+ * échelle, un accent. Pas de chemin de fichier — l'ADR 0007 exclut tout asset autoré.
+ */
+export const appearanceSchema = z
+  .object({
+    /** Couleur principale, en notation hexadécimale CSS. */
+    color: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/, "Couleur hexadécimale attendue, ex. #4fc1ff"),
+    /** Couleur secondaire : reliefs d'une surface, coiffe d'une structure. */
+    accent: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/, "Couleur hexadécimale attendue, ex. #4fc1ff")
+      .nullable(),
+    /** Facteur d'échelle appliqué à la géométrie générée (1 = taille nominale). */
+    scale: z.number().positive().max(5),
+  })
+  .nullable();
+export type Appearance = z.infer<typeof appearanceSchema>;
+
 export const upsertChassisSchema = z.object({
   nameFr: z.string().trim().min(1).max(80),
   descriptionFr: z.string().trim().max(500).default(""),
@@ -225,6 +251,8 @@ export const upsertChassisSchema = z.object({
   buildMs: z.number().int().positive(),
   /** null = aucune tech requise. */
   requiresTech: z.string().trim().min(1).nullable(),
+  /** Apparence 3D (chantier 31.22) — null = repli générique du moteur de rendu. */
+  appearance: appearanceSchema.default(null),
 });
 export type UpsertChassisInput = z.infer<typeof upsertChassisSchema>;
 
@@ -299,6 +327,8 @@ export const upsertZoneTypeSchema = z.object({
   buildMs: z.number().int().positive(),
   /** null = aucune tech requise. */
   requiresTech: z.string().trim().min(1).nullable(),
+  /** Apparence 3D (chantier 31.22) — null = repli générique du moteur de rendu. */
+  appearance: appearanceSchema.default(null),
 });
 export type UpsertZoneTypeInput = z.infer<typeof upsertZoneTypeSchema>;
 

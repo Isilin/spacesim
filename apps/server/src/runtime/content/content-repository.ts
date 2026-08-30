@@ -224,6 +224,8 @@ function chassisFromRow(row: ChassisRow): ContentChassis {
     cost: JSON.parse(row.cost),
     buildMs: row.buildMs,
     requiresTech: row.requiresTech,
+    // Apparence 3D (chantier 31.22) : NULL en base = repli générique au rendu.
+    appearance: row.appearance ? JSON.parse(row.appearance) : null,
   };
 }
 
@@ -246,6 +248,7 @@ function rowFromChassis(c: ContentChassis) {
     cost: JSON.stringify(c.cost),
     buildMs: c.buildMs,
     requiresTech: c.requiresTech,
+    appearance: c.appearance ? JSON.stringify(c.appearance) : null,
   };
 }
 
@@ -325,6 +328,7 @@ function zoneTypeFromRow(row: ZoneTypeRow): ContentZoneType {
     cost: JSON.parse(row.cost),
     buildMs: row.buildMs,
     requiresTech: row.requiresTech,
+    appearance: row.appearance ? JSON.parse(row.appearance) : null,
   };
 }
 
@@ -336,6 +340,7 @@ function rowFromZoneType(z: ContentZoneType) {
     cost: JSON.stringify(z.cost),
     buildMs: z.buildMs,
     requiresTech: z.requiresTech,
+    appearance: z.appearance ? JSON.stringify(z.appearance) : null,
   };
 }
 

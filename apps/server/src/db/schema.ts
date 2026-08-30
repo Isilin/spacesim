@@ -718,6 +718,8 @@ export const contentChassis = pgTable("content_chassis", {
   slots: text("slots").notNull().default("{}"),
   baseSpeedMult: doublePrecision("base_speed_mult").notNull(),
   baseFuelPerJump: doublePrecision("base_fuel_per_jump").notNull(),
+  /** JSON `Appearance | null` (chantier 31.22) — NULL = repli générique au rendu. */
+  appearance: text("appearance"),
   /** JSON `Partial<Record<ModuleRole, number>>`, null = pas de spécialisation. */
   roleBonus: text("role_bonus"),
   /** JSON `Partial<Record<ResourceId, number>>`. */
@@ -757,6 +759,8 @@ export const contentZoneTypes = pgTable("content_zone_types", {
   cost: text("cost").notNull().default("{}"),
   buildMs: integer("build_ms").notNull(),
   requiresTech: text("requires_tech"),
+  /** JSON `Appearance | null` (chantier 31.22) — NULL = repli générique au rendu. */
+  appearance: text("appearance"),
 });
 
 /** Installations de station orbitale (chantier 24) — `id` libre, même raison que

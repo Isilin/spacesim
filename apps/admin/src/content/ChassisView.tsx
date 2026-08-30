@@ -22,7 +22,9 @@ import {
 } from "@spacesim/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import type { Appearance } from "@spacesim/protocol";
 import { useTranslation } from "react-i18next";
+import { AppearanceFields } from "./AppearanceFields.js";
 
 interface Chassis {
   id: string;
@@ -42,6 +44,7 @@ interface Chassis {
   cost: Record<string, number>;
   buildMs: number;
   requiresTech: string | null;
+  appearance: Appearance;
 }
 
 const KIND_KEYS: Record<string, string> = {
@@ -78,6 +81,7 @@ interface ChassisForm {
   cost: Record<string, number>;
   buildMs: number;
   requiresTech: string;
+  appearance: Appearance;
 }
 
 function emptyForm(): ChassisForm {
@@ -101,6 +105,7 @@ function emptyForm(): ChassisForm {
     cost: {},
     buildMs: 60_000,
     requiresTech: "",
+    appearance: null,
   };
 }
 
@@ -125,6 +130,7 @@ function formFromChassis(c: Chassis): ChassisForm {
     cost: c.cost,
     buildMs: c.buildMs,
     requiresTech: c.requiresTech ?? "",
+    appearance: c.appearance ?? null,
   };
 }
 
@@ -207,6 +213,7 @@ export function ChassisView() {
       cost: form.cost,
       buildMs: form.buildMs,
       requiresTech: form.requiresTech.trim() || null,
+      appearance: form.appearance,
     };
     setSubmitError(null);
     try {
@@ -444,6 +451,10 @@ export function ChassisView() {
               onChange={(e) =>
                 setForm({ ...form, requiresTech: e.target.value })
               }
+            />
+            <AppearanceFields
+              value={form.appearance}
+              onChange={(appearance) => setForm({ ...form, appearance })}
             />
             <div className="field-textarea-wrap">
               <label htmlFor="chassis-role-bonus">

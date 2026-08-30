@@ -607,6 +607,9 @@ function seedChassis(): ContentChassis[] {
       cost: def.cost,
       buildMs: def.buildMs,
       requiresTech: def.requiresTech ?? null,
+      // Le jeu de données par défaut n'impose aucune apparence : le rendu applique
+      // son repli générique (chantier 31.18), et l'admin peut le surcharger.
+      appearance: null,
     };
   });
 }
@@ -764,6 +767,7 @@ function seedZoneTypes(): ContentZoneType[] {
       cost: def.cost,
       buildMs: def.buildMs,
       requiresTech: def.requiresTech ?? null,
+      appearance: null,
     };
   });
 }

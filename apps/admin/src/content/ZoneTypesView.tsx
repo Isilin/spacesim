@@ -17,7 +17,9 @@ import {
 } from "@spacesim/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import type { Appearance } from "@spacesim/protocol";
 import { useTranslation } from "react-i18next";
+import { AppearanceFields } from "./AppearanceFields.js";
 
 interface ZoneType {
   id: string;
@@ -26,6 +28,7 @@ interface ZoneType {
   cost: Record<string, number>;
   buildMs: number;
   requiresTech: string | null;
+  appearance: Appearance;
 }
 
 interface ZoneTypeForm {
@@ -34,6 +37,7 @@ interface ZoneTypeForm {
   cost: Record<string, number>;
   buildMs: number;
   requiresTech: string;
+  appearance: Appearance;
 }
 
 function emptyForm(): ZoneTypeForm {
@@ -43,6 +47,7 @@ function emptyForm(): ZoneTypeForm {
     cost: {},
     buildMs: 60_000,
     requiresTech: "",
+    appearance: null,
   };
 }
 
@@ -53,6 +58,7 @@ function formFromZoneType(z: ZoneType): ZoneTypeForm {
     cost: z.cost,
     buildMs: z.buildMs,
     requiresTech: z.requiresTech ?? "",
+    appearance: z.appearance ?? null,
   };
 }
 
@@ -108,6 +114,7 @@ export function ZoneTypesView() {
       cost: form.cost,
       buildMs: form.buildMs,
       requiresTech: form.requiresTech.trim() || null,
+      appearance: form.appearance,
     };
     setSubmitError(null);
     try {
@@ -207,6 +214,10 @@ export function ZoneTypesView() {
               onChange={(e) =>
                 setForm({ ...form, requiresTech: e.target.value })
               }
+            />
+            <AppearanceFields
+              value={form.appearance}
+              onChange={(appearance) => setForm({ ...form, appearance })}
             />
             <p className="muted small">{t("contentCommon.buildCost")}</p>
             <div className="stat-row">

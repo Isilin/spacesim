@@ -134,6 +134,13 @@
       "when": 1788124445454,
       "tag": "0018_moaning_jackpot",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788132759164,
+      "tag": "0019_misty_rattler",
+      "breakpoints": true
     }
   ]
 }

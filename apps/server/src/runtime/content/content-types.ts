@@ -139,6 +139,17 @@ export interface ContentTech {
  * Châssis de vaisseau (chantier 23.10) — `id: string` libre (id-minting).
  * `sim/industry/design.ts` n'avait aucune injection avant ce chantier.
  */
+/**
+ * Apparence 3D d'une entrée de contenu manufacturé (chantier 31.22). Réduite à ce qu'un
+ * rendu paramétrique sait consommer — aucun chemin de fichier, l'ADR 0007 exclut tout
+ * asset autoré.
+ */
+export interface ContentAppearance {
+  color: string;
+  accent: string | null;
+  scale: number;
+}
+
 export interface ContentChassis {
   id: string;
   nameFr: string;
@@ -159,6 +170,8 @@ export interface ContentChassis {
   buildMs: number;
   /** null = aucune tech requise. */
   requiresTech: string | null;
+  /** Apparence 3D (chantier 31.22) — null = repli générique du moteur de rendu. */
+  appearance: ContentAppearance | null;
 }
 
 /** Module de vaisseau (chantier 23.10) — `id: string` libre, même raison que `ContentChassis`. */
@@ -214,6 +227,8 @@ export interface ContentZoneType {
   buildMs: number;
   /** null = aucune tech requise. */
   requiresTech: string | null;
+  /** Apparence 3D (chantier 31.22) — null = repli générique du moteur de rendu. */
+  appearance: ContentAppearance | null;
 }
 
 /** Installation de station orbitale (chantier 24) — `id: string` libre, même raison

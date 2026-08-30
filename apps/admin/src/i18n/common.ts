@@ -4,6 +4,16 @@
  *  écran garde sa propre section pour ses titres/libellés spécifiques au domaine. */
 
 export const commonFr = {
+  appearance: {
+    title: "Apparence 3D",
+    usingFallback:
+      "Apparence générique (aucun réglage) — le rendu utilise son repli.",
+    customise: "Personnaliser l'apparence",
+    color: "Couleur principale (#rrggbb)",
+    accent: "Couleur d'accent (vide = aucune)",
+    scale: "Échelle",
+    reset: "Revenir à l'apparence générique",
+  },
   contentCommon: {
     serverUnreachable: "Serveur injoignable",
     serverError: "Erreur serveur",
@@ -338,6 +348,16 @@ export const commonFr = {
 };
 
 export const commonEn: typeof commonFr = {
+  appearance: {
+    title: "3D appearance",
+    usingFallback:
+      "Generic appearance (unset) — the renderer uses its fallback.",
+    customise: "Customise appearance",
+    color: "Primary colour (#rrggbb)",
+    accent: "Accent colour (empty = none)",
+    scale: "Scale",
+    reset: "Back to generic appearance",
+  },
   contentCommon: {
     serverUnreachable: "Server unreachable",
     serverError: "Server error",
