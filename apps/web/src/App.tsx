@@ -43,7 +43,7 @@ import { LogisticsView } from "./LogisticsView.js";
 import { StationsView } from "./StationsView.js";
 import { SystemPanel } from "./SystemPanel.js";
 import { SystemView } from "./SystemView.js";
-import { UniverseMap } from "./UniverseMap.js";
+import { UniverseScene } from "./map3d/UniverseScene.js";
 import { useGameConnection } from "./hooks/useGameConnection.js";
 import { useGameStore } from "./state/game-store.js";
 import { useNotifications } from "./useNotifications.js";
@@ -227,12 +227,10 @@ function MapPage({
           )}
         </nav>
         {level === "universe" ? (
-          <UniverseMap
+          <UniverseScene
             universe={universe}
             colonies={colonies}
-            exploredSystemIds={exploredSystemIds}
             gateways={gateways}
-            contracts={contracts}
             selectedId={focus}
             onSelect={(g) => setFocus(g.id)}
             onOpenGalaxy={(g) => openGalaxy(g.id)}

@@ -1580,3 +1580,75 @@
     max-width: 100%;
   }
 }
+
+/* ── Carte 3D (chantier 31) ──────────────────────────────────────────────── */
+/* Le canvas WebGL n'a pas de taille intrinsèque : sans hauteur explicite, R3F rend
+   un canvas de zéro pixel et la scène reste invisible sans la moindre erreur. */
+.map3d {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+}
+
+.map-canvas {
+  flex: 1;
+  min-width: 0;
+  min-height: 420px;
+  background: radial-gradient(ellipse at center, #0d1420 0%, var(--bg) 80%);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Liste DOM parallèle au canvas (chantier 31.16) : seul chemin accessible vers les
+   objets de la scène, et le plus rapide pour trouver un nom dans une vue dense. */
+.map-list {
+  width: 210px;
+  flex: 0 0 auto;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+.map-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.map-list button {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.map-list button:hover {
+  background: var(--panel);
+}
+
+.map-list button[data-selected="true"] {
+  border-color: var(--accent);
+  background: var(--panel);
+}
+
+/* Sur écran étroit, la liste passe sous la scène plutôt que de l'écraser (27.22). */
+@media (max-width: 720px) {
+  .map3d {
+    flex-direction: column;
+  }
+
+  .map-list {
+    width: 100%;
+    max-height: 180px;
+  }
+}

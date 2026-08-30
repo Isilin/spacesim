@@ -317,6 +317,7 @@ export const commonFr = {
   },
   universeMap: {
     ariaLabel: "Carte de l'univers",
+    colonized: "colonisée",
     finalConstruction: "chantier final…",
     systemStats: "{{systems}} systèmes · {{explored}} explorés",
     coloniesSuffix: " · {{count}} colonies",
@@ -880,6 +881,7 @@ export const commonEn: typeof commonFr = {
   },
   universeMap: {
     ariaLabel: "Map of the universe",
+    colonized: "colonized",
     finalConstruction: "final construction…",
     systemStats: "{{systems}} systems · {{explored}} explored",
     coloniesSuffix: " · {{count}} colonies",

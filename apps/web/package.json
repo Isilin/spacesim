@@ -14,14 +14,18 @@
     "@spacesim/protocol": "workspace:*",
     "@spacesim/shared": "workspace:*",
     "@spacesim/ui": "workspace:*",
+    "@react-three/drei": "catalog:",
+    "@react-three/fiber": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-i18next": "^17.0.11",
     "react-router-dom": "^6.28.0",
+    "three": "catalog:",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
     "@playwright/test": "1.49.0",
+    "@types/three": "catalog:",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.5.0",
