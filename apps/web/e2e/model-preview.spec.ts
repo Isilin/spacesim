@@ -43,6 +43,9 @@ test("l'aperçu 3D rend un vaisseau, sans erreur de console", async ({
   });
 
   await page.getByRole("link", { name: "Chantier" }).click();
+  // Le concepteur ouvre desormais sur la LISTE seule (chantier 34.6) : l'editeur, et donc
+  // l'apercu, n'existent qu'en mode edition.
+  await page.getByRole("button", { name: "+ Nouveau plan" }).click();
   await page.getByLabel("Châssis").selectOption({ index: 1 });
 
   const canvas = page.locator(".model-preview canvas");
@@ -76,6 +79,9 @@ test("l'aperçu ne se recadre pas tout seul pendant qu'il tourne", async ({
     empireName: "Stables E2E",
   });
   await page.getByRole("link", { name: "Chantier" }).click();
+  // Le concepteur ouvre desormais sur la LISTE seule (chantier 34.6) : l'editeur, et donc
+  // l'apercu, n'existent qu'en mode edition.
+  await page.getByRole("button", { name: "+ Nouveau plan" }).click();
   await page.getByLabel("Châssis").selectOption({ index: 1 });
 
   const host = page.locator(".model-preview");
@@ -100,6 +106,9 @@ test("changer de châssis recadre l'aperçu sans le casser", async ({ page }) =>
     empireName: "Recadreurs E2E",
   });
   await page.getByRole("link", { name: "Chantier" }).click();
+  // Le concepteur ouvre desormais sur la LISTE seule (chantier 34.6) : l'editeur, et donc
+  // l'apercu, n'existent qu'en mode edition.
+  await page.getByRole("button", { name: "+ Nouveau plan" }).click();
 
   const chassis = page.getByLabel("Châssis");
   const canvas = page.locator(".model-preview canvas");

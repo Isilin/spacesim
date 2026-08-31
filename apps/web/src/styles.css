@@ -1118,17 +1118,51 @@
 }
 
 .designer-editor {
-  /* 460 et non 380 (chantier 33.8) : la colonne de droite porte l'aperçu 3D, le schéma
-     de coque, les jauges ET la liste des emplacements. À 380 elle étouffait pendant que
-     la liste de plans, en `flex: 1`, prenait tout le reste. */
-  width: 460px;
-  flex-shrink: 0;
+  /* Pleine largeur depuis le chantier 34.6 : la liste et l'éditeur ne coexistent plus,
+     l'un remplace l'autre. La colonne fixe de 460 px n'avait plus de raison d'être — elle
+     étouffait l'aperçu 3D pendant que la liste occupait tout le reste. */
+  flex: 1;
+  min-width: 0;
 }
 
 .designer-editor-body {
+  /* Deux colonnes (chantier 34.6) : la scène 3D en vedette à gauche, tous les contrôles à
+     droite. `minmax(…, 0)` sur la seconde piste et non `auto` — sans lui, le contenu
+     intrinsèquement large (schéma de coque, puces de modules) impose sa largeur et repousse
+     la scène hors du cadre. */
+  display: grid;
+  grid-template-columns: minmax(320px, 1.05fr) minmax(360px, 0.95fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.designer-controls {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
+}
+
+/* Le cadre du panneau est biseauté en haut à droite : sans cette marge, le retour à la
+   liste se retrouve à cheval sur la coupe. */
+.designer-back {
+  margin-right: 14px;
+}
+
+.designer-stage {
+  position: sticky;
+  /* Collante : les contrôles sont plus hauts que la scène, et l'aperçu doit rester visible
+     pendant qu'on descend dans les emplacements — c'est tout l'intérêt de l'avoir mis en
+     vedette. */
+  top: 12px;
+  min-width: 0;
+}
+
+/* Dans la scène, l'aperçu n'a plus de plafond : c'est là que la densité doit payer. */
+.designer-stage .model-preview {
+  max-width: none;
+  height: clamp(360px, 52vh, 620px);
+  margin-bottom: 0;
 }
 
 .editor-actions {
@@ -1571,6 +1605,17 @@
   }
   .designer-editor {
     width: auto;
+  }
+  /* Sous 720 px les deux colonnes s'empilent, et la scène cesse d'être collante : sur un
+     écran haut comme un téléphone, elle mangerait la moitié du champ en permanence. */
+  .designer-editor-body {
+    grid-template-columns: 1fr;
+  }
+  .designer-stage {
+    position: static;
+  }
+  .designer-stage .model-preview {
+    height: 300px;
   }
   .research-body {
     flex-direction: column;

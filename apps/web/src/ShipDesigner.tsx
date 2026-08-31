@@ -105,6 +105,19 @@ export function ShipDesigner({ effects }: Props) {
     setSelectedSlot(null);
   };
 
+  /**
+   * Mode d'edition, DERIVE de l'etat existant (chantier 34.6) : un booleen de plus serait
+   * un second etat a garder synchronise avec celui-ci pour rien.
+   */
+  const editing = editingId !== null || draft.chassisId !== "";
+
+  /** Retour a la liste : c'est le seul chemin qui remet le brouillon a vide. */
+  const closeEditor = () => {
+    setEditingId(null);
+    setDraft(EMPTY);
+    setSelectedSlot(null);
+  };
+
   const startEdit = (id: string) => {
     const bp = blueprints.find((b) => b.id === id);
     if (!bp) return;
@@ -198,302 +211,329 @@ export function ShipDesigner({ effects }: Props) {
         ? { type: "updateBlueprint", blueprintId: editingId, ...payload }
         : { type: "createBlueprint", ...payload },
     );
-    startNew();
+    // Enregistrer ramene a la liste : c'est la ou l'on verifie ce qu'on vient de creer.
+    closeEditor();
   };
 
   return (
     <div className="designer-layout">
-      <Panel
-        className="designer-list"
-        title={t("shipDesigner.blueprints")}
-        actions={
-          <Button onClick={startNew}>{t("shipDesigner.newBlueprint")}</Button>
-        }
-      >
-        <BlueprintList
-          blueprints={blueprints}
-          activeColony={activeColony}
-          fleets={fleets}
-          editingId={editingId}
-          onEdit={startEdit}
-          send={send}
-        />
-      </Panel>
-
-      <Panel
-        className="designer-editor"
-        title={
-          editingId
-            ? t("shipDesigner.editBlueprint")
-            : t("shipDesigner.newBlueprintTitle")
-        }
-      >
-        <div className="designer-editor-body">
-          <Field
-            label={t("shipDesigner.name")}
-            value={draft.name}
-            placeholder={t("shipDesigner.namePlaceholder")}
-            onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+      {/* Liste ET editeur ne coexistent plus (chantier 34.6). L'editeur etait coince dans
+          une colonne de 460 px pendant que la liste occupait tout le reste, y compris quand
+          on ne faisait que parcourir. L'apercu 3D porte desormais la densite : c'est lui
+          qui a besoin de la place. */}
+      {!editing && (
+        <Panel
+          className="designer-list"
+          title={t("shipDesigner.blueprints")}
+          actions={
+            <Button onClick={startNew}>{t("shipDesigner.newBlueprint")}</Button>
+          }
+        >
+          <BlueprintList
+            blueprints={blueprints}
+            activeColony={activeColony}
+            fleets={fleets}
+            editingId={editingId}
+            onEdit={startEdit}
+            send={send}
           />
+        </Panel>
+      )}
 
-          <Select
-            label={t("shipDesigner.chassis")}
-            value={draft.chassisId}
-            onChange={(e) => {
-              setDraft({
-                name: draft.name,
-                chassisId: e.target.value as ChassisId,
-                modules: [],
-              });
-              setSelectedSlot(null);
-            }}
-            options={[
-              { value: "", label: t("shipDesigner.chooseOption") },
-              ...unlockedChassis.map((id) => ({
-                value: id,
-                label: `${chassisLabel(id).name} (${
-                  CHASSIS[id].domain === "colony"
-                    ? t("shipDesigner.domainColony")
-                    : t("shipDesigner.domainFleet")
-                })`,
-              })),
-            ]}
-          />
-
-          {chassis && stats && (
-            <>
-              <p className="muted small">
-                {chassisLabel(chassis.id).description}
-              </p>
-
-              <div className="designer-preview">
-                {/* Aperçu 3D (chantier 31.20) : il COMPLÈTE le diagramme, qui reste
-                    l'éditeur — on y clique un emplacement, geste qu'une vue en
-                    rotation ferait perdre. */}
-                {draft.chassisId && (
-                  <ModelPreview
-                    ariaLabel={t("shipDesigner.preview3d")}
-                    fitKey={`${draft.chassisId}:${draft.modules.join(",")}`}
-                  >
-                    <ShipModel
-                      chassisId={draft.chassisId}
-                      modules={draft.modules}
-                    />
-                  </ModelPreview>
-                )}
-                <div className="hull-diagram-wrap">
-                  <ShipHullDiagram
+      {editing && (
+        <Panel
+          className="designer-editor"
+          title={
+            editingId
+              ? t("shipDesigner.editBlueprint")
+              : t("shipDesigner.newBlueprintTitle")
+          }
+          actions={
+            <span className="designer-back">
+              <Button variant="link" onClick={closeEditor}>
+                {t("shipDesigner.backToList")}
+              </Button>
+            </span>
+          }
+        >
+          <div className="designer-editor-body">
+            {/* Apercu 3D en vedette (chantier 34.6) : c'est lui qui porte la densite, il
+              prend donc la colonne large. Le diagramme 2D reste l'EDITEUR — on y clique un
+              emplacement, geste qu'une vue en rotation ferait perdre. */}
+            <div className="designer-stage">
+              {draft.chassisId && (
+                <ModelPreview
+                  ariaLabel={t("shipDesigner.preview3d")}
+                  fitKey={`${draft.chassisId}:${draft.modules.join(",")}`}
+                >
+                  <ShipModel
                     chassisId={draft.chassisId}
                     modules={draft.modules}
-                    selectedSlot={selectedSlot}
-                    onSelectSlot={handleSelectSlot}
                   />
-                  {anchor && (
-                    <svg
-                      className="slot-connector"
-                      width={HULL_SIZE}
-                      height={HULL_HEIGHT}
-                      aria-hidden="true"
-                    >
-                      <line
-                        x1={anchor.x}
-                        y1={anchor.y}
-                        x2={anchor.x}
-                        y2={HULL_HEIGHT}
-                      />
-                    </svg>
-                  )}
-                </div>
-                <div className="hull-legend">
-                  {SLOT_LEGEND.map(({ slot, varName }) => (
-                    <span key={slot} className="hull-legend-item">
-                      <span
-                        className="hull-legend-dot"
-                        style={{ background: `var(${varName})` }}
-                      />
-                      {slotLabel(slot)}
-                    </span>
-                  ))}
-                  <span className="muted small">
-                    {t("shipDesigner.clickSlotHint")}
-                  </span>
-                </div>
-              </div>
+                </ModelPreview>
+              )}
+            </div>
 
-              {selectedSlot && anchor && (
-                <div
-                  className="slot-popover-anchor"
-                  style={{ "--notch-left": `${anchor.x}px` } as CSSProperties}
-                >
-                  <div className="slot-popover-notch" />
-                  <Popover
-                    style={{ position: "relative" }}
-                    aria-label={slotLabel(selectedSlot.type)}
-                    onClose={() => setSelectedSlot(null)}
-                  >
-                    <div className="slot-popover-head">
-                      <strong>{slotLabel(selectedSlot.type)}</strong>
-                      {selectedModule && (
-                        <button
-                          type="button"
-                          className="chip"
-                          onClick={removeSelected}
+            <div className="designer-controls">
+              <Field
+                label={t("shipDesigner.name")}
+                value={draft.name}
+                placeholder={t("shipDesigner.namePlaceholder")}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, name: e.target.value }))
+                }
+              />
+
+              <Select
+                label={t("shipDesigner.chassis")}
+                value={draft.chassisId}
+                onChange={(e) => {
+                  setDraft({
+                    name: draft.name,
+                    chassisId: e.target.value as ChassisId,
+                    modules: [],
+                  });
+                  setSelectedSlot(null);
+                }}
+                options={[
+                  { value: "", label: t("shipDesigner.chooseOption") },
+                  ...unlockedChassis.map((id) => ({
+                    value: id,
+                    label: `${chassisLabel(id).name} (${
+                      CHASSIS[id].domain === "colony"
+                        ? t("shipDesigner.domainColony")
+                        : t("shipDesigner.domainFleet")
+                    })`,
+                  })),
+                ]}
+              />
+
+              {chassis && stats && (
+                <>
+                  <p className="muted small">
+                    {chassisLabel(chassis.id).description}
+                  </p>
+
+                  <div className="designer-preview">
+                    <div className="hull-diagram-wrap">
+                      <ShipHullDiagram
+                        chassisId={draft.chassisId}
+                        modules={draft.modules}
+                        selectedSlot={selectedSlot}
+                        onSelectSlot={handleSelectSlot}
+                      />
+                      {anchor && (
+                        <svg
+                          className="slot-connector"
+                          width={HULL_SIZE}
+                          height={HULL_HEIGHT}
+                          aria-hidden="true"
                         >
-                          {moduleLabel(selectedModule.m).name} —{" "}
-                          {t("shipDesigner.remove")}
-                        </button>
+                          <line
+                            x1={anchor.x}
+                            y1={anchor.y}
+                            x2={anchor.x}
+                            y2={HULL_HEIGHT}
+                          />
+                        </svg>
                       )}
                     </div>
-                    <div className="fit-add">
-                      {MODULE_IDS.filter(
-                        (id) =>
-                          MODULES[id].slot === selectedSlot.type &&
-                          effects.unlockedModules.has(id),
-                      ).map((id) => (
-                        <button
-                          key={id}
-                          type="button"
-                          className={`chip add ${selectedModule?.m === id ? "active" : ""}`}
-                          title={moduleLabel(id).description}
-                          onClick={() => pickModule(id)}
-                        >
-                          + {moduleLabel(id).name}
-                        </button>
+                    <div className="hull-legend">
+                      {SLOT_LEGEND.map(({ slot, varName }) => (
+                        <span key={slot} className="hull-legend-item">
+                          <span
+                            className="hull-legend-dot"
+                            style={{ background: `var(${varName})` }}
+                          />
+                          {slotLabel(slot)}
+                        </span>
                       ))}
-                    </div>
-                  </Popover>
-                </div>
-              )}
-
-              <div className="gauges">
-                <Gauge
-                  label={t("shipDesigner.energy")}
-                  used={load.power}
-                  max={chassis.power}
-                />
-                <Gauge
-                  label={t("shipDesigner.tonnage")}
-                  used={load.tonnage}
-                  max={chassis.tonnage}
-                />
-                <Gauge
-                  label={t("shipDesigner.compute")}
-                  used={load.calc}
-                  max={chassis.calc}
-                />
-              </div>
-
-              {/* Emplacements montés */}
-              <div className="fit-slots">
-                {SLOT_TYPES.map((slot) => (
-                  <div key={slot} className="fit-slot">
-                    <div className="fit-slot-head">
-                      <strong>{slotLabel(slot)}</strong>
-                      <span
-                        className={
-                          slotUsed(slot) > chassis.slots[slot]
-                            ? "gauge-over"
-                            : "muted"
-                        }
-                      >
-                        {slotUsed(slot)}/{chassis.slots[slot]}
+                      <span className="muted small">
+                        {t("shipDesigner.clickSlotHint")}
                       </span>
                     </div>
-                    <div className="fit-chips">
-                      {draft.modules
-                        .map((m, i) => ({ m, i }))
-                        .filter(({ m }) => MODULES[m].slot === slot)
-                        .map(({ m, i }) => (
-                          <button
-                            key={i}
-                            type="button"
-                            className="chip"
-                            onClick={() => removeModuleAt(i)}
-                          >
-                            {moduleLabel(m).name} ×
-                          </button>
-                        ))}
-                    </div>
                   </div>
-                ))}
-              </div>
 
-              {/* Récap stats */}
-              <div className="stats-recap">
-                <span>
-                  {t("shipDesigner.hull", { value: Math.round(stats.hull) })}
-                </span>
-                <span>
-                  {t("shipDesigner.shield", {
-                    value: Math.round(stats.shield),
-                  })}
-                </span>
-                <span>
-                  {t("shipDesigner.fire", {
-                    long: Math.round(stats.weapons.long),
-                    medium: Math.round(stats.weapons.medium),
-                    short: Math.round(stats.weapons.short),
-                  })}
-                </span>
-                <span>
-                  {t("shipDesigner.initiative", {
-                    value: Math.round(stats.initiative),
-                  })}
-                </span>
-                {stats.capacity > 0 && (
-                  <span>
-                    {t("shipDesigner.hold", {
-                      value: Math.round(stats.capacity),
-                    })}
-                  </span>
-                )}
-                {stats.miningYield > 0 && (
-                  <span>
-                    {t("shipDesigner.mining", {
-                      value: Math.round(stats.miningYield),
-                    })}
-                  </span>
-                )}
-                {stats.colonizer && <span>{t("shipDesigner.colonizer")}</span>}
-                <span>
-                  {t("shipDesigner.speed", {
-                    value: stats.speedMult.toFixed(2),
-                  })}
-                </span>
-                <span>
-                  {t("shipDesigner.fuel", {
-                    value: Math.round(stats.fuelPerJump),
-                  })}
-                </span>
-                <span className="muted">
-                  {formatCost(stats.cost)} — {formatDuration(stats.buildMs)}
-                </span>
-              </div>
+                  {selectedSlot && anchor && (
+                    <div
+                      className="slot-popover-anchor"
+                      style={
+                        { "--notch-left": `${anchor.x}px` } as CSSProperties
+                      }
+                    >
+                      <div className="slot-popover-notch" />
+                      <Popover
+                        style={{ position: "relative" }}
+                        aria-label={slotLabel(selectedSlot.type)}
+                        onClose={() => setSelectedSlot(null)}
+                      >
+                        <div className="slot-popover-head">
+                          <strong>{slotLabel(selectedSlot.type)}</strong>
+                          {selectedModule && (
+                            <button
+                              type="button"
+                              className="chip"
+                              onClick={removeSelected}
+                            >
+                              {moduleLabel(selectedModule.m).name} —{" "}
+                              {t("shipDesigner.remove")}
+                            </button>
+                          )}
+                        </div>
+                        <div className="fit-add">
+                          {MODULE_IDS.filter(
+                            (id) =>
+                              MODULES[id].slot === selectedSlot.type &&
+                              effects.unlockedModules.has(id),
+                          ).map((id) => (
+                            <button
+                              key={id}
+                              type="button"
+                              className={`chip add ${selectedModule?.m === id ? "active" : ""}`}
+                              title={moduleLabel(id).description}
+                              onClick={() => pickModule(id)}
+                            >
+                              + {moduleLabel(id).name}
+                            </button>
+                          ))}
+                        </div>
+                      </Popover>
+                    </div>
+                  )}
 
-              {problems.length > 0 && (
-                <ul className="problems">
-                  {problems.map((p, i) => (
-                    <li key={i}>{p}</li>
-                  ))}
-                </ul>
+                  <div className="gauges">
+                    <Gauge
+                      label={t("shipDesigner.energy")}
+                      used={load.power}
+                      max={chassis.power}
+                    />
+                    <Gauge
+                      label={t("shipDesigner.tonnage")}
+                      used={load.tonnage}
+                      max={chassis.tonnage}
+                    />
+                    <Gauge
+                      label={t("shipDesigner.compute")}
+                      used={load.calc}
+                      max={chassis.calc}
+                    />
+                  </div>
+
+                  {/* Emplacements montés */}
+                  <div className="fit-slots">
+                    {SLOT_TYPES.map((slot) => (
+                      <div key={slot} className="fit-slot">
+                        <div className="fit-slot-head">
+                          <strong>{slotLabel(slot)}</strong>
+                          <span
+                            className={
+                              slotUsed(slot) > chassis.slots[slot]
+                                ? "gauge-over"
+                                : "muted"
+                            }
+                          >
+                            {slotUsed(slot)}/{chassis.slots[slot]}
+                          </span>
+                        </div>
+                        <div className="fit-chips">
+                          {draft.modules
+                            .map((m, i) => ({ m, i }))
+                            .filter(({ m }) => MODULES[m].slot === slot)
+                            .map(({ m, i }) => (
+                              <button
+                                key={i}
+                                type="button"
+                                className="chip"
+                                onClick={() => removeModuleAt(i)}
+                              >
+                                {moduleLabel(m).name} ×
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Récap stats */}
+                  <div className="stats-recap">
+                    <span>
+                      {t("shipDesigner.hull", {
+                        value: Math.round(stats.hull),
+                      })}
+                    </span>
+                    <span>
+                      {t("shipDesigner.shield", {
+                        value: Math.round(stats.shield),
+                      })}
+                    </span>
+                    <span>
+                      {t("shipDesigner.fire", {
+                        long: Math.round(stats.weapons.long),
+                        medium: Math.round(stats.weapons.medium),
+                        short: Math.round(stats.weapons.short),
+                      })}
+                    </span>
+                    <span>
+                      {t("shipDesigner.initiative", {
+                        value: Math.round(stats.initiative),
+                      })}
+                    </span>
+                    {stats.capacity > 0 && (
+                      <span>
+                        {t("shipDesigner.hold", {
+                          value: Math.round(stats.capacity),
+                        })}
+                      </span>
+                    )}
+                    {stats.miningYield > 0 && (
+                      <span>
+                        {t("shipDesigner.mining", {
+                          value: Math.round(stats.miningYield),
+                        })}
+                      </span>
+                    )}
+                    {stats.colonizer && (
+                      <span>{t("shipDesigner.colonizer")}</span>
+                    )}
+                    <span>
+                      {t("shipDesigner.speed", {
+                        value: stats.speedMult.toFixed(2),
+                      })}
+                    </span>
+                    <span>
+                      {t("shipDesigner.fuel", {
+                        value: Math.round(stats.fuelPerJump),
+                      })}
+                    </span>
+                    <span className="muted">
+                      {formatCost(stats.cost)} — {formatDuration(stats.buildMs)}
+                    </span>
+                  </div>
+
+                  {problems.length > 0 && (
+                    <ul className="problems">
+                      {problems.map((p, i) => (
+                        <li key={i}>{p}</li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <div className="editor-actions">
+                    <Button disabled={problems.length > 0} onClick={save}>
+                      {editingId
+                        ? t("shipDesigner.save")
+                        : t("shipDesigner.createBlueprint")}
+                    </Button>
+                    <Button variant="link" onClick={closeEditor}>
+                      {t("shipDesigner.cancel")}
+                    </Button>
+                  </div>
+                </>
               )}
-
-              <div className="editor-actions">
-                <Button disabled={problems.length > 0} onClick={save}>
-                  {editingId
-                    ? t("shipDesigner.save")
-                    : t("shipDesigner.createBlueprint")}
-                </Button>
-                {editingId && (
-                  <Button variant="link" onClick={startNew}>
-                    {t("shipDesigner.cancel")}
-                  </Button>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </Panel>
+            </div>
+          </div>
+        </Panel>
+      )}
     </div>
   );
 }
