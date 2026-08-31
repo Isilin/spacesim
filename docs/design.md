@@ -1979,3 +1979,41 @@ reste vraie pour les niveaux de carte) ; le texte en 3D (drei `<Text>` charge un
 depuis un CDN, ce que `tokens.css` interdit) ; l'édition, qui reste aux diagrammes 2D ;
 `prefers-reduced-motion` sur la rotation automatique, défaut d'accessibilité **préexistant**
 et non introduit ici, à traiter avec le reste de l'a11y.
+
+## Chantier 34 — Densité de concept art pour les objets manufacturés (31/08/2026)
+
+Décision et alternatives écartées :
+[ADR 0014](adr/0014-densite-decorative-des-objets-manufactures.md).
+
+Le chantier 33 a donné aux vaisseaux et aux stations un registre holographique et des
+silhouettes distinctes. Il n'a pas donné de **densité** : une coque nue rend dix pièces, un
+croiseur garni une trentaine, une station à cinq zones trente-trois. Aucune n'est du détail
+de surface. Le diagramme **2D** du même vaisseau porte quinze à vingt-quatre éléments
+autorés à la main — la vue 3D est plus pauvre que la vue 2D qu'elle complète.
+
+La cible : deux à quatre cents pièces par objet, à la densité d'un concept art
+*hard-surface*. Un plan compte une dizaine de modules : il n'y a pas assez de données pour
+justifier une pièce sur dix. L'ADR 0014 tranche — la structure reste signifiante, la surface
+devient décorative, et la décoration reste une **empreinte du plan** (tirée de `seedOf` sur
+châssis + modules), donc déterministe et vérifiable.
+
+- **34.1** — ADR 0014 et entrée de roadmap.
+- **34.2** — fusion des géométries **par teinte** : un maillage et un jeu d'arêtes par
+  teinte au lieu de deux appels de rendu par pièce. Les arêtes sont calculées **avant** la
+  fusion, sur la pièce isolée, pour préserver le seuil d'angle propre à chacune. Livrée
+  avant la densité : trois cents pièces sans fusion feraient tomber le budget d'images et
+  masqueraient la cause.
+- **34.3** — `greeble.ts`, bibliothèque de détail **pure** partagée par les vaisseaux et les
+  stations : coutures de panneau, bandes de plaques, semis de greebles, trappes, ailettes,
+  pylônes, verrières, grappes d'antennes, anneaux de fuselage.
+- **34.4** — vaisseaux, de dix à ~250 pièces, en reprenant les proportions du `HULL_ART` 2D
+  plutôt qu'en inventant.
+- **34.5** — stations, de trente-trois à ~250 pièces : tours à redans, équipement par type
+  de zone, coursives à anneaux, moyeu détaillé.
+- **34.6** — concepteur : mode parcours et mode édition. La liste des plans disparaît en
+  édition et l'aperçu 3D passe en vedette.
+- **34.7** — tests de densité, de déterminisme et d'empreinte, garde du budget d'images.
+
+**Hors périmètre** : les corps astronomiques, qui gardent leur rendu ; les fichiers
+d'assets, la contrainte de l'ADR 0007 étant inchangée ; le texte en 3D ;
+`prefers-reduced-motion` sur la rotation automatique, défaut d'accessibilité préexistant.
