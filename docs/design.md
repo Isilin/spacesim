@@ -1917,3 +1917,41 @@ l'économie qu'il couvrirait est déjà prouvée par les tests purs.
 
 **Hors périmètre de la vague E** : `Contract` n'est pas absorbé (il vise une colonie et
 paie une livraison, pas un échange sur place) et les comptoirs PNJ gardent leur courbe.
+
+## Chantier 33 — Habillage holographique des objets manufacturés (31/08/2026)
+
+Décision et alternatives écartées :
+[ADR 0013](adr/0013-registre-holographique-des-apercus.md).
+
+Le rendu 3D des vaisseaux et des stations existe depuis le chantier 31 (vague E) mais il est
+pauvre : un vaisseau est un cylindre plus un cône avec une capsule par module, une station
+un prisme hexagonal par zone. Six châssis se distinguent par trois nombres, quatre types de
+zone par une hauteur d'extrusion. **C'est le risque que l'ADR 0007 s'était désigné à
+elle-même** — « les objets manufacturés risquent de se ressembler si les paramètres de forme
+sont trop pauvres » — et il s'est réalisé.
+
+Ce chantier le corrige, et ajoute un **troisième registre visuel** : holographique, réservé
+aux aperçus d'objets manufacturés. Ce n'est pas un écart de style — l'aperçu 3D est affiché
+à côté du diagramme 2D du même objet, et ce diagramme est déjà un contour cyan sur un lavis
+cyan. Les deux vues parlent enfin la même langue.
+
+- **33.1** — ADR 0013 et entrée de roadmap.
+- **33.2** — socle : `themeColor` (les couleurs viennent de `tokens.css`, plus des hex
+  périmés codés en dur) et `HoloMaterial` (Fresnel, balayage, arêtes vives par `<Edges>`).
+- **33.3** — `shipLayout` et `stationLayout`, fonctions **pures** rendant des listes de
+  pièces. Le dépôt n'a aucun test de composant three.js ; plutôt qu'ajouter un harnais
+  WebGL, on sort la décision de forme du rendu — même séparation que `bounds.ts`.
+- **33.4** — vaisseaux : profil de coque autoré par `ChassisKind`, formes de module par
+  `ModuleRole` (huit, contre quatre `SlotType` aujourd'hui — la donnée existe déjà),
+  position par `SlotType`, échelle par tonnage avec la formule exacte du diagramme 2D.
+- **33.5** — stations : silhouette propre par type de zone, coursives entre zones
+  **adjacentes** au lieu de rayons vers le moyeu, installations en accessoires, zones en
+  file rendues en fantôme.
+- **33.6** — aperçu : vignette radiale supprimée (même raison qu'au 31.24), éclairage réduit
+  à ce que le registre exige, `fov`/`far` posés, plan de grille dans la scène.
+- **33.7** — tests des deux fonctions pures et budget d'images de l'aperçu, qui n'en avait
+  aucun alors qu'il tourne en continu (`autoRotate`).
+
+**Hors périmètre** : les corps astronomiques (la table des deux registres de l'ADR 0007
+reste vraie pour les niveaux de carte) ; le texte en 3D (drei `<Text>` charge une police
+depuis un CDN, ce que `tokens.css` interdit) ; l'édition, qui reste aux diagrammes 2D.
