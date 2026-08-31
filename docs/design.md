@@ -2006,10 +2006,14 @@ châssis + modules), donc déterministe et vérifiable.
 - **34.3** — `greeble.ts`, bibliothèque de détail **pure** partagée par les vaisseaux et les
   stations : coutures de panneau, bandes de plaques, semis de greebles, trappes, ailettes,
   pylônes, verrières, grappes d'antennes, anneaux de fuselage.
-- **34.4** — vaisseaux, de dix à ~250 pièces, en reprenant les proportions du `HULL_ART` 2D
-  plutôt qu'en inventant.
-- **34.5** — stations, de trente-trois à ~250 pièces : tours à redans, équipement par type
-  de zone, coursives à anneaux, moyeu détaillé.
+- **34.4** — vaisseaux, de dix à ~230 pièces nues et ~310 garnies. Le décor seul ne
+  suffisait pas : deux cents pièces posées sur trois troncs de cône rendaient un fuselage
+  lisse et flou. Il a fallu ajouter une **superstructure** — pont dorsal, quille, sponsons,
+  bloc de poupe — car ce sont les masses qui font lire un objet construit. Taille des
+  modules tirée du tonnage (elle était figée à 0,3 pour tous), quatre à dix primitives par
+  rôle, et suppression de la branche morte `outboard`.
+- **34.5** — stations, de trente-trois à ~290 pièces : étages en redan, décor par zone,
+  radiateurs, coursives à anneaux, moyeu détaillé et sa grappe d'antennes.
 - **34.6** — concepteur : mode parcours et mode édition. La liste des plans disparaît en
   édition et l'aperçu 3D passe en vedette.
 - **34.7** — tests de densité, de déterminisme et d'empreinte, garde du budget d'images.

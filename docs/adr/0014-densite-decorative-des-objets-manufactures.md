@@ -61,10 +61,17 @@ de laisser croire à une information qui n'existe pas.
 
 ### Mais la décoration reste une empreinte du plan
 
-Le détail décoratif est tiré de `seedOf` sur l'**identité du plan** — classe de châssis et
-liste de modules. Deux plans différents ne se décorent pas pareil ; un même plan se décore
-toujours pareil, sans que rien ne soit persisté. Ce n'est pas du bruit aléatoire : c'est une
-signature.
+Le détail décoratif est tiré de `seedOf`, jamais d'un aléa : un même plan se décore toujours
+pareil, sans que rien ne soit persisté. La graine est **partagée en deux**, et ce découpage
+est délibéré :
+
+- le décor de **coque** est amorcé par la classe de châssis **seule** ;
+- le décor des **garnitures** l'est par le châssis et l'identifiant du module.
+
+Amorcer la coque avec le plan complet serait plus « pur », et insupportable à l'usage :
+monter un module rebattrait toute la peau du vaisseau sous les yeux du joueur en train
+d'éditer. Ce sont les garnitures qui portent la part « modules » de l'empreinte. Le résultat
+d'ensemble reste ce qui compte : **deux plans différents ne se décorent pas pareil.**
 
 La promesse forte de l'ADR 0007 — *tout ce qu'on voit vient d'une donnée* — est donc
 remplacée par une promesse faible mais vérifiable : **la décoration est une fonction du
@@ -90,11 +97,24 @@ couture de panneau d'un fil de fer.
 - **Les fonctions de composition restent pures.** `shipLayout`, `stationLayout` et la
   nouvelle bibliothèque de détail ne connaissent ni three.js ni le DOM. C'est ce qui permet
   de tester la densité et son déterminisme sans harnais WebGL (ADR 0013).
-- **La lecture en additif a un plafond.** Le mélange additif est indépendant de l'ordre —
-  c'est pourquoi il a été choisi — mais il s'accumule : au-delà d'un certain nombre de faces
-  superposées, le centre de l'objet vire au blanc. L'opacité de base des faces baisse en
-  conséquence, et **ce sont les arêtes qui portent la lecture**. Trop d'arêtes tue aussi la
-  lecture : la densité a un optimum, pas un maximum.
+- **La lecture en additif a un plafond, et il impose un partage.** Le mélange additif est
+  indépendant de l'ordre — c'est pourquoi il a été choisi — mais il s'accumule : deux cents
+  petits volumes translucides empilés sur une coque ne rendent pas deux cents détails, ils
+  rendent un nuage lumineux qui avale la silhouette. Le décor ne garde donc **que ses
+  arêtes** ; le remplissage reste réservé aux volumes qui portent la forme — coque,
+  superstructure, modules. C'est ce partage, et lui seul, qui donne la lecture
+  « blueprint » : un volume translucide, des lignes nettes par-dessus. Il s'assortit d'une
+  hiérarchie d'intensité — arêtes de structure franches, arêtes de décor en retrait — sans
+  laquelle deux cents lignes de détail pèsent autant que la douzaine qui dessine l'objet.
+- **La densité ne remplace pas la silhouette.** Le premier jet a posé deux cents pièces de
+  décor sur trois troncs de cône empilés, et rendu un fuselage lisse et flou. Ce sont les
+  **masses** — pont, quille, sponsons, bloc de poupe, étages en redan — qui font lire un
+  objet construit ; le détail de surface ne fait ensuite que l'habiller. L'ordre compte :
+  la silhouette d'abord, le décor après.
+- **Trop d'arêtes tue la lecture autant que trop peu.** La densité a un optimum, pas un
+  maximum, et le seuil d'angle des arêtes se calcule au lieu d'être constant : un anneau à
+  douze faces conservé à 18° garde aussi ses douze arêtes latérales, et huit anneaux
+  tressent alors un panier de fil de fer par-dessus la coque.
 - **Le budget d'images devient une contrainte de conception**, plus une simple vérification.
   L'e2e mesure sur un pilote OpenGL logiciel ; si le seuil tombe, c'est la densité ou la
   fusion qu'on ajuste, jamais l'assertion.

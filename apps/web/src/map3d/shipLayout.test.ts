@@ -69,10 +69,15 @@ describe("shipLayout — identité des châssis", () => {
   });
 
   it("un châssis lourd porte plus de coque que son cadet de la même famille", () => {
-    // Sans cela, `scout_frame` et `standard_hull` seraient le même objet à deux tailles.
-    const light = shipLayout("scout_frame", []).parts.length;
-    const heavy = shipLayout("battlecruiser", []).parts.length;
-    expect(heavy).toBeGreaterThan(light);
+    // Le compte TOTAL a cessé d'être un témoin valable au chantier 34 : le budget de décor
+    // est constant d'un châssis à l'autre, précisément pour qu'un profil de coque ne
+    // décide pas en douce de la richesse du rendu. Ce que le palier lourd ajoute vraiment,
+    // ce sont des tuyères et des ailerons — c'est donc eux qu'on compte.
+    const propulsion = (id: string) =>
+      shipLayout(id, []).parts.filter(
+        (p) => p.id.startsWith("nozzle-") || p.id.startsWith("fin-"),
+      ).length;
+    expect(propulsion("battlecruiser")).toBeGreaterThan(propulsion("warframe"));
   });
 });
 
@@ -154,5 +159,75 @@ describe("shipLayout — budget de lueur", () => {
     expect(glowing.length).toBeGreaterThan(0);
     for (const part of glowing)
       expect(part.id.startsWith("nozzle-")).toBe(true);
+  });
+});
+
+describe("shipLayout — densité (chantier 34.4)", () => {
+  it("chaque châssis nu tient la fourchette de densité visée", () => {
+    // C'est l'assertion qui empêche la densité de repartir vers le bas sans qu'on le voie.
+    // Elle est large à dessein : le budget est réparti au prorata de la surface des troncs,
+    // donc un profil court reste plus léger qu'un profil long — ce qui est voulu.
+    for (const id of Object.keys(CHASSIS)) {
+      const count = shipLayout(id, []).parts.length;
+      expect(count, `${id} rend ${count} pièces`).toBeGreaterThanOrEqual(180);
+      expect(count, `${id} rend ${count} pièces`).toBeLessThanOrEqual(400);
+    }
+  });
+
+  it("le décor est en arêtes seules, la structure porte le volume", () => {
+    // Le mélange additif s'accumule : rendre aussi les faces du décor noierait la coque et
+    // jusqu'aux masses de la superstructure sous un nuage lumineux (ADR 0014).
+    const parts = shipLayout("standard_hull", []).parts;
+    const wire = parts.filter((p) => p.wire);
+    const solid = parts.filter((p) => !p.wire);
+    expect(wire.length).toBeGreaterThan(solid.length);
+    expect(solid.length).toBeGreaterThan(10);
+  });
+
+  it("un vaisseau garni est plus dense qu'un vaisseau nu", () => {
+    const chassis = CHASSIS.battlecruiser ?? Object.values(CHASSIS)[0]!;
+    const modules = MODULE_IDS.filter(
+      (id) => MODULES[id].slot === "weapon",
+    ).slice(0, 3);
+    const bare = shipLayout(chassis.id, []).parts.length;
+    const fitted = shipLayout(chassis.id, modules).parts.length;
+    expect(fitted).toBeGreaterThan(bare);
+  });
+});
+
+describe("shipLayout — la décoration est une empreinte du plan (ADR 0014)", () => {
+  it("deux châssis différents ne se décorent pas pareil", () => {
+    const decorOf = (id: string) =>
+      shipLayout(id, [])
+        .parts.filter((p) => p.id.includes("greeble"))
+        .map((p) => p.position.map((n) => n.toFixed(3)).join(","))
+        .join("|");
+    const ids = Object.keys(CHASSIS);
+    const signatures = new Set(ids.map(decorOf));
+    // Le repli générique fait converger plusieurs châssis d'une même classe : on exige que
+    // les CLASSES se distinguent, pas chacun des identifiants.
+    expect(signatures.size).toBeGreaterThanOrEqual(5);
+  });
+
+  it("deux modules différents au même emplacement reçoivent des garnitures différentes", () => {
+    const fitOf = (moduleId: string) =>
+      shipLayout("standard_hull", [moduleId])
+        .parts.filter((p) => p.id.includes("-fit-"))
+        .map((p) => p.position.map((n) => n.toFixed(3)).join(","))
+        .join("|");
+    const weapons = MODULE_IDS.filter((id) => MODULES[id].slot === "weapon");
+    expect(fitOf(weapons[0]!)).not.toBe(fitOf(weapons[1]!));
+  });
+
+  it("monter un module ne rebat pas la décoration de la coque", () => {
+    // Sans cela, la peau du vaisseau bouillonnerait sous les yeux du joueur à chaque clic
+    // dans le concepteur. L'empreinte du plan est portée par les garnitures, pas par elle.
+    const hullDecor = (modules: string[]) =>
+      shipLayout("standard_hull", modules)
+        .parts.filter((p) => p.id.startsWith("hull-"))
+        .map((p) => p.id)
+        .join("|");
+    const weapon = MODULE_IDS.find((id) => MODULES[id].slot === "weapon")!;
+    expect(hullDecor([])).toBe(hullDecor([weapon]));
   });
 });

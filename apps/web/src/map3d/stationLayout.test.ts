@@ -222,3 +222,62 @@ describe("stationLayout — cadrage", () => {
     }
   });
 });
+
+describe("stationLayout — densité (chantier 34.5)", () => {
+  const fiveZones = station({
+    zones: [
+      { zoneTypeId: "industrial_zone", q: 1, r: 0 },
+      { zoneTypeId: "science_zone", q: 0, r: 1 },
+      { zoneTypeId: "military_zone", q: -1, r: 1 },
+      { zoneTypeId: "commercial_zone", q: -1, r: 0 },
+      { zoneTypeId: "industrial_zone", q: 0, r: -1 },
+    ],
+    installations: { orbital_solar_array: 3 },
+  });
+
+  it("une station bâtie tient la fourchette de densité visée", () => {
+    const count = stationLayout(fiveZones).parts.length;
+    expect(count, `${count} pièces`).toBeGreaterThanOrEqual(200);
+    expect(count, `${count} pièces`).toBeLessThanOrEqual(400);
+  });
+
+  it("chaque zone bâtie ajoute sa part de densité", () => {
+    // La station grandit avec ce que le joueur bâtit : c'est la promesse de l'ADR 0007 que
+    // le décor de l'ADR 0014 ne remplace pas.
+    const one = stationLayout(
+      station({ zones: [{ zoneTypeId: "industrial_zone", q: 1, r: 0 }] }),
+    ).parts.length;
+    expect(stationLayout(fiveZones).parts.length).toBeGreaterThan(one * 2);
+  });
+
+  it("le décor est en arêtes seules, la structure porte le volume", () => {
+    // Le mélange additif s'accumule : rendre aussi les faces du décor noierait la
+    // silhouette sous un nuage lumineux (ADR 0014).
+    const parts = stationLayout(fiveZones).parts;
+    const wire = parts.filter((p) => p.wire);
+    const solid = parts.filter((p) => !p.wire && !p.ghost);
+    expect(wire.length).toBeGreaterThan(solid.length);
+    expect(solid.length).toBeGreaterThan(0);
+  });
+
+  it("une zone en file reste distinguable d'une zone bâtie", () => {
+    const parts = stationLayout(
+      station({
+        zones: [{ zoneTypeId: "industrial_zone", q: 1, r: 0 }],
+        zoneQueue: [
+          {
+            zoneTypeId: "science_zone",
+            q: 0,
+            r: 1,
+            startedAt: 0,
+            finishesAt: 1,
+          },
+        ],
+      }),
+    ).parts;
+    // Bâtie : un étage en redan et du décor. En file : ni l'un ni l'autre.
+    expect(parts.some((p) => p.id === "zone-tier-1,0")).toBe(true);
+    expect(parts.some((p) => p.id === "zone-tier-0,1")).toBe(false);
+    expect(parts.some((p) => p.id.startsWith("zone-0,1-"))).toBe(false);
+  });
+});

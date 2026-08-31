@@ -8,6 +8,15 @@ import {
 } from "@spacesim/shared";
 import { hullScale, isHeavyTier } from "../shipScale.js";
 import { seedOf } from "./appearance.js";
+import {
+  antennaCluster,
+  decorateSection,
+  type DetailPart,
+  radialBox,
+  radiatorFins,
+  rng,
+  type Section,
+} from "./greeble.js";
 import { slotColor, structureColor } from "./theme.js";
 
 /**
@@ -48,6 +57,8 @@ export interface ShipPart {
   color: string;
   /** La seule lueur autorisée par objet : les tuyères (`ui-brief`). */
   emissive?: boolean;
+  /** Décor : arêtes seules, sans remplissage (chantier 34.4). */
+  wire?: boolean;
   /** `0` supprime la passe d'arêtes — sur un volume lissé elle dégénère en fil de fer. */
   edgeAngle: number;
 }
@@ -76,7 +87,7 @@ interface HullProfile {
   nozzles: number;
   /** Poutre apparente entre le corps et le bloc moteur — lit « remorqueur + conteneur ». */
   spine: boolean;
-  signature: "drill" | "ring" | "mast" | "outboard" | "none";
+  signature: "drill" | "ring" | "mast" | "none";
 }
 
 const HULLS: Record<ChassisKind, HullProfile> = {
@@ -186,31 +197,63 @@ function hullRadiusAt(profile: HullProfile, x: number): number {
   return profile.sections[0]![2];
 }
 
+/** Primitive d'un module, exprimée en décalage relatif à son point de montage. */
+interface ModulePiece {
+  shape: PartShape;
+  offset: [number, number, number];
+  edgeAngle: number;
+}
+
 /**
- * Silhouette d'un module, dérivée de son **rôle** — huit formes, contre quatre
- * aujourd'hui.
+ * Tonnage le plus lourd du catalogue — calculé, jamais recopié : une valeur en dur
+ * deviendrait fausse au premier module ajouté au contenu.
+ */
+const MAX_MODULE_TONNAGE = Object.values(MODULES).reduce(
+  (max, def) => Math.max(max, def.tonnage),
+  1,
+);
+
+/**
+ * Taille apparente d'un module, tirée de son **tonnage**.
+ *
+ * Elle était figée à 0,3 pour tous : un bouclier aegis et un pod de cargo faisaient
+ * exactement la même bosse. La donnée existait déjà, le rendu ne la lisait pas.
+ */
+function moduleSize(moduleId: string): number {
+  const def = MODULES[moduleId as keyof typeof MODULES];
+  if (!def) return 0.3;
+  return 0.22 + 0.2 * Math.min(1, def.tonnage / MAX_MODULE_TONNAGE);
+}
+
+/**
+ * Silhouette d'un module, dérivée de son **rôle** — huit formes, contre quatre aujourd'hui.
  *
  * Le modèle porte déjà huit `ModuleRole` et seulement quatre `SlotType` ; le rendu
  * n'exploitait que les quatre. La couleur reste celle de l'emplacement — c'est la légende
  * que le diagramme 2D a déjà apprise au joueur — et la **forme** devient l'information que
  * la 3D ajoute.
+ *
+ * Chaque rôle rend désormais quatre à dix primitives au lieu d'une à trois (chantier
+ * 34.4) : ce qui distingue un canon d'un tube, c'est son frettage, son berceau et son
+ * évent, pas son cylindre.
  */
 function moduleShapes(
   role: ModuleRole,
   size: number,
   reach: number,
-): { shape: PartShape; offset: [number, number, number]; edgeAngle: number }[] {
+): ModulePiece[] {
   switch (role) {
-    case "weapon":
-      // Fût + culasse. La longueur du fût vient de la PORTÉE du module : un railgun
-      // longue portée est visiblement plus long qu'un autocanon.
-      return [
+    case "weapon": {
+      // Fût + frettes + culasse + berceau. La longueur du fût vient de la PORTÉE du
+      // module : un railgun longue portée est visiblement plus long qu'un autocanon.
+      const barrel = size * (1 + reach * 1.6);
+      const pieces: ModulePiece[] = [
         {
           shape: {
             kind: "prism",
-            rFore: size * 0.28,
-            rAft: size * 0.34,
-            length: size * (1 + reach * 1.6),
+            rFore: size * 0.24,
+            rAft: size * 0.3,
+            length: barrel,
             sides: 8,
           },
           offset: [size * 0.5, 0, 0],
@@ -221,18 +264,66 @@ function moduleShapes(
           offset: [-size * 0.35, 0, 0],
           edgeAngle: 15,
         },
-      ];
-    case "defense":
-      // Plaque courbe plaquée sur la coque : une ceinture de blindage, pas une excroissance.
-      return [
+        // Berceau : la pièce qui rattache l'arme à la coque au lieu de la faire flotter.
         {
-          shape: { kind: "box", size: [size * 1.6, size * 0.25, size * 1.1] },
-          offset: [0, 0, 0],
+          shape: { kind: "box", size: [size * 0.9, size * 0.5, size * 0.22] },
+          offset: [-size * 0.1, 0, -size * 0.42],
           edgeAngle: 15,
         },
+        // Frein de bouche.
+        {
+          shape: {
+            kind: "prism",
+            rFore: size * 0.34,
+            rAft: size * 0.34,
+            length: size * 0.12,
+            sides: 8,
+          },
+          offset: [size * 0.5 + barrel * 0.42, 0, 0],
+          edgeAngle: 18,
+        },
       ];
-    case "propulsion":
-      return [
+      // Frettes le long du fût : trois anneaux d'arêtes pour trois volumes très plats.
+      for (let i = 0; i < 3; i++) {
+        pieces.push({
+          shape: {
+            kind: "prism",
+            rFore: size * 0.32,
+            rAft: size * 0.32,
+            length: size * 0.07,
+            sides: 8,
+          },
+          offset: [size * 0.5 + barrel * (i * 0.3 - 0.3), 0, 0],
+          edgeAngle: 18,
+        });
+      }
+      return pieces;
+    }
+    case "defense": {
+      // Ceinture de blindage plaquée sur la coque, segmentée : une seule dalle lisait
+      // comme une caisse, trois écailles lisent comme un blindage.
+      const pieces: ModulePiece[] = [];
+      for (let i = 0; i < 3; i++) {
+        pieces.push({
+          shape: {
+            kind: "box",
+            size: [size * 0.5, size * 0.22, size * (1.1 - i * 0.16)],
+          },
+          offset: [(i - 1) * size * 0.56, 0, 0],
+          edgeAngle: 15,
+        });
+      }
+      for (const side of [1, -1]) {
+        pieces.push({
+          shape: { kind: "box", size: [size * 1.7, size * 0.1, size * 0.2] },
+          offset: [0, 0, side * size * 0.6],
+          edgeAngle: 15,
+        });
+      }
+      return pieces;
+    }
+    case "propulsion": {
+      const pieces: ModulePiece[] = [
         {
           shape: { kind: "capsule", radius: size * 0.32, length: size * 1.1 },
           offset: [0, 0, 0],
@@ -249,19 +340,65 @@ function moduleShapes(
           offset: [-size * 0.85, 0, 0],
           edgeAngle: 15,
         },
+        // Prise d'admission à l'avant : sans elle, la nacelle n'a pas de sens de marche.
+        {
+          shape: {
+            kind: "prism",
+            rFore: size * 0.36,
+            rAft: size * 0.28,
+            length: size * 0.3,
+            sides: 8,
+          },
+          offset: [size * 0.78, 0, 0],
+          edgeAngle: 15,
+        },
       ];
-    case "cargo":
-      // La chose la plus anguleuse du vaisseau, délibérément : un conteneur se reconnaît
-      // à ses arêtes.
-      return [
+      for (let i = 0; i < 3; i++) {
+        pieces.push({
+          shape: {
+            kind: "prism",
+            rFore: size * 0.37,
+            rAft: size * 0.37,
+            length: size * 0.06,
+            sides: 8,
+          },
+          offset: [size * (i * 0.4 - 0.4), 0, 0],
+          edgeAngle: 18,
+        });
+      }
+      return pieces;
+    }
+    case "cargo": {
+      // La chose la plus anguleuse du vaisseau, délibérément : un conteneur se reconnaît à
+      // ses arêtes. On en met donc davantage — longerons et porte.
+      const pieces: ModulePiece[] = [
         {
           shape: { kind: "box", size: [size * 1.5, size * 0.9, size * 0.9] },
           offset: [0, 0, 0],
           edgeAngle: 15,
         },
+        {
+          shape: { kind: "box", size: [size * 0.12, size * 0.7, size * 0.7] },
+          offset: [size * 0.76, 0, 0],
+          edgeAngle: 15,
+        },
       ];
-    case "mining":
-      return [
+      for (const side of [1, -1]) {
+        for (const up of [1, -1]) {
+          pieces.push({
+            shape: {
+              kind: "box",
+              size: [size * 1.6, size * 0.08, size * 0.14],
+            },
+            offset: [0, side * size * 0.47, up * size * 0.36],
+            edgeAngle: 15,
+          });
+        }
+      }
+      return pieces;
+    }
+    case "mining": {
+      const pieces: ModulePiece[] = [
         {
           shape: {
             kind: "cone",
@@ -282,17 +419,80 @@ function moduleShapes(
           offset: [0, 0, 0],
           edgeAngle: 0,
         },
+        {
+          shape: {
+            kind: "prism",
+            rFore: size * 0.3,
+            rAft: size * 0.38,
+            length: size * 0.6,
+            sides: 6,
+          },
+          offset: [-size * 0.4, 0, 0],
+          edgeAngle: 15,
+        },
       ];
-    case "habitat":
-      return [
+      // Mâchoires autour du cône : la signature d'une tête de forage.
+      for (let i = 0; i < 3; i++) {
+        const angle = (i * Math.PI * 2) / 3;
+        pieces.push({
+          shape: { kind: "box", size: [size * 0.7, size * 0.1, size * 0.22] },
+          offset: [
+            size * 0.55,
+            Math.cos(angle) * size * 0.42,
+            Math.sin(angle) * size * 0.42,
+          ],
+          edgeAngle: 15,
+        });
+      }
+      return pieces;
+    }
+    case "habitat": {
+      // Sphère + ceinture + hublots. La sphère seule n'a aucune arête, donc aucune lecture
+      // en registre holographique : c'est la ceinture qui la rend visible.
+      const pieces: ModulePiece[] = [
         {
           shape: { kind: "sphere", radius: size * 0.6 },
           offset: [0, 0, 0],
           edgeAngle: 0,
         },
+        {
+          shape: {
+            kind: "torus",
+            radius: size * 0.61,
+            tube: size * 0.06,
+            segments: 10,
+          },
+          offset: [0, 0, 0],
+          edgeAngle: 0,
+        },
+        {
+          shape: {
+            kind: "prism",
+            rFore: size * 0.3,
+            rAft: size * 0.3,
+            length: size * 0.3,
+            sides: 6,
+          },
+          offset: [-size * 0.65, 0, 0],
+          edgeAngle: 15,
+        },
       ];
-    case "sensor":
-      return [
+      for (let i = 0; i < 4; i++) {
+        const angle = (i * Math.PI) / 2 + Math.PI / 4;
+        pieces.push({
+          shape: { kind: "box", size: [size * 0.16, size * 0.16, size * 0.1] },
+          offset: [
+            Math.cos(angle) * size * 0.42,
+            Math.sin(angle) * size * 0.42,
+            size * 0.42,
+          ],
+          edgeAngle: 15,
+        });
+      }
+      return pieces;
+    }
+    case "sensor": {
+      const pieces: ModulePiece[] = [
         {
           shape: {
             kind: "prism",
@@ -314,21 +514,56 @@ function moduleShapes(
           offset: [0, 0, size * 1.1],
           edgeAngle: 0,
         },
+        // Bâti et alimentation : une parabole en équilibre sur un fil ne tient pas debout.
+        {
+          shape: { kind: "box", size: [size * 0.5, size * 0.5, size * 0.14] },
+          offset: [0, 0, -size * 0.06],
+          edgeAngle: 15,
+        },
+        {
+          shape: {
+            kind: "prism",
+            rFore: size * 0.14,
+            rAft: size * 0.14,
+            length: size * 0.24,
+            sides: 6,
+          },
+          offset: [0, 0, size * 1.22],
+          edgeAngle: 15,
+        },
       ];
-    case "support":
-      // Grappe d'antennes de longueurs inégales : lisible même très petite.
-      return [0.7, 1.1, 0.9].map((h, i) => ({
-        shape: {
-          kind: "box",
-          size: [size * 0.12, size * 0.12, size * h],
-        } as PartShape,
-        offset: [(i - 1) * size * 0.3, 0, size * h * 0.5] as [
-          number,
-          number,
-          number,
-        ],
-        edgeAngle: 15,
-      }));
+      for (const side of [1, -1]) {
+        pieces.push({
+          shape: { kind: "box", size: [size * 0.06, size * 0.06, size * 0.9] },
+          offset: [side * size * 0.22, 0, size * 0.5],
+          edgeAngle: 15,
+        });
+      }
+      return pieces;
+    }
+    case "support": {
+      // Grappe d'antennes de longueurs inégales, sur un socle : lisible même très petite.
+      const pieces: ModulePiece[] = [
+        {
+          shape: { kind: "box", size: [size * 0.9, size * 0.5, size * 0.16] },
+          offset: [0, 0, 0],
+          edgeAngle: 15,
+        },
+      ];
+      for (const [i, h] of [0.7, 1.1, 0.9, 0.5].entries()) {
+        pieces.push({
+          shape: { kind: "box", size: [size * 0.1, size * 0.1, size * h] },
+          offset: [(i - 1.5) * size * 0.26, 0, size * h * 0.5 + size * 0.08],
+          edgeAngle: 15,
+        });
+        pieces.push({
+          shape: { kind: "box", size: [size * 0.2, size * 0.05, size * 0.05] },
+          offset: [(i - 1.5) * size * 0.26, 0, size * h * 0.9],
+          edgeAngle: 15,
+        });
+      }
+      return pieces;
+    }
   }
 }
 
@@ -344,9 +579,19 @@ function weaponReach(moduleId: string): number {
 }
 
 /**
- * Compose un vaisseau. Toujours totale : un châssis inconnu du moteur retombe sur le
- * profil générique, un module inconnu est ignoré plutôt que de faire échouer le rendu
- * (repli obligatoire, ADR 0007).
+ * Budget de pièces DÉCORATIVES par vaisseau, hors structure et hors modules.
+ *
+ * C'est le paramètre qui fixe la densité (ADR 0014). Il est réparti sur les troncs de coque
+ * au prorata de leur surface : un châssis à deux sections courtes et un à trois sections
+ * longues reçoivent le même total, ce qui évite qu'un profil de coque décide en douce de la
+ * richesse du rendu.
+ */
+const HULL_DETAIL_BUDGET = 190;
+
+/**
+ * Compose un vaisseau. Toujours totale : un châssis inconnu du moteur retombe sur le profil
+ * générique, un module inconnu est ignoré plutôt que de faire échouer le rendu (repli
+ * obligatoire, ADR 0007).
  */
 export function shipLayout(chassisId: string, modules: string[]): ShipLayout {
   const chassis = CHASSIS[chassisId as keyof typeof CHASSIS];
@@ -357,6 +602,10 @@ export function shipLayout(chassisId: string, modules: string[]): ShipLayout {
   const heavy = isHeavyTier(chassisId);
   const structure = structureColor();
   const parts: ShipPart[] = [];
+  // Le détail décoratif est tenu à part : contrairement à la structure et aux modules, il
+  // épouse la surface de la coque et ne doit donc PAS subir l'aplatissement vertical, qui
+  // le décollerait du volume qu'il habille.
+  const decor: DetailPart[] = [];
 
   // ── Coque, en sections ─────────────────────────────────────────────────────
   profile.sections.forEach(([fore, aft, rFore, rAft], i) => {
@@ -392,8 +641,8 @@ export function shipLayout(chassisId: string, modules: string[]): ShipLayout {
   });
 
   if (profile.spine) {
-    // La poutre comble l'écart laissé entre les deux sections du profil : c'est cet
-    // espace vide qui fait lire « remorqueur + conteneur » plutôt qu'un fuselage continu.
+    // La poutre comble l'écart laissé entre les deux sections du profil : c'est cet espace
+    // vide qui fait lire « remorqueur + conteneur » plutôt qu'un fuselage continu.
     const gapFore = profile.sections[0]![1];
     const gapAft = profile.sections[1]![0];
     parts.push({
@@ -435,6 +684,22 @@ export function shipLayout(chassisId: string, modules: string[]): ShipLayout {
       emissive: true,
       edgeAngle: 15,
     });
+    // Jupe froide autour de la tuyère : elle borde la seule pièce lumineuse du vaisseau,
+    // qui sans cela flotte détachée de la poupe.
+    parts.push({
+      id: `nozzle-shroud-${i}`,
+      shape: {
+        kind: "prism",
+        rFore: sternR * 0.42,
+        rAft: sternR * 0.66,
+        length: 0.22,
+        sides: 8,
+      },
+      position: [sternX - 0.08, spread, 0],
+      rotation: [0, 0, -Math.PI / 2],
+      color: structure,
+      edgeAngle: 15,
+    });
   }
 
   const fins = profile.fins + (heavy ? 2 : 0);
@@ -449,6 +714,95 @@ export function shipLayout(chassisId: string, modules: string[]): ShipLayout {
         up ? 0 : side * sternR * 1.1,
         up ? side * sternR * 1.2 : 0,
       ],
+      rotation: [0, 0, 0],
+      color: structure,
+      edgeAngle: 15,
+    });
+  }
+
+  // ── Superstructure ─────────────────────────────────────────────────────────
+  // Trois troncs de cône empilés font une pastille, pas un vaisseau. Ce sont ces masses-là
+  // — pont dorsal, quille, sponsons, bloc de poupe — qui donnent une silhouette
+  // « construite » ; le détail de surface ne fait ensuite que l'habiller. C'est le
+  // constat du premier jet du chantier 34 : deux cents pièces de décor posées sur un
+  // fuselage lisse rendent un fuselage lisse et flou, pas du hard-surface.
+  const widest = profile.sections.reduce((best, s) =>
+    Math.max(s[2], s[3]) > Math.max(best[2], best[3]) ? s : best,
+  );
+  const midX = (widest[0] + widest[1]) / 2;
+  const midR = Math.max(widest[2], widest[3]);
+  const bodyLen = widest[0] - widest[1];
+
+  parts.push({
+    id: "deck",
+    shape: {
+      kind: "box",
+      size: [bodyLen * 0.72, midR * 1.15, midR * 0.34],
+    },
+    position: [midX + bodyLen * 0.06, 0, midR * 0.72],
+    rotation: [0, 0, 0],
+    color: structure,
+    edgeAngle: 15,
+  });
+  parts.push({
+    id: "deck-house",
+    shape: {
+      kind: "box",
+      size: [bodyLen * 0.3, midR * 0.72, midR * 0.42],
+    },
+    position: [midX - bodyLen * 0.12, 0, midR * 1.05],
+    rotation: [0, 0, 0],
+    color: structure,
+    edgeAngle: 15,
+  });
+  parts.push({
+    id: "keel",
+    shape: {
+      kind: "box",
+      size: [bodyLen * 0.86, midR * 0.42, midR * 0.3],
+    },
+    position: [midX, 0, -midR * 0.85],
+    rotation: [0, 0, 0],
+    color: structure,
+    edgeAngle: 15,
+  });
+  for (const side of [1, -1]) {
+    parts.push({
+      id: `sponson-${side > 0 ? "p" : "s"}`,
+      shape: {
+        kind: "box",
+        size: [bodyLen * 0.44, midR * 0.36, midR * 0.62],
+      },
+      position: [midX - bodyLen * 0.05, side * midR * 0.98, 0],
+      rotation: [0, 0, 0],
+      color: structure,
+      edgeAngle: 15,
+    });
+    // Épaulement qui raccorde le sponson à la coque : sans lui il a l'air posé dessus.
+    parts.push({
+      id: `sponson-fair-${side > 0 ? "p" : "s"}`,
+      shape: {
+        kind: "prism",
+        rFore: midR * 0.1,
+        rAft: midR * 0.3,
+        length: bodyLen * 0.5,
+        sides: 5,
+      },
+      position: [midX + bodyLen * 0.24, side * midR * 0.86, 0],
+      rotation: [0, 0, -Math.PI / 2],
+      color: structure,
+      edgeAngle: 18,
+    });
+  }
+  // Bloc de poupe à redans : la poupe était un simple tronc qui se terminait dans le vide.
+  for (let i = 0; i < 2; i++) {
+    parts.push({
+      id: `stern-block-${i}`,
+      shape: {
+        kind: "box",
+        size: [0.26, sternR * (1.5 - i * 0.4), sternR * (1.3 - i * 0.35)],
+      },
+      position: [sternX + 0.3 + i * 0.24, 0, 0],
       rotation: [0, 0, 0],
       color: structure,
       edgeAngle: 15,
@@ -475,6 +829,18 @@ export function shipLayout(chassisId: string, modules: string[]): ShipLayout {
       color: structure,
       edgeAngle: 0,
     });
+    // Rayons de l'anneau : un tore lisse n'a aucune arête, donc aucune lecture en holo.
+    for (let i = 0; i < 6; i++) {
+      const angle = (i * Math.PI) / 3;
+      parts.push({
+        id: `ring-spoke-${i}`,
+        shape: { kind: "box", size: [0.06, 0.06, 0.95] },
+        position: [-0.1, Math.cos(angle) * 0.48, Math.sin(angle) * 0.48],
+        rotation: [angle, 0, 0],
+        color: structure,
+        edgeAngle: 15,
+      });
+    }
   }
   if (profile.signature === "mast") {
     parts.push({
@@ -492,18 +858,94 @@ export function shipLayout(chassisId: string, modules: string[]): ShipLayout {
       edgeAngle: 15,
     });
   }
-  if (profile.signature === "outboard") {
-    for (const side of [1, -1]) {
-      parts.push({
-        id: `pylon-${side}`,
-        shape: { kind: "box", size: [0.5, 0.5, 0.06] },
-        position: [-0.4, side * 0.55, 0],
-        rotation: [0, 0, 0],
-        color: structure,
-        edgeAngle: 15,
-      });
-    }
+  // Verrière : elle donne un avant et un dessus au vaisseau. Facettée, jamais bombée — une
+  // surface lisse ne rend aucune arête, et c'est l'arête qui porte la lecture en holo.
+  const canopyR = hullRadiusAt(profile, nose[0] - 0.15);
+  parts.push({
+    id: "canopy",
+    shape: { kind: "cone", radius: canopyR * 0.5, height: 0.34, sides: 5 },
+    position: [nose[0] - 0.1, 0, canopyR * 0.78],
+    rotation: [0, 0, -Math.PI / 2.6],
+    color: slotColor("utility"),
+    edgeAngle: 12,
+  });
+
+  // ── Détail décoratif de coque ──────────────────────────────────────────────
+  // Graine tirée du CHÂSSIS seul, pas du plan complet : monter un module ne doit pas
+  // rebattre toute la peau du vaisseau sous les yeux du joueur en train d'éditer. Ce sont
+  // les garnitures qui portent la part « modules » de l'empreinte (ADR 0014).
+  const sections: Section[] = profile.sections.map(
+    ([fore, aft, rFore, rAft]) => ({
+      axis: "x" as const,
+      from: aft,
+      to: fore,
+      rFrom: rAft,
+      rTo: rFore,
+      sides: profile.sides,
+      offset: [0, 0] as [number, number],
+    }),
+  );
+  // Le cône de proue était la seule surface nue du vaisseau : la rupture de densité le
+  // faisait lire comme une pointe greffée sur une coque détaillée. Deux anneaux suffisent
+  // à le rattacher.
+  sections.push({
+    axis: "x",
+    from: nose[0],
+    to: nose[0] + 0.5,
+    rFrom: nose[2],
+    rTo: nose[2] * 0.35,
+    sides: profile.sides,
+    offset: [0, 0],
+  });
+
+  const areas = sections.map(
+    (s) => Math.abs(s.to - s.from) * ((s.rFrom + s.rTo) / 2),
+  );
+  const totalArea = areas.reduce((sum, a) => sum + a, 0) || 1;
+  sections.forEach((section, i) => {
+    const budget = Math.round(
+      HULL_DETAIL_BUDGET * ((areas[i] ?? 0) / totalArea),
+    );
+    decor.push(
+      ...decorateSection(
+        section,
+        budget,
+        structure,
+        `${chassisId}:hull:${i}`,
+        `hull-${i}`,
+      ),
+    );
+  });
+
+  // Radiateurs le long du flanc arrière : beaucoup d'arête pour très peu de volume.
+  const radiatorR = hullRadiusAt(profile, sternX + 0.6);
+  for (const side of [1, -1]) {
+    decor.push(
+      ...radiatorFins(
+        "x",
+        // Posées SUR le rayon de coque et non au-delà : détachées, les lames se lisaient
+        // comme des débris flottant à côté du vaisseau.
+        [sternX + 0.6, side * radiatorR * 0.92, 0],
+        6,
+        0.5,
+        0.18,
+        structure,
+        `radiator-${side > 0 ? "p" : "s"}`,
+      ),
+    );
   }
+
+  // Grappe d'antennes sur le dos, devant les tuyères.
+  decor.push(
+    ...antennaCluster(
+      [sternX + 0.9, 0, hullRadiusAt(profile, sternX + 0.9) * 0.95],
+      5,
+      0.3,
+      structure,
+      `${chassisId}:antenna`,
+      "dorsal",
+    ),
+  );
 
   // ── Modules ────────────────────────────────────────────────────────────────
   const bySlot = new Map<SlotType, string[]>();
@@ -523,13 +965,14 @@ export function shipLayout(chassisId: string, modules: string[]): ShipLayout {
       const rank = Math.floor(i / 2);
       const x = mount.x - rank * 0.34;
       const hullR = hullRadiusAt(profile, x);
-      // La graine porte le châssis ET le module : sans quoi un laser et un railgun au
-      // même emplacement recevaient rigoureusement le même désordre.
-      const jitter = seedOf(`${chassisId}:${moduleId}:${i}`) * 0.06;
-      const size = 0.3;
+      // La graine porte le châssis ET le module : sans quoi un laser et un railgun au même
+      // emplacement recevaient rigoureusement le même désordre.
+      const seed = `${chassisId}:${moduleId}:${i}`;
+      const jitter = seedOf(seed) * 0.06;
+      const size = moduleSize(moduleId);
 
       let base: [number, number, number];
-      let rotation: [number, number, number] = [0, 0, 0];
+      const rotation: [number, number, number] = [0, 0, 0];
       switch (mount.place) {
         case "dorsal":
           base = [x, side * hullR * 0.45, hullR * (0.9 + jitter)];
@@ -542,7 +985,6 @@ export function shipLayout(chassisId: string, modules: string[]): ShipLayout {
           break;
         case "outboard":
           base = [x, side * (hullR + size * 1.2 + jitter), 0];
-          rotation = [0, 0, 0];
           break;
       }
 
@@ -561,11 +1003,35 @@ export function shipLayout(chassisId: string, modules: string[]): ShipLayout {
           edgeAngle: piece.edgeAngle,
         });
       }
+
+      // Garniture du module : c'est elle qui porte la part « modules » de l'empreinte du
+      // plan. Petite, teintée comme l'emplacement, et rattachée au montage.
+      const random = rng(`${seed}:fit`);
+      for (let k = 0; k < 6; k++) {
+        const box = radialBox(
+          "x",
+          base[0] + (random() - 0.5) * size * 1.6,
+          random() * Math.PI * 2,
+          size * 0.55,
+          {
+            length: size * (0.15 + random() * 0.3),
+            width: size * (0.12 + random() * 0.25),
+            thickness: size * (0.08 + random() * 0.12),
+          },
+          [base[1], base[2]],
+        );
+        parts.push({
+          id: `mod-${slot}-${i}-fit-${k}`,
+          ...box,
+          color: slotColor(slot),
+          edgeAngle: 15,
+        });
+      }
     });
   }
 
-  // Aplatissement et échelle s'appliquent à l'ensemble : ils décrivent la coque, pas
-  // chaque pièce.
+  // Aplatissement et échelle s'appliquent à la structure et aux modules : ils décrivent la
+  // coque, pas chaque pièce.
   for (const part of parts) {
     part.position = [
       part.position[0] * scale,
@@ -573,10 +1039,25 @@ export function shipLayout(chassisId: string, modules: string[]): ShipLayout {
       part.position[2] * profile.flatten * scale,
     ];
   }
+  // Le détail, lui, ne prend QUE l'échelle : il est déjà posé sur la surface du profil, et
+  // l'aplatir une seconde fois le décollerait de la coque qu'il habille.
+  for (const part of decor) {
+    part.position = [
+      part.position[0] * scale,
+      part.position[1] * scale,
+      part.position[2] * scale,
+    ];
+  }
 
-  const radius = parts.reduce(
+  // Le décor passe en arêtes seules : c'est le partage qui rend la superstructure visible
+  // au lieu de la noyer sous deux cents remplissages additifs empilés.
+  const all: ShipPart[] = [
+    ...parts,
+    ...decor.map((part) => ({ ...part, wire: true })),
+  ];
+  const radius = all.reduce(
     (max, p) => Math.max(max, Math.hypot(...p.position) + 0.4 * scale),
     0.8 * scale,
   );
-  return { parts, radius };
+  return { parts: all, radius };
 }

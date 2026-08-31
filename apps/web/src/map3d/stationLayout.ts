@@ -5,6 +5,14 @@ import {
   type Station,
 } from "@spacesim/shared";
 import { seedOf } from "./appearance.js";
+import {
+  antennaCluster,
+  decorateSection,
+  type DetailPart,
+  radiatorFins,
+  ribs,
+  type Section,
+} from "./greeble.js";
 import type { PartShape } from "./shipLayout.js";
 import { ghostColor, structureColor, zoneColor } from "./theme.js";
 
@@ -23,6 +31,8 @@ export interface StationPart {
   color: string;
   /** Pièce provisoire — une zone en file de construction. Arêtes seules, pas de faces. */
   ghost?: boolean;
+  /** Décor : arêtes seules, sans remplissage (chantier 34.5). */
+  wire?: boolean;
   edgeAngle: number;
 }
 
@@ -207,8 +217,16 @@ function fixtures(station: Station): StationPart[] {
 }
 
 /** Compose une station. Toujours totale : un type de zone inconnu rend une forme neutre. */
+/** Budget de pièces décoratives par zone bâtie, et pour le moyeu (ADR 0014). */
+const ZONE_DETAIL_BUDGET = 34;
+const HUB_DETAIL_BUDGET = 28;
+
 export function stationLayout(station: Station): StationLayout {
   const structure = structureColor();
+  // Tenu à part : le décor passe en arêtes seules, sans remplissage. Deux cents volumes
+  // translucides empilés en additif ne rendent pas deux cents détails, ils rendent un
+  // nuage lumineux qui avale la silhouette (chantier 34.2).
+  const decor: DetailPart[] = [];
   const parts: StationPart[] = [
     {
       id: "hub-core",
@@ -267,6 +285,54 @@ export function stationLayout(station: Station): StationLayout {
     // en file est une intention, pas encore une structure.
     if (!zone.ghost) {
       parts.push(...zoneExtras(shape, color, zone.q, zone.r, [x, y, z]));
+
+      // Étage en redan : une tour à un seul niveau lit comme un plot. Le décrochement
+      // suffit à en faire un bâtiment (chantier 34.5).
+      parts.push({
+        id: `zone-tier-${zone.q},${zone.r}`,
+        shape: {
+          kind: "prism",
+          rFore: CELL * 0.52 * shape.taper,
+          rAft: CELL * 0.66 * shape.taper,
+          length: shape.height * 0.45,
+          sides: shape.sides,
+        },
+        position: [x, y, z + shape.height * 0.72],
+        rotation: [Math.PI / 2, 0, 0],
+        color,
+        edgeAngle: 18,
+      });
+
+      const section: Section = {
+        axis: "z",
+        from: z - shape.height / 2,
+        to: z + shape.height / 2,
+        rFrom: CELL * 0.85,
+        rTo: CELL * 0.85 * shape.taper,
+        sides: shape.sides,
+        offset: [x, y],
+      };
+      decor.push(
+        ...decorateSection(
+          section,
+          ZONE_DETAIL_BUDGET,
+          color,
+          `${zone.zoneTypeId}:${zone.q},${zone.r}`,
+          `zone-${zone.q},${zone.r}`,
+        ),
+      );
+      // Radiateurs sur un flanc : la même lame plate qui sert aux vaisseaux.
+      decor.push(
+        ...radiatorFins(
+          "z",
+          [x + CELL * 0.8, y, z],
+          5,
+          shape.height * 0.7,
+          0.22,
+          color,
+          `zone-${zone.q},${zone.r}-rad`,
+        ),
+      );
     }
   }
 
@@ -302,14 +368,63 @@ export function stationLayout(station: Station): StationLayout {
         color: structure,
         edgeAngle: 18,
       });
+      // Un tube nu est la pièce la moins lisible du catalogue : aucune arête transverse,
+      // donc aucune longueur visible. Les anneaux la lui rendent.
+      decor.push(
+        ...ribs(
+          [ax, ay, az],
+          [bx, by, bz],
+          4,
+          0.17,
+          6,
+          structure,
+          // Surtout PAS `corridor-…` : le compte des coursives se filtre sur ce préfixe,
+          // et les anneaux s'y seraient glissés en gonflant silencieusement le résultat.
+          `link-${key}`,
+        ),
+      );
     }
   }
 
+  // ── Moyeu ──────────────────────────────────────────────────────────────────
+  const hubSection: Section = {
+    axis: "z",
+    from: -0.9,
+    to: 0.9,
+    rFrom: CELL * 0.9,
+    rTo: CELL * 0.9,
+    sides: 6,
+    offset: [0, 0],
+  };
+  decor.push(
+    ...decorateSection(
+      hubSection,
+      HUB_DETAIL_BUDGET,
+      structure,
+      `${station.id}:hub`,
+      "hub",
+    ),
+  );
+  decor.push(
+    ...antennaCluster(
+      [0, 0, 1.3],
+      6,
+      0.45,
+      structure,
+      `${station.id}:ant`,
+      "hub",
+    ),
+  );
+
   parts.push(...fixtures(station));
 
-  const radius = parts.reduce(
+  const all: StationPart[] = [
+    ...parts,
+    ...decor.map((part) => ({ ...part, wire: true })),
+  ];
+  const radius = all.reduce(
     (max, p) => Math.max(max, Math.hypot(...p.position) + 0.9),
     1.6,
   );
-  return { parts, radius };
+  return { parts: all, radius };
 }

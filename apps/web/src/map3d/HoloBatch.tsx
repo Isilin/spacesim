@@ -76,9 +76,9 @@ const FRAGMENT = /* glsl */ `
     float rim = pow(1.0 - facing, 2.5);
 
     float band = 0.5 + 0.5 * sin(vPosLocal.y * uBandFreq - uTime * 1.6);
-    float alpha = (0.030 + 0.26 * rim) * (0.85 + 0.15 * band);
+    float alpha = (0.13 + 0.75 * rim) * (0.85 + 0.15 * band);
 
-    gl_FragColor = vec4(uColor * (0.35 + 0.85 * rim), alpha);
+    gl_FragColor = vec4(uColor * (0.45 + 1.0 * rim), alpha);
   }
 `;
 
@@ -114,6 +114,17 @@ export interface BatchPart {
   emissive?: boolean;
   /** Pièce provisoire — arêtes seules, sans faces : une intention, pas une structure. */
   ghost?: boolean;
+  /**
+   * Pièce de DÉCOR — arêtes seules elles aussi, mais à pleine intensité.
+   *
+   * Le mélange additif s'accumule : deux cents petits volumes translucides empilés sur la
+   * coque ne rendent pas deux cents détails, ils rendent un nuage lumineux qui avale la
+   * silhouette et jusqu'aux masses de la superstructure. Le décor ne garde donc que ses
+   * arêtes, et le remplissage reste réservé aux volumes qui portent la forme — coque,
+   * superstructure, modules. C'est ce partage qui donne la lecture « blueprint » : un
+   * volume translucide, des lignes nettes par-dessus (ADR 0014).
+   */
+  wire?: boolean;
   /** `0` supprime la passe d'arêtes — sur un volume lissé elle dégénère en fil de fer. */
   edgeAngle: number;
 }
@@ -124,6 +135,7 @@ export interface HoloGroup {
   color: string;
   emissive: boolean;
   ghost: boolean;
+  wire: boolean;
   faces: BufferGeometry | null;
   edges: BufferGeometry | null;
   /** Nombre de pièces fondues dans ce lot — poignée de test, jamais lue par le rendu. */
@@ -204,6 +216,7 @@ export function buildBatches(parts: BatchPart[]): HoloGroup[] {
     color: string;
     emissive: boolean;
     ghost: boolean;
+    wire: boolean;
     faces: BufferGeometry[];
     edges: BufferGeometry[];
     count: number;
@@ -213,13 +226,15 @@ export function buildBatches(parts: BatchPart[]): HoloGroup[] {
   for (const part of parts) {
     const emissive = part.emissive === true;
     const ghost = part.ghost === true;
-    const key = `${part.color}|${emissive ? 1 : 0}|${ghost ? 1 : 0}`;
+    const wire = part.wire === true;
+    const key = `${part.color}|${emissive ? 1 : 0}|${ghost ? 1 : 0}|${wire ? 1 : 0}`;
     let bucket = buckets.get(key);
     if (!bucket) {
       bucket = {
         color: part.color,
         emissive,
         ghost,
+        wire,
         faces: [],
         edges: [],
         count: 0,
@@ -239,8 +254,8 @@ export function buildBatches(parts: BatchPart[]): HoloGroup[] {
       edges.applyMatrix4(matrix);
       bucket.edges.push(edges);
     }
-    if (ghost) {
-      // Une pièce fantôme n'a pas de faces : sa géométrie source ne sert qu'aux arêtes,
+    if (ghost || wire) {
+      // Ni fantôme ni décor n'ont de faces : leur géométrie source ne sert qu'aux arêtes,
       // qui en ont déjà copié les sommets.
       geometry.dispose();
     } else {
@@ -262,6 +277,7 @@ export function buildBatches(parts: BatchPart[]): HoloGroup[] {
       color: bucket.color,
       emissive: bucket.emissive,
       ghost: bucket.ghost,
+      wire: bucket.wire,
       faces,
       edges,
       count: bucket.count,
@@ -329,7 +345,11 @@ function HoloGroupView({ group }: { group: HoloGroup }) {
             transparent
             // Beaucoup plus d'arêtes qu'au chantier 33 : à 0,9 chacune, la densité vire au
             // fil de fer blanc. C'est leur NOMBRE qui porte la lecture, pas leur intensité.
-            opacity={group.ghost ? 0.32 : 0.55}
+            // Hiérarchie explicite : les arêtes de STRUCTURE sont franches, celles du
+            // décor restent en retrait. Sans cet écart, deux cents lignes de détail pèsent
+            // autant que la douzaine qui dessine la silhouette, et l'objet redevient une
+            // pelote de fil de fer.
+            opacity={group.ghost ? 0.26 : group.wire ? 0.3 : 0.85}
             depthWrite={!group.ghost}
             toneMapped={false}
           />
