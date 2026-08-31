@@ -1,5 +1,6 @@
 import type { Station } from "@spacesim/shared";
 import { seedOf } from "./appearance.js";
+import { zoneColor } from "./theme.js";
 
 /**
  * Station en géométrie paramétrique (chantier 31.21) — extrusion de la grille hexagonale
@@ -10,16 +11,20 @@ import { seedOf } from "./appearance.js";
 /** Rayon d'une cellule hexagonale dans la scène. */
 const CELL = 1;
 
-/** Teinte et hauteur d'extrusion par type de zone — le repli garde une entrée inconnue
- *  visible plutôt que de la faire disparaître (chantier 31.18). */
-const ZONE_LOOK: Record<string, { color: string; height: number }> = {
-  industrial_zone: { color: "#c1a05a", height: 1.4 },
-  science_zone: { color: "#4fc1ff", height: 1.1 },
-  military_zone: { color: "#f85149", height: 0.9 },
-  commercial_zone: { color: "#56d364", height: 1.2 },
+/**
+ * Hauteur d'extrusion par type de zone. La COULEUR ne vit plus ici : elle vient du même
+ * hachage que le diagramme 2D (chantier 33.2, `zonePalette.ts`) — une table par id rendait
+ * grise en 3D toute zone créée par un administrateur, alors qu'elle est colorée en 2D.
+ * Le repli garde une entrée inconnue visible plutôt que de la faire disparaître.
+ */
+const ZONE_HEIGHT: Record<string, number> = {
+  industrial_zone: 1.4,
+  science_zone: 1.1,
+  military_zone: 0.9,
+  commercial_zone: 1.2,
 };
 
-const GENERIC_ZONE = { color: "#8a8f98", height: 1 };
+const GENERIC_HEIGHT = 1;
 
 /**
  * Coordonnées axiales → cartésiennes, disposition « pointy-top » : la même que celle du
@@ -43,7 +48,7 @@ export function StationModel({ station }: { station: Station }) {
       </mesh>
 
       {station.zones.map((zone) => {
-        const look = ZONE_LOOK[zone.zoneTypeId] ?? GENERIC_ZONE;
+        const height = ZONE_HEIGHT[zone.zoneTypeId] ?? GENERIC_HEIGHT;
         const [x, y] = hexToScene(zone.q, zone.r);
         // Léger décrochement vertical dérivé de la position : une station bâtie n'est
         // pas une plaque parfaitement plane.
@@ -51,11 +56,9 @@ export function StationModel({ station }: { station: Station }) {
         return (
           <group key={`${zone.q},${zone.r}`} position={[x, y, z]}>
             <mesh rotation={[Math.PI / 2, 0, 0]}>
-              <cylinderGeometry
-                args={[CELL * 0.85, CELL * 0.85, look.height, 6]}
-              />
+              <cylinderGeometry args={[CELL * 0.85, CELL * 0.85, height, 6]} />
               <meshStandardMaterial
-                color={look.color}
+                color={zoneColor(zone.zoneTypeId)}
                 metalness={0.45}
                 roughness={0.55}
               />

@@ -1,9 +1,12 @@
 /* Schéma de coque (chantier 13) : une couleur par type d'emplacement. */
 :root {
-  --slot-weapon: #f85149;
-  --slot-defense: #4fc1ff;
-  --slot-propulsion: #56d364;
-  --slot-utility: #e3b341;
+  /* Alignés sur `tokens.css` au chantier 33.2 : ces valeurs dataient du `ui-brief`,
+     d'avant que la palette définitive ne soit fixée. Le modèle 3D lit ces mêmes
+     propriétés — les deux vues du même vaisseau ne peuvent plus se contredire. */
+  --slot-weapon: var(--ko);
+  --slot-defense: var(--cyan);
+  --slot-propulsion: var(--ok);
+  --slot-utility: var(--amber);
 }
 
 .loading {

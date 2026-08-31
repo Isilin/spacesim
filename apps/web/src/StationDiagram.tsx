@@ -11,6 +11,7 @@ import { useId, useMemo } from "react";
 import { ZoomableSvg, type ViewBox } from "@spacesim/ui";
 import { useTranslation } from "react-i18next";
 import { zoneTypeLabel } from "./labels.js";
+import { zoneColorToken } from "./zonePalette.js";
 
 interface Props {
   station: Station;
@@ -48,15 +49,11 @@ function jitter(seed: string): { dx: number; dy: number } {
   return { dx: Math.cos(angle) * dist, dy: Math.sin(angle) * dist };
 }
 
-/** Palette stable dérivée de l'id du type de zone (par hash, pas par id en dur — ces ids
- *  sont libres côté DB, un admin peut en créer de nouveaux, chantier 23). */
-const ZONE_PALETTE = ["--amber", "--cyan", "--violet", "--ok", "--ko"] as const;
+/** Palette stable dérivée de l'id du type de zone. Le hachage vit désormais dans
+ *  `zonePalette.ts` (chantier 33.2) : le modèle 3D de la même station le partage, sans quoi
+ *  une zone créée par un admin serait colorée ici et grise là-bas. */
 function zoneColorVar(zoneTypeId: string): string {
-  let hash = 0;
-  for (let i = 0; i < zoneTypeId.length; i++) {
-    hash = (hash * 31 + zoneTypeId.charCodeAt(i)) | 0;
-  }
-  return `var(${ZONE_PALETTE[Math.abs(hash) % ZONE_PALETTE.length]})`;
+  return `var(${zoneColorToken(zoneTypeId)})`;
 }
 
 /**

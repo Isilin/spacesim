@@ -7,6 +7,7 @@ import {
   type SlotType,
 } from "@spacesim/shared";
 import { seedOf } from "./appearance.js";
+import { slotColor } from "./theme.js";
 
 /**
  * Vaisseau en géométrie paramétrique (chantier 31.20) — portage 3D de la logique de
@@ -27,12 +28,17 @@ const HULLS: Record<ChassisKind, [number, number, number]> = {
 
 const GENERIC_HULL = HULLS.generic;
 
-/** Couleur et forme d'excroissance par type d'emplacement. */
-const SLOT_LOOK: Record<SlotType, { color: string; length: number }> = {
-  weapon: { color: "#f85149", length: 1.1 },
-  defense: { color: "#4fc1ff", length: 0.5 },
-  propulsion: { color: "#e0b64f", length: 0.9 },
-  utility: { color: "#b48fe0", length: 0.6 },
+/**
+ * Longueur d'excroissance par type d'emplacement. La COULEUR ne vit plus ici : elle vient
+ * des jetons de thème (chantier 33.2), les mêmes que ceux du diagramme 2D. Les deux vues
+ * du même vaisseau sont côte à côte à l'écran et se contredisaient — la propulsion était
+ * ambre ici et verte là, l'utilitaire violet ici et ambre là.
+ */
+const SLOT_LENGTH: Record<SlotType, number> = {
+  weapon: 1.1,
+  defense: 0.5,
+  propulsion: 0.9,
+  utility: 0.6,
 };
 
 export function ShipModel({
@@ -74,7 +80,7 @@ export function ShipModel({
 
       {SLOT_TYPES.map((slot, slotIndex) => {
         const count = bySlot.get(slot) ?? 0;
-        const look = SLOT_LOOK[slot];
+        const growth = SLOT_LENGTH[slot];
         return Array.from({ length: count }, (_, i) => {
           // Répartition déterministe : deux plans identiques donnent le même vaisseau.
           const side = i % 2 === 0 ? 1 : -1;
@@ -92,9 +98,9 @@ export function ShipModel({
               ]}
               rotation={[0, 0, -Math.PI / 2]}
             >
-              <capsuleGeometry args={[width * 0.14, look.length, 4, 8]} />
+              <capsuleGeometry args={[width * 0.14, growth, 4, 8]} />
               <meshStandardMaterial
-                color={look.color}
+                color={slotColor(slot)}
                 metalness={0.4}
                 roughness={0.5}
               />
