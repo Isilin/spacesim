@@ -102,6 +102,19 @@ export class LogisticsService {
       ) => void;
     },
     private readonly persistGateway: (gateway: Gateway) => void,
+    /** Avoirs de station (chantier 32.25) : dépôt à l'arrivée, droit d'accès, position. */
+    private readonly holdings: {
+      depositToHolding: (
+        stationId: string,
+        empireId: string,
+        cargo: Partial<Record<ResourceId, number>>,
+      ) => void;
+      venueAccess: (
+        empire: Empire,
+        stationId: string,
+      ) => { ok: boolean; reason?: string };
+      stationSystemId: (stationId: string) => string | null;
+    },
     private readonly station: {
       insertStation: (empire: Empire, station: Station) => void;
       persistStation: (station: Station) => void;
@@ -826,6 +839,83 @@ export class LogisticsService {
   }
 
   /** Propriété des missions : seul chemin d'écriture de la table `missions`. */
+
+  /**
+   * Action joueur : envoyer un convoi déposer de la marchandise dans son AVOIR à une
+   * station (chantier 32.25).
+   *
+   * Distinct de `sendTransfer` vers une station, qui verse dans le stock du PROPRIÉTAIRE :
+   * ici la marchandise reste au déposant, garée sur place, prête à être vendue au carnet.
+   * Le voyage, lui, coûte exactement pareil — le marché ne téléporte rien (ADR 0012).
+   */
+  depositToStation(
+    empire: Empire,
+    fromColonyId: string,
+    stationId: string,
+    wanted: Partial<Record<ResourceId, number>>,
+  ): string | null {
+    const colony = empire.colonyMap.get(fromColonyId);
+    if (!colony) return "Colonie inconnue";
+    const access = this.holdings.venueAccess(empire, stationId);
+    if (!access.ok) return access.reason ?? "Station inaccessible";
+    const systemId = this.holdings.stationSystemId(stationId);
+    if (!systemId) return "Station inconnue";
+
+    const cargo: Partial<Record<ResourceId, number>> = {};
+    for (const [res, amount] of Object.entries(wanted) as [
+      ResourceId,
+      number,
+    ][]) {
+      const qty = Math.floor(amount);
+      if (Number.isFinite(qty) && qty > 0) cargo[res] = qty;
+    }
+    if (Object.keys(cargo).length === 0) return "Cargaison vide";
+
+    const fromPlanet = this.runtime.planetsById.get(colony.planetId);
+    if (!fromPlanet) return "Planète inconnue";
+    const jumps = travelCostInUniverse(
+      this.runtime.universe,
+      fromPlanet.systemId,
+      systemId,
+      this.portalLinks,
+    );
+    if (jumps < 0) return "Station inaccessible";
+    const balance = this.balance;
+    const fee = transferCostCredits(jumps, balance);
+
+    // Comme tout convoi : la marchandise part de l'ORBITE, pas du sol (ADR 0004).
+    const loaded = takeFromOrbit(colony, cargo);
+    if (!loaded) return "Stock orbital insuffisant";
+    const resources = { ...loaded.resources };
+    if (resources.credits < fee) return `Crédits insuffisants (frais : ${fee})`;
+
+    const duration =
+      transferDurationMs(jumps, balance) * empire.effects.transferSpeedMult;
+    const reserved = this.reserveShip(
+      empire,
+      loaded,
+      Date.now() + 2 * duration,
+    );
+    if (!reserved) return "Aucun cargo disponible";
+    const total = Object.values(cargo).reduce((s, n) => s + (n ?? 0), 0);
+    if (total > reserved.capacity)
+      return `Cargaison trop lourde (soute : ${reserved.capacity})`;
+
+    resources.credits -= fee;
+    empire.colonyMap.set(colony.id, { ...reserved.colony, resources });
+    this.persistColony(empire.colonyMap.get(colony.id)!);
+    this.insertMission(
+      empire,
+      "deposit_station",
+      fromColonyId,
+      stationId,
+      duration,
+      { cargo },
+    );
+    this.notify();
+    return null;
+  }
+
   insertMission(
     empire: Empire,
     kind: Mission["kind"],
@@ -951,6 +1041,18 @@ export class LogisticsService {
               marketTaxRate: 0,
             });
             this.logger.info(`[game] station fondée en orbite de ${body.name}`);
+          }
+          break;
+        }
+        case "deposit_station": {
+          // Aucune vente ici : la cargaison entre dans l'avoir de l'empire à la
+          // station, d'où ses ordres pourront la vendre (chantier 32.25).
+          if (mission.cargo) {
+            this.holdings.depositToHolding(
+              mission.targetId,
+              empire.id,
+              mission.cargo,
+            );
           }
           break;
         }

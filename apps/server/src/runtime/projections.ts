@@ -19,6 +19,7 @@ import {
   type ForeignStation,
   type LeaderboardEntry,
   type Mail,
+  type MarketOrder,
   type MarketResource,
   type Objective,
   type PirateLair,
@@ -226,6 +227,30 @@ export function mailsForEmpire(runtime: GameRuntime, empire: Empire): Mail[] {
   return [...(runtime.mailsByEmpire.get(empire.id) ?? [])].reverse();
 }
 
+/**
+ * Ordres au repos visibles d'un empire (chantier 32.25) : les siens, plus ceux des
+ * carnets dont son palier d'accès lui ouvre la porte.
+ *
+ * La politique d'accès gouverne aussi le REGARD : un carnet fermé ne se lit pas de
+ * l'extérieur, sinon la fermer n'aurait qu'un effet cosmétique.
+ */
+export function ordersForEmpire(
+  runtime: GameRuntime,
+  empire: Empire,
+  canSee: (stationId: string) => boolean,
+): MarketOrder[] {
+  const visible = new Map<string, boolean>();
+  return [...runtime.orderMap.values()].filter((order) => {
+    if (order.ownerId === empire.id) return true;
+    let allowed = visible.get(order.stationId);
+    if (allowed === undefined) {
+      allowed = canSee(order.stationId);
+      visible.set(order.stationId, allowed);
+    }
+    return allowed;
+  });
+}
+
 export function territoriesForEmpire(
   runtime: GameRuntime,
   empire: Empire,
@@ -368,6 +393,8 @@ export function foreignPresenceForEmpire(
 export function snapshotForEmpire(
   runtime: GameRuntime,
   empire: Empire,
+  /** Injecté par le moteur : la visibilité d'un carnet dépend du domaine `station`. */
+  canSeeBook: (stationId: string) => boolean = () => false,
 ): EmpireSnapshot {
   const { foreignFleets, foreignColonies, foreignStations } =
     foreignPresenceForEmpire(runtime, empire);
@@ -419,6 +446,10 @@ export function snapshotForEmpire(
     })),
     corpRelations: [...runtime.corpRelationMap.values()],
     standings: [...runtime.standingMap.values()],
+    orders: ordersForEmpire(runtime, empire, canSeeBook),
+    holdings: [...runtime.holdingMap.values()].filter(
+      (h) => h.empireId === empire.id,
+    ),
     chatChannels: channelsForEmpire(runtime, empire),
     chat: chatForEmpire(runtime, channelsForEmpire(runtime, empire)),
     mails: mailsForEmpire(runtime, empire),

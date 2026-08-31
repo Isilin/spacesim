@@ -169,6 +169,13 @@
       "when": 1788176548896,
       "tag": "0023_spooky_union_jack",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1788177401440,
+      "tag": "0024_sparkling_shatterstar",
+      "breakpoints": true
     }
   ]
 }

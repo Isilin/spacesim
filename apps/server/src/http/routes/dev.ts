@@ -61,6 +61,25 @@ export function registerDevRoutes(
     if (!eventId) return reply.code(404).send({ error: "Cible inconnue" });
     return { ok: true, eventId };
   });
+  app.post("/dev/foundstation", (request, reply) => {
+    const { empireId, name, access, taxRate } = (request.body ?? {}) as {
+      empireId?: string;
+      name?: string;
+      access?: string;
+      taxRate?: number;
+    };
+    const empire = empireId
+      ? engine.empireById(empireId)
+      : engine.defaultEmpireForDev;
+    if (!empire) return reply.code(404).send({ error: "Empire inconnu" });
+    const id = engine.devService.devFoundStation(
+      empire,
+      name,
+      (access ?? "public") as never,
+      taxRate ?? 0,
+    );
+    return { ok: id !== null, stationId: id };
+  });
   app.post("/dev/spawnempire", (request) => {
     const { name } = (request.body ?? {}) as { name?: string };
     const empireId = engine.devSpawnEmpire(name);

@@ -47,6 +47,7 @@ import type { LogisticsService } from "./runtime/services/logistics-service.js";
 import type { MarketService } from "./runtime/services/market-service.js";
 import type { CommunicationService } from "./runtime/services/communication-service.js";
 import type { CorporationService } from "./runtime/services/corporation-service.js";
+import type { OrderBookService } from "./runtime/services/order-book-service.js";
 import type { InboxService } from "./runtime/services/inbox-service.js";
 import type { ObjectiveService } from "./runtime/services/objective-service.js";
 import type { StationService } from "./runtime/services/station-service.js";
@@ -107,6 +108,8 @@ export class GameEngine {
   readonly corporation: CorporationService;
   /** Canaux de discussion et courrier (chantier 32), silence compris. */
   readonly communication: CommunicationService;
+  /** Carnet d'ordres des stations de joueur (chantier 32) et avoirs déposés. */
+  readonly orderBook: OrderBookService;
   /** Stations orbitales (chantier 24) : zones, installations, tick de production. */
   readonly station: StationService;
   /** Bootstrap des empires (compte joueur, PNJ, colonie mère) et outils de dev associés. */
@@ -224,6 +227,7 @@ export class GameEngine {
     this.inbox = composed.inbox;
     this.corporation = composed.corporation;
     this.communication = composed.communication;
+    this.orderBook = composed.orderBook;
     this.station = composed.station;
     this.bootstrap = composed.bootstrap;
     this.devService = composed.devService;
@@ -589,7 +593,36 @@ export class GameEngine {
 
   /** Snapshot (forme externe WS) redacté au brouillard d'un empire (chantier 7c-B). */
   snapshotForEmpire(empire: Empire): EmpireSnapshot {
-    return projectSnapshotForEmpire(this.runtime, empire);
+    return projectSnapshotForEmpire(
+      this.runtime,
+      empire,
+      (stationId) => this.station.resolveVenueAccess(empire, stationId).ok,
+    );
+  }
+
+  /**
+   * Rapatrie les crédits d'un avoir de station vers une colonie (chantier 32.25). Vit sur
+   * la façade et non dans `OrderBookService` : le crédit atterrit dans une COLONIE, dont
+   * la persistance appartient au domaine industrie.
+   */
+  claimHoldingCredits(
+    empire: Empire,
+    stationId: string,
+    colonyId: string,
+  ): string | null {
+    const colony = empire.colonyMap.get(colonyId);
+    if (!colony) return "Colonie inconnue";
+    const amount = this.orderBook.claimHoldingCredits(empire, stationId);
+    if (amount <= 0) return "Aucun crédit à rapatrier";
+    empire.colonyMap.set(colony.id, {
+      ...colony,
+      resources: {
+        ...colony.resources,
+        credits: colony.resources.credits + amount,
+      },
+    });
+    this.industry.persistColony(empire.colonyMap.get(colony.id)!);
+    return null;
   }
 
   /** Univers redacté au brouillard d'un empire — payload initial du message `hello`. */

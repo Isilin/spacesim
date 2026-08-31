@@ -1,4 +1,5 @@
 import type { ClientMessage } from "@spacesim/protocol";
+import type { ResourceId } from "@spacesim/shared";
 import type { Empire } from "../empire.js";
 import type { GameEngine } from "../game.js";
 
@@ -345,6 +346,26 @@ export function dispatchClientMessage(
       );
     case "setStanding":
       return engine.corporation.setStanding(empire, msg.targetId, msg.value);
+    case "placeOrder":
+      return engine.orderBook.placeOrder(
+        empire,
+        msg.stationId,
+        msg.side,
+        msg.resource as ResourceId,
+        msg.quantity,
+        msg.pricePerUnit,
+      );
+    case "cancelOrder":
+      return engine.orderBook.cancelOrder(empire, msg.orderId);
+    case "depositToStation":
+      return engine.logistics.depositToStation(
+        empire,
+        msg.colonyId,
+        msg.stationId,
+        msg.cargo as Partial<Record<ResourceId, number>>,
+      );
+    case "claimHoldingCredits":
+      return engine.claimHoldingCredits(empire, msg.stationId, msg.colonyId);
     default:
       return assertNever(msg);
   }

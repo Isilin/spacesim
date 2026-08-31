@@ -7,6 +7,7 @@ import {
   pirateBounty,
   pirateComposition,
   pirateDirectives,
+  RESOURCES,
   WORLD_EVENT_DURATION_MS,
   type CombatPhase,
   type FactionState,
@@ -14,6 +15,7 @@ import {
   type Gateway,
   type PirateLair,
   type ResourceId,
+  type Station,
   type WorldEventKind,
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
@@ -26,6 +28,7 @@ import type { ExplorationService } from "./exploration-service.js";
 import type { FleetService } from "./fleet-service.js";
 import type { GatewayService } from "./gateway-service.js";
 import type { MarketService } from "./market-service.js";
+import type { StationService } from "./station-service.js";
 
 /** Directives par défaut d'une flotte neuve (armée par un outil de dev). */
 const DEFAULT_DIRECTIVES: Record<CombatPhase, string> = {
@@ -42,6 +45,7 @@ export interface DevServices {
   bootstrap: BootstrapService;
   exploration: ExplorationService;
   fleetService: FleetService;
+  station: StationService;
 }
 
 /**
@@ -142,6 +146,46 @@ export class DevService {
     // l'événement ne testerait pas le chemin réel.
     this.services.fleetService.emitLairAppeared(systemId);
     this.notify();
+  }
+
+  /**
+   * Pose une station de joueur sans passer par la chaîne de recherche (chantier 32.25).
+   *
+   * Même raison d'être que `devArmFleet` ou `devSpawnPirate` : rendre une situation de
+   * jeu atteignable pour un test ou une inspection, sans rejouer trente minutes de
+   * partie. Jamais en production, comme toutes les routes `/dev/*`.
+   */
+  devFoundStation(
+    empire: Empire,
+    name = "Comptoir de dev",
+    access: Station["marketAccess"] = "public",
+    taxRate = 0,
+  ): string | null {
+    const home = [...empire.colonyMap.values()][0];
+    const systemId = home
+      ? this.runtime.planetsById.get(home.planetId)?.systemId
+      : undefined;
+    if (!systemId || !home) return null;
+    const resources = Object.fromEntries(
+      RESOURCES.map((r) => [r, 0]),
+    ) as Station["resources"];
+    const station: Station = {
+      id: randomUUID(),
+      ownerId: empire.id,
+      bodyId: home.planetId,
+      systemId,
+      name,
+      resources,
+      zones: [],
+      zoneQueue: [],
+      installations: {},
+      installQueue: [],
+      marketAccess: access,
+      marketTaxRate: taxRate,
+    };
+    this.services.station.insertStation(empire, station);
+    this.notify();
+    return station.id;
   }
 
   /** Instancie un empire supplémentaire. Retourne son id. */

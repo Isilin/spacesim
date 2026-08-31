@@ -42,6 +42,7 @@ import {
   type BuildSelection,
 } from "./StationBuildPicker.js";
 import { ModelPreview } from "./map3d/ModelPreview.js";
+import { OrderBookPanel } from "./OrderBookPanel.js";
 import { StationModel } from "./map3d/StationModel.js";
 import { StationDiagram } from "./StationDiagram.js";
 import {
@@ -229,6 +230,9 @@ export function StationsView({ effects, universe, portalLinks }: Props) {
         />
 
         <StationMarketPolicyForm station={station} send={send} />
+        {/* Le carnet est celui de CETTE station, quel que soit son propriétaire : le
+            serveur n'envoie que les ordres que le palier d'accès rend visibles. */}
+        <OrderBookPanel stationId={station.id} />
       </div>
     </div>
   );

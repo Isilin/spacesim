@@ -420,6 +420,54 @@ export const standings = pgTable(
 );
 
 /**
+ * Ordres limites au repos dans le carnet d'une station (chantier 32.24). Toujours
+ * adossés : un achat a séquestré ses crédits, une vente a sorti sa marchandise de l'avoir
+ * du vendeur, dès la pose (ADR 0012).
+ */
+export const marketOrders = pgTable(
+  "market_orders",
+  {
+    id: text("id").primaryKey(),
+    gameId: text("game_id").notNull(),
+    stationId: text("station_id")
+      .notNull()
+      .references(() => stations.id, { onDelete: "cascade" }),
+    ownerId: text("owner_id").notNull(),
+    side: text("side").notNull(),
+    resource: text("resource").notNull(),
+    remaining: doublePrecision("remaining").notNull(),
+    pricePerUnit: doublePrecision("price_per_unit").notNull(),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    // Toutes les lectures sont « le carnet de cette station » : sans cet index, chaque
+    // affichage balaierait les ordres de la partie entière.
+    index("market_orders_station_idx").on(table.stationId, table.resource),
+  ],
+);
+
+/**
+ * Ce qu'un empire a garé dans une station — distinct du stock du propriétaire
+ * (`stations.resources`). C'est la pièce qui permet à quelqu'un d'autre que le
+ * propriétaire d'y vendre.
+ */
+export const stationHoldings = pgTable(
+  "station_holdings",
+  {
+    stationId: text("station_id")
+      .notNull()
+      .references(() => stations.id, { onDelete: "cascade" }),
+    empireId: text("empire_id").notNull(),
+    gameId: text("game_id").notNull(),
+    /** Ressources en JSON : le jeu en compte une douzaine et le stock d'un avoir est lu
+     *  et écrit en bloc, jamais interrogé colonne par colonne. */
+    resources: text("resources").notNull().default("{}"),
+    credits: doublePrecision("credits").notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.stationId, table.empireId] })],
+);
+
+/**
  * Messages de canal (chantier 32.13). Bornés et jetables : le canal est un lieu de
  * conversation, pas un registre (ADR 0010). L'index couvre la seule lecture faite —
  * « les N derniers de ce canal ».

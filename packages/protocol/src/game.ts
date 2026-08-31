@@ -335,6 +335,29 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     targetId: idSchema,
     value: z.number().int().min(-10).max(10),
   }),
+  // Carnet d'ordres (chantier 32.25).
+  z.object({
+    type: z.literal("placeOrder"),
+    stationId: idSchema,
+    side: z.enum(["buy", "sell"]),
+    resource: idSchema,
+    quantity: z.number().int().positive(),
+    pricePerUnit: z.number().positive(),
+  }),
+  z.object({ type: z.literal("cancelOrder"), orderId: idSchema }),
+  /** Envoie un convoi déposer de la marchandise dans son avoir à une station. */
+  z.object({
+    type: z.literal("depositToStation"),
+    colonyId: idSchema,
+    stationId: idSchema,
+    cargo: z.record(idSchema, z.number().nonnegative()),
+  }),
+  /** Rapatrie les crédits d'un avoir — les crédits n'ont pas de lieu, pas de convoi. */
+  z.object({
+    type: z.literal("claimHoldingCredits"),
+    stationId: idSchema,
+    colonyId: idSchema,
+  }),
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;

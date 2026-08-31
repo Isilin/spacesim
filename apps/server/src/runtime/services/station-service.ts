@@ -327,6 +327,63 @@ export class StationService {
     };
   }
 
+  /** Système d'une station, quel que soit son propriétaire (chantier 32.25). */
+  stationSystemId(stationId: string): string | null {
+    return this.findOwnedStation(stationId)?.station.systemId ?? null;
+  }
+
+  /**
+   * Droit de tenir un carnet à cette station (chantier 32.25) — palier d'accès, taxe,
+   * propriétaire.
+   *
+   * Distinct de `resolveTradeAccess`, qui exige une colonie de DÉPART parce qu'il prépare
+   * un convoi : poser un ordre ne fait voyager personne, seulement changer qui possède
+   * quoi sur place (ADR 0012).
+   */
+  resolveVenueAccess(
+    visitorEmpire: Empire,
+    stationId: string,
+  ): { ok: boolean; reason?: string; ownerId: string; taxRate: number } {
+    const found = this.findOwnedStation(stationId);
+    if (!found)
+      return { ok: false, reason: "Station inconnue", ownerId: "", taxRate: 0 };
+    const { empire: owner, station } = found;
+    if (!visitorEmpire.explored.has(station.systemId)) {
+      return {
+        ok: false,
+        reason: "Station non découverte",
+        ownerId: owner.id,
+        taxRate: 0,
+      };
+    }
+    const relation =
+      this.runtime.relationMap.get(relationKey(visitorEmpire.id, owner.id))
+        ?.state ?? "neutral";
+    if (
+      !canTradeAtStation(
+        owner.id,
+        visitorEmpire.id,
+        station.marketAccess,
+        relation,
+        this.sameCorporation(visitorEmpire.id, owner.id),
+        this.standingTowards(owner.id, visitorEmpire.id),
+      )
+    ) {
+      return {
+        ok: false,
+        reason: "Accès refusé — politique de marché de la station",
+        ownerId: owner.id,
+        taxRate: 0,
+      };
+    }
+    // Le propriétaire ne se taxe pas lui-même.
+    return {
+      ok: true,
+      ownerId: owner.id,
+      taxRate: owner.id === visitorEmpire.id ? 0 : station.marketTaxRate,
+    };
+  }
+
   /** Action joueur (propriétaire) : accès et taxe appliqués aux visiteurs. */
   setMarketPolicy(
     empire: Empire,

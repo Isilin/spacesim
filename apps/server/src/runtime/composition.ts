@@ -16,6 +16,7 @@ import { InboxService } from "./services/inbox-service.js";
 import { LogisticsService } from "./services/logistics-service.js";
 import { MarketService } from "./services/market-service.js";
 import { ObjectiveService } from "./services/objective-service.js";
+import { OrderBookService } from "./services/order-book-service.js";
 import { StationService } from "./services/station-service.js";
 import { TickRunner } from "./tick-runner.js";
 
@@ -34,6 +35,7 @@ export interface ComposedEngine {
   inbox: InboxService;
   corporation: CorporationService;
   communication: CommunicationService;
+  orderBook: OrderBookService;
   bootstrap: BootstrapService;
   devService: DevService;
   tickRunner: TickRunner;
@@ -67,6 +69,10 @@ export function composeEngine(
   let diplomacy: DiplomacyService;
   let bootstrap: BootstrapService;
   let station: StationService;
+  // Même cycle cassé par une fermeture paresseuse que pour les autres services : la
+  // logistique dépose dans un avoir à l'arrivée d'un convoi, le carnet ne connaît pas
+  // les convois.
+  let orderBook: OrderBookService;
 
   /**
    * La boîte de réception (chantier 32.4) est construite en PREMIER et sans dépendance :
@@ -177,6 +183,13 @@ export function composeEngine(
     },
     (g) => gateway.persistGateway(g),
     {
+      depositToHolding: (stationId, empireId, cargo) =>
+        orderBook.depositToHolding(stationId, empireId, cargo),
+      venueAccess: (empire, stationId) =>
+        station.resolveVenueAccess(empire, stationId),
+      stationSystemId: (stationId) => station.stationSystemId(stationId),
+    },
+    {
       insertStation: (empire, newStation) =>
         station.insertStation(empire, newStation),
       persistStation: (s) => station.persistStation(s),
@@ -262,6 +275,16 @@ export function composeEngine(
     // modération : le comparer ici est synchrone, comme la commande qui l'interroge.
     (empire) => empire.mutedUntil !== null && empire.mutedUntil > Date.now(),
   );
+  orderBook = new OrderBookService(
+    runtime,
+    notify,
+    logger,
+    // Le carnet ne connaît pas les stations : il demande au domaine si la place est
+    // ouverte, à quel taux, et pour qui. Même geste que partout ailleurs (ADR 0001).
+    (empire, stationId) => station.resolveVenueAccess(empire, stationId),
+    (stationId, creditDelta) =>
+      station.applyStationTrade(stationId, creditDelta),
+  );
   const tickRunner = new TickRunner(
     runtime,
     {
@@ -287,12 +310,14 @@ export function composeEngine(
     bootstrap,
     exploration,
     fleetService,
+    station,
   });
 
   return {
     inbox,
     corporation,
     communication,
+    orderBook,
     industry,
     logistics,
     gateway,

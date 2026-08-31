@@ -23,7 +23,9 @@ import type {
   GameState,
   LeaderboardEntry,
   Mail,
+  MarketOrder,
   MiningOutpost,
+  StationHolding,
   Standing,
   Mission,
   Objective,
@@ -91,6 +93,9 @@ export interface GameStoreState {
   chat: ChatMessage[];
   /** Boîte aux lettres, du plus récent au plus ancien. */
   mails: Mail[];
+  /** Ordres visibles et avoirs déposés en station (chantier 32.26). */
+  orders: MarketOrder[];
+  holdings: StationHolding[];
   /** Liaison WS établie (état de connexion, pas de session). */
   connected: boolean;
   /** Dernière erreur d'action renvoyée par le serveur (éphémère). */
@@ -164,6 +169,8 @@ function snapshotFields(msg: EmpireSnapshot): SnapshotFields {
     chatChannels: msg.chatChannels,
     chat: msg.chat,
     mails: msg.mails,
+    orders: msg.orders,
+    holdings: msg.holdings,
   };
 }
 
@@ -213,6 +220,8 @@ const initialState: SnapshotFields & {
   chatChannels: [],
   chat: [],
   mails: [],
+  orders: [],
+  holdings: [],
   connected: false,
   actionError: null,
 };

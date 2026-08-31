@@ -1869,3 +1869,51 @@ et c'est le contrepoids : quitter la corporation rend la paix.
 (l'état de relation le fait déjà, deux mécanismes concurrents rendraient la règle
 illisible), et il n'y a pas de standing PNJ (`factionRep` du chantier 15 est le mécanisme
 existant pour « ce que les PNJ pensent de moi »).
+
+### Vague E — Profondeur de marché (ouverte 31/08/2026)
+
+Décision et alternatives écartées :
+[ADR 0012](adr/0012-carnet-d-ordres-et-avoirs-de-station.md). Quatre points tranchés : le
+carnet remplace la courbe **pour les places joueur seulement** (la courbe PNJ reste le
+filet, un carnet vide au lancement signifierait une économie morte) ; les ordres sont
+adossés à des **avoirs déposés à la station**, sans quoi seul le propriétaire pourrait y
+vendre ; l'**appariement est pur et déterministe**, au prix de l'ordre **au repos** — c'est
+ce qui récompense d'afficher un prix et d'attendre ; et le **séquestre est intégral et
+immédiat**, sinon le carnet afficherait des offres qu'un clic révèle creuses.
+
+- **32.22** — modèle `MarketOrder` / `StationHolding`, constantes, contrats Zod.
+- **32.23** — appariement pur dans `packages/shared` : `matchOrders`, priorité prix puis
+  ancienneté, exécution au prix du repos.
+- **32.24** — persistance : tables `market_orders` et `station_holdings`, migration.
+- **32.25** — service : déposer et rapatrier un avoir par convoi, poser et annuler un
+  ordre, exécuter, prélever la taxe de station.
+- **32.26** — client : carnet d'ordres et avoirs dans la vue Stations.
+
+**Bilan de la vague E (31/08/2026).** Livrée en entier, 32.22 à 32.26.
+
+Ce que la vague a imposé au-delà du plan :
+
+- **Un genre de mission `deposit_station`.** Sans lui, personne d'autre que le
+  propriétaire ne pouvait avoir de marchandise sur place, donc personne d'autre ne pouvait
+  vendre. Le dépôt coûte exactement le même convoi qu'une vente — c'est le point de
+  l'ADR 0012 : le marché ne téléporte rien.
+- **Un `resolveVenueAccess` distinct de `resolveTradeAccess`.** Le second exige une colonie
+  de DÉPART parce qu'il prépare un convoi ; poser un ordre ne fait voyager personne.
+- **La politique d'accès gouverne aussi le REGARD.** Un carnet fermé n'arrive pas dans le
+  snapshot d'un étranger : la fermer n'aurait sinon qu'un effet cosmétique.
+- **Un outil de dev `devFoundStation`**, même raison d'être que `devArmFleet` : rendre une
+  situation atteignable sans rejouer une chaîne de recherche entière.
+
+**Le remboursement de la différence de prix** est le détail qui aurait détruit de la
+monnaie en silence : un acheteur séquestre à SA limite et paie le prix du repos, souvent
+plus bas. Sans restitution, l'écart disparaissait du jeu. C'est testé explicitement.
+
+**Vérification.** L'appariement est couvert par 14 tests purs, dont l'invariant « somme des
+exécutions + reste = quantité demandée » qui interdit de créer ou détruire de la
+marchandise ; le service en ajoute 8 sur le séquestre, la taxe et la visibilité. L'écran a
+été vérifié visuellement. Ce que la vague n'a **pas** : un e2e du cycle complet
+dépôt → ordre → exécution → rapatriement — il demande d'attendre plusieurs convois, et
+l'économie qu'il couvrirait est déjà prouvée par les tests purs.
+
+**Hors périmètre de la vague E** : `Contract` n'est pas absorbé (il vise une colonie et
+paie une livraison, pas un échange sur place) et les comptoirs PNJ gardent leur courbe.

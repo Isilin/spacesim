@@ -19,6 +19,8 @@ import type {
   Gateway,
   LeaderboardEntry,
   Mail,
+  MarketOrder,
+  StationHolding,
   Standing,
   MiningOutpost,
   Mission,
@@ -117,6 +119,14 @@ export interface EmpireSnapshot {
   chat: ChatMessage[];
   /** Boîte aux lettres de l'empire (chantier 32.15), du plus récent au plus ancien. */
   mails: Mail[];
+  /**
+   * Ordres au repos des stations que l'empire peut voir (chantier 32.25) — les siens et
+   * ceux des carnets auxquels son palier d'accès lui donne droit. Un carnet fermé n'est
+   * pas visible : la politique d'accès gouverne aussi le regard.
+   */
+  orders: MarketOrder[];
+  /** Ses avoirs déposés en station, tous lieux confondus. */
+  holdings: StationHolding[];
   /** Événements de monde actifs (chantier 17), non brouillardés. */
   worldEvents: WorldEvent[];
   /** Présent quand l'exploration ou l'univers a changé depuis le dernier message. */

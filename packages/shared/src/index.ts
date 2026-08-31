@@ -85,6 +85,9 @@ export {
   type Mail,
   type CorpRelation,
   type Standing,
+  type OrderSide,
+  type MarketOrder,
+  type StationHolding,
 } from "./model/social.js";
 export {
   TICK_MS,
@@ -303,6 +306,12 @@ export {
   resolveStationSale,
   resolveStationPurchase,
 } from "./sim/economy/station-market.js";
+export {
+  matchOrders,
+  bestPrices,
+  type Fill,
+  type MatchResult,
+} from "./sim/economy/order-book.js";
 export {
   legacyCapacity,
   idleShips,

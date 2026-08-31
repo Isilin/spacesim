@@ -82,7 +82,11 @@ export interface Mission {
     | "buy_return"
     | "build_outpost"
     | "contribute_gateway"
-    | "deliver_contract";
+    | "deliver_contract"
+    // Dépose la cargaison dans l'AVOIR de l'empire à une station, sans la vendre
+    // (chantier 32.25). C'est ce qui permet d'y poser ensuite un ordre de vente : la
+    // marchandise doit être sur place, le marché ne téléporte rien (ADR 0012).
+    | "deposit_station";
   fromColonyId: string;
   /** Id de système (probe), de planète/corps (colonize/found_station) ou de
    *  comptoir/colonie (commerce). */

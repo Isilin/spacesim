@@ -31,6 +31,7 @@ export async function bootEngine(
   await engine.inbox.loadEvents();
   await engine.corporation.loadCorporations();
   await engine.communication.loadCommunication();
+  await engine.orderBook.loadOrderBook();
   await engine.diplomacy.loadWorldEvents();
   if (isNew) {
     engine.bootstrap.createHomeColony();

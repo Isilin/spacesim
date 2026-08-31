@@ -14,6 +14,8 @@ import type {
   CorporationMember,
   CorpRelation,
   EmpireEvent,
+  MarketOrder,
+  StationHolding,
   RelationState,
   Mail,
   Standing,
@@ -112,6 +114,10 @@ export class GameRuntime {
    * il suffit de la reposer, et c'est un geste d'un clic.
    */
   corpIntentMap = new Map<string, RelationState>();
+  /** Ordres limites au repos (chantier 32.25), tous carnets confondus. */
+  orderMap = new Map<string, MarketOrder>();
+  /** Avoirs déposés en station, clé `stationId|empireId`. */
+  holdingMap = new Map<string, StationHolding>();
   /** Empires partageant cet univers (chantier 7b). Un seul instancié à ce stade. */
   empires = new Map<string, Empire>();
   /** Empire propriétaire par défaut (solo). Posé par `ensureDefaultPlayer`. */

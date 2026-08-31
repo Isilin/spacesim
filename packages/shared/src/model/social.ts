@@ -396,3 +396,40 @@ export interface Standing {
   value: number;
   setAt: number;
 }
+
+// ── Carnet d'ordres (chantier 32.22) ─────────────────────────────────────────
+
+export type OrderSide = "buy" | "sell";
+
+/**
+ * Ordre limite au repos dans le carnet d'une station. Toujours **adossé** : un achat a
+ * séquestré ses crédits, une vente a sorti sa marchandise de l'avoir du vendeur, dès la
+ * pose. Sans cela, un carnet afficherait des offres qu'un clic révèle creuses. Voir
+ * [ADR 0012](../../../../docs/adr/0012-carnet-d-ordres-et-avoirs-de-station.md).
+ */
+export interface MarketOrder {
+  id: string;
+  stationId: string;
+  ownerId: string;
+  side: OrderSide;
+  resource: ResourceId;
+  /** Reste à exécuter — l'ordre disparaît à zéro. */
+  remaining: number;
+  /** Prix unitaire limite : plancher pour une vente, plafond pour un achat. */
+  pricePerUnit: number;
+  createdAt: number;
+}
+
+/**
+ * Ce qu'un empire a garé dans une station donnée — distinct du stock du propriétaire.
+ * C'est la pièce qui permet à quelqu'un d'autre que le propriétaire d'y vendre.
+ *
+ * Le rapatrier demande un convoi, comme tout le reste : le marché ne téléporte rien, il
+ * change seulement qui possède quoi à un endroit donné (ADR 0004).
+ */
+export interface StationHolding {
+  stationId: string;
+  empireId: string;
+  resources: Partial<Record<ResourceId, number>>;
+  credits: number;
+}
