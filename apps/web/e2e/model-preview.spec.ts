@@ -25,7 +25,9 @@ async function framesPerSecond(page: import("@playwright/test").Page) {
   );
 }
 
-test("l'aperçu 3D rend un vaisseau, sans erreur de console", async ({ page }) => {
+test("l'aperçu 3D rend un vaisseau, sans erreur de console", async ({
+  page,
+}) => {
   // L'assertion la plus utile du lot : une faute dans le shader se signale par une
   // erreur de compilation en console et ne rend RIEN, pendant que la page continue de
   // fonctionner et que toutes les assertions DOM restent vertes. C'est la leçon du
