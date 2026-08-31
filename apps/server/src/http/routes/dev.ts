@@ -62,12 +62,16 @@ export function registerDevRoutes(
     return { ok: true, eventId };
   });
   app.post("/dev/foundstation", (request, reply) => {
-    const { empireId, name, access, taxRate } = (request.body ?? {}) as {
-      empireId?: string;
-      name?: string;
-      access?: string;
-      taxRate?: number;
-    };
+    const { empireId, name, access, taxRate, zones, installations, queued } =
+      (request.body ?? {}) as {
+        empireId?: string;
+        name?: string;
+        access?: string;
+        taxRate?: number;
+        zones?: string[];
+        installations?: Record<string, number>;
+        queued?: string;
+      };
     const empire = empireId
       ? engine.empireById(empireId)
       : engine.defaultEmpireForDev;
@@ -77,6 +81,9 @@ export function registerDevRoutes(
       name,
       (access ?? "public") as never,
       taxRate ?? 0,
+      zones ?? [],
+      installations ?? {},
+      queued,
     );
     return { ok: id !== null, stationId: id };
   });

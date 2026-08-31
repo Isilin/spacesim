@@ -1118,7 +1118,10 @@
 }
 
 .designer-editor {
-  width: 380px;
+  /* 460 et non 380 (chantier 33.8) : la colonne de droite porte l'aperçu 3D, le schéma
+     de coque, les jauges ET la liste des emplacements. À 380 elle étouffait pendant que
+     la liste de plans, en `flex: 1`, prenait tout le reste. */
+  width: 460px;
   flex-shrink: 0;
 }
 
@@ -1365,9 +1368,13 @@
 }
 
 .designer-preview {
+  /* Empilés et non côte à côte (chantier 33.8). En rangée, l'aperçu 3D et le schéma 2D
+     réclamaient ensemble plus large que la colonne : le contenu débordait du panneau.
+     Superposés, chacun dispose de toute la largeur — et c'est déjà l'agencement de la
+     vue des stations. */
   display: flex;
+  flex-direction: column;
   gap: 16px;
-  align-items: flex-start;
 }
 
 /* ── Constructeur spatial de station (chantier 26) ───────────────────── */
@@ -1565,10 +1572,6 @@
   .designer-editor {
     width: auto;
   }
-  .designer-preview {
-    flex-wrap: wrap;
-  }
-
   .research-body {
     flex-direction: column;
   }
@@ -1697,9 +1700,18 @@
   /* `flex: 1` et une largeur minimale : dans `.designer-preview`, qui est une rangée
      flex, un simple `width: 100%` laissait le canvas se réduire à une lamelle de trente
      pixels à côté du diagramme 2D, qui a une largeur fixe (chantier 33.3). */
-  flex: 1;
+  /* Pas de `flex: 1` : `.designer-preview` est une COLONNE, l'axe principal y est donc
+     vertical et un `flex-grow` y écrase la hauteur au lieu d'étendre la largeur — R3F
+     retombe alors sur ses 150 px par défaut, sans rien signaler. */
+  flex: 0 0 auto;
   min-width: 220px;
   width: 100%;
+  /* Borné et centré (chantier 33.8) : dans la vue des stations l'aperçu occupait toute
+     la largeur de la page pour 280 px de haut, soit un bandeau de 5:1 où un objet large
+     et plat, vu de trois quarts, reste forcément minuscule — le cadrage y est limité par
+     la hauteur quoi qu'il fasse. */
+  max-width: 620px;
+  margin-inline: auto;
   /* 280 et non 220 : dans la vue des stations l'aperçu occupe toute la largeur, et le
      cadrage se fait alors sur la HAUTEUR — à 220 px l'objet se retrouvait dans une
      meurtrière (chantier 33.5). */

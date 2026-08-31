@@ -6,6 +6,7 @@ import {
   gatewayCovered,
   pirateBounty,
   pirateComposition,
+  HEX_DIRECTIONS,
   pirateDirectives,
   RESOURCES,
   WORLD_EVENT_DURATION_MS,
@@ -160,6 +161,13 @@ export class DevService {
     name = "Comptoir de dev",
     access: Station["marketAccess"] = "public",
     taxRate = 0,
+    /** Zones bâties d'emblée — sinon la station n'est qu'un moyeu et son rendu ne montre
+     *  rien. Positions sur la couronne du moyeu, dans l'ordre des voisins hexagonaux. */
+    zoneTypeIds: string[] = [],
+    /** Installations bâties, par type. */
+    installations: Record<string, number> = {},
+    /** Un type de zone mis en file, pour voir le rendu « provisoire ». */
+    queuedZoneTypeId?: string,
   ): string | null {
     const home = [...empire.colonyMap.values()][0];
     const systemId = home
@@ -178,11 +186,26 @@ export class DevService {
       resources,
       zones: [],
       zoneQueue: [],
-      installations: {},
+      installations: { ...installations },
       installQueue: [],
       marketAccess: access,
       marketTaxRate: taxRate,
     };
+    zoneTypeIds.forEach((zoneTypeId, i) => {
+      const dir = HEX_DIRECTIONS[i % HEX_DIRECTIONS.length]!;
+      const ring = 1 + Math.floor(i / HEX_DIRECTIONS.length);
+      station.zones.push({ zoneTypeId, q: dir.q * ring, r: dir.r * ring });
+    });
+    if (queuedZoneTypeId) {
+      const dir = HEX_DIRECTIONS[zoneTypeIds.length % HEX_DIRECTIONS.length]!;
+      station.zoneQueue.push({
+        zoneTypeId: queuedZoneTypeId,
+        q: dir.q,
+        r: dir.r,
+        startedAt: Date.now(),
+        finishesAt: Date.now() + 60_000,
+      });
+    }
     this.services.station.insertStation(empire, station);
     this.notify();
     return station.id;

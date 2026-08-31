@@ -65,6 +65,11 @@ export function ghostColor(): string {
   return themeColor("--border-bright", "#2f5670");
 }
 
+/** Anneau d'orbite dans la vue système : un filet de HUD, pas une ombre. */
+export function orbitColor(): string {
+  return themeColor("--border-bright", "#2f5670");
+}
+
 /** Plan de grille posé sous l'objet, qui lui donne son assise. */
 export function gridColor(): string {
   return themeColor("--border", "#22384c");

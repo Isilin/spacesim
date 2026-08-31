@@ -11,10 +11,12 @@ import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { type Group, type InstancedMesh, Object3D } from "three";
 import { seedOf, siteColor } from "./appearance.js";
+import { orbitColor } from "./theme.js";
 import { focusOf } from "./bounds.js";
 import { MapCanvas } from "./MapCanvas.js";
 import { MapList } from "./MapList.js";
 import { ProceduralBody } from "./ProceduralBody.js";
+import { StarBody } from "./StarBody.js";
 
 interface Props {
   system: StarSystem;
@@ -140,9 +142,12 @@ function OrbitRing({ body }: { body: Planet }) {
       // L'anneau est plat : on le couche dans le plan de l'orbite.
     >
       <ringGeometry
-        args={[body.orbitRadius - 0.4, body.orbitRadius + 0.4, 96]}
+        args={[body.orbitRadius - 0.35, body.orbitRadius + 0.35, 96]}
       />
-      <meshBasicMaterial color="#1e2a38" transparent opacity={0.7} />
+      {/* Relevé au chantier 33.8 : `#1e2a38` à 0,7 sur le fond plat `#080b10` se
+          distinguait à peine — l'anneau porte pourtant la lecture de la géométrie du
+          système. La teinte vient du jeton de bordure claire, comme les filets du HUD. */}
+      <meshBasicMaterial color={orbitColor()} transparent opacity={0.85} />
     </mesh>
   );
 }
@@ -205,21 +210,14 @@ export function SystemScene({
         focus={focus}
         register="lit"
       >
-        {/* L'étoile : émissive, elle est aussi la source de lumière du registre `lit`. */}
-        <mesh>
-          <sphereGeometry args={[STAR_CORE, 32, 32]} />
-          <meshBasicMaterial color="#ffd27f" />
-        </mesh>
-        {/* Couronne : deux coques translucides suffisent à donner à l'étoile sa
-            présence, sans post-traitement ni passe de bloom. */}
-        <mesh>
-          <sphereGeometry args={[STAR_CORE * 1.4, 24, 24]} />
-          <meshBasicMaterial color="#ffb347" transparent opacity={0.22} />
-        </mesh>
-        <mesh>
-          <sphereGeometry args={[STAR_CORONA, 24, 24]} />
-          <meshBasicMaterial color="#ff9640" transparent opacity={0.1} />
-        </mesh>
+        {/* L'étoile : surface procédurale, et source de lumière du registre `lit`.
+            C'était trois sphères de couleur plate empilées, à côté de planètes qui ont un
+            vrai shader — la seule chose qu'on regarde vraiment était la moins soignée. */}
+        <StarBody
+          id={system.id}
+          radius={STAR_CORE}
+          coronaRadius={STAR_CORONA}
+        />
 
         {planets.map((planet) => (
           <OrbitRing key={`ring-${planet.id}`} body={planet} />
