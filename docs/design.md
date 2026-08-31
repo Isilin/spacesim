@@ -1829,3 +1829,43 @@ spammeur aurait continué jusqu'à sa prochaine reconnexion.
 **Hors périmètre de la vague C** : la messagerie privée synchrone. Le courrier couvre le
 besoin de s'adresser à quelqu'un ; un canal privé demanderait blocage individuel et
 signalement, soit un étage de modération de plus que le mute.
+
+### Vague D — Relations de corporation et standings (ouverte 31/08/2026)
+
+Décision et alternatives écartées :
+[ADR 0011](adr/0011-relations-de-corporation-et-standings.md). Quatre points tranchés : une
+relation de corporation **réutilise `RelationState`** plutôt que d'inventer son échelle ;
+la **guerre de corporation prime sur la paix individuelle** (sinon une déclaration ne
+vaudrait rien, chacun la défaisant pour son compte) ; les **standings sont gradués,
+publics, et gouvernent exactement une chose** — un palier d'accès de station décrivant une
+opinion, là où les autres décrivent des appartenances ; et les états de corporation **se
+posent au lieu de se proposer**, la réciprocité faisant l'accord.
+
+- **32.18** — modèle `CorpRelation` / `Standing`, seuil d'accès, contrats Zod.
+- **32.19** — persistance : tables `corp_relations` et `standings`, migration.
+- **32.20** — service : poser un état entre corporations, poser un standing ; `atWar`
+  élargi ; palier d'accès `standing` sur les stations ; journal vers le camp d'en face.
+- **32.21** — client : états et standings dans la vue Corporation, position lisible dans
+  le classement.
+
+**Bilan de la vague D (31/08/2026).** Livrée en entier, 32.18 à 32.21.
+
+Deux choses apparues en la faisant :
+
+- **Un annuaire public des corporations manquait.** Relations et standings voyagent par
+  identifiant ; sans `publicCorporations`, le client recevait des identifiants qu'il ne
+  savait rattacher à aucun nom. C'est le pendant naturel de « le sigle est public »
+  (ADR 0009), et il rend la carte politique lisible.
+- **Les intentions de pacte ne sont pas persistées.** Une main tendue non réciproquée
+  n'est pas un état du monde ; la perdre au redémarrage ne détruit rien puisqu'il suffit
+  de la reposer d'un clic. Seule la relation effective va en base.
+
+La règle qui compte, et qui est testée en priorité : **la guerre de corporation prime sur
+la paix individuelle**. Un membre qui hérite d'une guerre ne peut pas s'en extraire pour
+son compte — sinon une déclaration de corporation ne vaudrait rien. Le départ reste libre,
+et c'est le contrepoids : quitter la corporation rend la paix.
+
+**Hors périmètre de la vague D** : les standings ne gouvernent pas le droit d'attaquer
+(l'état de relation le fait déjà, deux mécanismes concurrents rendraient la règle
+illisible), et il n'y a pas de standing PNJ (`factionRep` du chantier 15 est le mécanisme
+existant pour « ce que les PNJ pensent de moi »).

@@ -11,7 +11,9 @@ import type {
   Corporation,
   CorporationInvite,
   CorporationMember,
+  CorpRelation,
   EmpireEvent,
+  PublicCorporation,
   FactionState,
   Gateway,
   Colony,
@@ -22,6 +24,7 @@ import type {
   LeaderboardEntry,
   Mail,
   MiningOutpost,
+  Standing,
   Mission,
   Objective,
   PirateLair,
@@ -78,6 +81,10 @@ export interface GameStoreState {
   corporation: Corporation | null;
   corporationMembers: CorporationMember[];
   corporationInvites: CorporationInvite[];
+  /** Annuaire public des corporations, relations et standings (chantier 32.21). */
+  publicCorporations: PublicCorporation[];
+  corpRelations: CorpRelation[];
+  standings: Standing[];
   /** Canaux auxquels l'empire appartient — publiés par le serveur, pas déduits. */
   chatChannels: { scope: ChatScope; scopeId: string }[];
   /** Messages de ces canaux (chantier 32.17). */
@@ -151,6 +158,9 @@ function snapshotFields(msg: EmpireSnapshot): SnapshotFields {
     corporation: msg.corporation ?? null,
     corporationMembers: msg.corporationMembers,
     corporationInvites: msg.corporationInvites,
+    publicCorporations: msg.publicCorporations,
+    corpRelations: msg.corpRelations,
+    standings: msg.standings,
     chatChannels: msg.chatChannels,
     chat: msg.chat,
     mails: msg.mails,
@@ -197,6 +207,9 @@ const initialState: SnapshotFields & {
   corporation: null,
   corporationMembers: [],
   corporationInvites: [],
+  publicCorporations: [],
+  corpRelations: [],
+  standings: [],
   chatChannels: [],
   chat: [],
   mails: [],

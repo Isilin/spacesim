@@ -230,3 +230,16 @@ export const CHAT_PAGE = 60;
 export const CHAT_MAX_LENGTH = 500;
 export const MAIL_KEEP = 100;
 export const MAIL_MAX_BODY = 4000;
+
+/**
+ * Bornes des standings (chantier 32.18) — l'opinion d'une corporation envers un empire
+ * ou une autre corporation, publique et graduée.
+ *
+ * `STANDING_TRADE_MIN` est le seuil du palier d'accès `standing` : c'est le seul point
+ * du jeu qu'un standing gouverne (ADR 0011). Fixé bas à dessein — le palier doit servir à
+ * ouvrir sa station à des partenaires qu'on apprécie sans en faire des alliés, pas à
+ * reproduire l'alliance sous un autre nom.
+ */
+export const STANDING_MIN = -10;
+export const STANDING_MAX = 10;
+export const STANDING_TRADE_MIN = 3;

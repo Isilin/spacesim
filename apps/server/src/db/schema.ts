@@ -382,6 +382,44 @@ export const corporationInvites = pgTable("corporation_invites", {
 });
 
 /**
+ * Relations entre corporations (chantier 32.19). Paire canonique `corp_a < corp_b`,
+ * comme `relations` entre empires — même échelle, mêmes règles (ADR 0011). Cascade :
+ * une corporation dissoute emporte ses relations, qui ne décrivent plus rien.
+ */
+export const corpRelations = pgTable(
+  "corp_relations",
+  {
+    corpA: text("corp_a")
+      .notNull()
+      .references(() => corporations.id, { onDelete: "cascade" }),
+    corpB: text("corp_b")
+      .notNull()
+      .references(() => corporations.id, { onDelete: "cascade" }),
+    gameId: text("game_id").notNull(),
+    state: text("state").notNull().default("neutral"),
+    since: bigint("since", { mode: "number" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.corpA, table.corpB] })],
+);
+
+/** Opinion graduée d'une corporation envers un empire ou une autre corporation. */
+export const standings = pgTable(
+  "standings",
+  {
+    corporationId: text("corporation_id")
+      .notNull()
+      .references(() => corporations.id, { onDelete: "cascade" }),
+    /** Empire OU corporation : les deux partagent le même espace d'identifiants, donc
+     *  pas de FK — la cible peut être de l'un ou l'autre type. */
+    targetId: text("target_id").notNull(),
+    gameId: text("game_id").notNull(),
+    value: integer("value").notNull().default(0),
+    setAt: bigint("set_at", { mode: "number" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.corporationId, table.targetId] })],
+);
+
+/**
  * Messages de canal (chantier 32.13). Bornés et jetables : le canal est un lieu de
  * conversation, pas un registre (ADR 0010). L'index couvre la seule lecture faite —
  * « les N derniers de ce canal ».

@@ -96,6 +96,10 @@ export class StationService {
       >,
     ) => void,
     private readonly sameCorporation: (a: string, b: string) => boolean,
+    private readonly standingTowards: (
+      ownerEmpireId: string,
+      visitorEmpireId: string,
+    ) => number,
   ) {
     this.repo = new StationRepository(runtime.clock.id, runtime.writeSet);
   }
@@ -305,6 +309,7 @@ export class StationService {
         station.marketAccess,
         relation,
         this.sameCorporation(visitorEmpire.id, owner.id),
+        this.standingTowards(owner.id, visitorEmpire.id),
       )
     ) {
       return {

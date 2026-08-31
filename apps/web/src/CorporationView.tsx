@@ -1,4 +1,11 @@
-import { corpCan, type CorpRole } from "@spacesim/shared";
+import {
+  corpCan,
+  relationKey,
+  STANDING_MAX,
+  STANDING_MIN,
+  type CorpRole,
+  type RelationState,
+} from "@spacesim/shared";
 import {
   Button,
   EmptyState,
@@ -33,14 +40,28 @@ export function CorporationView() {
     corporation,
     corporationMembers,
     corporationInvites,
+    publicCorporations,
+    corpRelations,
+    standings,
     leaderboard,
     playerId,
     send,
   } = useGameStore();
 
+  /** Clé i18n par état — évite quatre `switch` dans le rendu. */
+  const STATE_KEY: Record<RelationState, string> = {
+    neutral: "Neutral",
+    nap: "Nap",
+    alliance: "Alliance",
+    war: "War",
+  };
+
   const [name, setName] = useState("");
   const [tag, setTag] = useState("");
   const [amount, setAmount] = useState("100");
+  const [standingDrafts, setStandingDrafts] = useState<Record<string, string>>(
+    {},
+  );
 
   const myRole: CorpRole =
     corporationMembers.find((m) => m.empireId === playerId)?.role ?? "member";
@@ -131,6 +152,21 @@ export function CorporationView() {
   const canKick = corpCan(myRole, "corp.kick");
   const canSetRole = corpCan(myRole, "corp.role.set");
   const canWithdraw = corpCan(myRole, "corp.treasury.withdraw");
+  const canDiplomacy = corpCan(myRole, "corp.relation.set");
+  // L'annuaire public donne le nom ET l'identifiant : sans lui, les relations reçues
+  // seraient des identifiants sans nom (ADR 0011).
+  const otherCorps = publicCorporations.filter((c) => c.id !== corporation.id);
+  const stateWith = (targetId: string): RelationState => {
+    const key = relationKey(corporation.id, targetId);
+    return (
+      corpRelations.find((r) => relationKey(r.corpA, r.corpB) === key)?.state ??
+      "neutral"
+    );
+  };
+  const standingWith = (targetId: string): number =>
+    standings.find(
+      (st) => st.corporationId === corporation.id && st.targetId === targetId,
+    )?.value ?? 0;
   const value = Math.floor(Number(amount));
   const validAmount = Number.isFinite(value) && value > 0;
   const invitable = leaderboard.filter(
@@ -265,6 +301,94 @@ export function CorporationView() {
           )}
         </div>
       </Panel>
+
+      {canDiplomacy && (
+        <Panel title={t("corporation.diplomacyTitle")}>
+          {otherCorps.length === 0 ? (
+            <p className="muted small">{t("corporation.noOtherCorp")}</p>
+          ) : (
+            <ul className="queue-list">
+              {otherCorps.map((other) => {
+                const state = stateWith(other.id);
+                const current = standingWith(other.id);
+                const draftValue = Math.max(
+                  STANDING_MIN,
+                  Math.min(
+                    STANDING_MAX,
+                    Math.trunc(
+                      Number(standingDrafts[other.id] ?? current) || 0,
+                    ),
+                  ),
+                );
+                return (
+                  <li key={other.id} className="queue-item">
+                    <div className="queue-head">
+                      <span>
+                        {other.name} [{other.tag}]
+                      </span>
+                      <span className="muted small">
+                        {t(`corporation.state${STATE_KEY[state]}`)}
+                      </span>
+                    </div>
+                    <div className="route-actions">
+                      {/* `war` et `neutral` sont unilatéraux ; `nap` et `alliance` ne
+                          prennent qu'à réciprocité — la main tendue reste en attente
+                          jusque-là (ADR 0011). */}
+                      {(["neutral", "nap", "alliance", "war"] as const).map(
+                        (next) => (
+                          <Button
+                            key={next}
+                            size="sm"
+                            variant={next === state ? "primary" : "ghost"}
+                            onClick={() =>
+                              send({
+                                type: "setCorpRelation",
+                                targetCorporationId: other.id,
+                                state: next,
+                              })
+                            }
+                          >
+                            {t(`corporation.state${STATE_KEY[next]}`)}
+                          </Button>
+                        ),
+                      )}
+                      {/* Saisie locale puis envoi explicite : brancher `onChange` sur
+                          la commande enverrait un message par frappe, et « -5 » passerait
+                          d'abord par « - » interprété comme 0. */}
+                      <NumberInput
+                        label={t("corporation.standingLabel")}
+                        min={STANDING_MIN}
+                        max={STANDING_MAX}
+                        step={1}
+                        value={standingDrafts[other.id] ?? String(current)}
+                        onChange={(e) =>
+                          setStandingDrafts((d) => ({
+                            ...d,
+                            [other.id]: e.target.value,
+                          }))
+                        }
+                      />
+                      <Button
+                        size="sm"
+                        disabled={draftValue === current}
+                        onClick={() =>
+                          send({
+                            type: "setStanding",
+                            targetId: other.id,
+                            value: draftValue,
+                          })
+                        }
+                      >
+                        {t("corporation.setStanding")}
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+      )}
 
       {canInvite && (
         <Panel title={t("corporation.inviteTitle")}>

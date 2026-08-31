@@ -337,6 +337,14 @@ export function dispatchClientMessage(
     case "deleteMail":
       engine.communication.deleteMail(empire.id, msg.mailId);
       return null;
+    case "setCorpRelation":
+      return engine.corporation.setCorpRelation(
+        empire,
+        msg.targetCorporationId,
+        msg.state,
+      );
+    case "setStanding":
+      return engine.corporation.setStanding(empire, msg.targetId, msg.value);
     default:
       return assertNever(msg);
   }

@@ -7,6 +7,8 @@ import type {
   Corporation,
   CorporationInvite,
   CorporationMember,
+  CorpRelation,
+  PublicCorporation,
   EmpireEvent,
   FactionState,
   Fleet,
@@ -17,6 +19,7 @@ import type {
   Gateway,
   LeaderboardEntry,
   Mail,
+  Standing,
   MiningOutpost,
   Mission,
   Objective,
@@ -92,6 +95,18 @@ export interface EmpireSnapshot {
   corporationMembers: CorporationMember[];
   /** Invitations en attente le concernant (chantier 32.8), reçues ou émises. */
   corporationInvites: CorporationInvite[];
+  /**
+   * Annuaire public des corporations (chantier 32.20) : identité seulement. Sans lui, les
+   * relations et standings ci-dessous seraient des identifiants sans nom.
+   */
+  publicCorporations: PublicCorporation[];
+  /**
+   * Relations entre corporations — TOUTES, pas seulement celles de l'empire : elles sont
+   * publiques, c'est ce qui rend la carte politique lisible d'un tiers (ADR 0011).
+   */
+  corpRelations: CorpRelation[];
+  /** Standings publics de toutes les corporations, même raison. */
+  standings: Standing[];
   /**
    * Canaux auxquels l'empire appartient (chantier 32.14). Transmis EXPLICITEMENT et non
    * déduits des messages reçus : un canal encore silencieux serait sinon invisible, et

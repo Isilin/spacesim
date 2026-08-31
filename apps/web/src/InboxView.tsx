@@ -41,6 +41,7 @@ const LOOK: Record<
   corp_left: { icon: "🚪", tone: "ko" },
   corp_dissolved: { icon: "🏚", tone: "ko" },
   mail_received: { icon: "✉", tone: "neutral" },
+  corp_relation_changed: { icon: "⚑", tone: "neutral" },
 };
 
 function systemName(universe: Universe | null, systemId?: string): string {
@@ -104,6 +105,13 @@ export function InboxView({ now }: { now: number }) {
       // cohérente, et le courrier reste relisible après purge de l'événement (ADR 0010).
       case "mail_received":
         return t("inbox.mailReceived", { other });
+      // Tout le camp d'en face est prévenu : une guerre déclarée pendant qu'ils dorment
+      // est exactement ce que le journal existe pour couvrir (ADR 0011).
+      case "corp_relation_changed":
+        return t("inbox.corpRelationChanged", {
+          corp: other,
+          state: relationBadge(event.subjectId as RelationState),
+        });
     }
   };
 

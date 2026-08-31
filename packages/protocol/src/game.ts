@@ -88,7 +88,14 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("setStationMarketPolicy"),
     stationId: idSchema,
-    marketAccess: z.enum(["closed", "corp", "alliance", "nap", "public"]),
+    marketAccess: z.enum([
+      "closed",
+      "corp",
+      "standing",
+      "alliance",
+      "nap",
+      "public",
+    ]),
     taxRate: z.number().min(0).max(1),
   }),
   z.object({ type: z.literal("research"), techId: idSchema }),
@@ -317,6 +324,17 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("markMailRead"), mailId: idSchema }),
   z.object({ type: z.literal("deleteMail"), mailId: idSchema }),
+  // Relations de corporation et standings (chantier 32.20).
+  z.object({
+    type: z.literal("setCorpRelation"),
+    targetCorporationId: idSchema,
+    state: z.enum(["neutral", "nap", "alliance", "war"]),
+  }),
+  z.object({
+    type: z.literal("setStanding"),
+    targetId: idSchema,
+    value: z.number().int().min(-10).max(10),
+  }),
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;

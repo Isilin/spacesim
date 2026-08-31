@@ -2,7 +2,10 @@ import type {
   Corporation,
   CorporationInvite,
   CorporationMember,
+  CorpRelation,
   CorpRole,
+  RelationState,
+  Standing,
 } from "@spacesim/shared";
 import { eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
@@ -106,5 +109,47 @@ export class CorporationRepository {
 
   deleteInvite(inviteId: string): void {
     this.writeSet.delete("corporationInvites", inviteId);
+  }
+
+  async loadCorpRelations(): Promise<CorpRelation[]> {
+    return (await db.select().from(schema.corpRelations)).map((row) => ({
+      corpA: row.corpA,
+      corpB: row.corpB,
+      state: row.state as RelationState,
+      since: row.since,
+    }));
+  }
+
+  saveCorpRelation(relation: CorpRelation): void {
+    this.writeSet.upsert("corpRelations", [relation.corpA, relation.corpB], {
+      corpA: relation.corpA,
+      corpB: relation.corpB,
+      gameId: this.gameId,
+      state: relation.state,
+      since: relation.since,
+    });
+  }
+
+  async loadStandings(): Promise<Standing[]> {
+    return (await db.select().from(schema.standings)).map((row) => ({
+      corporationId: row.corporationId,
+      targetId: row.targetId,
+      value: row.value,
+      setAt: row.setAt,
+    }));
+  }
+
+  saveStanding(standing: Standing): void {
+    this.writeSet.upsert(
+      "standings",
+      [standing.corporationId, standing.targetId],
+      {
+        corporationId: standing.corporationId,
+        targetId: standing.targetId,
+        gameId: this.gameId,
+        value: standing.value,
+        setAt: standing.setAt,
+      },
+    );
   }
 }

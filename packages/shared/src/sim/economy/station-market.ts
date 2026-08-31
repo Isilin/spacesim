@@ -1,3 +1,4 @@
+import { STANDING_TRADE_MIN } from "../../constants.js";
 import type { Station, StationMarketAccess } from "../../model/industry.js";
 import type { ResourceId } from "../../model/resources.js";
 import type { RelationState } from "../../model/social.js";
@@ -30,6 +31,8 @@ export function canTradeAtStation(
   /** Même corporation que le propriétaire (chantier 32.10) — faux par défaut pour que
    *  les appelants qui ignorent les corporations gardent leur comportement d'avant. */
   sameCorporation = false,
+  /** Standing du propriétaire envers le visiteur (chantier 32.20), 0 par défaut. */
+  standing = 0,
 ): boolean {
   if (visitorId === ownerId) return true;
   if (relation === "war") return false;
@@ -38,9 +41,13 @@ export function canTradeAtStation(
       return false;
     case "corp":
       return sameCorporation;
+    case "standing":
+      return sameCorporation || standing >= STANDING_TRADE_MIN;
     case "alliance":
       // Un membre de la corporation passe aussi les paliers plus permissifs : sinon
-      // ouvrir sa station aux alliés la fermerait à ses propres associés.
+      // ouvrir sa station aux alliés la fermerait à ses propres associés. Le standing,
+      // lui, ne remonte PAS : il décrit une sympathie, pas un pacte, et l'assimiler à
+      // une alliance viderait le palier `alliance` de son sens.
       return sameCorporation || relation === "alliance";
     case "nap":
       return sameCorporation || relation === "alliance" || relation === "nap";

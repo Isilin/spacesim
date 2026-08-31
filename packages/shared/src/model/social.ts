@@ -181,6 +181,7 @@ export type EmpireEventKind =
   | "corp_invited"
   | "corp_left"
   | "corp_dissolved"
+  | "corp_relation_changed"
   | "mail_received";
 
 /**
@@ -244,6 +245,8 @@ export const CORP_ACTIONS = [
   "corp.kick",
   "corp.treasury.withdraw",
   "corp.role.set",
+  "corp.relation.set",
+  "corp.standing.set",
   "corp.dissolve",
 ] as const;
 export type CorpAction = (typeof CORP_ACTIONS)[number];
@@ -252,6 +255,10 @@ const OFFICER_ACTIONS: CorpAction[] = [
   "corp.invite",
   "corp.kick",
   "corp.treasury.withdraw",
+  // Un officier engage la corporation vis-à-vis de l'extérieur : c'est le sens du rôle,
+  // et réserver la diplomatie au fondateur paralyserait une corporation active.
+  "corp.relation.set",
+  "corp.standing.set",
 ];
 
 export const CORP_ROLE_PERMISSIONS: Record<
@@ -285,6 +292,15 @@ export interface Corporation {
   treasury: number;
   createdAt: number;
 }
+
+/**
+ * Ce qu'une corporation expose à tout le monde : son identité, rien de plus. Le coffre et
+ * le détail des rôles restent réservés à ses membres (ADR 0009).
+ *
+ * Nécessaire dès lors que les relations et les standings voyagent : sans annuaire, le
+ * client reçoit des identifiants qu'il ne sait rattacher à aucun nom.
+ */
+export type PublicCorporation = Pick<Corporation, "id" | "name" | "tag">;
 
 /** Appartenance d'un empire à une corporation. Exclusive : au plus une par empire. */
 export interface CorporationMember {
@@ -350,4 +366,33 @@ export interface Mail {
   sentAt: number;
   /** `null` tant que le destinataire ne l'a pas ouvert. */
   readAt: number | null;
+}
+
+// ── Relations de corporation et standings (chantier 32.18) ───────────────────
+
+/**
+ * Relation entre deux corporations. Réutilise `RelationState` plutôt que d'inventer une
+ * seconde échelle : la question posée est la même — ces deux camps peuvent-ils se tirer
+ * dessus, commercer, s'allier. Voir
+ * [ADR 0011](../../../../docs/adr/0011-relations-de-corporation-et-standings.md).
+ */
+export interface CorpRelation {
+  /** Paire canonique `corpA < corpB`, comme `Relation`. */
+  corpA: string;
+  corpB: string;
+  state: RelationState;
+  since: number;
+}
+
+/**
+ * Opinion graduée d'une corporation envers un empire ou une autre corporation.
+ * **Publique** : c'est tout son intérêt, elle rend une position lisible d'un tiers.
+ */
+export interface Standing {
+  corporationId: string;
+  /** Empire ou corporation visé — les deux vivent dans le même espace d'identifiants. */
+  targetId: string;
+  /** Entier de `STANDING_MIN` à `STANDING_MAX`. */
+  value: number;
+  setAt: number;
 }

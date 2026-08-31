@@ -59,3 +59,49 @@ test("une invitation traverse deux sessions et fait entrer le second joueur", as
   await founderCtx.close();
   await guestCtx.close();
 });
+
+/**
+ * Diplomatie de corporation (chantier 32.21) — deux corporations, deux sessions.
+ *
+ * Ce qu'un test à un joueur ne peut pas voir : qu'une déclaration de guerre atteint le
+ * journal du camp d'en face, et qu'un pacte n'entre en vigueur qu'à réciprocité.
+ */
+test("une guerre de corporation prévient l'autre camp, un pacte attend la réciprocité", async ({
+  browser,
+}) => {
+  const ctxA = await browser.newContext();
+  const ctxB = await browser.newContext();
+  const vega = await ctxA.newPage();
+  const rigel = await ctxB.newPage();
+
+  await registerFreshEmpire(vega, { prefix: "dipa", empireName: "Vega E2E" });
+  await registerFreshEmpire(rigel, { prefix: "dipb", empireName: "Rigel E2E" });
+
+  for (const [page, name, tag] of [
+    [vega, "Consortium Vega", "VEGA"],
+    [rigel, "Guilde Rigel", "RIGL"],
+  ] as const) {
+    await page.getByRole("link", { name: "Corporation" }).click();
+    await page.getByLabel("Nom").fill(name);
+    await page.getByLabel("Sigle").fill(tag);
+    await page.getByRole("button", { name: "Fonder" }).click();
+    await expect(page.getByText(new RegExp(`\\[${tag}\\]`))).toBeVisible();
+  }
+
+  // L'annuaire public rend l'autre corporation visible et visable.
+  const rigelRow = vega.locator("li", { hasText: "Guilde Rigel" });
+  await expect(rigelRow).toBeVisible({ timeout: 15_000 });
+  await rigelRow.getByRole("button", { name: "Guerre" }).click();
+
+  // Tout le camp d'en face est prévenu : c'est le cas que le journal existe pour couvrir.
+  await expect(
+    rigel.getByRole("link", { name: /Journal \(\d+\)/ }),
+  ).toBeVisible({
+    timeout: 15_000,
+  });
+  await rigel.getByRole("link", { name: /Journal/ }).click();
+  await expect(rigel.getByText(/Consortium Vega/)).toBeVisible();
+
+  await ctxA.close();
+  await ctxB.close();
+});

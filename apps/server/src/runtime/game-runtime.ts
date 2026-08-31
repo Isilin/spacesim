@@ -12,8 +12,11 @@ import type {
   Corporation,
   CorporationInvite,
   CorporationMember,
+  CorpRelation,
   EmpireEvent,
+  RelationState,
   Mail,
+  Standing,
   FactionState,
   Gateway,
   Objective,
@@ -97,6 +100,18 @@ export class GameRuntime {
   chatByChannel = new Map<string, ChatMessage[]>();
   /** Boîtes aux lettres, par empire destinataire (chantier 32.15). */
   mailsByEmpire = new Map<string, Mail[]>();
+  /** Relations entre corporations (chantier 32.19), clé `a|b` canonique comme `relationMap`. */
+  corpRelationMap = new Map<string, CorpRelation>();
+  /** Standings, clé `corporationId|targetId`. Publics : ils servent à être lus. */
+  standingMap = new Map<string, Standing>();
+  /**
+   * Intentions de pacte entre corporations, clé `émetteur|cible` (chantier 32.20).
+   *
+   * En MÉMOIRE seulement, jamais persistées : une intention non réciproquée n'est pas un
+   * état du monde, seulement une main tendue. La perdre au redémarrage ne détruit rien —
+   * il suffit de la reposer, et c'est un geste d'un clic.
+   */
+  corpIntentMap = new Map<string, RelationState>();
   /** Empires partageant cet univers (chantier 7b). Un seul instancié à ce stade. */
   empires = new Map<string, Empire>();
   /** Empire propriétaire par défaut (solo). Posé par `ensureDefaultPlayer`. */

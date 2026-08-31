@@ -82,6 +82,11 @@ export const contentFr = {
       name: "Corporation",
       description: "Ouvert aux membres de votre corporation.",
     },
+    standing: {
+      name: "Standing",
+      description:
+        "Ouvert à qui votre corporation note au moins 3, et à ses membres.",
+    },
     alliance: {
       name: "Alliés",
       description: "Ouvert aux alliés et à votre corporation.",
@@ -681,6 +686,11 @@ export const contentEn: typeof contentFr = {
     corp: {
       name: "Corporation",
       description: "Open to members of your corporation.",
+    },
+    standing: {
+      name: "Standing",
+      description:
+        "Open to anyone your corporation rates 3 or better, and to its members.",
     },
     alliance: {
       name: "Allies",

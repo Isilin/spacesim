@@ -117,6 +117,15 @@ export const commonFr = {
       officer: "Officier",
       founder: "Fondateur",
     },
+    diplomacyTitle: "Diplomatie de corporation",
+    noOtherCorp: "Aucune autre corporation connue.",
+    standingLabel: "Standing",
+    setStanding: "Noter",
+    pendingIntent: "En attente de réciprocité",
+    stateNeutral: "Neutre",
+    stateNap: "Pacte",
+    stateAlliance: "Alliance",
+    stateWar: "Guerre",
   },
   inbox: {
     title: "Journal d'empire",
@@ -144,6 +153,8 @@ export const commonFr = {
     corpLeft: "Vous avez été exclu de la corporation {{corp}}",
     corpDissolved: "La corporation {{corp}} a été dissoute",
     mailReceived: "Courrier reçu de {{other}}",
+    corpRelationChanged:
+      "La corporation {{corp}} est désormais « {{state}} » envers la vôtre",
   },
   shipHullDiagram: {
     noChassis: "Aucun châssis",
@@ -754,6 +765,15 @@ export const commonEn: typeof commonFr = {
       officer: "Officer",
       founder: "Founder",
     },
+    diplomacyTitle: "Corporation diplomacy",
+    noOtherCorp: "No other known corporation.",
+    standingLabel: "Standing",
+    setStanding: "Rate",
+    pendingIntent: "Awaiting reciprocity",
+    stateNeutral: "Neutral",
+    stateNap: "Pact",
+    stateAlliance: "Alliance",
+    stateWar: "War",
   },
   inbox: {
     title: "Empire log",
@@ -780,6 +800,7 @@ export const commonEn: typeof commonFr = {
     corpLeft: "You were removed from corporation {{corp}}",
     corpDissolved: "Corporation {{corp}} was dissolved",
     mailReceived: "Mail received from {{other}}",
+    corpRelationChanged: "Corporation {{corp}} is now “{{state}}” toward yours",
   },
   shipHullDiagram: {
     noChassis: "No chassis",

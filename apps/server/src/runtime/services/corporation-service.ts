@@ -1,11 +1,17 @@
 import {
   corpCan,
+  relationKey,
+  STANDING_MAX,
+  STANDING_MIN,
   type Colony,
   type Corporation,
   type CorporationInvite,
   type CorporationMember,
   type CorpAction,
+  type CorpRelation,
   type CorpRole,
+  type RelationState,
+  type Standing,
   type EmpireEventDraft,
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
@@ -47,6 +53,162 @@ export class CorporationService {
     for (const invite of await this.repo.loadInvites()) {
       this.runtime.corporationInviteMap.set(invite.id, invite);
     }
+    for (const relation of await this.repo.loadCorpRelations()) {
+      this.runtime.corpRelationMap.set(
+        relationKey(relation.corpA, relation.corpB),
+        relation,
+      );
+    }
+    for (const standing of await this.repo.loadStandings()) {
+      this.runtime.standingMap.set(
+        `${standing.corporationId}|${standing.targetId}`,
+        standing,
+      );
+    }
+  }
+
+  /** État entre deux corporations ; absence = neutre, comme entre empires. */
+  corpRelationState(a: string, b: string): RelationState {
+    if (a === b) return "alliance";
+    return (
+      this.runtime.corpRelationMap.get(relationKey(a, b))?.state ?? "neutral"
+    );
+  }
+
+  /**
+   * Guerre héritée de sa corporation (chantier 32.20). Consultée par `atWar` : un membre
+   * ne peut pas s'en extraire par une paix personnelle, sinon la déclaration de guerre
+   * d'une corporation ne vaudrait rien (ADR 0011).
+   */
+  corpsAtWar(empireA: string, empireB: string): boolean {
+    const a = this.runtime.corporationMemberMap.get(empireA)?.corporationId;
+    const b = this.runtime.corporationMemberMap.get(empireB)?.corporationId;
+    if (!a || !b || a === b) return false;
+    return this.corpRelationState(a, b) === "war";
+  }
+
+  /** Standing d'une corporation envers une cible ; absence = 0, l'indifférence. */
+  standingOf(corporationId: string, targetId: string): number {
+    return (
+      this.runtime.standingMap.get(`${corporationId}|${targetId}`)?.value ?? 0
+    );
+  }
+
+  /**
+   * Standing du PROPRIÉTAIRE d'une station envers un visiteur, pour le palier `standing`.
+   * Un propriétaire sans corporation n'a pas d'opinion à exprimer — le standing est un
+   * objet de corporation, pas d'empire (ADR 0011).
+   */
+  standingTowards(ownerEmpireId: string, visitorEmpireId: string): number {
+    const corporationId =
+      this.runtime.corporationMemberMap.get(ownerEmpireId)?.corporationId;
+    if (!corporationId) return 0;
+    // La cible peut être le visiteur lui-même ou sa corporation : on retient la plus
+    // favorable, sinon noter une corporation entière serait sans effet sur ses membres.
+    const visitorCorp =
+      this.runtime.corporationMemberMap.get(visitorEmpireId)?.corporationId;
+    const direct = this.standingOf(corporationId, visitorEmpireId);
+    return visitorCorp
+      ? Math.max(direct, this.standingOf(corporationId, visitorCorp))
+      : direct;
+  }
+
+  /**
+   * Action joueur (officier) : poser l'état que SA corporation adopte envers une autre.
+   *
+   * `war` et `neutral` sont unilatéraux ; `nap` et `alliance` n'entrent en vigueur que si
+   * l'autre camp a déjà posé le même — la réciprocité fait l'accord, sans dupliquer tout
+   * l'étage des propositions en attente (ADR 0011).
+   */
+  setCorpRelation(
+    empire: Empire,
+    targetCorporationId: string,
+    state: RelationState,
+  ): string | null {
+    const auth = this.authorize(empire, "corp.relation.set");
+    if (typeof auth === "string") return auth;
+    if (targetCorporationId === auth.corp.id) return "Cible invalide";
+    const target = this.runtime.corporationMap.get(targetCorporationId);
+    if (!target) return "Corporation inconnue";
+
+    const key = relationKey(auth.corp.id, targetCorporationId);
+    if ((this.runtime.corpRelationMap.get(key)?.state ?? "neutral") === state)
+      return null;
+
+    if (state === "nap" || state === "alliance") {
+      // Un pacte demande que l'autre camp l'ait déjà voulu ; sinon on garde l'intention
+      // et on attend.
+      const wanted = this.runtime.corpIntentMap.get(
+        `${targetCorporationId}|${auth.corp.id}`,
+      );
+      if (wanted !== state) {
+        this.runtime.corpIntentMap.set(
+          `${auth.corp.id}|${targetCorporationId}`,
+          state,
+        );
+        this.notify();
+        return null;
+      }
+      this.runtime.corpIntentMap.delete(
+        `${targetCorporationId}|${auth.corp.id}`,
+      );
+    } else {
+      // Déclarer la guerre ou revenir au neutre annule toute intention en attente.
+      this.runtime.corpIntentMap.delete(
+        `${auth.corp.id}|${targetCorporationId}`,
+      );
+      this.runtime.corpIntentMap.delete(
+        `${targetCorporationId}|${auth.corp.id}`,
+      );
+    }
+
+    const [corpA, corpB] =
+      auth.corp.id < targetCorporationId
+        ? [auth.corp.id, targetCorporationId]
+        : [targetCorporationId, auth.corp.id];
+    const relation: CorpRelation = { corpA, corpB, state, since: Date.now() };
+    this.runtime.corpRelationMap.set(key, relation);
+    this.repo.saveCorpRelation(relation);
+    // Tout le camp d'en face est prévenu : une guerre déclarée pendant qu'ils dorment est
+    // exactement ce que le journal existe pour couvrir (ADR 0008).
+    for (const member of this.membersOf(targetCorporationId)) {
+      this.emit({
+        empireId: member.empireId,
+        kind: "corp_relation_changed",
+        otherName: auth.corp.name,
+        subjectId: state,
+      });
+    }
+    this.logger.info(
+      `[game] « ${auth.corp.name} » → « ${target.name} » : ${state}`,
+    );
+    this.notify();
+    return null;
+  }
+
+  /** Action joueur (officier) : noter un empire ou une corporation. */
+  setStanding(empire: Empire, targetId: string, value: number): string | null {
+    const auth = this.authorize(empire, "corp.standing.set");
+    if (typeof auth === "string") return auth;
+    if (targetId === auth.corp.id) return "Cible invalide";
+    const known =
+      this.runtime.empires.has(targetId) ||
+      this.runtime.corporationMap.has(targetId);
+    if (!known) return "Cible inconnue";
+    const clamped = Math.max(
+      STANDING_MIN,
+      Math.min(STANDING_MAX, Math.round(value)),
+    );
+    const standing: Standing = {
+      corporationId: auth.corp.id,
+      targetId,
+      value: clamped,
+      setAt: Date.now(),
+    };
+    this.runtime.standingMap.set(`${auth.corp.id}|${targetId}`, standing);
+    this.repo.saveStanding(standing);
+    this.notify();
+    return null;
   }
 
   /** Corporation d'un empire, ou `null` — l'appartenance est exclusive (ADR 0009). */

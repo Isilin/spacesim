@@ -203,7 +203,9 @@ export function composeEngine(
     (colony) => industry.persistColony(colony),
     (empire, systemId) => exploration.dropClaim(empire, systemId),
     (empire, systemId) => exploration.markExplored(empire, systemId),
-    (a, b) => diplomacy.atWar(a, b),
+    // Guerre héritée de la corporation : un membre ne peut pas s'en extraire par une
+    // paix personnelle, sinon une déclaration de corporation ne vaudrait rien (ADR 0011).
+    (a, b) => diplomacy.atWar(a, b) || corporation.corpsAtWar(a, b),
     (galaxyId) => diplomacy.worldEventKindsOnGalaxy(galaxyId),
     emit,
   );
@@ -239,6 +241,7 @@ export function composeEngine(
         extras,
       ),
     (a, b) => corporation.sameCorporation(a, b),
+    (ownerId, visitorId) => corporation.standingTowards(ownerId, visitorId),
   );
   bootstrap = new BootstrapService(
     runtime,

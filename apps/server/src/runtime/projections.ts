@@ -412,6 +412,13 @@ export function snapshotForEmpire(
     events: eventsForEmpire(runtime, empire),
     unreadEventCount: unreadEventCount(runtime, empire),
     ...corporationForEmpire(runtime, empire),
+    publicCorporations: [...runtime.corporationMap.values()].map((c) => ({
+      id: c.id,
+      name: c.name,
+      tag: c.tag,
+    })),
+    corpRelations: [...runtime.corpRelationMap.values()],
+    standings: [...runtime.standingMap.values()],
     chatChannels: channelsForEmpire(runtime, empire),
     chat: chatForEmpire(runtime, channelsForEmpire(runtime, empire)),
     mails: mailsForEmpire(runtime, empire),

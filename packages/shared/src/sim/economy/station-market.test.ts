@@ -43,6 +43,7 @@ describe("canTradeAtStation", () => {
     for (const access of [
       "closed",
       "corp",
+      "standing",
       "alliance",
       "nap",
       "public",
@@ -84,6 +85,29 @@ describe("canTradeAtStation", () => {
         canTradeAtStation("owner", "visitor", "corp", relation, false),
       ).toBe(false);
     }
+  });
+
+  it("« standing » ouvre à qui est noté assez haut, et à personne d'autre", () => {
+    // Seul palier qui décrive une OPINION — les autres décrivent des appartenances.
+    expect(
+      canTradeAtStation("owner", "visitor", "standing", "neutral", false, 3),
+    ).toBe(true);
+    expect(
+      canTradeAtStation("owner", "visitor", "standing", "neutral", false, 2),
+    ).toBe(false);
+    // Même un allié reste dehors si le propriétaire ne le note pas : le palier dit
+    // « ceux que j'apprécie », pas « ceux avec qui j'ai un pacte ».
+    expect(
+      canTradeAtStation("owner", "visitor", "standing", "alliance", false, 0),
+    ).toBe(false);
+  });
+
+  it("un standing élevé ne vaut PAS une alliance", () => {
+    // L'assimiler viderait le palier `alliance` de son sens : une sympathie n'est pas
+    // un pacte (ADR 0011).
+    expect(
+      canTradeAtStation("owner", "visitor", "alliance", "neutral", false, 10),
+    ).toBe(false);
   });
 
   it("un associé passe aussi les paliers plus permissifs", () => {

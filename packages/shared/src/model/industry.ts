@@ -138,6 +138,9 @@ export const STATION_MARKET_ACCESS_IDS = [
   // le « hangar commun » de l'ADR 0009 — les membres commercent chez l'un des leurs en
   // s'y rendant, le partage garde son coût logistique (ADR 0004).
   "corp",
+  // Standing (chantier 32.20) : ouvert à qui le propriétaire NOTE assez haut. Seul
+  // palier qui décrive une OPINION — les autres décrivent des appartenances (ADR 0011).
+  "standing",
   "alliance",
   "nap",
   "public",
