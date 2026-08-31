@@ -1694,6 +1694,11 @@
 /* Aperçu 3D d'un objet manufacturé (chantiers 31.20-31.21). Hauteur explicite, même
    raison que pour la carte : WebGL n'a pas de dimension intrinsèque. */
 .model-preview {
+  /* `flex: 1` et une largeur minimale : dans `.designer-preview`, qui est une rangée
+     flex, un simple `width: 100%` laissait le canvas se réduire à une lamelle de trente
+     pixels à côté du diagramme 2D, qui a une largeur fixe (chantier 33.3). */
+  flex: 1;
+  min-width: 220px;
   width: 100%;
   height: 220px;
   margin-bottom: 12px;

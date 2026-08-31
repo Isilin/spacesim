@@ -50,19 +50,25 @@ export function resetThemeCache(): void {
   resolved.clear();
 }
 
-/**
+/*
  * Palette du registre holographique. Les replis sont les valeurs actuelles de `tokens.css`,
  * recopiées ici pour que le rendu reste juste hors navigateur ; en navigateur, c'est
  * `tokens.css` qui gagne.
  */
-export const HOLO = {
-  /** Teinte de structure : coque nue, moyeu, coursives. */
-  structure: () => themeColor("--cyan", "#4fd8ff"),
-  /** Trait des pièces provisoires (zone en file de construction). */
-  ghost: () => themeColor("--border-bright", "#2f5670"),
-  /** Plan de grille sous l'objet. */
-  grid: () => themeColor("--border", "#22384c"),
-} as const;
+/** Teinte de structure : coque nue, moyeu, coursives. */
+export function structureColor(): string {
+  return themeColor("--cyan", "#4fd8ff");
+}
+
+/** Trait des pièces provisoires — une zone en file de construction. */
+export function ghostColor(): string {
+  return themeColor("--border-bright", "#2f5670");
+}
+
+/** Plan de grille posé sous l'objet, qui lui donne son assise. */
+export function gridColor(): string {
+  return themeColor("--border", "#22384c");
+}
 
 /**
  * Couleur d'un type d'emplacement, alignée sur le diagramme 2D (`styles.css`, les
