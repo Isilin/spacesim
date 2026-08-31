@@ -201,6 +201,10 @@ export function leaderboardForEmpire(
 ): LeaderboardEntry[] {
   const rows: LeaderboardEntry[] = [];
   for (const empire of runtime.empires.values()) {
+    const membership = runtime.corporationMemberMap.get(empire.id);
+    const corp = membership
+      ? runtime.corporationMap.get(membership.corporationId)
+      : undefined;
     const colonies = [...empire.colonyMap.values()];
     const population = colonies.reduce((s, c) => s + c.population, 0);
     const claimed = empire.claimedSystemIds.length;
@@ -222,6 +226,8 @@ export function leaderboardForEmpire(
         empire.id === viewer.id
           ? "neutral"
           : relationStateBetween(runtime, viewer.id, empire.id),
+      kind: empire.kind,
+      ...(corp ? { corporationName: corp.name, corporationTag: corp.tag } : {}),
     });
   }
   return rows.sort((a, b) => b.score - a.score);

@@ -264,6 +264,15 @@ export function EmpireView({
                     <span>
                       <span style={{ color: e.color }}>◆</span> #{i + 1}{" "}
                       {e.name}
+                      {/* Le sigle de corporation est PUBLIC comme un nom d'empire
+                          (ADR 0009) : sans lui ici, une corporation n'existerait que
+                          pour les siens et ne pèserait sur aucune décision de tiers. */}
+                      {e.corporationTag && (
+                        <span className="muted" title={e.corporationName}>
+                          {" "}
+                          [{e.corporationTag}]
+                        </span>
+                      )}
                       {e.id === playerId
                         ? t("empireView.you")
                         : relationBadge(e.relation)}

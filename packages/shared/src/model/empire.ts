@@ -51,6 +51,21 @@ export interface LeaderboardEntry {
   score: number;
   /** Relation de l'empire qui reçoit ce classement envers celui-ci (chantier 16). */
   relation: RelationState;
+  /**
+   * Empire piloté par un joueur ou par le jeu (chantier 32.11). Information déjà
+   * publique — un empire PNJ publie des contrats sous une bannière de faction — et
+   * nécessaire au client pour ne pas proposer d'inviter un PNJ dans une corporation,
+   * geste que le serveur refuse (ADR 0009).
+   */
+  kind: "human" | "npc";
+  /**
+   * Corporation de cet empire, si elle existe (chantier 32.11). Nom et sigle seulement :
+   * ils sont publics comme un nom d'empire, alors que le coffre et le détail des rôles
+   * ne partent qu'aux membres (ADR 0009). C'est ce qui rend une corporation lisible par
+   * des tiers — sans quoi elle n'existerait que pour les siens.
+   */
+  corporationName?: string;
+  corporationTag?: string;
 }
 
 /** Système revendiqué visible d'un empire, avec la couleur du propriétaire (chantier 7e). */

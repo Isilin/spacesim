@@ -6,6 +6,9 @@ import type {
 import type {
   Blueprint,
   Contract,
+  Corporation,
+  CorporationInvite,
+  CorporationMember,
   EmpireEvent,
   FactionState,
   Gateway,
@@ -68,6 +71,10 @@ export interface GameStoreState {
   events: EmpireEvent[];
   /** Non-lus sur le TOTAL, pas seulement sur la page reçue. */
   unreadEventCount: number;
+  /** Corporation de l'empire (chantier 32.11) — `null` s'il n'en a pas. */
+  corporation: Corporation | null;
+  corporationMembers: CorporationMember[];
+  corporationInvites: CorporationInvite[];
   /** Liaison WS établie (état de connexion, pas de session). */
   connected: boolean;
   /** Dernière erreur d'action renvoyée par le serveur (éphémère). */
@@ -130,6 +137,11 @@ function snapshotFields(msg: EmpireSnapshot): SnapshotFields {
     worldEvents: msg.worldEvents,
     events: msg.events,
     unreadEventCount: msg.unreadEventCount,
+    // `undefined` sur le fil (champ absent) devient `null` dans le store : l'absence de
+    // corporation est un état affichable, pas un champ manquant.
+    corporation: msg.corporation ?? null,
+    corporationMembers: msg.corporationMembers,
+    corporationInvites: msg.corporationInvites,
   };
 }
 
@@ -170,6 +182,9 @@ const initialState: SnapshotFields & {
   worldEvents: [],
   events: [],
   unreadEventCount: 0,
+  corporation: null,
+  corporationMembers: [],
+  corporationInvites: [],
   connected: false,
   actionError: null,
 };

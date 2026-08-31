@@ -1755,6 +1755,29 @@ sans lieu serait un téléporteur.
   s'y rendant**, le partage garde son coût logistique.
 - **32.11** — client : vue Corporation (fonder, membres, rôles, coffre, invitations).
 
+**Bilan de la vague B (31/08/2026).** Livrée en entier, 32.6 à 32.11.
+
+Deux ajouts non prévus, tous deux imposés par le constat que sans eux la fonctionnalité
+serait socialement inerte :
+
+- **`LeaderboardEntry` porte désormais `kind` et le sigle de corporation.** Le sigle,
+  parce que l'ADR 0009 dit la corporation publique : sans lui au classement, elle
+  n'existerait que pour ses membres et ne pèserait sur aucune décision de tiers. Le
+  `kind`, parce que le client proposait d'inviter des empires PNJ que le serveur refuse —
+  proposer un clic voué au refus n'est pas une interface.
+- **Un membre passe les paliers d'accès plus permissifs.** Sans cette règle, ouvrir sa
+  station aux alliés la fermerait à ses propres associés, ce qui n'a aucun sens.
+
+L'e2e est le **premier scénario à deux joueurs** de la suite : deux contextes de
+navigateur isolés, donc deux sessions réelles. C'est le seul moyen de vérifier qu'une
+invitation traverse le serveur, atteint le journal du destinataire et lui donne un geste à
+faire ; un test à un joueur ne pourrait que constater qu'une commande a été acceptée.
+
+Un défaut trouvé à l'écriture des tests client : `CorporationView` ne tire aucun module de
+traduction par transitivité (elle n'utilise pas `labels.js`), donc l'instance i18next
+n'existait pas sous test et `t()` renvoyait ses clés — un test qui aurait pu passer pour
+les mauvaises raisons, comme au chantier 31 avec `TransferPanel`.
+
 **Hors périmètre de la vague B**, et pourquoi : un entrepôt possédé *par la corporation
 elle-même* suppose qu'elle possède des structures, donc un territoire, une file de
 construction et une position — décision d'un autre ordre. Aucune corporation PNJ : rien ne
