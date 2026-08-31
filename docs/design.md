@@ -1952,6 +1952,30 @@ cyan. Les deux vues parlent enfin la même langue.
 - **33.7** — tests des deux fonctions pures et budget d'images de l'aperçu, qui n'en avait
   aucun alors qu'il tourne en continu (`autoRotate`).
 
+**Bilan (31/08/2026).** Livré, 33.1 à 33.7.
+
+Trois défauts trouvés en chemin, tous invisibles jusqu'à ce qu'on regarde :
+
+- **Le rendu 3D groupait les modules par COMPTE d'emplacement et jetait leur identité.**
+  Deux plans aux mêmes comptes rendaient une image identique au pixel près. Le risque que
+  l'ADR 0007 s'était désigné n'était pas hypothétique, il était en production.
+- **Le champ de la caméra d'aperçu n'avait jamais été posé** — 75° par défaut de R3F, un
+  grand-angle sur un cadre de 220 px. Les coques s'en trouvaient écrasées.
+- **Le test de `station-layout` gardait sa propre copie de la table d'adjacence** : il
+  vérifiait la règle de croissance contre sa définition du voisinage, pas contre celle du
+  module. L'export exigé par les coursives l'a mis au jour.
+
+La leçon du 31.24 tient : trois tests unitaires portent des invariants qu'aucun e2e ne
+verrait — les six classes de coque sont mécaniquement distinctes, les seules pièces
+lumineuses sont les tuyères (le budget de lueur du `ui-brief`, vérifié plutôt que promis),
+et le nombre d'accessoires rendus égale le nombre d'installations bâties. L'e2e de
+l'aperçu, lui, **assert zéro erreur de console** : une faute de shader ne rend rien du tout
+pendant que toutes les assertions DOM restent vertes.
+
+Budget d'images : 61 img/s pour l'aperçu, la carte inchangée à 57-61.
+
 **Hors périmètre** : les corps astronomiques (la table des deux registres de l'ADR 0007
 reste vraie pour les niveaux de carte) ; le texte en 3D (drei `<Text>` charge une police
-depuis un CDN, ce que `tokens.css` interdit) ; l'édition, qui reste aux diagrammes 2D.
+depuis un CDN, ce que `tokens.css` interdit) ; l'édition, qui reste aux diagrammes 2D ;
+`prefers-reduced-motion` sur la rotation automatique, défaut d'accessibilité **préexistant**
+et non introduit ici, à traiter avec le reste de l'a11y.
