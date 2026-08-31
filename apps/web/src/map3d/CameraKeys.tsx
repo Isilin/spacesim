@@ -1,6 +1,8 @@
 import { useThree } from "@react-three/fiber";
-import { useEffect } from "react";
+import { useEffect, type RefObject } from "react";
 import type { Camera, Vector3 } from "three";
+import type { Focus } from "./bounds.js";
+import { cameraPositionFor } from "./MapCanvas.js";
 
 /**
  * Surface des contrôles réellement utilisée ici. Typée structurellement plutôt
@@ -20,20 +22,29 @@ interface Controls {
  *
  * Écoute sur la **section** qui entoure le canvas plutôt que sur le canvas lui-même :
  * ce dernier est `aria-hidden` et non focusable, alors que la section porte le libellé
- * de la scène et peut recevoir le focus.
+ * de la scène et peut recevoir le focus. La section arrive par `ref` et non par
+ * `gl.domElement.parentElement` : R3F intercale ses propres div, et l'écouteur se posait
+ * sur un descendant de l'élément focusé, où un `keydown` ne remonte jamais.
  *
  * Ce pilotage ne remplace pas la liste DOM parallèle : déplacer une caméra ne dit rien
  * à un lecteur d'écran de ce que contient la scène. Les deux sont nécessaires.
  */
-export function CameraKeys({ distance }: { distance: number }) {
+export function CameraKeys({
+  focus,
+  host,
+}: {
+  focus: Focus;
+  host: RefObject<HTMLElement | null>;
+}) {
   const controls = useThree((s) => s.controls) as Controls | null;
-  const gl = useThree((s) => s.gl);
+  const size = useThree((s) => s.size);
 
   useEffect(() => {
-    const host = gl.domElement.parentElement;
-    if (!host || !controls) return;
+    const node = host.current;
+    if (!node || !controls) return;
 
-    const step = distance * 0.08;
+    const step = focus.radius * 0.15;
+    let taken = 0;
     const onKeyDown = (event: KeyboardEvent) => {
       const camera = controls.object;
       let handled = true;
@@ -54,17 +65,25 @@ export function CameraKeys({ distance }: { distance: number }) {
           camera.position.y -= step;
           controls.target.y -= step;
           break;
+        // Zoom relatif à la CIBLE, pas à l'origine du monde : une scène cadrée
+        // ailleurs qu'en (0,0,0) partait sinon de travers à chaque pression.
         case "+":
         case "=":
-          camera.position.multiplyScalar(0.85);
+          camera.position.lerp(controls.target, 0.15);
           break;
         case "-":
-          camera.position.multiplyScalar(1.18);
+          camera.position.lerp(controls.target, -0.18);
           break;
-        case "0":
-          controls.target.set(0, 0, 0);
-          camera.position.set(0, -distance * 0.6, distance * 0.8);
+        case "0": {
+          const [tx, ty, tz] = focus.center;
+          controls.target.set(tx, ty, tz);
+          const [px, py, pz] = cameraPositionFor(
+            focus,
+            size.width / Math.max(1, size.height),
+          );
+          camera.position.set(px, py, pz);
           break;
+        }
         default:
           handled = false;
       }
@@ -73,11 +92,16 @@ export function CameraKeys({ distance }: { distance: number }) {
       // a le focus.
       event.preventDefault();
       controls.update();
+      // Compteur de touches traitées, exposé sur l'hôte : une caméra 3D ne laisse rien
+      // dans le DOM, et l'écouteur avait été posé sur le mauvais nœud sans que rien ne
+      // le signale. C'est le seul point vérifiable de l'extérieur (`map3d.spec.ts`).
+      taken += 1;
+      node.setAttribute("data-map-keys", String(taken));
     };
 
-    host.addEventListener("keydown", onKeyDown);
-    return () => host.removeEventListener("keydown", onKeyDown);
-  }, [controls, gl, distance]);
+    node.addEventListener("keydown", onKeyDown);
+    return () => node.removeEventListener("keydown", onKeyDown);
+  }, [controls, host, focus, size]);
 
   return null;
 }

@@ -1584,6 +1584,47 @@ système, la plus chargée.
   ne change pas non plus son affichage côté joueur. Publier le contenu sur le fil est un
   chantier en soi.
 
+### 31.24 — Reprise du rendu après inspection visuelle (31/08/2026)
+
+Le bilan ci-dessus notait que le rendu 3D n'avait jamais été **regardé** : la vérification
+passait par l'e2e (canvas dimensionné, budget d'images, listes DOM peuplées, pas d'erreur
+console), ce qui prouve que la scène monte et tourne, pas qu'elle est juste. Une capture
+d'écran a suffi à montrer qu'elle ne l'était pas. Quatre défauts, tous invisibles aux tests :
+
+- **Un « brouillard » fixe.** `.map-canvas` peignait une vignette radiale DERRIÈRE un canvas
+  en `alpha: true`. Figée en coordonnées d'écran, elle ne tournait pas avec la caméra : on la
+  lisait comme une nappe immobile masquant une partie du champ selon l'angle. Son centre
+  (`#0d1420`, plus clair que `--bg`) effaçait en prime la grille par manque de contraste.
+  Fond plat désormais ; un repère de profondeur doit vivre DANS la scène.
+- **Cadrage sur les constantes de génération** (`MAP_WIDTH`, `GALAXY_SPACING`) et visée sur
+  l'origine. Or le générateur ne remplit pas son pavé et ne le centre pas : quatre galaxies
+  occupent une fraction de l'amas théorique, quatorze systèmes se groupent dans un coin. La
+  caméra était à la fois trop loin et pointée à côté — la moitié des objets hors champ.
+  Nouveau `map3d/bounds.ts` : boîte englobante du contenu réel, et recul calculé sur ses huit
+  coins **en tenant compte du rapport d'image** (sur téléphone la scène est plus haute que
+  large, un cadrage vertical seul y couperait les bords).
+- **La caméra n'appartenait pas au joueur.** Le recadrage se rejouait après coup — R3F mesure
+  son canvas en plusieurs temps et chaque tick serveur relance le rendu —, annulant la
+  rotation faite à la souris une demi-seconde plus tard. La vue système était littéralement
+  impossible à tourner. Le cadrage automatique s'applique désormais une fois par scène et
+  cesse dès le premier geste sur les contrôles.
+- **Les raccourcis clavier n'étaient jamais déclenchés.** `CameraKeys` écoutait sur
+  `gl.domElement.parentElement`, mais R3F intercale ses propres div : l'écouteur se posait sur
+  un **descendant** de l'élément focusé, où un `keydown` ne remonte jamais. C'était le seul
+  chemin de navigation au clavier de la carte (31.16).
+
+Passe de lisibilité au passage sur la vue système : rayons de rendu des corps relevés (une
+planète faisait 6 unités contre 30 pour la couronne de l'étoile) et plancher de cadrage aligné
+sur cette couronne au lieu d'une valeur ronde de 200.
+
+**Ce que la reprise a appris sur la vérification.** Trois de ces quatre défauts sont
+inobservables depuis le DOM : une caméra 3D n'y laisse aucune trace, et l'e2e du chantier 31
+passait au vert sur une carte à moitié vide et impossible à manipuler. D'où deux compteurs
+exposés sur la section hôte — `data-map-fits` (recadrages appliqués) et `data-map-keys`
+(touches traitées) —, seuls points vérifiables de l'extérieur, et le test « la caméra reste au
+joueur ». Ce qu'ils ne prouvent pas : que la caméra se déplace du bon nombre d'unités. Le
+cadrage lui-même, qui est du calcul pur, est couvert par `map3d/bounds.test.ts`.
+
 ### Vérification du chantier
 
 31.1-31.5 sont du code pur : couverts par des tests unitaires déterministes, comme le reste de

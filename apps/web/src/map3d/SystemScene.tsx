@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { type Group, type InstancedMesh, Object3D } from "three";
 import { seedOf, siteColor } from "./appearance.js";
+import { focusOf } from "./bounds.js";
 import { MapCanvas } from "./MapCanvas.js";
 import { MapList } from "./MapList.js";
 import { ProceduralBody } from "./ProceduralBody.js";
@@ -27,9 +28,14 @@ interface Props {
   onOpenBody: (planet: Planet) => void;
 }
 
+/**
+ * Rayon de rendu d'un corps. Sans rapport avec une échelle réelle, qui rendrait toute
+ * planète invisible à côté de son étoile : ce sont des tailles de LECTURE, calées pour
+ * qu'une lune reste distincte de sa planète et qu'une géante se repère d'un coup d'œil.
+ */
 function radiusOf(planet: Planet): number {
-  if (planet.kind === "moon") return 3;
-  return planet.type === "gas" ? 9 : 6;
+  if (planet.kind === "moon") return 5;
+  return planet.type === "gas" ? 14 : 9;
 }
 
 /**
@@ -122,6 +128,10 @@ function AsteroidBelt({ belt }: { belt: StarSystem["belts"][number] }) {
   );
 }
 
+/** Rayon du coeur de l'étoile et de sa couronne la plus externe. */
+const STAR_CORE = 13;
+const STAR_CORONA = 26;
+
 /** Anneau d'orbite, tracé dans le plan du corps puis incliné comme lui. */
 function OrbitRing({ body }: { body: Planet }) {
   return (
@@ -159,34 +169,55 @@ export function SystemScene({
   );
 
   const planets = system.planets.filter((p) => p.kind === "planet");
+  // Plancher = la couronne de l'étoile, pas une valeur ronde : un système aux orbites
+  // serrées se cadrait sur 200 unités de vide et n'occupait qu'un tiers de l'image.
   const extent = Math.max(
-    200,
-    ...system.planets.map((p) => p.orbitRadius),
+    STAR_CORONA * 2.2,
+    ...system.planets.map((p) => p.orbitRadius + radiusOf(p)),
     ...system.belts.map((b) => b.orbitRadius),
     ...sites.map((s) => s.orbitRadius),
   );
   const byId = new Map(system.planets.map((p) => [p.id, p]));
 
+  // Ici le centre est connu — c'est l'étoile —, seul le rayon dépend du contenu. Les
+  // orbites sont parcourues comme des points cardinaux : la sphère englobante doit
+  // contenir l'orbite entière, pas la position instantanée des corps.
+  const focus = useMemo(
+    () =>
+      focusOf(
+        system.id,
+        [
+          [extent, 0, 0],
+          [-extent, 0, 0],
+          [0, extent, 0],
+          [0, -extent, 0],
+        ],
+        0,
+        extent,
+      ),
+    [system.id, extent],
+  );
+
   return (
     <div className="map3d">
       <MapCanvas
         ariaLabel={t("systemView.ariaLabel", { name: system.name })}
-        distance={extent * 2.6}
+        focus={focus}
         register="lit"
       >
         {/* L'étoile : émissive, elle est aussi la source de lumière du registre `lit`. */}
         <mesh>
-          <sphereGeometry args={[16, 32, 32]} />
+          <sphereGeometry args={[STAR_CORE, 32, 32]} />
           <meshBasicMaterial color="#ffd27f" />
         </mesh>
         {/* Couronne : deux coques translucides suffisent à donner à l'étoile sa
             présence, sans post-traitement ni passe de bloom. */}
         <mesh>
-          <sphereGeometry args={[22, 24, 24]} />
+          <sphereGeometry args={[STAR_CORE * 1.4, 24, 24]} />
           <meshBasicMaterial color="#ffb347" transparent opacity={0.22} />
         </mesh>
         <mesh>
-          <sphereGeometry args={[30, 24, 24]} />
+          <sphereGeometry args={[STAR_CORONA, 24, 24]} />
           <meshBasicMaterial color="#ff9640" transparent opacity={0.1} />
         </mesh>
 

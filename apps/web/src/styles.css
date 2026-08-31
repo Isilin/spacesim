@@ -1592,11 +1592,16 @@
   min-height: 420px;
 }
 
+/* Fond PLAT, volontairement : la vignette radiale d'origine était peinte derrière un
+   canvas en `alpha: true`, donc figée en coordonnées d'écran. Elle ne tournait pas avec
+   la caméra — on la lisait comme un brouillard immobile qui masquait une partie du champ
+   selon l'angle, et son centre (#0d1420, plus clair que `--bg`) effaçait la grille par
+   manque de contraste. Un repère de profondeur doit vivre DANS la scène, pas derrière. */
 .map-canvas {
   flex: 1;
   min-width: 0;
   min-height: 420px;
-  background: radial-gradient(ellipse at center, #0d1420 0%, var(--bg) 80%);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 4px;
   overflow: hidden;

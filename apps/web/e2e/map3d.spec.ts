@@ -107,3 +107,53 @@ test("la carte 3D reste utilisable sur un écran de téléphone", async ({
   );
   expect(overflow).toBeLessThanOrEqual(1);
 });
+
+test("la caméra reste au joueur une fois qu'il l'a touchée", async ({
+  page,
+}) => {
+  // Régression : le cadrage automatique se rejouait après coup — R3F mesure son canvas
+  // en plusieurs temps, et chaque tick serveur relançait le rendu. La rotation faite à
+  // la souris était annulée une demi-seconde plus tard, et la vue système en devenait
+  // impossible à tourner. Aucun test ne pouvait l'attraper : une caméra 3D ne laisse
+  // aucune trace dans le DOM. D'où le compteur `data-map-fits`, seul point observable.
+  await registerFreshEmpire(page, {
+    prefix: "map3dcam",
+    empireName: "Pilotes E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  await page.getByRole("button", { name: "Ma capitale" }).click();
+  await expect(page).toHaveURL(/\/map\/galaxy\/[^/]+\/system\/[^/]+$/);
+
+  const host = page.locator(".map-canvas");
+  const canvas = host.locator("canvas");
+  await expect(canvas).toBeVisible();
+  // Attendre que les mesures successives de R3F se soient stabilisées.
+  await expect
+    .poll(() => host.getAttribute("data-map-fits"), { timeout: 5000 })
+    .not.toBeNull();
+  await page.waitForTimeout(1500);
+  const before = await host.getAttribute("data-map-fits");
+
+  const box = (await canvas.boundingBox())!;
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  for (let i = 1; i <= 20; i++) await page.mouse.move(cx + i * 13, cy - i * 10);
+  await page.mouse.up();
+
+  // Au-delà d'un tick serveur (5 s) : c'est le rendu déclenché par le tick qui
+  // ramenait la caméra à sa pose initiale.
+  await page.waitForTimeout(6000);
+  expect(await host.getAttribute("data-map-fits")).toBe(before);
+
+  // Les raccourcis clavier (chantier 31.16) écoutent sur cette même section : c'est le
+  // seul chemin de navigation d'un utilisateur au clavier. Le compteur prouve que
+  // l'écouteur est bien posé sur l'élément focusé — il ne l'était pas, et rien ne le
+  // disait. Ce qu'il ne prouve pas : que la caméra bouge du bon nombre d'unités.
+  await host.focus();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowUp");
+  await expect(host).toHaveAttribute("data-map-keys", "2");
+});

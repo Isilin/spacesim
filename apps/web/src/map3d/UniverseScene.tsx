@@ -10,6 +10,7 @@ import {
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { seedOf } from "./appearance.js";
+import { focusOf } from "./bounds.js";
 import { MapCanvas } from "./MapCanvas.js";
 import { MapList } from "./MapList.js";
 
@@ -144,22 +145,34 @@ export function UniverseScene({
 
   const stars = starsPerGalaxy(universe.galaxies.length);
 
-  // La caméra doit embrasser l'amas entier : son rayon croît en √n (spirale d'or).
-  const distance = Math.max(
-    600,
-    GALAXY_SPACING * Math.sqrt(universe.galaxies.length) * 2.4,
+  /**
+   * Cadrage sur l'amas réellement peuplé. La spirale d'or ne remplit pas un rayon
+   * prévisible : quatre galaxies tiennent dans quelques centaines d'unités, deux cents
+   * s'étalent sur plusieurs milliers. Déduire la distance de `GALAXY_SPACING` plaçait la
+   * caméra très au-delà d'un petit amas, qui se réduisait alors à quelques pixels.
+   */
+  const focus = useMemo(
+    () =>
+      focusOf("universe", universe.galaxies.map(toScene), DISC, GALAXY_SPACING),
+    [universe],
   );
-
   return (
     <div className="map3d">
       <MapCanvas
         ariaLabel={t("universeMap.ariaLabel")}
-        distance={distance}
+        focus={focus}
         register="schematic"
       >
-        {/* Plan galactique : repère visuel du z=0, sans quoi la profondeur est illisible. */}
+        {/* Plan galactique : repère visuel du z=0, sans quoi la profondeur est illisible.
+            Centré sur l'amas en x/y mais laissé à z=0, qui est le plan de référence. */}
         <gridHelper
-          args={[distance * 2, 20, "#1c2733", "#141c26"]}
+          args={[
+            Math.max(focus.half[0], focus.half[1]) * 2.2,
+            16,
+            "#243342",
+            "#18222e",
+          ]}
+          position={[focus.center[0], focus.center[1], 0]}
           rotation={[Math.PI / 2, 0, 0]}
         />
         {universe.galaxies.map((galaxy) => {

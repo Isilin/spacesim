@@ -10,6 +10,7 @@ import {
 } from "@spacesim/shared";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { focusOf } from "./bounds.js";
 import { MapCanvas } from "./MapCanvas.js";
 import { MapList } from "./MapList.js";
 
@@ -119,15 +120,32 @@ export function GalaxyScene({
     return new Set(pairs.map(([a, b]) => (a < b ? `${a}|${b}` : `${b}|${a}`)));
   }, [highlightedRoute]);
 
+  /**
+   * Cadrage sur les systèmes réellement placés. Le générateur les tire par rejet dans le
+   * pavé `MAP_WIDTH × MAP_HEIGHT`, sans jamais garantir qu'il le remplisse ni qu'il soit
+   * centré : cadrer sur le pavé théorique visait donc systématiquement à côté.
+   */
+  const focus = useMemo(
+    () =>
+      focusOf(galaxy.id, galaxy.systems.map(toScene), NODE * 3, MAP_HEIGHT / 5),
+    [galaxy],
+  );
+
   return (
     <div className="map3d">
       <MapCanvas
         ariaLabel={t("galaxyMap.ariaLabel", { name: galaxy.name })}
-        distance={Math.max(MAP_WIDTH, MAP_HEIGHT) * 1.1}
+        focus={focus}
         register="schematic"
       >
         <gridHelper
-          args={[MAP_WIDTH * 1.4, 14, "#1c2733", "#141c26"]}
+          args={[
+            Math.max(focus.half[0], focus.half[1]) * 2.2,
+            14,
+            "#243342",
+            "#18222e",
+          ]}
+          position={[focus.center[0], focus.center[1], 0]}
           rotation={[Math.PI / 2, 0, 0]}
         />
         {galaxy.links.map(([a, b]) => {
