@@ -10,7 +10,10 @@ export interface HexCoord {
   r: number;
 }
 
-const HEX_DIRECTIONS: HexCoord[] = [
+/** Les six voisins d'une cellule en coordonnées axiales. Exporté au chantier 33.5 : le
+ *  rendu 3D en a besoin pour tracer une coursive entre zones adjacentes, au lieu d'un
+ *  rayon par zone vers le moyeu — une station bâtie n'est pas une roue de vélo. */
+export const HEX_DIRECTIONS: HexCoord[] = [
   { q: 1, r: 0 },
   { q: 1, r: -1 },
   { q: 0, r: -1 },
@@ -58,6 +61,16 @@ export function computeGrowthPoints(
     }
   }
   return [...candidates.values()];
+}
+
+/**
+ * Deux cellules se touchent-elles ? Posée ici, à côté de la règle de croissance qui en
+ * dépend, plutôt que recopiée côté rendu : la notion d'adjacence n'a qu'une définition.
+ */
+export function areAdjacent(a: HexCoord, b: HexCoord): boolean {
+  return HEX_DIRECTIONS.some(
+    (dir) => a.q + dir.q === b.q && a.r + dir.r === b.r,
+  );
 }
 
 export function isValidGrowthPoint(

@@ -1700,7 +1700,10 @@
   flex: 1;
   min-width: 220px;
   width: 100%;
-  height: 220px;
+  /* 280 et non 220 : dans la vue des stations l'aperçu occupe toute la largeur, et le
+     cadrage se fait alors sur la HAUTEUR — à 220 px l'objet se retrouvait dans une
+     meurtrière (chantier 33.5). */
+  height: 280px;
   margin-bottom: 12px;
   /* Fond PLAT, comme `.map-canvas` depuis le chantier 31.24 : la vignette radiale était
      peinte derrière un canvas en `alpha: true`, donc figée en coordonnées d'écran — elle

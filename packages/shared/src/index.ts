@@ -452,6 +452,8 @@ export {
 } from "./sim/industry/station.js";
 export {
   hexKey,
+  HEX_DIRECTIONS,
+  areAdjacent,
   computeGrowthPoints,
   isValidGrowthPoint,
   zoneCount,

@@ -108,6 +108,12 @@ interface Props {
   /** La seule lueur autorisée par objet (`ui-brief`) : rendue à pleine teinte, opaque, au
    *  lieu de la translucidité holographique. */
   emissive?: boolean;
+  /**
+   * Pièce provisoire — une zone en file de construction. Arêtes seules, sans faces : elle
+   * doit se lire comme une intention, pas comme une structure. Même convention que le
+   * pointillé du diagramme 2D et des liens de portail potentiels sur la carte.
+   */
+  ghost?: boolean;
 }
 
 /**
@@ -131,6 +137,7 @@ export function HoloPart({
   rotation,
   edgeAngle = DEFAULT_EDGE_ANGLE,
   emissive,
+  ghost,
 }: Props) {
   const uniforms = useMemo(
     () => ({
@@ -148,24 +155,26 @@ export function HoloPart({
 
   return (
     <group position={position} rotation={rotation}>
-      <mesh geometry={geometry}>
-        {emissive ? (
-          // Une tuyère ne se lit pas comme un hologramme : c'est la seule pièce qui
-          // « brûle ». Teinte pleine et opaque, pas de frange.
-          <meshBasicMaterial color={color} toneMapped={false} />
-        ) : (
-          <shaderMaterial
-            vertexShader={VERTEX}
-            fragmentShader={FRAGMENT}
-            uniforms={uniforms}
-            transparent
-            depthWrite={false}
-            side={DoubleSide}
-            blending={AdditiveBlending}
-            toneMapped={false}
-          />
-        )}
-      </mesh>
+      {!ghost && (
+        <mesh geometry={geometry}>
+          {emissive ? (
+            // Une tuyère ne se lit pas comme un hologramme : c'est la seule pièce qui
+            // « brûle ». Teinte pleine et opaque, pas de frange.
+            <meshBasicMaterial color={color} toneMapped={false} />
+          ) : (
+            <shaderMaterial
+              vertexShader={VERTEX}
+              fragmentShader={FRAGMENT}
+              uniforms={uniforms}
+              transparent
+              depthWrite={false}
+              side={DoubleSide}
+              blending={AdditiveBlending}
+              toneMapped={false}
+            />
+          )}
+        </mesh>
+      )}
       {edgeAngle > 0 && (
         // `lineSegments` plutôt que `<Edges>` de drei : celui-ci passe par `Line2` et
         // `three-stdlib`, dont le dépôt refuse la dépendance directe (voir le typage
@@ -177,7 +186,7 @@ export function HoloPart({
           <lineBasicMaterial
             color={color}
             transparent
-            opacity={0.9}
+            opacity={ghost ? 0.5 : 0.9}
             depthWrite={false}
             toneMapped={false}
           />

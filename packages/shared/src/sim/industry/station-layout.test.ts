@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { HexCoord } from "./station-layout.js";
 import {
+  areAdjacent,
   computeGrowthPoints,
+  HEX_DIRECTIONS,
   hexKey,
   isValidGrowthPoint,
   migrateLegacyZoneQueue,
@@ -9,14 +11,9 @@ import {
   zoneCount,
 } from "./station-layout.js";
 
-const HEX_DIRECTIONS: HexCoord[] = [
-  { q: 1, r: 0 },
-  { q: 1, r: -1 },
-  { q: 0, r: -1 },
-  { q: -1, r: 0 },
-  { q: -1, r: 1 },
-  { q: 0, r: 1 },
-];
+// La table d'adjacence était recopiée ici : le test vérifiait la règle de croissance
+// contre SA propre définition du voisinage, pas contre celle du module. Elle est exportée
+// depuis le chantier 33.5, une seule définition sert les deux.
 
 describe("computeGrowthPoints", () => {
   it("une station vide (hub seul) offre exactement les 6 voisins du hub", () => {
@@ -122,5 +119,29 @@ describe("migrateLegacyZoneQueue", () => {
     expect(migrated).toHaveLength(2);
     const keys = migrated.map((z) => hexKey(z.q, z.r));
     expect(new Set(keys).size).toBe(2);
+  });
+});
+
+describe("areAdjacent (chantier 33.5)", () => {
+  it("reconnaît les six voisins d'une cellule", () => {
+    const center = { q: 2, r: -1 };
+    const neighbours = HEX_DIRECTIONS.map((d) => ({
+      q: center.q + d.q,
+      r: center.r + d.r,
+    }));
+    expect(neighbours).toHaveLength(6);
+    for (const n of neighbours) expect(areAdjacent(center, n)).toBe(true);
+  });
+
+  it("refuse une cellule à deux pas, et la cellule elle-même", () => {
+    // Sans cela, le rendu tracerait des coursives entre zones qui ne se touchent pas.
+    expect(areAdjacent({ q: 0, r: 0 }, { q: 2, r: 0 })).toBe(false);
+    expect(areAdjacent({ q: 0, r: 0 }, { q: 0, r: 0 })).toBe(false);
+  });
+
+  it("est symétrique", () => {
+    expect(areAdjacent({ q: 0, r: 0 }, { q: 1, r: 0 })).toBe(
+      areAdjacent({ q: 1, r: 0 }, { q: 0, r: 0 }),
+    );
   });
 });
