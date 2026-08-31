@@ -273,7 +273,7 @@ export function ShipDesigner({ effects }: Props) {
                 {draft.chassisId && (
                   <ModelPreview
                     ariaLabel={t("shipDesigner.preview3d")}
-                    distance={7}
+                    fitKey={`${draft.chassisId}:${draft.modules.join(",")}`}
                   >
                     <ShipModel
                       chassisId={draft.chassisId}

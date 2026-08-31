@@ -136,7 +136,9 @@ export function StationsView({ effects, universe, portalLinks }: Props) {
           reste l'éditeur — on y clique un point de croissance. */}
       <ModelPreview
         ariaLabel={t("stationsView.preview3d")}
-        distance={Math.max(8, station.zones.length * 2.4)}
+        fitKey={station.zones
+          .map((z) => `${z.zoneTypeId}@${z.q},${z.r}`)
+          .join("|")}
       >
         <StationModel station={station} />
       </ModelPreview>

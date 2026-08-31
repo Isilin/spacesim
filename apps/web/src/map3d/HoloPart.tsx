@@ -105,6 +105,9 @@ interface Props {
   /** `0` désactive la passe d'arêtes — sur une sphère ou un profil lissé, elle
    *  dégénérerait en fil de fer complet. */
   edgeAngle?: number;
+  /** La seule lueur autorisée par objet (`ui-brief`) : rendue à pleine teinte, opaque, au
+   *  lieu de la translucidité holographique. */
+  emissive?: boolean;
 }
 
 /**
@@ -127,6 +130,7 @@ export function HoloPart({
   position,
   rotation,
   edgeAngle = DEFAULT_EDGE_ANGLE,
+  emissive,
 }: Props) {
   const uniforms = useMemo(
     () => ({
@@ -145,16 +149,22 @@ export function HoloPart({
   return (
     <group position={position} rotation={rotation}>
       <mesh geometry={geometry}>
-        <shaderMaterial
-          vertexShader={VERTEX}
-          fragmentShader={FRAGMENT}
-          uniforms={uniforms}
-          transparent
-          depthWrite={false}
-          side={DoubleSide}
-          blending={AdditiveBlending}
-          toneMapped={false}
-        />
+        {emissive ? (
+          // Une tuyère ne se lit pas comme un hologramme : c'est la seule pièce qui
+          // « brûle ». Teinte pleine et opaque, pas de frange.
+          <meshBasicMaterial color={color} toneMapped={false} />
+        ) : (
+          <shaderMaterial
+            vertexShader={VERTEX}
+            fragmentShader={FRAGMENT}
+            uniforms={uniforms}
+            transparent
+            depthWrite={false}
+            side={DoubleSide}
+            blending={AdditiveBlending}
+            toneMapped={false}
+          />
+        )}
       </mesh>
       {edgeAngle > 0 && (
         // `lineSegments` plutôt que `<Edges>` de drei : celui-ci passe par `Line2` et

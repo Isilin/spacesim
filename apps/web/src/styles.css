@@ -1702,7 +1702,11 @@
   width: 100%;
   height: 220px;
   margin-bottom: 12px;
-  background: radial-gradient(ellipse at center, #101826 0%, var(--bg) 85%);
+  /* Fond PLAT, comme `.map-canvas` depuis le chantier 31.24 : la vignette radiale était
+     peinte derrière un canvas en `alpha: true`, donc figée en coordonnées d'écran — elle
+     ne tournait pas avec la caméra et se lisait comme une nappe immobile. Le repère
+     d'assise vit maintenant DANS la scène (chantier 33.6). */
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 4px;
   overflow: hidden;
