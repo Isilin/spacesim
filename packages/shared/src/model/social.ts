@@ -172,6 +172,7 @@ export type EmpireEventKind =
   | "battle_won"
   | "battle_lost"
   | "colony_attacked"
+  | "lair_appeared"
   | "claim_lost"
   | "contract_fulfilled"
   | "research_completed"

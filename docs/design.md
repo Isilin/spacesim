@@ -1703,6 +1703,28 @@ c'est le seul objet du snapshot qui croît sans jamais décroître.
 - **32.5** — client : panneau de boîte de réception, pastille de non-lus, et digest
   « pendant ton absence » à la reconnexion.
 
+**Bilan de la vague A (31/08/2026).** Livrée en entier, 32.1 à 32.5.
+
+Deux arbitrages sont apparus en la faisant, tous deux sur le bruit :
+
+- **La ponction pirate n'est pas un événement, l'apparition du repaire en est un.** Le
+  pillage retire des crédits à *chaque tick* ; en faire une entrée noierait le journal
+  sous une ligne toutes les cinq secondes. Un repaire apparaît une fois et appelle une
+  décision — aller le détruire ou le subir. D'où un `kind` supplémentaire non prévu,
+  `lair_appeared`, qui est aussi la seule attaque que subit un joueur solo.
+- **On prévient toujours la partie qui APPREND quelque chose, jamais celle qui vient
+  d'agir.** L'agresseur voit sa bataille à l'écran ; c'est la cible qui peut être hors
+  ligne. Idem pour le contrat (l'émetteur, pas celui qui accepte) et le pacte accepté
+  (le proposant, pas celui qui répond).
+
+Rien n'est émis vers un empire PNJ : personne ne lira son journal, et il grossirait sans
+borne puisqu'un PNJ ne marque jamais rien comme lu.
+
+Le test de purge vérifie en **base** et non en mémoire — c'est lui qui a révélé que
+`empire_events` manquait au registre du `Persister`, cas où la RAM serait restée bornée
+pendant que la table grossissait sans fin. L'e2e couvre la chaîne entière, du fait de
+simulation à la pastille de l'onglet et retour par le WebSocket.
+
 **Ce qui reste hors de la vague A**, et pourquoi : le `battleLog` partagé n'est pas absorbé
 (journal public de combats, utile en soi, migration pour un gain nul) ; aucune notification
 hors-jeu (courriel, push) — c'est un canal, pas un événement, et il appartiendrait à la

@@ -138,6 +138,9 @@ export class DevService {
     };
     this.runtime.lairMap.set(lair.id, lair);
     this.services.fleetService.persistLair(lair);
+    // Même journal que l'apparition naturelle : un outil de dev qui court-circuite
+    // l'événement ne testerait pas le chemin réel.
+    this.services.fleetService.emitLairAppeared(systemId);
     this.notify();
   }
 

@@ -33,6 +33,7 @@ import {
 import { BodyView } from "./BodyView.js";
 import { ColonyView } from "./ColonyView.js";
 import { EmpireView } from "./EmpireView.js";
+import { InboxView } from "./InboxView.js";
 import { GalaxyScene } from "./map3d/GalaxyScene.js";
 import { FleetsView } from "./FleetsView.js";
 import { ShipDesigner } from "./ShipDesigner.js";
@@ -334,6 +335,7 @@ export function App({ auth }: Props) {
     territories,
     objectives,
     worldEvents,
+    unreadEventCount,
     connected,
     actionError,
     send,
@@ -387,6 +389,15 @@ export function App({ auth }: Props) {
     { value: "shipyard", label: t("app.tabShipyard") },
     { value: "research", label: t("app.tabResearch") },
     { value: "empire", label: t("app.tabEmpire") },
+    {
+      value: "inbox",
+      // Le compte de non-lus est dans l'onglet lui-même : c'est le seul endroit visible
+      // depuis n'importe quel écran, et un joueur qui revient doit le voir sans chercher.
+      label:
+        unreadEventCount > 0
+          ? t("app.tabInboxUnread", { count: unreadEventCount })
+          : t("app.tabInbox"),
+    },
   ].map((tab) => ({ ...tab, href: `/${tab.value}${location.search}` }));
   const activeTab = routeTabs.find((tab) =>
     location.pathname.startsWith(`/${tab.value}`),
@@ -524,6 +535,14 @@ export function App({ auth }: Props) {
                 now={now}
                 send={send}
               />
+            </main>
+          }
+        />
+        <Route
+          path="/inbox"
+          element={
+            <main className="content-single">
+              <InboxView now={now} />
             </main>
           }
         />

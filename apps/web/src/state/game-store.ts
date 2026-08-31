@@ -6,6 +6,7 @@ import type {
 import type {
   Blueprint,
   Contract,
+  EmpireEvent,
   FactionState,
   Gateway,
   Colony,
@@ -63,6 +64,10 @@ export interface GameStoreState {
   territories: Territory[];
   objectives: Objective[];
   worldEvents: WorldEvent[];
+  /** Journal d'empire (chantier 32.5), du plus récent au plus ancien, borné par le serveur. */
+  events: EmpireEvent[];
+  /** Non-lus sur le TOTAL, pas seulement sur la page reçue. */
+  unreadEventCount: number;
   /** Liaison WS établie (état de connexion, pas de session). */
   connected: boolean;
   /** Dernière erreur d'action renvoyée par le serveur (éphémère). */
@@ -123,6 +128,8 @@ function snapshotFields(msg: EmpireSnapshot): SnapshotFields {
     territories: msg.territories,
     objectives: msg.objectives,
     worldEvents: msg.worldEvents,
+    events: msg.events,
+    unreadEventCount: msg.unreadEventCount,
   };
 }
 
@@ -161,6 +168,8 @@ const initialState: SnapshotFields & {
   territories: [],
   objectives: [],
   worldEvents: [],
+  events: [],
+  unreadEventCount: 0,
   connected: false,
   actionError: null,
 };

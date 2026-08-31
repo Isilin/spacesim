@@ -689,6 +689,32 @@ export class FleetService {
       };
       this.runtime.lairMap.set(lair.id, lair);
       this.persistLair(lair);
+      this.emitLairAppeared(systemId);
+    }
+  }
+
+  /**
+   * Prévient les empires qui ont une colonie dans le système où un repaire vient
+   * d'apparaître (chantier 32.4).
+   *
+   * C'est l'APPARITION qui fait événement, pas la ponction : le pillage pirate retire
+   * des crédits à chaque tick, en faire un événement noierait le journal sous une entrée
+   * toutes les cinq secondes. Un repaire, lui, apparaît une fois et appelle une décision
+   * — aller le détruire ou le subir.
+   */
+  emitLairAppeared(systemId: string): void {
+    for (const empire of this.runtime.empires.values()) {
+      if (empire.kind !== "human") continue;
+      const affected = [...empire.colonyMap.values()].find(
+        (c) => this.runtime.planetsById.get(c.planetId)?.systemId === systemId,
+      );
+      if (!affected) continue;
+      this.emit({
+        empireId: empire.id,
+        kind: "lair_appeared",
+        systemId,
+        colonyId: affected.id,
+      });
     }
   }
 
