@@ -90,6 +90,9 @@ export const commonFr = {
     researchCompleted: "Recherche terminée : {{tech}}",
     relationChanged: "{{other}} — relation désormais « {{state}} »",
     objectiveCompleted: "Objectif rempli : {{objective}} (+{{amount}} crédits)",
+    corpInvited: "Invitation à rejoindre la corporation {{corp}}",
+    corpLeft: "Vous avez été exclu de la corporation {{corp}}",
+    corpDissolved: "La corporation {{corp}} a été dissoute",
   },
   shipHullDiagram: {
     noChassis: "Aucun châssis",
@@ -672,6 +675,9 @@ export const commonEn: typeof commonFr = {
     researchCompleted: "Research complete: {{tech}}",
     relationChanged: "{{other}} — relation now “{{state}}”",
     objectiveCompleted: "Objective met: {{objective}} (+{{amount}} credits)",
+    corpInvited: "Invitation to join corporation {{corp}}",
+    corpLeft: "You were removed from corporation {{corp}}",
+    corpDissolved: "Corporation {{corp}} was dissolved",
   },
   shipHullDiagram: {
     noChassis: "No chassis",

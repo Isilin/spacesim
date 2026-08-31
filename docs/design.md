@@ -1729,3 +1729,33 @@ simulation à la pastille de l'onglet et retour par le WebSocket.
 (journal public de combats, utile en soi, migration pour un gain nul) ; aucune notification
 hors-jeu (courriel, push) — c'est un canal, pas un événement, et il appartiendrait à la
 vague C.
+
+### Vague B — Corporations (ouverte 31/08/2026)
+
+Décision et alternatives écartées :
+[ADR 0009](adr/0009-corporations-entite-de-premier-rang.md). Quatre points y sont tranchés :
+la corporation est une **entité de premier rang** (une `Relation` est une arête, elle n'a
+nulle part où porter un rôle ni un solde) ; ce n'est **pas un empire** (ni colonie, ni
+flotte, ni brouillard) ; l'appartenance est **exclusive** ; et le coffre ne contient que
+des **crédits**, parce que les ressources sont situées (ADR 0004) et qu'un coffre de métaux
+sans lieu serait un téléporteur.
+
+- **32.6** — modèle `Corporation` / `CorporationMember`, rôles et permissions namespacées
+  sur la forme de `admin.ts` mais dans une énumération distincte, contrats Zod.
+- **32.7** — persistance : tables `corporations` et `corporation_members`, repository
+  propriétaire unique, migration Drizzle.
+- **32.8** — `CorporationService` : fonder, inviter, répondre, quitter, exclure, changer un
+  rôle, dissoudre. Projection redactée et commandes WebSocket. Les changements
+  d'appartenance passent par le journal d'empire (vague A) — ils arrivent typiquement
+  pendant que le joueur concerné n'est pas là.
+- **32.9** — coffre partagé : dépôt et retrait de crédits par une colonie du membre,
+  soumis aux permissions.
+- **32.10** — palier d'accès `corp` sur les stations. C'est le « hangar commun » du plan,
+  rendu sans violer l'ADR 0004 : les membres commercent à la station d'un autre membre **en
+  s'y rendant**, le partage garde son coût logistique.
+- **32.11** — client : vue Corporation (fonder, membres, rôles, coffre, invitations).
+
+**Hors périmètre de la vague B**, et pourquoi : un entrepôt possédé *par la corporation
+elle-même* suppose qu'elle possède des structures, donc un territoire, une file de
+construction et une position — décision d'un autre ordre. Aucune corporation PNJ : rien ne
+les ferait jouer, et il faudrait leur inventer une politique.

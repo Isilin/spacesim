@@ -339,6 +339,48 @@ export const empireEvents = pgTable(
   ],
 );
 
+/**
+ * Corporations (chantier 32.7) — organisations de joueurs. Voir ADR 0009 : entité de
+ * premier rang, pas un empire, pas une relation.
+ */
+export const corporations = pgTable("corporations", {
+  id: text("id").primaryKey(),
+  gameId: text("game_id").notNull(),
+  name: text("name").notNull(),
+  tag: text("tag").notNull(),
+  founderEmpireId: text("founder_empire_id").notNull(),
+  /** Coffre en CRÉDITS seulement — une ressource est toujours située (ADR 0004). */
+  treasury: doublePrecision("treasury").notNull().default(0),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+/**
+ * Appartenance. La clé primaire est `empireId` SEUL et non la paire : c'est ce qui rend
+ * l'exclusivité (un empire, au plus une corporation) impossible à violer en base, plutôt
+ * que de la confier à une vérification applicative.
+ */
+export const corporationMembers = pgTable("corporation_members", {
+  empireId: text("empire_id").primaryKey(),
+  gameId: text("game_id").notNull(),
+  corporationId: text("corporation_id")
+    .notNull()
+    .references(() => corporations.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("member"),
+  joinedAt: bigint("joined_at", { mode: "number" }).notNull(),
+});
+
+/** Invitations en attente (chantier 32.7), même patron que `relation_proposals`. */
+export const corporationInvites = pgTable("corporation_invites", {
+  id: text("id").primaryKey(),
+  gameId: text("game_id").notNull(),
+  corporationId: text("corporation_id")
+    .notNull()
+    .references(() => corporations.id, { onDelete: "cascade" }),
+  empireId: text("empire_id").notNull(),
+  invitedBy: text("invited_by").notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
 /** Événements de monde actifs, partagés (chantier 17). Supprimés à expiration. */
 export const worldEvents = pgTable("world_events", {
   id: text("id").primaryKey(),

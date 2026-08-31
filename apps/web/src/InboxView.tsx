@@ -37,6 +37,9 @@ const LOOK: Record<
   research_completed: { icon: "🔬", tone: "ok" },
   relation_changed: { icon: "🤝", tone: "neutral" },
   objective_completed: { icon: "★", tone: "ok" },
+  corp_invited: { icon: "✉", tone: "neutral" },
+  corp_left: { icon: "🚪", tone: "ko" },
+  corp_dissolved: { icon: "🏚", tone: "ko" },
 };
 
 function systemName(universe: Universe | null, systemId?: string): string {
@@ -88,6 +91,14 @@ export function InboxView({ now }: { now: number }) {
           objective: objectiveKindLabel(event.subjectId as ObjectiveKind),
           amount,
         });
+      // `otherName` porte ici le nom de la CORPORATION : c'est un nom choisi par un
+      // joueur, comme un nom d'empire — il n'existe dans aucune locale.
+      case "corp_invited":
+        return t("inbox.corpInvited", { corp: other });
+      case "corp_left":
+        return t("inbox.corpLeft", { corp: other });
+      case "corp_dissolved":
+        return t("inbox.corpDissolved", { corp: other });
     }
   };
 

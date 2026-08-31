@@ -40,7 +40,13 @@ describe("canTradeAtStation", () => {
   });
 
   it("« war » bloque toujours un visiteur, quel que soit le palier", () => {
-    for (const access of ["closed", "alliance", "nap", "public"] as const) {
+    for (const access of [
+      "closed",
+      "corp",
+      "alliance",
+      "nap",
+      "public",
+    ] as const) {
       expect(canTradeAtStation("owner", "visitor", access, "war")).toBe(false);
     }
   });
@@ -64,6 +70,29 @@ describe("canTradeAtStation", () => {
     expect(canTradeAtStation("owner", "visitor", "alliance", "neutral")).toBe(
       false,
     );
+  });
+
+  it("« corp » n'accepte que les associés, quelle que soit la relation", () => {
+    // Palier plus restrictif qu'`alliance` : l'appartenance à une corporation est
+    // exclusive alors qu'un empire peut être allié de plusieurs (ADR 0009).
+    for (const relation of RELATIONS) {
+      if (relation === "war") continue;
+      expect(
+        canTradeAtStation("owner", "visitor", "corp", relation, true),
+      ).toBe(true);
+      expect(
+        canTradeAtStation("owner", "visitor", "corp", relation, false),
+      ).toBe(false);
+    }
+  });
+
+  it("un associé passe aussi les paliers plus permissifs", () => {
+    // Sinon ouvrir sa station aux alliés la fermerait à ses propres associés.
+    for (const access of ["alliance", "nap"] as const) {
+      expect(
+        canTradeAtStation("owner", "visitor", access, "neutral", true),
+      ).toBe(true);
+    }
   });
 
   it("« nap » accepte alliés et partenaires de pacte, pas les neutres", () => {

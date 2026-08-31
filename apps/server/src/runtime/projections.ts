@@ -7,6 +7,9 @@ import {
   redactUniverse,
   relationKey,
   sitesOfSystem,
+  type Corporation,
+  type CorporationInvite,
+  type CorporationMember,
   type EmpireEvent,
   type ForeignColony,
   type ForeignFleet,
@@ -132,6 +135,39 @@ export function unreadEventCount(runtime: GameRuntime, empire: Empire): number {
   let count = 0;
   for (const event of list) if (event.readAt === null) count++;
   return count;
+}
+
+/**
+ * Corporation d'un empire, ses membres et les invitations qui le concernent
+ * (chantier 32.8). Redacté : le coffre et le détail des rôles ne partent qu'aux membres,
+ * alors que le NOM d'une corporation est public — il voyage avec les entités qui la
+ * mentionnent, pas ici.
+ */
+export function corporationForEmpire(
+  runtime: GameRuntime,
+  empire: Empire,
+): {
+  corporation?: Corporation;
+  corporationMembers: CorporationMember[];
+  corporationInvites: CorporationInvite[];
+} {
+  const membership = runtime.corporationMemberMap.get(empire.id);
+  const corporation = membership
+    ? runtime.corporationMap.get(membership.corporationId)
+    : undefined;
+  const members = corporation
+    ? [...runtime.corporationMemberMap.values()].filter(
+        (m) => m.corporationId === corporation.id,
+      )
+    : [];
+  const invites = [...runtime.corporationInviteMap.values()].filter(
+    (i) => i.empireId === empire.id || i.corporationId === corporation?.id,
+  );
+  return {
+    ...(corporation ? { corporation } : {}),
+    corporationMembers: members,
+    corporationInvites: invites,
+  };
 }
 
 export function territoriesForEmpire(
@@ -313,6 +349,7 @@ export function snapshotForEmpire(
     objectives: objectivesForEmpire(runtime, empire),
     events: eventsForEmpire(runtime, empire),
     unreadEventCount: unreadEventCount(runtime, empire),
+    ...corporationForEmpire(runtime, empire),
     worldEvents: [...runtime.worldEventMap.values()],
     // L'univers n'est réémis qu'en cas de changement : nouvelle exploration (brouillard
     // levé) ou extension de l'univers (galaxies apparues).

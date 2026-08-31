@@ -88,7 +88,7 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("setStationMarketPolicy"),
     stationId: idSchema,
-    marketAccess: z.enum(["closed", "alliance", "nap", "public"]),
+    marketAccess: z.enum(["closed", "corp", "alliance", "nap", "public"]),
     taxRate: z.number().min(0).max(1),
   }),
   z.object({ type: z.literal("research"), techId: idSchema }),
@@ -264,6 +264,43 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   // ligne et de laisser les autres en attente (ADR 0008).
   z.object({ type: z.literal("markEventRead"), eventId: idSchema }),
   z.object({ type: z.literal("markAllEventsRead") }),
+  // Corporations (chantier 32.8). Le nom et le sigle sont bornés ici et pas seulement
+  // côté client : c'est du texte choisi par un joueur et affiché à tous les autres.
+  z.object({
+    type: z.literal("foundCorporation"),
+    name: z.string().trim().min(3).max(40),
+    tag: z.string().trim().min(2).max(5),
+  }),
+  z.object({
+    type: z.literal("inviteToCorporation"),
+    targetEmpireId: idSchema,
+  }),
+  z.object({
+    type: z.literal("respondCorporationInvite"),
+    inviteId: idSchema,
+    accept: z.boolean(),
+  }),
+  z.object({ type: z.literal("leaveCorporation") }),
+  z.object({
+    type: z.literal("kickFromCorporation"),
+    targetEmpireId: idSchema,
+  }),
+  z.object({
+    type: z.literal("setCorporationRole"),
+    targetEmpireId: idSchema,
+    role: z.enum(["member", "officer"]),
+  }),
+  z.object({ type: z.literal("dissolveCorporation") }),
+  z.object({
+    type: z.literal("depositToTreasury"),
+    colonyId: idSchema,
+    amount: z.number().positive(),
+  }),
+  z.object({
+    type: z.literal("withdrawFromTreasury"),
+    colonyId: idSchema,
+    amount: z.number().positive(),
+  }),
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;

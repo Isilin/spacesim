@@ -4,6 +4,7 @@ import type { EmpireEventDraft } from "@spacesim/shared";
 import type { Persister } from "./persistence/persister.js";
 import { BootstrapService } from "./services/bootstrap-service.js";
 import { ContractService } from "./services/contract-service.js";
+import { CorporationService } from "./services/corporation-service.js";
 import { DevService } from "./services/dev-service.js";
 import { DiplomacyService } from "./services/diplomacy-service.js";
 import { ExplorationService } from "./services/exploration-service.js";
@@ -30,6 +31,7 @@ export interface ComposedEngine {
   objective: ObjectiveService;
   station: StationService;
   inbox: InboxService;
+  corporation: CorporationService;
   bootstrap: BootstrapService;
   devService: DevService;
   tickRunner: TickRunner;
@@ -204,6 +206,13 @@ export function composeEngine(
     emit,
   );
   diplomacy = new DiplomacyService(runtime, notify, logger, emit);
+  const corporation = new CorporationService(
+    runtime,
+    notify,
+    logger,
+    (colony) => industry.persistColony(colony),
+    emit,
+  );
   const objective = new ObjectiveService(
     runtime,
     notify,
@@ -227,6 +236,7 @@ export function composeEngine(
         durationMs,
         extras,
       ),
+    (a, b) => corporation.sameCorporation(a, b),
   );
   bootstrap = new BootstrapService(
     runtime,
@@ -267,6 +277,7 @@ export function composeEngine(
 
   return {
     inbox,
+    corporation,
     industry,
     logistics,
     gateway,

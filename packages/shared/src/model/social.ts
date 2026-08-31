@@ -177,7 +177,10 @@ export type EmpireEventKind =
   | "contract_fulfilled"
   | "research_completed"
   | "relation_changed"
-  | "objective_completed";
+  | "objective_completed"
+  | "corp_invited"
+  | "corp_left"
+  | "corp_dissolved";
 
 /**
  * Entrée du journal d'un empire. Aucune phrase : le serveur n'écrit que des identifiants
@@ -218,3 +221,87 @@ export interface EmpireEvent {
  * une dépendance (ADR 0001).
  */
 export type EmpireEventDraft = Omit<EmpireEvent, "id" | "createdAt" | "readAt">;
+
+// ── Corporations (chantier 32.6) ─────────────────────────────────────────────
+
+/**
+ * Rôles au sein d'une corporation, du moins au plus puissant.
+ *
+ * Énumération DISTINCTE de celle des rôles d'administration : la forme est reprise de
+ * `packages/protocol/src/admin.ts` (actions namespacées + table rôle → permissions), pas
+ * le contenu. Un rôle d'admin gouverne les opérateurs du jeu, un rôle de corporation
+ * gouverne une organisation de joueurs — les partager ferait fuiter `content.techs.write`
+ * dans un contrôle de corporation. Voir
+ * [ADR 0009](../../../../docs/adr/0009-corporations-entite-de-premier-rang.md).
+ */
+export const CORP_ROLES = ["member", "officer", "founder"] as const;
+export type CorpRole = (typeof CORP_ROLES)[number];
+
+/** Actions gouvernées par les rôles. Namespacées, comme les actions d'administration. */
+export const CORP_ACTIONS = [
+  "corp.invite",
+  "corp.kick",
+  "corp.treasury.withdraw",
+  "corp.role.set",
+  "corp.dissolve",
+] as const;
+export type CorpAction = (typeof CORP_ACTIONS)[number];
+
+const OFFICER_ACTIONS: CorpAction[] = [
+  "corp.invite",
+  "corp.kick",
+  "corp.treasury.withdraw",
+];
+
+export const CORP_ROLE_PERMISSIONS: Record<
+  CorpRole,
+  ReadonlySet<CorpAction>
+> = {
+  member: new Set(),
+  officer: new Set(OFFICER_ACTIONS),
+  founder: new Set(CORP_ACTIONS),
+};
+
+export function corpCan(role: CorpRole, action: CorpAction): boolean {
+  return CORP_ROLE_PERMISSIONS[role].has(action);
+}
+
+/**
+ * Organisation de joueurs. Ni colonie, ni flotte, ni brouillard : ce n'est pas un empire
+ * (ADR 0009). Son nom et son étiquette sont publics comme un nom d'empire ; seuls le
+ * solde du coffre et le détail des rôles ne partent qu'à ses membres.
+ */
+export interface Corporation {
+  id: string;
+  name: string;
+  /** Sigle court affiché à côté du nom des membres, façon ticker. */
+  tag: string;
+  /** Empire fondateur — unique, son rôle ne se retire pas : sans lui, plus personne ne
+   *  pourrait dissoudre la corporation. */
+  founderEmpireId: string;
+  /** Coffre commun. En CRÉDITS seulement : une ressource est toujours quelque part
+   *  (ADR 0004), un coffre de matière sans lieu serait un téléporteur. */
+  treasury: number;
+  createdAt: number;
+}
+
+/** Appartenance d'un empire à une corporation. Exclusive : au plus une par empire. */
+export interface CorporationMember {
+  corporationId: string;
+  empireId: string;
+  role: CorpRole;
+  joinedAt: number;
+}
+
+/** Invitation en attente — même patron que `RelationProposal` : rejoindre exige un
+ *  consentement des deux côtés, l'invitation puis l'acceptation. */
+export interface CorporationInvite {
+  id: string;
+  corporationId: string;
+  /** Nom figé à l'émission, comme `Contract.issuerName` : un nom choisi par un joueur
+   *  n'existe dans aucune locale et l'invité doit savoir qui l'invite. */
+  corporationName: string;
+  empireId: string;
+  invitedBy: string;
+  createdAt: number;
+}

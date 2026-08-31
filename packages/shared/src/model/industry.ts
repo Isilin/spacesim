@@ -133,6 +133,11 @@ export interface InstallQueueItem {
  */
 export const STATION_MARKET_ACCESS_IDS = [
   "closed",
+  // Corporation (chantier 32.10) : plus restrictif qu'`alliance`, car l'appartenance à
+  // une corporation est exclusive alors qu'un empire peut être allié de plusieurs. C'est
+  // le « hangar commun » de l'ADR 0009 — les membres commercent chez l'un des leurs en
+  // s'y rendant, le partage garde son coût logistique (ADR 0004).
+  "corp",
   "alliance",
   "nap",
   "public",

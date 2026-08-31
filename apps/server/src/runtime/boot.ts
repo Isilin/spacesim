@@ -29,6 +29,7 @@ export async function bootEngine(
   await engine.diplomacy.loadProposals();
   await engine.objective.loadObjectives();
   await engine.inbox.loadEvents();
+  await engine.corporation.loadCorporations();
   await engine.diplomacy.loadWorldEvents();
   if (isNew) {
     engine.bootstrap.createHomeColony();

@@ -8,6 +8,9 @@ import {
 import type {
   AsteroidBelt,
   Contract,
+  Corporation,
+  CorporationInvite,
+  CorporationMember,
   EmpireEvent,
   FactionState,
   Gateway,
@@ -74,6 +77,16 @@ export class GameRuntime {
    * un balayage complet à chaque snapshot de chaque joueur.
    */
   eventsByEmpire = new Map<string, EmpireEvent[]>();
+  /** Corporations (chantier 32.7), partagées : leur nom est public comme un nom d'empire. */
+  corporationMap = new Map<string, Corporation>();
+  /**
+   * Appartenance, indexée par EMPIRE et non par corporation : l'appartenance est
+   * exclusive (ADR 0009), et la question posée partout est « à quelle corporation
+   * appartient cet empire », jamais l'inverse.
+   */
+  corporationMemberMap = new Map<string, CorporationMember>();
+  /** Invitations en attente (chantier 32.8). */
+  corporationInviteMap = new Map<string, CorporationInvite>();
   /** Empires partageant cet univers (chantier 7b). Un seul instancié à ce stade. */
   empires = new Map<string, Empire>();
   /** Empire propriétaire par défaut (solo). Posé par `ensureDefaultPlayer`. */

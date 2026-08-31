@@ -27,16 +27,23 @@ export function canTradeAtStation(
   visitorId: string,
   access: StationMarketAccess,
   relation: RelationState,
+  /** Même corporation que le propriétaire (chantier 32.10) — faux par défaut pour que
+   *  les appelants qui ignorent les corporations gardent leur comportement d'avant. */
+  sameCorporation = false,
 ): boolean {
   if (visitorId === ownerId) return true;
   if (relation === "war") return false;
   switch (access) {
     case "closed":
       return false;
+    case "corp":
+      return sameCorporation;
     case "alliance":
-      return relation === "alliance";
+      // Un membre de la corporation passe aussi les paliers plus permissifs : sinon
+      // ouvrir sa station aux alliés la fermerait à ses propres associés.
+      return sameCorporation || relation === "alliance";
     case "nap":
-      return relation === "alliance" || relation === "nap";
+      return sameCorporation || relation === "alliance" || relation === "nap";
     case "public":
       return true;
   }

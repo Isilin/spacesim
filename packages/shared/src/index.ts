@@ -69,6 +69,15 @@ export {
   type EmpireEventKind,
   type EmpireEvent,
   type EmpireEventDraft,
+  CORP_ROLES,
+  type CorpRole,
+  CORP_ACTIONS,
+  type CorpAction,
+  CORP_ROLE_PERMISSIONS,
+  corpCan,
+  type Corporation,
+  type CorporationMember,
+  type CorporationInvite,
 } from "./model/social.js";
 export {
   TICK_MS,

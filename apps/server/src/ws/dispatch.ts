@@ -281,6 +281,40 @@ export function dispatchClientMessage(
     case "markAllEventsRead":
       engine.inbox.markAllRead(empire.id);
       return null;
+    case "foundCorporation":
+      return engine.corporation.foundCorporation(empire, msg.name, msg.tag);
+    case "inviteToCorporation":
+      return engine.corporation.inviteToCorporation(empire, msg.targetEmpireId);
+    case "respondCorporationInvite":
+      return engine.corporation.respondCorporationInvite(
+        empire,
+        msg.inviteId,
+        msg.accept,
+      );
+    case "leaveCorporation":
+      return engine.corporation.leaveCorporation(empire);
+    case "kickFromCorporation":
+      return engine.corporation.kickFromCorporation(empire, msg.targetEmpireId);
+    case "setCorporationRole":
+      return engine.corporation.setCorporationRole(
+        empire,
+        msg.targetEmpireId,
+        msg.role,
+      );
+    case "dissolveCorporation":
+      return engine.corporation.dissolveCorporation(empire);
+    case "depositToTreasury":
+      return engine.corporation.depositToTreasury(
+        empire,
+        msg.colonyId,
+        msg.amount,
+      );
+    case "withdrawFromTreasury":
+      return engine.corporation.withdrawFromTreasury(
+        empire,
+        msg.colonyId,
+        msg.amount,
+      );
     default:
       return assertNever(msg);
   }

@@ -2,6 +2,9 @@ import type {
   Blueprint,
   Colony,
   Contract,
+  Corporation,
+  CorporationInvite,
+  CorporationMember,
   EmpireEvent,
   FactionState,
   Fleet,
@@ -76,6 +79,16 @@ export interface EmpireSnapshot {
   events: EmpireEvent[];
   /** Non-lus sur le TOTAL, pas seulement sur la page transmise — c'est le digest d'absence. */
   unreadEventCount: number;
+  /**
+   * Corporation de l'empire (chantier 32.8), coffre compris — absente s'il n'en a pas.
+   * Les autres corporations n'arrivent PAS ici : leur nom voyage avec les entités qui
+   * les mentionnent (classement, présence étrangère), jamais leur coffre.
+   */
+  corporation?: Corporation;
+  /** Membres de SA corporation, avec leurs rôles. Vide s'il n'en a pas. */
+  corporationMembers: CorporationMember[];
+  /** Invitations en attente le concernant (chantier 32.8), reçues ou émises. */
+  corporationInvites: CorporationInvite[];
   /** Événements de monde actifs (chantier 17), non brouillardés. */
   worldEvents: WorldEvent[];
   /** Présent quand l'exploration ou l'univers a changé depuis le dernier message. */

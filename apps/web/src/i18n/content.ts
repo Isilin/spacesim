@@ -78,11 +78,18 @@ export const contentFr = {
       name: "Fermé",
       description: "Seul le propriétaire peut y commercer.",
     },
-    alliance: { name: "Alliés", description: "Ouvert aux empires alliés." },
+    corp: {
+      name: "Corporation",
+      description: "Ouvert aux membres de votre corporation.",
+    },
+    alliance: {
+      name: "Alliés",
+      description: "Ouvert aux alliés et à votre corporation.",
+    },
     nap: {
       name: "Pacte ou mieux",
       description:
-        "Ouvert aux alliés et aux partenaires de pacte de non-agression.",
+        "Ouvert aux alliés, aux partenaires de pacte et à votre corporation.",
     },
     public: {
       name: "Public",
@@ -671,13 +678,18 @@ export const contentEn: typeof contentFr = {
   },
   stationMarketAccess: {
     closed: { name: "Closed", description: "Only the owner can trade here." },
+    corp: {
+      name: "Corporation",
+      description: "Open to members of your corporation.",
+    },
     alliance: {
       name: "Allies",
-      description: "Open to allied empires.",
+      description: "Open to allies and to your corporation.",
     },
     nap: {
       name: "Pact or better",
-      description: "Open to allies and non-aggression pact partners.",
+      description:
+        "Open to allies, non-aggression pact partners and your corporation.",
     },
     public: {
       name: "Public",
