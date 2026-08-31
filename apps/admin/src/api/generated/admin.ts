@@ -28,6 +28,7 @@ export const GetApiAdminAudit200EntriesItemAction = {
   auditread: "audit.read",
   accountview: "account.view",
   accountwarn: "account.warn",
+  accountmute: "account.mute",
   accountsuspend: "account.suspend",
   accountban: "account.ban",
   accountunban: "account.unban",
@@ -177,6 +178,8 @@ export type GetApiAdminAccountsId200SanctionHistoryItemKind =
 
 export const GetApiAdminAccountsId200SanctionHistoryItemKind = {
   warn: "warn",
+  mute: "mute",
+  unmute: "unmute",
   suspend: "suspend",
   ban: "ban",
   unban: "unban",
@@ -219,6 +222,8 @@ export type PostApiAdminAccountsIdSanctionsBodyKind =
 
 export const PostApiAdminAccountsIdSanctionsBodyKind = {
   warn: "warn",
+  mute: "mute",
+  unmute: "unmute",
   suspend: "suspend",
   ban: "ban",
   unban: "unban",
@@ -285,6 +290,8 @@ export type PostApiAdminAccountsIdSanctions200SanctionHistoryItemKind =
 
 export const PostApiAdminAccountsIdSanctions200SanctionHistoryItemKind = {
   warn: "warn",
+  mute: "mute",
+  unmute: "unmute",
   suspend: "suspend",
   ban: "ban",
   unban: "unban",

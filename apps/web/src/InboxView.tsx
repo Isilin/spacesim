@@ -40,6 +40,7 @@ const LOOK: Record<
   corp_invited: { icon: "✉", tone: "neutral" },
   corp_left: { icon: "🚪", tone: "ko" },
   corp_dissolved: { icon: "🏚", tone: "ko" },
+  mail_received: { icon: "✉", tone: "neutral" },
 };
 
 function systemName(universe: Universe | null, systemId?: string): string {
@@ -99,6 +100,10 @@ export function InboxView({ now }: { now: number }) {
         return t("inbox.corpLeft", { corp: other });
       case "corp_dissolved":
         return t("inbox.corpDissolved", { corp: other });
+      // Le journal PRÉVIENT, la boîte aux lettres CONSERVE : une seule pastille à tenir
+      // cohérente, et le courrier reste relisible après purge de l'événement (ADR 0010).
+      case "mail_received":
+        return t("inbox.mailReceived", { other });
     }
   };
 

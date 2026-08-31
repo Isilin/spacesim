@@ -315,6 +315,28 @@ export function dispatchClientMessage(
         msg.colonyId,
         msg.amount,
       );
+    case "sendChatMessage":
+      return engine.communication.sendChatMessage(
+        empire,
+        msg.scope,
+        msg.scopeId,
+        msg.body,
+      );
+    case "sendMail":
+      return engine.communication.sendMail(
+        empire,
+        msg.toEmpireId,
+        msg.subject,
+        msg.body,
+      );
+    // Silencieux comme le marquage d'événement : un id de courrier qui n'est pas le
+    // sien ne doit rien révéler, pas même son existence.
+    case "markMailRead":
+      engine.communication.markMailRead(empire.id, msg.mailId);
+      return null;
+    case "deleteMail":
+      engine.communication.deleteMail(empire.id, msg.mailId);
+      return null;
     default:
       return assertNever(msg);
   }

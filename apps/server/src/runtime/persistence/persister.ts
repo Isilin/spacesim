@@ -23,6 +23,8 @@ const PRIMARY_KEYS: Partial<Record<SchemaKey, readonly string[]>> = {
   corporations: ["id"],
   corporationMembers: ["empireId"],
   corporationInvites: ["id"],
+  chatMessages: ["id"],
+  mails: ["id"],
   worldEvents: ["id"],
   factionStates: ["factionId"],
   blueprints: ["id"],

@@ -5,6 +5,8 @@ import type {
 } from "@spacesim/protocol";
 import type {
   Blueprint,
+  ChatMessage,
+  ChatScope,
   Contract,
   Corporation,
   CorporationInvite,
@@ -18,6 +20,7 @@ import type {
   ForeignFleet,
   GameState,
   LeaderboardEntry,
+  Mail,
   MiningOutpost,
   Mission,
   Objective,
@@ -75,6 +78,12 @@ export interface GameStoreState {
   corporation: Corporation | null;
   corporationMembers: CorporationMember[];
   corporationInvites: CorporationInvite[];
+  /** Canaux auxquels l'empire appartient — publiés par le serveur, pas déduits. */
+  chatChannels: { scope: ChatScope; scopeId: string }[];
+  /** Messages de ces canaux (chantier 32.17). */
+  chat: ChatMessage[];
+  /** Boîte aux lettres, du plus récent au plus ancien. */
+  mails: Mail[];
   /** Liaison WS établie (état de connexion, pas de session). */
   connected: boolean;
   /** Dernière erreur d'action renvoyée par le serveur (éphémère). */
@@ -142,6 +151,9 @@ function snapshotFields(msg: EmpireSnapshot): SnapshotFields {
     corporation: msg.corporation ?? null,
     corporationMembers: msg.corporationMembers,
     corporationInvites: msg.corporationInvites,
+    chatChannels: msg.chatChannels,
+    chat: msg.chat,
+    mails: msg.mails,
   };
 }
 
@@ -185,6 +197,9 @@ const initialState: SnapshotFields & {
   corporation: null,
   corporationMembers: [],
   corporationInvites: [],
+  chatChannels: [],
+  chat: [],
+  mails: [],
   connected: false,
   actionError: null,
 };

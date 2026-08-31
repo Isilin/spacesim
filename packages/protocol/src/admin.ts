@@ -19,6 +19,7 @@ export const ADMIN_ACTIONS = [
   "audit.read",
   "account.view",
   "account.warn",
+  "account.mute",
   "account.suspend",
   "account.ban",
   "account.unban",
@@ -62,6 +63,7 @@ export const ROLE_PERMISSIONS: Record<RoleId, ReadonlySet<AdminActionId>> = {
   moderator: new Set([
     "account.view",
     "account.warn",
+    "account.mute",
     "account.suspend",
     "account.ban",
     "account.unban",
@@ -105,6 +107,11 @@ export function hasPermission(role: RoleId, action: AdminActionId): boolean {
 /** Un événement de sanction ; `warn`/`unban` ne rendent jamais le compte inutilisable. */
 export const SANCTION_KINDS = [
   "warn",
+  // Silence (chantier 32.16) : livré AVEC le chat, jamais après — le mute était hors
+  // périmètre en 23.4 faute de chat à modérer. Sur un axe DISTINCT de la suspension :
+  // un joueur réduit au silence joue normalement (ADR 0010).
+  "mute",
+  "unmute",
   "suspend",
   "ban",
   "unban",
@@ -134,6 +141,10 @@ export type ApplySanctionInput = z.infer<typeof applySanctionSchema>;
 /** Action admin correspondant à chaque genre de sanction, pour la vérif de rôle par route. */
 export const SANCTION_ACTIONS: Record<SanctionKind, AdminActionId> = {
   warn: "account.warn",
+  // Une seule action pour mute et unmute : lever un silence relève du même pouvoir que
+  // l'imposer, contrairement à `ban`/`unban` où la levée est délibérément séparée.
+  mute: "account.mute",
+  unmute: "account.mute",
   suspend: "account.suspend",
   ban: "account.ban",
   unban: "account.unban",

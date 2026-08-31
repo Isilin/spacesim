@@ -215,3 +215,18 @@ export const HOSTILE_SYSTEM_PENALTY = 3;
  */
 export const EMPIRE_EVENT_KEEP = 200;
 export const EMPIRE_EVENT_PAGE = 50;
+
+/**
+ * Bornes de la communication (chantier 32.12). `CHAT_KEEP` : messages gardés par canal,
+ * les plus anciens tombent — un canal est jetable, à la différence du journal d'empire
+ * qui ne purge jamais un non-lu (ADR 0010). `CHAT_PAGE` : ce que le snapshot transporte
+ * par canal, avec au plus deux canaux, donc un plafond dur.
+ *
+ * `MAIL_KEEP` borne la boîte aux lettres d'un empire sur le même principe que le
+ * journal : les plus anciens **lus** partent d'abord, un non-lu ne part jamais.
+ */
+export const CHAT_KEEP = 200;
+export const CHAT_PAGE = 60;
+export const CHAT_MAX_LENGTH = 500;
+export const MAIL_KEEP = 100;
+export const MAIL_MAX_BODY = 4000;

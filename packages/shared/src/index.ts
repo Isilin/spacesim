@@ -78,6 +78,10 @@ export {
   type Corporation,
   type CorporationMember,
   type CorporationInvite,
+  CHAT_SCOPES,
+  type ChatScope,
+  type ChatMessage,
+  type Mail,
 } from "./model/social.js";
 export {
   TICK_MS,
@@ -93,6 +97,11 @@ export {
   HOSTILE_SYSTEM_PENALTY,
   EMPIRE_EVENT_KEEP,
   EMPIRE_EVENT_PAGE,
+  CHAT_KEEP,
+  CHAT_PAGE,
+  CHAT_MAX_LENGTH,
+  MAIL_KEEP,
+  MAIL_MAX_BODY,
   INTRA_SYSTEM_REFERENCE_LENGTH,
   INITIAL_GALAXIES,
   FRONTIER_GALAXIES,

@@ -1,4 +1,5 @@
 import {
+  CHAT_PAGE,
   EMPIRE_EVENT_PAGE,
   findGalaxyOfSystem,
   hasBlueprintMarket,
@@ -7,6 +8,8 @@ import {
   redactUniverse,
   relationKey,
   sitesOfSystem,
+  type ChatMessage,
+  type ChatScope,
   type Corporation,
   type CorporationInvite,
   type CorporationMember,
@@ -15,6 +18,7 @@ import {
   type ForeignFleet,
   type ForeignStation,
   type LeaderboardEntry,
+  type Mail,
   type MarketResource,
   type Objective,
   type PirateLair,
@@ -168,6 +172,58 @@ export function corporationForEmpire(
     corporationMembers: members,
     corporationInvites: invites,
   };
+}
+
+/**
+ * Canaux auxquels un empire appartient (chantier 32.14) : sa corporation, et chaque
+ * galaxie où il a au moins une colonie.
+ *
+ * DÉRIVÉE de l'état du jeu à chaque appel, jamais mise en cache : elle change quand une
+ * colonie est fondée ou perdue, et un cache invalidé au mauvais moment laisserait un
+ * joueur parler dans une galaxie qu'il a quittée (ADR 0010).
+ */
+export function channelsForEmpire(
+  runtime: GameRuntime,
+  empire: Empire,
+): { scope: ChatScope; scopeId: string }[] {
+  const channels: { scope: ChatScope; scopeId: string }[] = [];
+  const corporationId = runtime.corporationMemberMap.get(
+    empire.id,
+  )?.corporationId;
+  if (corporationId) channels.push({ scope: "corp", scopeId: corporationId });
+  const galaxies = new Set<string>();
+  for (const colony of empire.colonyMap.values()) {
+    const systemId = runtime.planetsById.get(colony.planetId)?.systemId;
+    if (!systemId) continue;
+    const galaxy = findGalaxyOfSystem(runtime.universe, systemId);
+    if (galaxy) galaxies.add(galaxy.id);
+  }
+  for (const galaxyId of galaxies) {
+    channels.push({ scope: "galaxy", scopeId: galaxyId });
+  }
+  return channels;
+}
+
+/**
+ * Messages des canaux auxquels l'empire appartient (chantier 32.14), chacun tronqué à
+ * `CHAT_PAGE` et rendu du plus ancien au plus récent — l'ordre de lecture d'une
+ * conversation, à l'inverse du journal où l'on veut les dernières nouvelles d'abord.
+ */
+export function chatForEmpire(
+  runtime: GameRuntime,
+  channels: { scope: ChatScope; scopeId: string }[],
+): ChatMessage[] {
+  const out: ChatMessage[] = [];
+  for (const { scope, scopeId } of channels) {
+    const list = runtime.chatByChannel.get(`${scope}:${scopeId}`) ?? [];
+    out.push(...list.slice(-CHAT_PAGE));
+  }
+  return out;
+}
+
+/** Boîte aux lettres, du plus récent au plus ancien (chantier 32.15). */
+export function mailsForEmpire(runtime: GameRuntime, empire: Empire): Mail[] {
+  return [...(runtime.mailsByEmpire.get(empire.id) ?? [])].reverse();
 }
 
 export function territoriesForEmpire(
@@ -356,6 +412,9 @@ export function snapshotForEmpire(
     events: eventsForEmpire(runtime, empire),
     unreadEventCount: unreadEventCount(runtime, empire),
     ...corporationForEmpire(runtime, empire),
+    chatChannels: channelsForEmpire(runtime, empire),
+    chat: chatForEmpire(runtime, channelsForEmpire(runtime, empire)),
+    mails: mailsForEmpire(runtime, empire),
     worldEvents: [...runtime.worldEventMap.values()],
     // L'univers n'est réémis qu'en cas de changement : nouvelle exploration (brouillard
     // levé) ou extension de l'univers (galaxies apparues).

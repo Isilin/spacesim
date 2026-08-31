@@ -7,6 +7,7 @@ import {
   revokeSession,
   type AuthResult,
 } from "../../auth.js";
+import { config } from "../../config.js";
 import type { GameEngine } from "../../game.js";
 
 /** Corps de réponse commun à l'inscription et à la connexion. */
@@ -30,7 +31,9 @@ function authPayload(
 
 /** Quota `@fastify/rate-limit` strict (chantier 20.5), en plus du blocage par IP
  *  déjà géré par `auth.ts` (`isRateLimited`, sur les échecs seulement). */
-const STRICT_AUTH_LIMIT = { rateLimit: { max: 10, timeWindow: "1 minute" } };
+const STRICT_AUTH_LIMIT = {
+  rateLimit: { max: config.authRateLimitMax, timeWindow: "1 minute" },
+};
 
 // ── Comptes (chantier 8) ─────────────────────────────────────────────────────
 export function registerAuthRoutes(

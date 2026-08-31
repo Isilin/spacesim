@@ -180,7 +180,8 @@ export type EmpireEventKind =
   | "objective_completed"
   | "corp_invited"
   | "corp_left"
-  | "corp_dissolved";
+  | "corp_dissolved"
+  | "mail_received";
 
 /**
  * Entrée du journal d'un empire. Aucune phrase : le serveur n'écrit que des identifiants
@@ -304,4 +305,49 @@ export interface CorporationInvite {
   empireId: string;
   invitedBy: string;
   createdAt: number;
+}
+
+// ── Communication (chantier 32.12) ───────────────────────────────────────────
+
+/**
+ * Canaux de discussion. L'appartenance se **dérive** de l'état du jeu — membres de la
+ * corporation pour `corp`, empires ayant une colonie dans la galaxie pour `galaxy` — et
+ * ne s'abonne pas : on est dans un canal parce qu'on y a quelque chose. Voir
+ * [ADR 0010](../../../../docs/adr/0010-communication-canaux-bornes-et-courrier.md).
+ */
+export const CHAT_SCOPES = ["corp", "galaxy"] as const;
+export type ChatScope = (typeof CHAT_SCOPES)[number];
+
+/**
+ * Message d'un canal. Borné et jetable, à la différence du journal d'empire qui ne purge
+ * jamais un non-lu : une conversation peut se rater, pas un fait.
+ */
+export interface ChatMessage {
+  id: string;
+  scope: ChatScope;
+  /** Corporation ou galaxie concernée — l'identité du lieu, pas un abonnement. */
+  scopeId: string;
+  authorEmpireId: string;
+  /** Nom figé à l'écriture : un nom d'empire est choisi par un joueur et n'existe dans
+   *  aucune locale, comme `Contract.issuerName`. */
+  authorName: string;
+  body: string;
+  sentAt: number;
+}
+
+/**
+ * Courrier dirigé. Ni chat (il se relit) ni événement de journal (il a un corps et
+ * survit à sa lecture) — mais son arrivée est signalée PAR le journal, pour qu'il n'y ait
+ * qu'une seule pastille à tenir cohérente.
+ */
+export interface Mail {
+  id: string;
+  fromEmpireId: string;
+  fromName: string;
+  toEmpireId: string;
+  subject: string;
+  body: string;
+  sentAt: number;
+  /** `null` tant que le destinataire ne l'a pas ouvert. */
+  readAt: number | null;
 }

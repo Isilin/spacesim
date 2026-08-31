@@ -19,6 +19,16 @@ const EnvSchema = z.object({
   LOG_LEVEL: z.string().min(1).default("warn"),
   CORS_ORIGIN: z.string().min(1).default("http://localhost:5173"),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  /**
+   * Quota des routes d'authentification, par IP et par minute (chantier 20.5). Défaut
+   * volontairement bas : c'est une protection contre l'énumération de comptes.
+   *
+   * Configurable depuis le chantier 32.17 pour le seul harnais e2e, où une dizaine
+   * d'inscriptions partent de la même boucle locale en moins d'une minute. Relever la
+   * valeur en production annulerait la protection ; l'e2e la pose explicitement dans son
+   * `webServer`.
+   */
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   // Chaîne plutôt que boolean : les variables d'env sont toujours des chaînes,
   // `z.coerce.boolean()` traiterait "0" comme vrai (chaîne non vide).
   DEV_ROUTES: z.enum(["0", "1"]).optional(),
@@ -51,6 +61,7 @@ export const config = {
   logLevel: env.LOG_LEVEL,
   corsOrigin: env.CORS_ORIGIN,
   rateLimitMax: env.RATE_LIMIT_MAX,
+  authRateLimitMax: env.AUTH_RATE_LIMIT_MAX,
   /** Routes `/dev/*` : jamais en prod sauf override explicite (double verrou, chantier 20.5). */
   devRoutes: env.DEV_ROUTES === "1",
   /** Crée l'univers officiel au prochain boot prod — une bascule, jamais un défaut (chantier 20.4). */

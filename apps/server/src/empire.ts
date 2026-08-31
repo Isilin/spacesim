@@ -101,6 +101,17 @@ export class Empire {
      * économique, qu'un compte ne doit jamais pouvoir adopter par erreur.
      */
     public kind: "human" | "npc" = "human",
+    /**
+     * Silence en vigueur (chantier 32.16) : `null` = peut parler, sinon échéance, ou
+     * `Number.POSITIVE_INFINITY` pour un silence sans terme.
+     *
+     * Recopié ICI depuis l'historique de sanctions, qui reste la source de vérité, parce
+     * que l'envoi d'un message est synchrone alors que la lecture des sanctions est une
+     * requête. Rafraîchi à l'ouverture de la connexion ET quand un modérateur agit sur
+     * un joueur déjà connecté — sans quoi un spammeur continuerait de parler jusqu'à sa
+     * prochaine reconnexion.
+     */
+    public mutedUntil: number | null = null,
   ) {}
 
   /** Recompose la forme externe `GameState` : horloge partagée + état de cet empire. */

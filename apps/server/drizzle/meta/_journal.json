@@ -155,6 +155,13 @@
       "when": 1788160530985,
       "tag": "0021_misty_thunderbird",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1788174758256,
+      "tag": "0022_amazing_gabe_jones",
+      "breakpoints": true
     }
   ]
 }

@@ -42,6 +42,8 @@ export const ALL_TABLES = [
   schema.corporationInvites,
   schema.corporationMembers,
   schema.corporations,
+  schema.chatMessages,
+  schema.mails,
   schema.worldEvents,
   schema.blueprints,
   schema.gateways,

@@ -19,6 +19,7 @@ import {
   recordAuditEntry,
 } from "../../../admin/audit-service.js";
 import { applySanction } from "../../../admin/sanctions-service.js";
+import { accountMuteStatus } from "../../../auth.js";
 import type { GameEngine } from "../../../game.js";
 import type { ZodFastifyInstance } from "../../zod-fastify.js";
 import { registerContentRoutes } from "./content.js";
@@ -134,6 +135,15 @@ export function registerAdminRoutes(
             actorEmail: actor.email,
             durationMs: request.body.durationMs,
           });
+          // Effet immédiat sur un joueur déjà connecté : sans cette ligne, un spammeur
+          // continuerait de parler jusqu'à sa prochaine reconnexion (chantier 32.16).
+          if (request.body.kind === "mute" || request.body.kind === "unmute") {
+            const mute = await accountMuteStatus(id);
+            engine.setMuted(
+              id,
+              mute.muted ? (mute.expiresAt ?? Number.POSITIVE_INFINITY) : null,
+            );
+          }
           await recordAuditEntry({
             actorAccountId: actor.id,
             actorEmail: actor.email,

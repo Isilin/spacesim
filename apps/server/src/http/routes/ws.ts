@@ -1,7 +1,7 @@
 import { ClientMessageSchema } from "@spacesim/protocol";
 import type { ServerMessage } from "@spacesim/protocol";
 import type { FastifyInstance } from "fastify";
-import { resolveSession } from "../../auth.js";
+import { accountMuteStatus, resolveSession } from "../../auth.js";
 import type { GameEngine } from "../../game.js";
 import { dispatchClientMessage } from "../../ws/dispatch.js";
 
@@ -29,6 +29,13 @@ export function registerWsRoutes(
       socket.close(WS_UNAUTHORIZED, "Aucun empire pour ce compte");
       return;
     }
+    // Silence en vigueur (chantier 32.16) : recopié sur l'empire à l'ouverture, parce
+    // que l'envoi d'un message est synchrone alors que les sanctions sont en base.
+    const mute = await accountMuteStatus(account.id);
+    engine.setMuted(
+      account.id,
+      mute.muted ? (mute.expiresAt ?? Number.POSITIVE_INFINITY) : null,
+    );
     // Contexte d'acteur : chaque log de cette connexion porte l'empire concerné.
     const log = request.log.child({ empireId: empire.id });
     log.info("connexion WS ouverte");

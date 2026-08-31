@@ -381,6 +381,51 @@ export const corporationInvites = pgTable("corporation_invites", {
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 
+/**
+ * Messages de canal (chantier 32.13). Bornés et jetables : le canal est un lieu de
+ * conversation, pas un registre (ADR 0010). L'index couvre la seule lecture faite —
+ * « les N derniers de ce canal ».
+ */
+export const chatMessages = pgTable(
+  "chat_messages",
+  {
+    id: text("id").primaryKey(),
+    gameId: text("game_id").notNull(),
+    scope: text("scope").notNull(),
+    /** Corporation ou galaxie — l'identité du LIEU, pas un abonnement. */
+    scopeId: text("scope_id").notNull(),
+    authorEmpireId: text("author_empire_id").notNull(),
+    authorName: text("author_name").notNull(),
+    body: text("body").notNull(),
+    sentAt: bigint("sent_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("chat_messages_scope_sent_idx").on(
+      table.scope,
+      table.scopeId,
+      table.sentAt,
+    ),
+  ],
+);
+
+/** Courrier dirigé (chantier 32.13) — il a un corps et survit à sa lecture, contrairement
+ *  à un événement de journal. */
+export const mails = pgTable(
+  "mails",
+  {
+    id: text("id").primaryKey(),
+    gameId: text("game_id").notNull(),
+    fromEmpireId: text("from_empire_id").notNull(),
+    fromName: text("from_name").notNull(),
+    toEmpireId: text("to_empire_id").notNull(),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    sentAt: bigint("sent_at", { mode: "number" }).notNull(),
+    readAt: bigint("read_at", { mode: "number" }),
+  },
+  (table) => [index("mails_to_sent_idx").on(table.toEmpireId, table.sentAt)],
+);
+
 /** Événements de monde actifs, partagés (chantier 17). Supprimés à expiration. */
 export const worldEvents = pgTable("world_events", {
   id: text("id").primaryKey(),

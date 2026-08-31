@@ -77,6 +77,8 @@ interface AccountDetail {
 
 const SANCTION_KEYS: Record<SanctionKind, string> = {
   warn: "accountDetailView.sanctionWarn",
+  mute: "accountDetailView.sanctionMute",
+  unmute: "accountDetailView.sanctionUnmute",
   suspend: "accountDetailView.sanctionSuspend",
   ban: "accountDetailView.sanctionBan",
   unban: "accountDetailView.sanctionUnban",
@@ -168,7 +170,12 @@ export function AccountDetailView() {
         data: {
           kind,
           reason,
-          durationMs: kind === "suspend" ? durationHours * 3600_000 : undefined,
+          // `mute` accepte une durée facultative : sans elle, le silence est sans
+          // terme et ne se lève que par `unmute` (chantier 32.16).
+          durationMs:
+            kind === "suspend" || (kind === "mute" && durationHours > 0)
+              ? durationHours * 3600_000
+              : undefined,
         },
       });
       queryClient.setQueryData(getGetApiAdminAccountsIdQueryKey(id), result);

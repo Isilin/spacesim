@@ -33,6 +33,7 @@ import {
 import { BodyView } from "./BodyView.js";
 import { ColonyView } from "./ColonyView.js";
 import { EmpireView } from "./EmpireView.js";
+import { CommunicationView } from "./CommunicationView.js";
 import { CorporationView } from "./CorporationView.js";
 import { InboxView } from "./InboxView.js";
 import { GalaxyScene } from "./map3d/GalaxyScene.js";
@@ -391,6 +392,7 @@ export function App({ auth }: Props) {
     { value: "research", label: t("app.tabResearch") },
     { value: "empire", label: t("app.tabEmpire") },
     { value: "corporation", label: t("app.tabCorporation") },
+    { value: "comms", label: t("app.tabCommunication") },
     {
       value: "inbox",
       // Le compte de non-lus est dans l'onglet lui-même : c'est le seul endroit visible
@@ -537,6 +539,14 @@ export function App({ auth }: Props) {
                 now={now}
                 send={send}
               />
+            </main>
+          }
+        />
+        <Route
+          path="/comms"
+          element={
+            <main className="content-single">
+              <CommunicationView now={now} />
             </main>
           }
         />

@@ -7,11 +7,13 @@ import {
 } from "@spacesim/shared";
 import type {
   AsteroidBelt,
+  ChatMessage,
   Contract,
   Corporation,
   CorporationInvite,
   CorporationMember,
   EmpireEvent,
+  Mail,
   FactionState,
   Gateway,
   Objective,
@@ -87,6 +89,14 @@ export class GameRuntime {
   corporationMemberMap = new Map<string, CorporationMember>();
   /** Invitations en attente (chantier 32.8). */
   corporationInviteMap = new Map<string, CorporationInvite>();
+  /**
+   * Messages par canal, clé `scope:scopeId` (chantier 32.14), du plus ancien au plus
+   * récent. Indexé par CANAL et non par empire : un message appartient à un lieu, et
+   * l'appartenance des joueurs à ce lieu se dérive de l'état du jeu (ADR 0010).
+   */
+  chatByChannel = new Map<string, ChatMessage[]>();
+  /** Boîtes aux lettres, par empire destinataire (chantier 32.15). */
+  mailsByEmpire = new Map<string, Mail[]>();
   /** Empires partageant cet univers (chantier 7b). Un seul instancié à ce stade. */
   empires = new Map<string, Empire>();
   /** Empire propriétaire par défaut (solo). Posé par `ensureDefaultPlayer`. */

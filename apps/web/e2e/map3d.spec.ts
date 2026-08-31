@@ -128,9 +128,11 @@ test("la caméra reste au joueur une fois qu'il l'a touchée", async ({
   const host = page.locator(".map-canvas");
   const canvas = host.locator("canvas");
   await expect(canvas).toBeVisible();
-  // Attendre que les mesures successives de R3F se soient stabilisées.
+  // Attendre que les mesures successives de R3F se soient stabilisées. Délai large :
+  // on attend l'initialisation d'un contexte WebGL logiciel, pas une performance — le
+  // budget d'images est mesuré par un autre test.
   await expect
-    .poll(() => host.getAttribute("data-map-fits"), { timeout: 5000 })
+    .poll(() => host.getAttribute("data-map-fits"), { timeout: 20_000 })
     .not.toBeNull();
   await page.waitForTimeout(1500);
   const before = await host.getAttribute("data-map-fits");

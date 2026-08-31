@@ -45,6 +45,7 @@ import type { GatewayService } from "./runtime/services/gateway-service.js";
 import type { IndustryService } from "./runtime/services/industry-service.js";
 import type { LogisticsService } from "./runtime/services/logistics-service.js";
 import type { MarketService } from "./runtime/services/market-service.js";
+import type { CommunicationService } from "./runtime/services/communication-service.js";
 import type { CorporationService } from "./runtime/services/corporation-service.js";
 import type { InboxService } from "./runtime/services/inbox-service.js";
 import type { ObjectiveService } from "./runtime/services/objective-service.js";
@@ -104,6 +105,8 @@ export class GameEngine {
   readonly inbox: InboxService;
   /** Corporations (chantier 32) : appartenance, rôles, coffre commun. */
   readonly corporation: CorporationService;
+  /** Canaux de discussion et courrier (chantier 32), silence compris. */
+  readonly communication: CommunicationService;
   /** Stations orbitales (chantier 24) : zones, installations, tick de production. */
   readonly station: StationService;
   /** Bootstrap des empires (compte joueur, PNJ, colonie mère) et outils de dev associés. */
@@ -220,6 +223,7 @@ export class GameEngine {
     this.objective = composed.objective;
     this.inbox = composed.inbox;
     this.corporation = composed.corporation;
+    this.communication = composed.communication;
     this.station = composed.station;
     this.bootstrap = composed.bootstrap;
     this.devService = composed.devService;
@@ -523,6 +527,19 @@ export class GameEngine {
    */
   empireForAccount(accountId: string): Empire | null {
     return this.bootstrap.empireForAccount(accountId);
+  }
+
+  /**
+   * Applique un silence à l'empire d'un compte (chantier 32.16). Appelé à l'ouverture
+   * d'une connexion et après une décision de modération, pour qu'elle prenne effet
+   * immédiatement sur un joueur déjà connecté.
+   *
+   * `Number.POSITIVE_INFINITY` encode le silence sans terme : la comparaison à l'envoi
+   * reste un simple `>` sur une date, sans cas particulier.
+   */
+  setMuted(accountId: string, until: number | null): void {
+    const empire = this.bootstrap.empireForAccount(accountId);
+    if (empire) empire.mutedUntil = until;
   }
 
   /** Résumé d'empire par compte (admin, chantier 23.3) — même forme que `devEmpireSummaries()`,

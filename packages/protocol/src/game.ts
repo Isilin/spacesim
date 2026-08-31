@@ -301,6 +301,22 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     colonyId: idSchema,
     amount: z.number().positive(),
   }),
+  // Communication (chantier 32.14-32.15). Le corps est borné ICI et pas seulement côté
+  // client : c'est du texte écrit par un joueur et lu par d'autres.
+  z.object({
+    type: z.literal("sendChatMessage"),
+    scope: z.enum(["corp", "galaxy"]),
+    scopeId: idSchema,
+    body: z.string().trim().min(1).max(500),
+  }),
+  z.object({
+    type: z.literal("sendMail"),
+    toEmpireId: idSchema,
+    subject: z.string().trim().min(1).max(120),
+    body: z.string().trim().min(1).max(4000),
+  }),
+  z.object({ type: z.literal("markMailRead"), mailId: idSchema }),
+  z.object({ type: z.literal("deleteMail"), mailId: idSchema }),
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;

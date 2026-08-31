@@ -4,6 +4,7 @@ import type { EmpireEventDraft } from "@spacesim/shared";
 import type { Persister } from "./persistence/persister.js";
 import { BootstrapService } from "./services/bootstrap-service.js";
 import { ContractService } from "./services/contract-service.js";
+import { CommunicationService } from "./services/communication-service.js";
 import { CorporationService } from "./services/corporation-service.js";
 import { DevService } from "./services/dev-service.js";
 import { DiplomacyService } from "./services/diplomacy-service.js";
@@ -32,6 +33,7 @@ export interface ComposedEngine {
   station: StationService;
   inbox: InboxService;
   corporation: CorporationService;
+  communication: CommunicationService;
   bootstrap: BootstrapService;
   devService: DevService;
   tickRunner: TickRunner;
@@ -248,6 +250,15 @@ export function composeEngine(
     (count) => exploration.growUniverse(count),
     (empire, systemId) => exploration.markExplored(empire, systemId),
   );
+  const communication = new CommunicationService(
+    runtime,
+    notify,
+    logger,
+    emit,
+    // Le silence est recopié sur l'empire à la connexion et à chaque décision de
+    // modération : le comparer ici est synchrone, comme la commande qui l'interroge.
+    (empire) => empire.mutedUntil !== null && empire.mutedUntil > Date.now(),
+  );
   const tickRunner = new TickRunner(
     runtime,
     {
@@ -278,6 +289,7 @@ export function composeEngine(
   return {
     inbox,
     corporation,
+    communication,
     industry,
     logistics,
     gateway,

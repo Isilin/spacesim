@@ -1,6 +1,8 @@
 import type {
   Blueprint,
   Colony,
+  ChatMessage,
+  ChatScope,
   Contract,
   Corporation,
   CorporationInvite,
@@ -14,6 +16,7 @@ import type {
   GameState,
   Gateway,
   LeaderboardEntry,
+  Mail,
   MiningOutpost,
   Mission,
   Objective,
@@ -89,6 +92,16 @@ export interface EmpireSnapshot {
   corporationMembers: CorporationMember[];
   /** Invitations en attente le concernant (chantier 32.8), reçues ou émises. */
   corporationInvites: CorporationInvite[];
+  /**
+   * Canaux auxquels l'empire appartient (chantier 32.14). Transmis EXPLICITEMENT et non
+   * déduits des messages reçus : un canal encore silencieux serait sinon invisible, et
+   * personne ne pourrait jamais y parler en premier.
+   */
+  chatChannels: { scope: ChatScope; scopeId: string }[];
+  /** Messages de ces canaux, chacun tronqué à `CHAT_PAGE`. */
+  chat: ChatMessage[];
+  /** Boîte aux lettres de l'empire (chantier 32.15), du plus récent au plus ancien. */
+  mails: Mail[];
   /** Événements de monde actifs (chantier 17), non brouillardés. */
   worldEvents: WorldEvent[];
   /** Présent quand l'exploration ou l'univers a changé depuis le dernier message. */

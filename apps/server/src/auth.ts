@@ -404,6 +404,13 @@ export interface SanctionEntry {
   expiresAt: number | null;
 }
 
+export interface MuteStatus {
+  muted: boolean;
+  reason: string | null;
+  /** `null` = sans terme (levé par `unmute` seulement), comme un bannissement. */
+  expiresAt: number | null;
+}
+
 export interface SanctionStatus {
   active: boolean;
   kind: "ban" | "suspend" | null;
@@ -453,6 +460,40 @@ export function computeSanctionStatus(
     reason: active ? statusEvent.reason : null,
     expiresAt: statusEvent.expiresAt,
   };
+}
+
+/**
+ * Statut de silence, calculé depuis le MÊME historique que `computeSanctionStatus` mais
+ * répondant à une autre question (chantier 32.16).
+ *
+ * Deux calculs et une seule source de vérité : `computeSanctionStatus` décide si un
+ * compte peut se connecter, celui-ci s'il peut parler. Les fusionner aurait fait d'un
+ * mute une interdiction de jouer — la sanction ne correspondrait plus à la faute
+ * (ADR 0010).
+ */
+export function computeMuteStatus(
+  history: readonly SanctionEntry[],
+  now = Date.now(),
+): MuteStatus {
+  const event = history.find((e) => e.kind === "mute" || e.kind === "unmute");
+  if (!event || event.kind === "unmute") {
+    return { muted: false, reason: null, expiresAt: null };
+  }
+  // `expiresAt === null` = silence sans terme, levé seulement par un `unmute` — même
+  // convention que `ban`.
+  const muted = event.expiresAt === null || event.expiresAt > now;
+  return {
+    muted,
+    reason: muted ? event.reason : null,
+    expiresAt: event.expiresAt,
+  };
+}
+
+export async function accountMuteStatus(
+  accountId: string,
+  now = Date.now(),
+): Promise<MuteStatus> {
+  return computeMuteStatus(await sanctionHistory(accountId), now);
 }
 
 /** Statut courant d'un compte — chemin utilisé par `login()` ci-dessous et par l'admin. */

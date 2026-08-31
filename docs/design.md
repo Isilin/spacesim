@@ -1782,3 +1782,50 @@ les mauvaises raisons, comme au chantier 31 avec `TransferPanel`.
 elle-même* suppose qu'elle possède des structures, donc un territoire, une file de
 construction et une position — décision d'un autre ordre. Aucune corporation PNJ : rien ne
 les ferait jouer, et il faudrait leur inventer une politique.
+
+### Vague C — Communication (ouverte 31/08/2026)
+
+Décision et alternatives écartées :
+[ADR 0010](adr/0010-communication-canaux-bornes-et-courrier.md). Quatre points tranchés :
+deux canaux définis par l'**appartenance dérivée** de l'état du jeu et non par un
+abonnement (`corp`, `galaxy`) ; un canal est **borné et jetable** là où le journal ne purge
+jamais un non-lu ; le **courrier n'est ni du chat ni un événement** (il a un corps et se
+relit), mais il réutilise le journal pour prévenir ; et le **silence est livré avec**, sur
+un axe distinct de la suspension.
+
+- **32.12** — modèle `ChatMessage` / `Mail`, canaux, bornes, contrats Zod.
+- **32.13** — persistance : tables `chat_messages` et `mails`, repository, migration.
+- **32.14** — `ChatService` : appartenance dérivée, envoi, historique borné, projection.
+- **32.15** — courrier asynchrone : envoi, lecture, notification par le journal.
+- **32.16** — modération : sanction `mute` sur un second calcul de statut
+  (`computeMuteStatus`), vérifiée à l'envoi côté serveur, exposée dans `apps/admin`.
+- **32.17** — client : panneau de communication (canaux + courrier).
+
+**Bilan de la vague C (31/08/2026).** Livrée en entier, 32.12 à 32.17.
+
+Trois choses trouvées en la faisant :
+
+- **Un canal déduit des messages reçus est invisible tant qu'il est silencieux.** Le
+  client construisait sa liste de canaux depuis ce qu'il avait entendu — personne n'aurait
+  jamais pu parler en premier. Le serveur publie désormais `chatChannels` explicitement.
+- **Le quota d'authentification bloquait la suite e2e**, pas une limite de jeu : dix
+  inscriptions par minute et par IP est la bonne valeur en production et devient
+  intenable dès que la suite fait vivre plusieurs joueurs. `AUTH_RATE_LIMIT_MAX` est
+  configurable, relevé dans le seul `webServer` de Playwright ; le défaut ne bouge pas.
+- **La suite e2e passe à un worker unique.** Elle mesure des budgets d'images sur un
+  pilote OpenGL logiciel : mesurer pendant que d'autres navigateurs se disputent le
+  processeur ne mesure rien. Relever le seuil aurait masqué une vraie régression au lieu
+  de supprimer le bruit. Le test de caméra reste occasionnellement lent au premier
+  contexte WebGL — son attente d'initialisation a été élargie à 20 s, et quatre passages
+  consécutifs sont verts, mais ce n'est pas une preuve de stabilité définitive.
+
+Le silence est arrivé **avec** le chat, comme le plan l'exigeait, et sur un axe distinct :
+`computeMuteStatus` lit le même historique de sanctions que `computeSanctionStatus` mais
+répond à une autre question. Un test vérifie explicitement qu'un silence n'empêche pas de
+se connecter et qu'une suspension ne réduit pas au silence — la sanction doit correspondre
+à la faute. Il prend effet immédiatement sur un joueur déjà connecté, sans quoi un
+spammeur aurait continué jusqu'à sa prochaine reconnexion.
+
+**Hors périmètre de la vague C** : la messagerie privée synchrone. Le courrier couvre le
+besoin de s'adresser à quelqu'un ; un canal privé demanderait blocage individuel et
+signalement, soit un étage de modération de plus que le mute.
