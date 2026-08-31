@@ -1,6 +1,7 @@
 import {
   bigint,
   doublePrecision,
+  index,
   integer,
   pgTable,
   primaryKey,
@@ -306,6 +307,37 @@ export const objectives = pgTable("objectives", {
   deadline: bigint("deadline", { mode: "number" }).notNull(),
   status: text("status").notNull().default("open"),
 });
+
+/**
+ * Journal d'événements par empire (chantier 32.2) — le canal qui rend le jeu perceptible
+ * à un joueur hors ligne. Champs de charge utile en colonnes nullables plutôt qu'en JSON :
+ * interrogeable et migrable comme le reste du schéma. Voir ADR 0008.
+ */
+export const empireEvents = pgTable(
+  "empire_events",
+  {
+    id: text("id").primaryKey(),
+    gameId: text("game_id").notNull(),
+    empireId: text("empire_id").notNull(),
+    kind: text("kind").notNull(),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+    /** `null` = non lu. C'est ce champ qui décide de ce que la purge peut jeter. */
+    readAt: bigint("read_at", { mode: "number" }),
+    systemId: text("system_id"),
+    colonyId: text("colony_id"),
+    otherName: text("other_name"),
+    subjectId: text("subject_id"),
+    amount: doublePrecision("amount"),
+  },
+  (table) => [
+    // Toutes les lectures sont « les N plus récents de cet empire » : sans cet index,
+    // chaque connexion balaierait le journal de toute la partie.
+    index("empire_events_empire_created_idx").on(
+      table.empireId,
+      table.createdAt,
+    ),
+  ],
+);
 
 /** Événements de monde actifs, partagés (chantier 17). Supprimés à expiration. */
 export const worldEvents = pgTable("world_events", {

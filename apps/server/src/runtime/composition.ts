@@ -1,5 +1,6 @@
 import type { GameRuntime } from "./game-runtime.js";
 import type { Logger } from "./logger.js";
+import type { EmpireEventDraft } from "@spacesim/shared";
 import type { Persister } from "./persistence/persister.js";
 import { BootstrapService } from "./services/bootstrap-service.js";
 import { ContractService } from "./services/contract-service.js";
@@ -9,13 +10,14 @@ import { ExplorationService } from "./services/exploration-service.js";
 import { FleetService } from "./services/fleet-service.js";
 import { GatewayService } from "./services/gateway-service.js";
 import { IndustryService } from "./services/industry-service.js";
+import { InboxService } from "./services/inbox-service.js";
 import { LogisticsService } from "./services/logistics-service.js";
 import { MarketService } from "./services/market-service.js";
 import { ObjectiveService } from "./services/objective-service.js";
 import { StationService } from "./services/station-service.js";
 import { TickRunner } from "./tick-runner.js";
 
-/** Les dix services par domaine + bootstrap + outils de dev + l'orchestrateur de tick, composés. */
+/** Les onze services par domaine + bootstrap + outils de dev + l'orchestrateur de tick, composés. */
 export interface ComposedEngine {
   industry: IndustryService;
   logistics: LogisticsService;
@@ -27,6 +29,7 @@ export interface ComposedEngine {
   diplomacy: DiplomacyService;
   objective: ObjectiveService;
   station: StationService;
+  inbox: InboxService;
   bootstrap: BootstrapService;
   devService: DevService;
   tickRunner: TickRunner;
@@ -61,6 +64,15 @@ export function composeEngine(
   let bootstrap: BootstrapService;
   let station: StationService;
 
+  /**
+   * La boîte de réception (chantier 32.4) est construite en PREMIER et sans dépendance :
+   * elle n'appelle personne, tout le monde l'appelle. Les services de domaine reçoivent
+   * `emit` comme ils reçoivent déjà `persistColony` — aucun d'eux ne connaît
+   * l'`InboxService` (ADR 0001).
+   */
+  const inbox = new InboxService(runtime, notify, logger);
+  const emit = (draft: EmpireEventDraft) => inbox.emit(draft);
+
   const industry = new IndustryService(
     runtime,
     notify,
@@ -72,6 +84,7 @@ export function composeEngine(
       applyStationTrade: (stationId, creditDelta) =>
         station.applyStationTrade(stationId, creditDelta),
     },
+    emit,
   );
   gateway = new GatewayService(
     runtime,
@@ -107,6 +120,7 @@ export function composeEngine(
         extras,
         departedAt,
       ),
+    emit,
   );
   market = new MarketService(
     runtime,
@@ -187,10 +201,15 @@ export function composeEngine(
     (empire, systemId) => exploration.markExplored(empire, systemId),
     (a, b) => diplomacy.atWar(a, b),
     (galaxyId) => diplomacy.worldEventKindsOnGalaxy(galaxyId),
+    emit,
   );
-  diplomacy = new DiplomacyService(runtime, notify, logger);
-  const objective = new ObjectiveService(runtime, notify, logger, (colony) =>
-    industry.persistColony(colony),
+  diplomacy = new DiplomacyService(runtime, notify, logger, emit);
+  const objective = new ObjectiveService(
+    runtime,
+    notify,
+    logger,
+    (colony) => industry.persistColony(colony),
+    emit,
   );
   station = new StationService(
     runtime,
@@ -247,6 +266,7 @@ export function composeEngine(
   });
 
   return {
+    inbox,
     industry,
     logistics,
     gateway,

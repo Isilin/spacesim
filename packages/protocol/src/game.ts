@@ -259,6 +259,11 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("cancelProposal"), proposalId: idSchema }),
   z.object({ type: z.literal("breakRelation"), targetEmpireId: idSchema }),
+  // Boîte de réception (chantier 32.3). Deux commandes plutôt qu'une : marquer une
+  // entrée n'implique pas de marquer celles d'avant — l'usage réel est de traiter une
+  // ligne et de laisser les autres en attente (ADR 0008).
+  z.object({ type: z.literal("markEventRead"), eventId: idSchema }),
+  z.object({ type: z.literal("markAllEventsRead") }),
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;

@@ -1,4 +1,5 @@
 import {
+  EMPIRE_EVENT_PAGE,
   findGalaxyOfSystem,
   hasBlueprintMarket,
   hasResourceMarket,
@@ -6,6 +7,7 @@ import {
   redactUniverse,
   relationKey,
   sitesOfSystem,
+  type EmpireEvent,
   type ForeignColony,
   type ForeignFleet,
   type ForeignStation,
@@ -110,6 +112,28 @@ export function objectivesForEmpire(
  * Systèmes revendiqués visibles d'un empire (chantier 7e) : ses propres claims + ceux
  * des autres empires situés dans son brouillard, colorés par propriétaire.
  */
+/**
+ * Journal d'un empire, du plus RÉCENT au plus ancien et tronqué à `EMPIRE_EVENT_PAGE`
+ * (chantier 32.3). L'ordre est inversé ici et pas au stockage : la RAM garde l'ordre
+ * chronologique, seul naturel pour l'ajout et la purge, alors que la lecture veut
+ * toujours les dernières nouvelles d'abord.
+ */
+export function eventsForEmpire(
+  runtime: GameRuntime,
+  empire: Empire,
+): EmpireEvent[] {
+  const list = runtime.eventsByEmpire.get(empire.id) ?? [];
+  return list.slice(-EMPIRE_EVENT_PAGE).reverse();
+}
+
+/** Non-lus sur le TOTAL et non sur la page transmise — c'est le digest d'absence. */
+export function unreadEventCount(runtime: GameRuntime, empire: Empire): number {
+  const list = runtime.eventsByEmpire.get(empire.id) ?? [];
+  let count = 0;
+  for (const event of list) if (event.readAt === null) count++;
+  return count;
+}
+
 export function territoriesForEmpire(
   runtime: GameRuntime,
   empire: Empire,
@@ -287,6 +311,8 @@ export function snapshotForEmpire(
     relations: relationsForEmpire(runtime, empire),
     proposals: proposalsForEmpire(runtime, empire),
     objectives: objectivesForEmpire(runtime, empire),
+    events: eventsForEmpire(runtime, empire),
+    unreadEventCount: unreadEventCount(runtime, empire),
     worldEvents: [...runtime.worldEventMap.values()],
     // L'univers n'est réémis qu'en cas de changement : nouvelle exploration (brouillard
     // levé) ou extension de l'univers (galaxies apparues).

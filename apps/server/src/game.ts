@@ -45,6 +45,7 @@ import type { GatewayService } from "./runtime/services/gateway-service.js";
 import type { IndustryService } from "./runtime/services/industry-service.js";
 import type { LogisticsService } from "./runtime/services/logistics-service.js";
 import type { MarketService } from "./runtime/services/market-service.js";
+import type { InboxService } from "./runtime/services/inbox-service.js";
 import type { ObjectiveService } from "./runtime/services/objective-service.js";
 import type { StationService } from "./runtime/services/station-service.js";
 import { Persister } from "./runtime/persistence/persister.js";
@@ -98,6 +99,8 @@ export class GameEngine {
   readonly diplomacy: DiplomacyService;
   /** Objectifs éphémères personnels (chantier 17), domaine isolé. */
   readonly objective: ObjectiveService;
+  /** Boîte de réception d'empire (chantier 32) : journal durable des faits notables. */
+  readonly inbox: InboxService;
   /** Stations orbitales (chantier 24) : zones, installations, tick de production. */
   readonly station: StationService;
   /** Bootstrap des empires (compte joueur, PNJ, colonie mère) et outils de dev associés. */
@@ -212,6 +215,7 @@ export class GameEngine {
     this.fleetService = composed.fleetService;
     this.diplomacy = composed.diplomacy;
     this.objective = composed.objective;
+    this.inbox = composed.inbox;
     this.station = composed.station;
     this.bootstrap = composed.bootstrap;
     this.devService = composed.devService;

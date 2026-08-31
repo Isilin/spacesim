@@ -159,3 +159,61 @@ export interface ForeignStation {
     tradableStocks: Partial<Record<ResourceId, number>>;
   };
 }
+
+/**
+ * Nature d'un événement de boîte de réception (chantier 32.1).
+ *
+ * Un même fait produit **deux** événements quand il oppose deux empires — `battle_won`
+ * pour l'un, `battle_lost` pour l'autre : c'est ce qui permet de rédiger selon le point
+ * de vue sans jamais exposer celui de l'adversaire. Voir
+ * [ADR 0008](../../../../docs/adr/0008-journal-d-evenements-d-empire.md).
+ */
+export type EmpireEventKind =
+  | "battle_won"
+  | "battle_lost"
+  | "colony_attacked"
+  | "claim_lost"
+  | "contract_fulfilled"
+  | "research_completed"
+  | "relation_changed"
+  | "objective_completed";
+
+/**
+ * Entrée du journal d'un empire. Aucune phrase : le serveur n'écrit que des identifiants
+ * et des nombres, le client rend dans la locale du joueur — même raison qu'au chantier
+ * 27.19 pour `Contract.issuerFactionId`, un libellé figé à l'écriture resterait dans la
+ * langue du serveur pour toujours, et l'univers ne se réinitialise jamais.
+ *
+ * Les champs optionnels dépendent du `kind` ; la table les stocke tous nullables plutôt
+ * qu'en JSON, pour rester interrogeable et migrable comme le reste du schéma.
+ */
+export interface EmpireEvent {
+  id: string;
+  empireId: string;
+  kind: EmpireEventKind;
+  createdAt: number;
+  /** `null` tant que le joueur ne l'a pas ouvert — c'est ce qui fait le digest d'absence. */
+  readAt: number | null;
+  /** Système concerné (bataille, claim perdu). */
+  systemId?: string;
+  /** Colonie concernée (attaque de colonie, contrat honoré). */
+  colonyId?: string;
+  /**
+   * Nom d'affichage de l'autre partie, figé à l'écriture. Contrairement à un libellé
+   * traduisible, un nom d'empire est choisi par un joueur : il n'existe dans aucune
+   * locale et ne peut pas être résolu par id après coup si l'empire disparaît.
+   */
+  otherName?: string;
+  /** Identifiant de contenu à traduire côté client (technologie, ressource, état de relation). */
+  subjectId?: string;
+  /** Quantité associée : crédits d'un contrat, récompense d'objectif, pertes d'une bataille. */
+  amount?: number;
+}
+
+/**
+ * Ce qu'un émetteur fournit : identité, horodatage et état de lecture sont posés par la
+ * boîte de réception. Vit ici et non côté serveur pour que les services de domaine
+ * n'aient à importer aucun type de l'`InboxService` — ils reçoivent une fonction, pas
+ * une dépendance (ADR 0001).
+ */
+export type EmpireEventDraft = Omit<EmpireEvent, "id" | "createdAt" | "readAt">;

@@ -201,3 +201,17 @@ export const GATE_AVOIDANCE_PENALTY = 1000;
  * ci-dessus, jamais facturée au joueur.
  */
 export const HOSTILE_SYSTEM_PENALTY = 3;
+
+/**
+ * Bornes du journal d'événements d'empire (chantier 32.1). C'est le seul objet du
+ * snapshot qui croît sans jamais décroître avec le temps de jeu, dans un univers qui ne
+ * se réinitialise jamais — d'où deux bornes plutôt qu'une.
+ *
+ * `KEEP` : au-delà, les plus anciens événements **déjà lus** sont purgés de la base. Les
+ * non-lus ne le sont jamais : ce sont exactement ceux que le joueur absent doit
+ * retrouver. `PAGE` : ce que le snapshot transporte à chaque tick — un joueur revenu
+ * après trois semaines n'a pas besoin de deux cents lignes par tick pour comprendre
+ * qu'il s'est fait attaquer. Le compteur de non-lus, lui, porte sur le total.
+ */
+export const EMPIRE_EVENT_KEEP = 200;
+export const EMPIRE_EVENT_PAGE = 50;

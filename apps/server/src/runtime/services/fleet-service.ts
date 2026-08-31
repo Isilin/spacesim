@@ -23,6 +23,7 @@ import {
   type FleetComposition,
   type PirateLair,
   type ResourceId,
+  type EmpireEventDraft,
   type StoredBattle,
   type WorldEventKind,
 } from "@spacesim/shared";
@@ -69,6 +70,7 @@ export class FleetService {
     private readonly worldEventKindsOnGalaxy: (
       galaxyId: string,
     ) => WorldEventKind[],
+    private readonly emit: (draft: EmpireEventDraft) => void,
   ) {
     this.repo = new FleetRepository(runtime.clock.id, runtime.writeSet);
   }
@@ -376,6 +378,12 @@ export class FleetService {
       `${target.empire.name} — ${target.fleet.name}`,
       report,
     );
+    this.emitBattle(
+      empire,
+      target.empire,
+      fleet.systemId,
+      report.winner === "attacker",
+    );
     this.applyFleetSurvivors(
       empire,
       fleet,
@@ -443,6 +451,12 @@ export class FleetService {
         `${target.empire.name} — ${defender.name}`,
         report,
       );
+      this.emitBattle(
+        empire,
+        target.empire,
+        systemId,
+        report.winner === "attacker",
+      );
       this.applyFleetSurvivors(
         target.empire,
         defender,
@@ -497,7 +511,23 @@ export class FleetService {
     // Rupture du claim ennemi sur le système pillé.
     if (target.empire.claimedSystemIds.includes(systemId)) {
       this.dropClaim(target.empire, systemId);
+      this.emit({
+        empireId: target.empire.id,
+        kind: "claim_lost",
+        systemId,
+        otherName: empire.name,
+      });
     }
+    // Le pillage lui-même : c'est l'entrée que le joueur absent doit trouver en
+    // priorité, et la seule qui chiffre ce qu'il a perdu.
+    this.emit({
+      empireId: target.empire.id,
+      kind: "colony_attacked",
+      systemId,
+      colonyId: victim.id,
+      otherName: empire.name,
+      amount: Object.values(stolen).reduce((sum, n) => sum + (n ?? 0), 0),
+    });
     this.archiveBattle(
       systemId,
       fleet.name,
@@ -510,6 +540,34 @@ export class FleetService {
     this.logger.info(`[game] raid sur ${victim.name} par « ${empire.name} »`);
     this.notify();
     return null;
+  }
+
+  /**
+   * Inscrit la bataille au journal des DEUX camps (chantier 32.4), avec un `kind` par
+   * point de vue. Deux entrées et non une partagée : c'est ce qui permet au client de
+   * rédiger « vous avez perdu » sans jamais transporter le journal de l'adversaire.
+   *
+   * `otherName` est figé ici : un nom d'empire est choisi par un joueur, il n'existe
+   * dans aucune locale et ne serait plus résoluble par id si l'empire disparaissait.
+   */
+  private emitBattle(
+    attacker: Empire,
+    defender: Empire,
+    systemId: string,
+    attackerWon: boolean,
+  ): void {
+    this.emit({
+      empireId: attacker.id,
+      kind: attackerWon ? "battle_won" : "battle_lost",
+      systemId,
+      otherName: defender.name,
+    });
+    this.emit({
+      empireId: defender.id,
+      kind: attackerWon ? "battle_lost" : "battle_won",
+      systemId,
+      otherName: attacker.name,
+    });
   }
 
   private archiveBattle(

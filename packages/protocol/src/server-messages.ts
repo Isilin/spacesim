@@ -2,6 +2,7 @@ import type {
   Blueprint,
   Colony,
   Contract,
+  EmpireEvent,
   FactionState,
   Fleet,
   ForeignColony,
@@ -68,6 +69,13 @@ export interface EmpireSnapshot {
   proposals: RelationProposal[];
   /** Objectifs éphémères de l'empire (chantier 17) — personnels, jamais visibles d'un tiers. */
   objectives: Objective[];
+  /**
+   * Journal d'événements de l'empire (chantier 32.3), du plus récent au plus ancien et
+   * tronqué à `EMPIRE_EVENT_PAGE`. Redacté comme les objectifs.
+   */
+  events: EmpireEvent[];
+  /** Non-lus sur le TOTAL, pas seulement sur la page transmise — c'est le digest d'absence. */
+  unreadEventCount: number;
   /** Événements de monde actifs (chantier 17), non brouillardés. */
   worldEvents: WorldEvent[];
   /** Présent quand l'exploration ou l'univers a changé depuis le dernier message. */

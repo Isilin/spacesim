@@ -19,6 +19,7 @@ const PRIMARY_KEYS: Partial<Record<SchemaKey, readonly string[]>> = {
   relations: ["empireA", "empireB"],
   relationProposals: ["id"],
   objectives: ["id"],
+  empireEvents: ["id"],
   worldEvents: ["id"],
   factionStates: ["factionId"],
   blueprints: ["id"],

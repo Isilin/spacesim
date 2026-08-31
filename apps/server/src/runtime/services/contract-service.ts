@@ -20,6 +20,7 @@ import {
   type Mission,
   type ResourceId,
   type ShipId,
+  type EmpireEventDraft,
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
@@ -63,6 +64,7 @@ export class ContractService {
       >,
       departedAt?: number,
     ) => void,
+    private readonly emit: (draft: EmpireEventDraft) => void,
   ) {
     this.repo = new ContractRepository(runtime.clock.id, runtime.writeSet);
   }
@@ -239,6 +241,20 @@ export class ContractService {
     };
     this.runtime.contractMap.set(contract.id, nextContract);
     this.persistContract(nextContract);
+    // Prévient l'ÉMETTEUR, pas celui qui accepte : celui-ci vient d'agir et voit le
+    // résultat, l'autre peut être hors ligne depuis des jours. Émis à l'acceptation
+    // parce que c'est là que le contrat devient honoré — la livraison, elle, ne peut
+    // plus échouer une fois la cargaison réservée.
+    if (remaining <= 0) {
+      this.emit({
+        empireId: contract.issuerId,
+        kind: "contract_fulfilled",
+        colonyId: contract.colonyId,
+        otherName: empire.name,
+        subjectId: contract.resource,
+        amount: contract.quantity * contract.pricePerUnit,
+      });
+    }
 
     this.insertMission(
       empire,

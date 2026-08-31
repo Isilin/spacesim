@@ -1678,3 +1678,32 @@ scindé à ce moment-là — la frontière naturelle passe après la vague C.
 **Ordre** : `A → B → C → D` est une chaîne, chaque étage ayant besoin du précédent pour être
 perceptible et gouvernable. `E` ne dépend que de `A`. `F` conditionne l'intérêt de `B` et `E`
 mais peut être conçu en dernier, une fois qu'on voit ce que les joueurs font des deux autres.
+
+### Vague A — Boîte de réception d'empire (ouverte 31/08/2026)
+
+Décision et alternatives écartées : [ADR 0008](adr/0008-journal-d-evenements-d-empire.md).
+Trois points y sont tranchés et cadrent toute la vague : un événement est une **donnée
+structurée** rendue par le client (le serveur ne parle pas la langue du joueur — précédent
+27.19 sur `Contract.issuerFactionId`), il est **durable et redacté par empire**, et il est
+**borné des deux côtés** (purge en base des lus au-delà de 200, 50 sur le fil) parce que
+c'est le seul objet du snapshot qui croît sans jamais décroître.
+
+- **32.1** — modèle `EmpireEvent` dans `packages/shared/src/model/social.ts` et contrats
+  Zod dans `packages/protocol`. Les `kind` couvrent ce qu'un joueur absent doit retrouver :
+  attaque subie ou menée, colonie attaquée, claim perdu, contrat honoré, recherche finie,
+  relation changée, objectif rempli. Constantes de bornage dans `constants.ts`.
+- **32.2** — persistance : table `empire_events`, `EmpireEventRepository` propriétaire
+  unique, migration Drizzle. Écriture via le `WriteSet` comme le reste (ADR 0003).
+- **32.3** — `InboxService` : émission, chargement au boot, purge bornée, marquage lu.
+  Projection `eventsForEmpire` + `unreadEventCount` dans le snapshot, commandes
+  `markEventRead` / `markAllEventsRead`.
+- **32.4** — émetteurs branchés dans les services de domaine (flotte, contrat, industrie,
+  diplomatie, objectif) via une fonction injectée par `composeEngine`, au même titre que
+  `persistColony` — aucun service ne dépend de l'`InboxService` (ADR 0001).
+- **32.5** — client : panneau de boîte de réception, pastille de non-lus, et digest
+  « pendant ton absence » à la reconnexion.
+
+**Ce qui reste hors de la vague A**, et pourquoi : le `battleLog` partagé n'est pas absorbé
+(journal public de combats, utile en soi, migration pour un gain nul) ; aucune notification
+hors-jeu (courriel, push) — c'est un canal, pas un événement, et il appartiendrait à la
+vague C.

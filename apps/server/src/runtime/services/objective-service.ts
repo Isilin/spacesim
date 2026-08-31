@@ -5,6 +5,7 @@ import {
   objectiveMet,
   OBJECTIVE_DURATION_MS,
   type Colony,
+  type EmpireEventDraft,
   type Objective,
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
@@ -25,6 +26,7 @@ export class ObjectiveService {
     private readonly notify: () => void,
     private readonly logger: Logger,
     private readonly persistColony: (colony: Colony) => void,
+    private readonly emit: (draft: EmpireEventDraft) => void,
   ) {
     this.repo = new ObjectiveRepository(runtime.clock.id, runtime.writeSet);
   }
@@ -128,6 +130,12 @@ export class ObjectiveService {
         const next: Objective = { ...objective, status: "completed" };
         this.runtime.objectiveMap.set(id, next);
         this.persistObjective(next);
+        this.emit({
+          empireId: empire.id,
+          kind: "objective_completed",
+          subjectId: objective.kind,
+          amount: objective.reward,
+        });
         this.logger.info(
           `[game] « ${empire.name} » a rempli son objectif : ${objective.kind}`,
         );

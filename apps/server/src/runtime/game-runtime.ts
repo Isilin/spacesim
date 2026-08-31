@@ -8,6 +8,7 @@ import {
 import type {
   AsteroidBelt,
   Contract,
+  EmpireEvent,
   FactionState,
   Gateway,
   Objective,
@@ -65,6 +66,14 @@ export class GameRuntime {
   objectiveMap = new Map<string, Objective>();
   /** Événements de monde actifs, partagés (chantier 17). */
   worldEventMap = new Map<string, WorldEvent>();
+  /**
+   * Journal d'événements par empire (chantier 32.3), du plus ancien au plus récent.
+   *
+   * Indexé par empire et non par id : toutes les lectures sont « le journal de cet
+   * empire », jamais « cet événement ». Un `Map<id, EmpireEvent>` global aurait imposé
+   * un balayage complet à chaque snapshot de chaque joueur.
+   */
+  eventsByEmpire = new Map<string, EmpireEvent[]>();
   /** Empires partageant cet univers (chantier 7b). Un seul instancié à ce stade. */
   empires = new Map<string, Empire>();
   /** Empire propriétaire par défaut (solo). Posé par `ensureDefaultPlayer`. */

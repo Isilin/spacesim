@@ -5,7 +5,7 @@ import type { GameEngine } from "../game.js";
  * contrat implicite (chantier 19.10, extrait de `GameEngine.boot()`). Contenu de jeu
  * (chantier 23.5+) amorcé/chargé en tout premier, puis empire par
  * défaut et joueurs (identité), puis les entités partagées sans fog
- * (relations, propositions, objectifs, événements de monde), puis soit la création de
+ * (relations, propositions, objectifs, journaux d'empire, événements de monde), puis soit la création de
  * la colonie mère (partie neuve) soit le rechargement complet des entités par-empire
  * et partagées (partie existante), enfin les plans de vaisseaux, l'équipement
  * idempotent des galaxies, la frontière glissante et le rattrapage du temps
@@ -28,6 +28,7 @@ export async function bootEngine(
   await engine.diplomacy.loadRelations();
   await engine.diplomacy.loadProposals();
   await engine.objective.loadObjectives();
+  await engine.inbox.loadEvents();
   await engine.diplomacy.loadWorldEvents();
   if (isNew) {
     engine.bootstrap.createHomeColony();

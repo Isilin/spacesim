@@ -66,6 +66,9 @@ export {
   type Contract,
   type ForeignColony,
   type ForeignStation,
+  type EmpireEventKind,
+  type EmpireEvent,
+  type EmpireEventDraft,
 } from "./model/social.js";
 export {
   TICK_MS,
@@ -79,6 +82,8 @@ export {
   GATEWAY_JUMP_WEIGHT,
   GATE_AVOIDANCE_PENALTY,
   HOSTILE_SYSTEM_PENALTY,
+  EMPIRE_EVENT_KEEP,
+  EMPIRE_EVENT_PAGE,
   INTRA_SYSTEM_REFERENCE_LENGTH,
   INITIAL_GALAXIES,
   FRONTIER_GALAXIES,

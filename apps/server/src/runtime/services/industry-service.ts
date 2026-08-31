@@ -31,6 +31,7 @@ import {
   type TechDef,
   type TechId,
   type ZoneTypeDef,
+  type EmpireEventDraft,
 } from "@spacesim/shared";
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
@@ -77,6 +78,7 @@ export class IndustryService {
       ) => StationTradeAccess;
       applyStationTrade: (stationId: string, creditDelta: number) => number;
     },
+    private readonly emit: (draft: EmpireEventDraft) => void,
   ) {
     this.blueprintRepo = new BlueprintRepository(
       runtime.clock.id,
@@ -746,6 +748,13 @@ export class IndustryService {
       empire.research = null;
       empire.effects = this.empireEffects(empire.researched);
       this.logger.info(`[game] recherche terminée : ${finished.techId}`);
+      // `subjectId` et non un libellé : la technologie est du contenu, traduit côté
+      // client comme partout ailleurs (chantier 32.4).
+      this.emit({
+        empireId: empire.id,
+        kind: "research_completed",
+        subjectId: finished.techId,
+      });
     }
     // Enchaînement de la file, y compris quand la science manquait au tick précédent.
     const beforeQueue = empire.research;

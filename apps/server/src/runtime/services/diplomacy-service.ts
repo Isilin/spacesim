@@ -19,6 +19,7 @@ import {
   type RelationState,
   type WorldEvent,
   type WorldEventKind,
+  type EmpireEventDraft,
 } from "@spacesim/shared";
 import { combatDefsFromWarships } from "../content/content-service.js";
 import { randomUUID } from "node:crypto";
@@ -46,6 +47,7 @@ export class DiplomacyService {
     private readonly runtime: GameRuntime,
     private readonly notify: () => void,
     private readonly logger: Logger,
+    private readonly emit: (draft: EmpireEventDraft) => void,
   ) {
     this.relationsRepo = new DiplomacyRepository(
       runtime.clock.id,
@@ -120,6 +122,29 @@ export class DiplomacyService {
     this.relationsRepo.saveRelation(relation);
   }
 
+  /**
+   * Prévient l'AUTRE partie d'un changement de relation (chantier 32.4) — jamais celle
+   * qui vient d'agir, qui voit le résultat à l'écran. C'est la seule notification qui
+   * puisse arriver à un joueur totalement passif : une guerre se déclare sans lui.
+   *
+   * Rien n'est émis vers un PNJ : personne ne lira son journal, et il grossirait la
+   * table sans borne puisqu'un PNJ ne marque jamais rien comme lu.
+   */
+  private emitRelationChange(
+    actor: Empire,
+    otherId: string,
+    state: RelationState,
+  ): void {
+    const other = this.runtime.empires.get(otherId);
+    if (!other || other.kind !== "human") return;
+    this.emit({
+      empireId: otherId,
+      kind: "relation_changed",
+      otherName: actor.name,
+      subjectId: state,
+    });
+  }
+
   /** Action joueur : déclarer la guerre à un empire — unilatérale, mais coûteuse en influence. */
   declareWar(empire: Empire, targetEmpireId: string): string | null {
     if (targetEmpireId === empire.id) return "Cible invalide";
@@ -133,6 +158,7 @@ export class DiplomacyService {
     }
     empire.influence -= DECLARE_WAR_INFLUENCE_COST;
     this.setRelation(empire.id, targetEmpireId, "war", null);
+    this.emitRelationChange(empire, targetEmpireId, "war");
     this.logger.info(
       `[game] « ${empire.name} » déclare la guerre à « ${target.name} »`,
     );
@@ -152,6 +178,7 @@ export class DiplomacyService {
       "neutral",
       Date.now() + WAR_COOLDOWN_MS,
     );
+    this.emitRelationChange(empire, targetEmpireId, "neutral");
     this.notify();
     return null;
   }
@@ -240,6 +267,7 @@ export class DiplomacyService {
     const reason = breakRelationReason(current);
     if (reason) return reason;
     this.setRelation(empire.id, targetEmpireId, "neutral", null);
+    this.emitRelationChange(empire, targetEmpireId, "neutral");
     this.notify();
     return null;
   }
@@ -248,13 +276,18 @@ export class DiplomacyService {
   private resolveProposal(proposal: RelationProposal, accept: boolean): void {
     this.runtime.proposalMap.delete(proposal.id);
     this.deleteProposal(proposal.id);
-    if (accept)
-      this.setRelation(
-        proposal.fromEmpireId,
-        proposal.toEmpireId,
-        proposal.kind,
-        null,
-      );
+    if (!accept) return;
+    this.setRelation(
+      proposal.fromEmpireId,
+      proposal.toEmpireId,
+      proposal.kind,
+      null,
+    );
+    // Le PROPOSANT est celui qui apprend quelque chose : il a envoyé son offre et
+    // attendu, peut-être hors ligne. Celui qui répond vient d'agir.
+    const responder = this.runtime.empires.get(proposal.toEmpireId);
+    if (responder)
+      this.emitRelationChange(responder, proposal.fromEmpireId, proposal.kind);
   }
 
   async loadProposals(): Promise<void> {

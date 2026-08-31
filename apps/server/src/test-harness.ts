@@ -38,6 +38,7 @@ export const ALL_TABLES = [
   schema.relations,
   schema.relationProposals,
   schema.objectives,
+  schema.empireEvents,
   schema.worldEvents,
   schema.blueprints,
   schema.gateways,

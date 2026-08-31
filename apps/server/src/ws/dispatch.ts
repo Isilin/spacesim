@@ -272,6 +272,15 @@ export function dispatchClientMessage(
       return engine.diplomacy.cancelProposal(empire, msg.proposalId);
     case "breakRelation":
       return engine.diplomacy.breakRelation(empire, msg.targetEmpireId);
+    // Aucun message d'erreur possible : marquer une entrée qui n'existe pas ou qui
+    // appartient à un autre empire est silencieux à dessein (ADR 0008) — répondre
+    // « inconnu » plutôt que rien révélerait l'existence du journal d'autrui.
+    case "markEventRead":
+      engine.inbox.markRead(empire.id, msg.eventId);
+      return null;
+    case "markAllEventsRead":
+      engine.inbox.markAllRead(empire.id);
+      return null;
     default:
       return assertNever(msg);
   }
