@@ -2021,3 +2021,45 @@ châssis + modules), donc déterministe et vérifiable.
 **Hors périmètre** : les corps astronomiques, qui gardent leur rendu ; les fichiers
 d'assets, la contrainte de l'ADR 0007 étant inchangée ; le texte en 3D ;
 `prefers-reduced-motion` sur la rotation automatique, défaut d'accessibilité préexistant.
+
+**Bilan (01/09/2026).** Livré, 34.1 à 34.7.
+
+| Objet | Avant | Après |
+|---|---|---|
+| Coque standard nue | 10 | 215 |
+| Croiseur de bataille nu | 12 | 229 |
+| Coque standard garnie | 27-31 | 312 |
+| Station à cinq zones | 33 | ~290 |
+
+Appels de rendu : **deux par pièce** avant, **deux par teinte** après — cinq teintes, donc
+dix appels quel que soit le nombre de pièces. Budget d'images inchangé à **57 img/s** pour
+l'aperçu (57 au chantier 33 avec douze pièces) et 58/46 pour la carte : la fusion a
+entièrement absorbé le facteur vingt.
+
+Ce chantier s'est fait **en regardant**, et c'est ce qui l'a fait dévier du plan. Trois
+choses qu'aucun test n'aurait dites, toutes consignées dans l'ADR 0014 :
+
+- **La densité ne remplace pas la silhouette.** Le premier jet a posé deux cents pièces de
+  décor sur trois troncs de cône empilés. Résultat : un fuselage lisse et flou, plus
+  brouillon que les douze pièces de départ. Il a fallu ajouter une superstructure — pont,
+  quille, sponsons, bloc de poupe — parce que ce sont les masses qui font lire un objet
+  construit. La silhouette d'abord, le décor après.
+- **Le mélange additif s'accumule.** Deux cents petits volumes translucides ne rendent pas
+  deux cents détails, ils rendent un nuage lumineux qui avale jusqu'aux masses qu'on vient
+  d'ajouter. Le décor ne garde que ses arêtes ; le remplissage reste aux volumes qui portent
+  la forme. C'est ce partage qui donne la lecture « blueprint ».
+- **Le seuil d'angle des arêtes doit se calculer.** Un anneau à douze faces conservé à 18°
+  garde aussi ses douze arêtes latérales : huit anneaux par tronc tressaient un panier de
+  fil de fer par-dessus la coque. C'était la cause principale du rendu « cocon ».
+
+Deux tests ont attrapé ce que l'œil n'aurait pas vu : les anneaux de coursive s'étaient
+glissés sous le préfixe `corridor-` et gonflaient silencieusement le compte des coursives ;
+et le témoin du palier lourd comptait le total des pièces, un proxy devenu faux puisque le
+budget de décor est volontairement constant d'un châssis à l'autre. À l'inverse, le test
+« tout le décor plaqué reste collé à la surface » tient un invariant qu'aucun e2e ne verrait
+— le premier jet avait des ailettes de radiateur flottant à côté de la coque comme des
+débris.
+
+Dette soldée : `ShipHullDiagram` gardait une copie locale de `isHeavyTier` et un
+`MAX_TONNAGE` écrit en dur qui masquaient `shipScale.ts`, module créé au chantier 33
+précisément pour éviter cette divergence.

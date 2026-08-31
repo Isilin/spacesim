@@ -10,6 +10,7 @@ import {
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { chassisLabel, moduleLabel, slotLabel } from "./labels.js";
+import { hullScale, isHeavyTier } from "./shipScale.js";
 
 export interface SlotRef {
   type: SlotType;
@@ -285,20 +286,6 @@ const HEAVY_EXTRA: Partial<Record<ChassisKind, HullArtExtra>> = {
   },
 };
 
-/** Châssis au tonnage le plus élevé de sa famille — dérivé de `CHASSIS`, pas une liste figée. */
-function isHeavyTier(chassisId: ChassisId): boolean {
-  const chassis = CHASSIS[chassisId];
-  const siblings = Object.values(CHASSIS).filter(
-    (c) => c.kind === chassis.kind,
-  );
-  if (siblings.length < 2) return false;
-  const maxTonnage = Math.max(...siblings.map((c) => c.tonnage));
-  return chassis.tonnage === maxTonnage;
-}
-
-/** Plus gros tonnage du catalogue (battlecruiser) — sert de référence à l'échelle. */
-const MAX_TONNAGE = 240;
-
 /** Position verticale de la bande de chaque type d'emplacement (nez en haut). */
 const BAND_Y: Record<SlotType, number> = {
   weapon: 55,
@@ -392,7 +379,7 @@ export function ShipHullDiagram({
     );
   }
 
-  const scale = 0.75 + 0.5 * Math.min(1, chassis.tonnage / MAX_TONNAGE);
+  const scale = hullScale(chassis);
   const grouped = groupBySlot(modules);
   const art = HULL_ART[chassis.kind];
   const extra = isHeavyTier(chassis.id) ? HEAVY_EXTRA[chassis.kind] : undefined;
