@@ -1,5 +1,10 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useRef, type RefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  type MutableRefObject,
+  type RefObject,
+} from "react";
 import type { PerspectiveCamera, Vector3 } from "three";
 import type { Focus } from "./bounds.js";
 import { fitDistance } from "./MapCanvas.js";
@@ -24,6 +29,15 @@ interface ControlsHandle {
   maxDistance: number;
 }
 
+/**
+ * Marge de dépassement tolérée sous la frontière d'un palier, en largeurs de bande.
+ *
+ * Le franchissement se déclenche dès la progression 1 : la caméra ne peut donc jamais
+ * s'attarder au-delà. Cette marge n'existe que pour laisser passer un saut qui traverse
+ * plusieurs bandes en une image, avant que la cascade de franchissements ne le rattrape.
+ */
+const OVERSHOOT = 4;
+
 export interface AnchorCandidate {
   id: string;
   position: Vec3;
@@ -47,6 +61,23 @@ interface Props {
   /** Emprise d'un candidat dans la scène — cale le rayon d'élection. */
   candidateFootprint: number;
   anchorId: string | null;
+  /**
+   * Profondeur continue, écrite à chaque image (chantier 35.3).
+   *
+   * Une référence mutable et non un état : c'est la seule façon de la partager avec
+   * l'éclairage et les fondus, qui la lisent eux aussi par image. Un état la ferait
+   * traverser React soixante fois par seconde.
+   */
+  depthRef: MutableRefObject<number>;
+  /**
+   * Point de la scène auquel la caméra doit rester collée (chantier 35.3).
+   *
+   * Les corps orbitent : sans cela, zoomer sur une planète la laisse glisser hors du cadre
+   * en quelques secondes. Le décalage image à image est reporté sur la caméra ET sur sa
+   * cible, ce qui conserve exactement le cadrage. La clé sert à ne pas reporter le saut
+   * qu'on observe en changeant d'ancre.
+   */
+  follow: { key: string; at: () => Vec3 } | null;
   onAnchor: (id: string | null) => void;
   onCross: (delta: 1 | -1) => void;
   onChildMount: (mounted: boolean) => void;
@@ -77,6 +108,8 @@ export function TierCamera({
   candidates,
   candidateFootprint,
   anchorId,
+  depthRef,
+  follow,
   onAnchor,
   onCross,
   onChildMount,
@@ -88,6 +121,7 @@ export function TierCamera({
   const mounted = useRef(false);
   const anchored = useRef<string | null>(anchorId);
   const depthAttr = useRef("");
+  const tracked = useRef<{ key: string; at: Vec3 } | null>(null);
   /**
    * Verrou de franchissement : `onCross` déclenche un rendu React, et `useFrame` tourne
    * plusieurs fois avant que le nouveau palier n'arrive. Sans lui, un seul franchissement
@@ -101,10 +135,34 @@ export function TierCamera({
 
   useEffect(() => {
     host.current?.setAttribute("data-map-tier", tier);
+    // Le verrou se rouvre dès que le palier a effectivement changé, sans quoi un saut qui
+    // traverse plusieurs bandes d'un coup — « Ma capitale », qui vise un système depuis
+    // l'univers — s'arrêterait au premier palier franchi.
+    crossing.current = false;
   }, [host, tier]);
 
   useFrame(() => {
     if (!controls) return;
+
+    // Suivi de l'ancre AVANT toute mesure : la distance caméra-cible doit être lue après
+    // que les deux ont été recalées, sinon le déplacement de l'orbite se lit comme un
+    // mouvement de zoom et fait franchir des paliers tout seul.
+    if (follow) {
+      const now = follow.at();
+      const previous = tracked.current;
+      if (previous && previous.key === follow.key) {
+        camera.position.x += now[0] - previous.at[0];
+        camera.position.y += now[1] - previous.at[1];
+        camera.position.z += now[2] - previous.at[2];
+        controls.target.x += now[0] - previous.at[0];
+        controls.target.y += now[1] - previous.at[1];
+        controls.target.z += now[2] - previous.at[2];
+      }
+      tracked.current = { key: follow.key, at: now };
+    } else {
+      tracked.current = null;
+    }
+
     const aspect = size.width / Math.max(1, size.height);
     const parentFrame = fitDistance(parentFocus, aspect);
     const distance = camera.position.distanceTo(controls.target);
@@ -131,13 +189,19 @@ export function TierCamera({
     // Bornes de dolly, refaites à chaque palier. `OrbitControls` les tient de props
     // calculées sur un cadrage fixe ; laissées telles quelles, un cran de molette
     // sauterait deux frontières au palier profond et se bloquerait au palier large.
-    controls.maxDistance = parentFrame * 3;
+    //
+    // Elles ne bornent que ce qui n'a **pas** de suite. Dès qu'un palier voisin existe,
+    // la borne est repoussée très loin et c'est le franchissement qui fait la limite : un
+    // saut explicite traverse plusieurs bandes d'un coup — « Ma capitale » vise un système
+    // depuis l'univers — et serrer la borne au palier de départ ramenait la caméra à ce
+    // palier avant que la cascade n'ait eu le temps d'aboutir.
     controls.minDistance =
       childFrame > 0
-        ? // Un peu au-delà de la frontière, sinon le franchissement n'est jamais atteint.
-          distanceForProgress(parentFrame, childFrame, 1.15)
+        ? distanceForProgress(parentFrame, childFrame, OVERSHOOT)
         : // Rien à viser : on ne plonge pas dans le vide, la descente s'arrête ici.
           parentFrame * 0.15;
+    controls.maxDistance =
+      tierIndex(tier) > 0 ? parentFrame * 1e4 : parentFrame * 3;
 
     const blend = tierBlend(progress);
 
@@ -147,10 +211,13 @@ export function TierCamera({
       const reach = Math.max(candidateFootprint * 6, distance * 0.3);
       const t = controls.target;
       const elected = electAnchor([t.x, t.y, t.z], candidates, reach);
-      const next = elected?.id ?? null;
-      if (next !== anchored.current) {
-        anchored.current = next;
-        onAnchor(next);
+      // Élection COLLANTE : on remplace une ancre par une autre, jamais par rien. Un
+      // panoramique qui éloigne un instant la cible de tout candidat effaçait sinon la
+      // cible du joueur, et la carte se remettait à publier une ancre différente à chaque
+      // image — pour rien, puisque descendre exige justement une ancre.
+      if (elected && elected.id !== anchored.current) {
+        anchored.current = elected.id;
+        onAnchor(elected.id);
       }
     }
 
@@ -173,11 +240,12 @@ export function TierCamera({
       onCross(descending ? 1 : -1);
     }
 
-    // Profondeur publiée dans le DOM : une caméra 3D n'y laisse rien, et c'est le seul
+    // Profondeur continue, partagée par référence avec l'éclairage et les fondus.
+    depthRef.current = tierIndex(tier) + Math.min(1, Math.max(0, progress));
+
+    // La même, publiée dans le DOM : une caméra 3D n'y laisse rien, et c'est le seul
     // point sur lequel un test de bout en bout peut affirmer que la traversée a eu lieu.
-    const depth = (
-      tierIndex(tier) + Math.min(1, Math.max(0, progress))
-    ).toFixed(2);
+    const depth = depthRef.current.toFixed(2);
     if (depth !== depthAttr.current) {
       depthAttr.current = depth;
       host.current?.setAttribute("data-map-depth", depth);

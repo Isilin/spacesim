@@ -219,12 +219,6 @@ interface Props {
    */
   focus: Focus;
   /**
-   * Registre visuel (chantier 31.18). `schematic` aux niveaux univers et galaxie —
-   * c'est une carte de commandement ; `lit` au niveau système, où l'étoile éclaire
-   * réellement la scène.
-   */
-  register?: "schematic" | "lit";
-  /**
    * Hôte du canvas, quand l'appelant a besoin d'y écrire lui-même (chantier 35.2).
    *
    * `TierCamera` publie la profondeur de zoom sur cette section, et il vit **dans** le
@@ -248,7 +242,6 @@ interface Props {
 export function MapCanvas({
   ariaLabel,
   focus,
-  register = "schematic",
   hostRef: providedRef,
   children,
 }: Props) {
@@ -291,17 +284,6 @@ export function MapCanvas({
         // Le fond vient du thème, pas d'une couleur codée ici.
         gl={{ antialias: true, alpha: true }}
       >
-        {register === "lit" ? (
-          <>
-            {/* L'étoile est au centre du système : une lumière ponctuelle à l'origine
-                suffit à donner leur relief aux corps. */}
-            <pointLight position={[0, 0, 0]} intensity={3} decay={0.4} />
-            <ambientLight intensity={0.15} />
-          </>
-        ) : (
-          // Registre schématique : éclairage plat, la lisibilité prime sur le relief.
-          <ambientLight intensity={1} />
-        )}
         {children}
         {/* Après `OrbitControls` : le cadrage a besoin des contrôles pour poser la
             cible, et `makeDefault` ne les publie qu'une fois montés. */}
@@ -315,8 +297,11 @@ export function MapCanvas({
           // qui se trouve au centre de l'écran plutôt que celui qu'on vise — ce qui rend
           // le zoom continu inutilisable dès qu'on veut choisir sa galaxie.
           zoomToCursor
-          maxDistance={distance * 6}
-          minDistance={distance * 0.02}
+          // Bornes de dolly volontairement absentes (chantier 35.3) : `TierCamera` les
+          // recalcule à chaque image sur le palier courant. Les poser ici, sur le cadrage
+          // du montage, les faisait réapparaître à chaque rendu React et ramener la caméra
+          // au palier de départ — au palier corps, la borne héritée de l'univers valait
+          // près de cent fois la distance de vue.
         />
         <FitCamera focus={focus} host={hostRef} />
         <CameraKeys focus={focus} host={hostRef} />

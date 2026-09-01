@@ -1,5 +1,5 @@
 import { useThree } from "@react-three/fiber";
-import { useEffect, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import type { Camera, Vector3 } from "three";
 import type { Focus } from "./bounds.js";
 import { cameraPositionFor } from "./MapCanvas.js";
@@ -38,13 +38,18 @@ export function CameraKeys({
 }) {
   const controls = useThree((s) => s.controls) as Controls | null;
   const size = useThree((s) => s.size);
+  /**
+   * Compteur porté par une référence et non par une variable d'effet : depuis que la carte
+   * publie sa vue dans l'URL, l'effet se réinstalle en cours de session et la variable
+   * repartait de zéro — le compteur mentait sur ce qui avait été traité.
+   */
+  const taken = useRef(0);
 
   useEffect(() => {
     const node = host.current;
     if (!node || !controls) return;
 
     const step = focus.radius * 0.15;
-    let taken = 0;
     const onKeyDown = (event: KeyboardEvent) => {
       const camera = controls.object;
       let handled = true;
@@ -95,8 +100,8 @@ export function CameraKeys({
       // Compteur de touches traitées, exposé sur l'hôte : une caméra 3D ne laisse rien
       // dans le DOM, et l'écouteur avait été posé sur le mauvais nœud sans que rien ne
       // le signale. C'est le seul point vérifiable de l'extérieur (`map3d.spec.ts`).
-      taken += 1;
-      node.setAttribute("data-map-keys", String(taken));
+      taken.current += 1;
+      node.setAttribute("data-map-keys", String(taken.current));
     };
 
     node.addEventListener("keydown", onKeyDown);

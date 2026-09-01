@@ -77,7 +77,7 @@ test("la carte 3D rend et tient un budget d'images à chaque niveau", async ({
   // Niveau système : le plus chargé des trois — orbites, corps repositionnés à chaque
   // image, sites du scan.
   await page.getByRole("button", { name: "Ma capitale" }).click();
-  await expect(page).toHaveURL(/\/map\/galaxy\/[^/]+\/system\/[^/]+$/);
+  await expect(page).toHaveURL(/\/map\?.*at=/);
   await expectSizedCanvas(page, 200);
   const systemFps = await framesPerSecond(page);
   expect(systemFps).toBeGreaterThan(20);
@@ -123,7 +123,7 @@ test("la caméra reste au joueur une fois qu'il l'a touchée", async ({
 
   await page.getByRole("link", { name: "Carte" }).click();
   await page.getByRole("button", { name: "Ma capitale" }).click();
-  await expect(page).toHaveURL(/\/map\/galaxy\/[^/]+\/system\/[^/]+$/);
+  await expect(page).toHaveURL(/\/map\?.*at=/);
 
   const host = page.locator(".map-canvas");
   const canvas = host.locator("canvas");

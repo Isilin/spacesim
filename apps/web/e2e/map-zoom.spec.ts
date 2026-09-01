@@ -104,3 +104,73 @@ test("la profondeur de zoom varie en continu à l'intérieur d'un palier", async
   // Plusieurs profondeurs distinctes DANS la traversée : c'est la définition du continu.
   expect(seen.size).toBeGreaterThan(2);
 });
+
+test("la traversée va de l'amas jusqu'à un corps, puis en revient", async ({
+  page,
+}) => {
+  // Remonter trois paliers à la molette demande une centaine de crans : `OrbitControls`
+  // recule d'environ 5 % par cran, et une bande fait plusieurs octaves.
+  test.setTimeout(120_000);
+  // Le palier corps était le seul des quatre à n'être pas de la 3D : un schéma SVG figé,
+  // sans zoom, où les lunes ne bougeaient jamais. Ce test affirme qu'il est devenu un
+  // palier comme les autres — atteint par le même geste, quitté par le même.
+  await registerFreshEmpire(page, {
+    prefix: "maptrav",
+    empireName: "Sondeurs E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+
+  // Premier palier à la main, depuis la liste DOM parallèle.
+  await page
+    .getByRole("navigation", { name: /univers|universe/i })
+    .getByRole("button")
+    .first()
+    .dblclick();
+  await expect
+    .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
+    .toBe("galaxy");
+
+  // Puis la capitale : le brouillard vide les systèmes inexplorés de leurs corps, et un
+  // système vide n'a rien dans quoi descendre. Le raccourci vise le seul système dont on
+  // sait qu'il est peuplé.
+  await page.getByRole("button", { name: "Ma capitale" }).click();
+  await expect
+    .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
+    .toBe("system");
+
+  // Une lune s'ouvre en fiche, pas en palier : viser une planète.
+  const bodies = page.getByRole("navigation", { name: /système|system/i });
+  await expect(bodies.getByRole("button").first()).toBeVisible();
+  await bodies
+    .getByRole("button")
+    .filter({ hasNotText: "Lune" })
+    .first()
+    .dblclick();
+  await expect
+    .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
+    .toBe("body");
+
+  // Un seul canvas de l'amas jusqu'à la planète : c'est ce qui distingue une traversée
+  // continue de quatre scènes qui se remplacent.
+  await expect(host.locator("canvas")).toHaveCount(1);
+
+  // Remonter jusqu'en haut à la seule molette, sans fil d'Ariane ni bouton de retour —
+  // il n'y en a plus.
+  const box = (await host.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const seen: string[] = [];
+  for (let batch = 0; batch < 40; batch++) {
+    const tier = await host.getAttribute("data-map-tier");
+    if (tier && seen.at(-1) !== tier) seen.push(tier);
+    if (tier === "universe") break;
+    for (let i = 0; i < 6; i++) await page.mouse.wheel(0, 240);
+    await page.waitForTimeout(60);
+  }
+  expect(await host.getAttribute("data-map-tier")).toBe("universe");
+  // Les trois frontières sont franchies dans l'ordre, aucune n'est sautée.
+  expect(seen).toEqual(["body", "system", "galaxy", "universe"]);
+  await expect(host.locator("canvas")).toHaveCount(1);
+});

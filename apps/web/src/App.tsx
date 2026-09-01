@@ -1,7 +1,6 @@
 import {
   allPlanets,
   computeEffects,
-  findGalaxyOfSystem,
   gatewayLinks,
   type Colony,
   type Contract,
@@ -11,15 +10,13 @@ import {
   type GameState,
   type Gateway,
   type Mission,
-  type Planet,
-  type StarSystem,
   type Station,
   type SystemSite,
   type TechId,
   type Territory,
   type Universe,
 } from "@spacesim/shared";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Select, Toast, ToastStack, TopBar } from "@spacesim/ui";
 import { useTranslation } from "react-i18next";
 import {
@@ -39,15 +36,15 @@ import { InboxView } from "./InboxView.js";
 import { FleetsView } from "./FleetsView.js";
 import { ShipDesigner } from "./ShipDesigner.js";
 import { GatewaysPanel } from "./GatewaysPanel.js";
-import { useMapLevel } from "./hooks/useMapLevel.js";
+import { useMapView } from "./hooks/useMapView.js";
 import { MapNav, type NavTarget } from "./MapNav.js";
 import { ResearchView } from "./ResearchView.js";
 import { LogisticsView } from "./LogisticsView.js";
 import { StationsView } from "./StationsView.js";
 import { SystemPanel } from "./SystemPanel.js";
-import { SystemScene } from "./map3d/SystemScene.js";
-import { MapScene } from "./map3d/MapScene.js";
+import { MapScene, type AnchorPath } from "./map3d/MapScene.js";
 import { useGameConnection } from "./hooks/useGameConnection.js";
+import { buildUniverseIndex } from "./state/selectors.js";
 import { useGameStore } from "./state/game-store.js";
 import { useNotifications } from "./useNotifications.js";
 import type { Auth } from "./useAuth.js";
@@ -55,6 +52,22 @@ import type { Auth } from "./useAuth.js";
 interface Props {
   /** Session validée par `AuthGate` : `token` est garanti non nul ici. */
   auth: Auth;
+}
+
+/**
+ * Paramètres de requête qui suivent le joueur d'un onglet à l'autre (chantier 35.3).
+ *
+ * Seul `?colony=` a un sens partout. La carte publie désormais l'état de sa caméra —
+ * `?at=`, `?z=`, `?open=` — et le propager tel quel emportait la position de la caméra
+ * jusque dans le journal ou la recherche, où elle ne veut rien dire.
+ */
+function sharedSearch(search: string): string {
+  const from = new URLSearchParams(search);
+  const kept = new URLSearchParams();
+  const colony = from.get("colony");
+  if (colony) kept.set("colony", colony);
+  const out = kept.toString();
+  return out ? `?${out}` : "";
 }
 
 /** Horloge locale pour les comptes à rebours (les timers font foi côté serveur). */
@@ -88,9 +101,12 @@ interface MapPageProps {
 }
 
 /**
- * Onglet carte : univers → galaxie → système → corps (chantier 9.4), porté par les routes
- * imbriquées `/map/galaxy/:galaxyId/system/:systemId/body/:bodyId` plutôt qu'un historique
- * maison — `navigate()` remplace `pushView`, l'historique du navigateur fait foi.
+ * Onglet carte (chantiers 9.4 puis 35.3).
+ *
+ * Il n'y a plus quatre niveaux mais une seule carte, traversée en continu à la molette.
+ * L'URL ne décrit donc plus une hiérarchie de segments mais l'état réel de la caméra :
+ * `?at=` ce qu'elle vise, `?z=` à quelle profondeur, `?open=` la fiche ouverte. Un chemin
+ * ne sait pas dire « à mi-chemin entre la galaxie et le système ».
  */
 function MapPage({
   universe,
@@ -111,79 +127,99 @@ function MapPage({
   now,
 }: MapPageProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const {
-    level,
-    galaxy: viewGalaxy,
-    system: viewSystem,
-    body: viewBody,
-  } = useMapLevel(universe);
-  const focus = searchParams.get("focus");
+  const { anchor, depth, open } = useMapView(universe);
 
-  /** Sélection secondaire (survol/clic sans ouvrir) : un id par niveau, jamais empilé. */
-  const setFocus = (id: string | null) => {
+  /** Sélection courante : ce que l'infobox montrera (chantier 35.5), pas encore l'URL. */
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** Intention de saut, distincte de l'état de caméra que la carte publie elle-même. */
+  const [jumpTo, setJumpTo] = useState<{
+    id: string | null;
+    token: number;
+  } | null>(null);
+
+  const index = useMemo(() => buildUniverseIndex(universe), [universe]);
+
+  /**
+   * Écriture de l'URL en `replace` : la caméra bouge en continu et chaque position
+   * n'est pas une étape de navigation. Seuls les sauts explicites méritent une entrée
+   * d'historique, et ils passent par `goTo`.
+   */
+  const writeView = useCallback(
+    (next: URLSearchParams, push = false) =>
+      setSearchParams(next, { replace: !push }),
+    [setSearchParams],
+  );
+
+  const onViewChange = useCallback(
+    (path: AnchorPath, viewDepth: number) => {
+      const at = path.bodyId ?? path.systemId ?? path.galaxyId;
+      const next = new URLSearchParams(searchParams);
+      if (at) {
+        next.set("at", at);
+        next.set("z", viewDepth.toFixed(2));
+      } else {
+        // Rien de visé : une profondeur seule ne décrit aucune vue, et `?z=0.00` sur une
+        // carte au repos n'est que du bruit dans la barre d'adresse.
+        next.delete("at");
+        next.delete("z");
+      }
+      if (next.toString() === searchParams.toString()) return;
+      writeView(next);
+    },
+    [searchParams, writeView],
+  );
+
+  /** Ouvre la fiche complète d'un élément — la modale viendra au chantier 35.6. */
+  const openSheet = (id: string | null) => {
     const next = new URLSearchParams(searchParams);
-    if (id) next.set("focus", id);
-    else next.delete("focus");
-    setSearchParams(next, { replace: true });
+    if (id) next.set("open", id);
+    else next.delete("open");
+    writeView(next, true);
   };
 
-  /** Recherche courante sans `focus` : un changement de niveau repart d'une sélection propre. */
-  const colonyOnlySearch = () => {
-    const next = new URLSearchParams(searchParams);
-    next.delete("focus");
-    const s = next.toString();
-    return s ? `?${s}` : "";
-  };
-
-  const openGalaxy = (galaxyId: string) => {
-    navigate(`/map/galaxy/${galaxyId}${colonyOnlySearch()}`);
-  };
-
-  const openSystem = (system: StarSystem) => {
-    const galaxy = findGalaxyOfSystem(universe, system.id);
-    if (!galaxy) return;
-    navigate(
-      `/map/galaxy/${galaxy.id}/system/${system.id}${colonyOnlySearch()}`,
-    );
-  };
-
-  /** Ouvre la fiche d'un corps (chantier 10) : niveau de carte à part entière. */
-  const openBody = (planet: Planet) => {
-    const galaxy = findGalaxyOfSystem(universe, planet.systemId);
-    if (!galaxy) return;
-    navigate(
-      `/map/galaxy/${galaxy.id}/system/${planet.systemId}/body/${planet.id}${colonyOnlySearch()}`,
-    );
-  };
-
-  /** Saut direct depuis la recherche ou un raccourci (chantier 9.7). */
+  /**
+   * Saut direct depuis la recherche ou un raccourci (chantier 9.7).
+   *
+   * Le jeton est ce qui distingue un saut voulu d'une simple écriture d'URL par la carte
+   * elle-même : celle-ci publie sa position en continu, et déduire une intention de
+   * navigation d'un changement d'URL faisait boucler les deux sens l'un sur l'autre.
+   */
   const goTo = (target: NavTarget) => {
-    if (target.kind === "universe") {
-      navigate(`/map${colonyOnlySearch()}`);
-      return;
-    }
-    if (target.kind === "galaxy") {
-      openGalaxy(target.galaxyId);
-      return;
-    }
-    const system = universe.galaxies
-      .find((g) => g.id === target.galaxyId)
-      ?.systems.find((candidate) => candidate.id === target.systemId);
-    if (system) openSystem(system);
+    const id = target.kind === "universe" ? null : target.id;
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set("at", id);
+    else next.delete("at");
+    next.delete("z");
+    next.delete("open");
+    writeView(next, true);
+    setJumpTo({ id, token: Date.now() });
   };
 
   const fleetSystemIds = fleets.map((f) => f.systemId);
-  // Système « survolé » (chantier 9.4) : affiché dans le panneau latéral avec un bouton
-  // d'ouverture, sans quitter la carte. Cherché dans tout l'univers depuis le chantier
-  // 35.2 : le zoom continu descend dans une galaxie sans que l'URL en porte trace, donc
-  // se limiter à `viewGalaxy` laissait le panneau vide juste après une descente.
-  const focusedSystem =
-    focus && (level === "galaxy" || level === "universe")
-      ? (universe.galaxies
-          .flatMap((g) => g.systems)
-          .find((s) => s.id === focus) ?? null)
+
+  /**
+   * Système dont le panneau latéral parle : celui de la sélection s'il y en a une, sinon
+   * celui que la caméra vise. Cherché par l'index et non par un balayage : la sélection
+   * peut désigner n'importe quel objet de l'univers.
+   */
+  const shownSystemId =
+    (selectedId ? index.get(selectedId)?.systemId : null) ?? anchor.systemId;
+  const shownSystem = shownSystemId
+    ? (universe.galaxies
+        .find((g) => g.id === index.get(shownSystemId)?.galaxyId)
+        ?.systems.find((s) => s.id === shownSystemId) ?? null)
+    : null;
+
+  const openPath = open ? index.get(open) : undefined;
+  const openSystem = openPath?.systemId
+    ? (universe.galaxies
+        .find((g) => g.id === openPath.galaxyId)
+        ?.systems.find((s) => s.id === openPath.systemId) ?? null)
+    : null;
+  const openBody =
+    openPath?.bodyId && openSystem
+      ? (openSystem.planets.find((p) => p.id === openPath.bodyId) ?? null)
       : null;
 
   return (
@@ -202,106 +238,57 @@ function MapPage({
           }
           onGo={goTo}
         />
-        <nav className="breadcrumb">
-          <button
-            type="button"
-            onClick={() => navigate(`/map${colonyOnlySearch()}`)}
-          >
-            {t("app.universe")}
-          </button>
-          {viewGalaxy && (
-            <>
-              <span className="muted">/</span>
-              <button type="button" onClick={() => openGalaxy(viewGalaxy.id)}>
-                {viewGalaxy.name}
-              </button>
-            </>
-          )}
-          {viewSystem && (
-            <>
-              <span className="muted">/</span>
-              {viewBody ? (
-                <button type="button" onClick={() => openSystem(viewSystem)}>
-                  {viewSystem.name}
-                </button>
-              ) : (
-                <span className="breadcrumb-current">{viewSystem.name}</span>
-              )}
-            </>
-          )}
-          {viewBody && (
-            <>
-              <span className="muted">/</span>
-              <span className="breadcrumb-current">{viewBody.name}</span>
-            </>
-          )}
-        </nav>
-        {level === "universe" || level === "galaxy" ? (
-          // Un seul composant pour les deux premiers paliers depuis le chantier 35.2 :
-          // ils ne s'excluent plus, le zoom passe de l'un à l'autre en continu.
-          <MapScene
-            universe={universe}
-            colonies={colonies}
-            gateways={gateways}
-            stations={stations}
-            foreignStations={foreignStations}
-            exploredSystemIds={exploredSystemIds}
-            claimedSystemIds={game.claimedSystemIds}
-            territories={territories}
-            routeGalaxyId={viewGalaxy?.id ?? null}
-            selectedId={focus}
-            onSelectGalaxy={(g) => setFocus(g.id)}
-            onSelectSystem={(s) => setFocus(s.id)}
-            onOpenSystem={openSystem}
-          />
-        ) : viewBody && viewSystem ? (
-          <BodyView
-            system={viewSystem}
-            body={viewBody}
-            effects={effects}
-            now={now}
-            selectedBodyId={focus}
-            onSelectBody={(body) => setFocus(body.id)}
-            onOpenBody={openBody}
-          />
-        ) : viewSystem ? (
-          <SystemScene
-            system={viewSystem}
-            sites={sites.filter((site) => site.systemId === viewSystem.id)}
-            tick={game.tick}
-            lastTickAt={game.lastTickAt}
-            selectedBodyId={focus}
-            onSelectBody={(body) => setFocus(body.id)}
-            onOpenBody={openBody}
-          />
-        ) : null}
+        <MapScene
+          universe={universe}
+          colonies={colonies}
+          gateways={gateways}
+          stations={stations}
+          foreignStations={foreignStations}
+          sites={sites}
+          exploredSystemIds={exploredSystemIds}
+          claimedSystemIds={game.claimedSystemIds}
+          territories={territories}
+          tick={game.tick}
+          lastTickAt={game.lastTickAt}
+          routeAnchor={anchor}
+          routeDepth={depth}
+          jumpTo={jumpTo}
+          selectedId={selectedId}
+          onSelectGalaxy={(g) => setSelectedId(g.id)}
+          onSelectSystem={(s) => setSelectedId(s.id)}
+          onSelectBody={(b) => setSelectedId(b.id)}
+          onOpenBody={(b) => openSheet(b.id)}
+          onViewChange={onViewChange}
+        />
       </section>
       <aside className="side-panel">
-        {(level === "system" || level === "body") && viewSystem ? (
+        {openBody && openSystem ? (
+          <>
+            <BodyView
+              system={openSystem}
+              body={openBody}
+              effects={effects}
+              now={now}
+              selectedBodyId={selectedId}
+              onSelectBody={(b) => setSelectedId(b.id)}
+              onOpenBody={(b) => openSheet(b.id)}
+            />
+            <Button onClick={() => openSheet(null)}>
+              {t("app.closeSheet")}
+            </Button>
+          </>
+        ) : shownSystem ? (
           <SystemPanel
-            system={viewSystem}
+            system={shownSystem}
             effects={effects}
             portalLinks={portalLinks}
             now={now}
-            onOpenBody={openBody}
+            onOpenBody={(b) => openSheet(b.id)}
           />
-        ) : focusedSystem ? (
-          <>
-            <SystemPanel
-              system={focusedSystem}
-              effects={effects}
-              portalLinks={portalLinks}
-              now={now}
-              onOpenBody={openBody}
-            />
-            <Button onClick={() => openSystem(focusedSystem)}>
-              {t("app.openSystemView")}
-            </Button>
-          </>
-        ) : level === "universe" ? (
-          <GatewaysPanel now={now} />
-        ) : (
+        ) : anchor.galaxyId ? (
           <p className="muted">{t("app.selectSystemHint")}</p>
+        ) : (
+          <GatewaysPanel now={now} />
         )}
       </aside>
     </main>
@@ -401,7 +388,10 @@ export function App({ auth }: Props) {
           ? t("app.tabInboxUnread", { count: unreadEventCount })
           : t("app.tabInbox"),
     },
-  ].map((tab) => ({ ...tab, href: `/${tab.value}${location.search}` }));
+  ].map((tab) => ({
+    ...tab,
+    href: `/${tab.value}${sharedSearch(location.search)}`,
+  }));
   const activeTab = routeTabs.find((tab) =>
     location.pathname.startsWith(`/${tab.value}`),
   )?.value;
@@ -412,7 +402,10 @@ export function App({ auth }: Props) {
         items={routeTabs}
         active={activeTab}
         onNavChange={(value) =>
-          navigate({ pathname: `/${value}`, search: location.search })
+          navigate({
+            pathname: `/${value}`,
+            search: sharedSearch(location.search),
+          })
         }
         status={{
           label: connected ? t("app.connected") : t("app.disconnected"),
@@ -463,7 +456,10 @@ export function App({ auth }: Props) {
           path="/"
           element={
             <Navigate
-              to={{ pathname: "/colony", search: location.search }}
+              to={{
+                pathname: "/colony",
+                search: sharedSearch(location.search),
+              }}
               replace
             />
           }
@@ -589,37 +585,32 @@ export function App({ auth }: Props) {
             </main>
           }
         />
-        {[
-          "/map",
-          "/map/galaxy/:galaxyId",
-          "/map/galaxy/:galaxyId/system/:systemId",
-          "/map/galaxy/:galaxyId/system/:systemId/body/:bodyId",
-        ].map((path) => (
-          <Route
-            key={path}
-            path={path}
-            element={
-              <MapPage
-                universe={universe}
-                game={game}
-                colony={colony}
-                colonies={colonies}
-                stations={stations}
-                foreignStations={foreignStations}
-                missions={missions}
-                exploredSystemIds={exploredSystemIds}
-                sites={sites}
-                gateways={gateways}
-                contracts={contracts}
-                territories={territories}
-                fleets={fleets}
-                effects={effects}
-                portalLinks={portalLinks}
-                now={now}
-              />
-            }
-          />
-        ))}
+        {/* Une seule route de carte depuis le chantier 35.3 : la vue n'est plus une
+            hiérarchie de niveaux mais un point visé et une profondeur, portés par la
+            requête (`?at=`, `?z=`, `?open=`). */}
+        <Route
+          path="/map"
+          element={
+            <MapPage
+              universe={universe}
+              game={game}
+              colony={colony}
+              colonies={colonies}
+              stations={stations}
+              foreignStations={foreignStations}
+              missions={missions}
+              exploredSystemIds={exploredSystemIds}
+              sites={sites}
+              gateways={gateways}
+              contracts={contracts}
+              territories={territories}
+              fleets={fleets}
+              effects={effects}
+              portalLinks={portalLinks}
+              now={now}
+            />
+          }
+        />
       </Routes>
     </div>
   );

@@ -42,9 +42,15 @@ describe("nestingScale", () => {
 
   it("borne le facteur des deux côtés", () => {
     // Un groupe three.js à l'échelle 0 aplatit son contenu sans rien signaler, et une
-    // échelle supérieure à 1 renverrait un enfant plus grand que son parent.
-    expect(nestingScale(100, 1)).toBeLessThanOrEqual(0.5);
+    // échelle supérieure à 1 rendrait un enfant plus grand que le repère qui le porte.
+    expect(nestingScale(100, 1)).toBe(1);
     expect(nestingScale(1, 1e12)).toBeGreaterThan(0);
+  });
+
+  it("laisse passer l'échelle 1, qui est celle du palier corps", () => {
+    // Un corps vit dans les coordonnées de son système sans changement d'échelle : ce qui
+    // le distingue du palier au-dessus n'est pas sa taille mais le détail qu'on y ajoute.
+    expect(nestingScale(45, 45)).toBe(1);
   });
 });
 

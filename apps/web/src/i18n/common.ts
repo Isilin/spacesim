@@ -48,7 +48,8 @@ export const commonFr = {
   app: {
     universe: "Univers",
     openSystemView: "Ouvrir la vue système",
-    selectSystemHint: "Sélectionnez un système (double-clic : vue système).",
+    closeSheet: "Fermer la fiche",
+    selectSystemHint: "Zoomez ou sélectionnez un système pour voir son détail.",
     connecting: "Connexion au serveur…",
     tabColony: "Colonie",
     tabStations: "Stations",
@@ -717,7 +718,8 @@ export const commonEn: typeof commonFr = {
   app: {
     universe: "Universe",
     openSystemView: "Open system view",
-    selectSystemHint: "Select a system (double-click: system view).",
+    closeSheet: "Close sheet",
+    selectSystemHint: "Zoom in or select a system to see its detail.",
     connecting: "Connecting to server…",
     tabColony: "Colony",
     tabStations: "Stations",

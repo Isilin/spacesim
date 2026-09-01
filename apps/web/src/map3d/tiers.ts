@@ -48,12 +48,13 @@ export interface CameraPose {
 
 /**
  * Bornes du facteur d'imbrication. Le plancher évite qu'un contenu dégénéré (une galaxie
- * à un seul système, un corps sans lune) ne produise une échelle nulle ; le plafond garde
- * `ln(1/scale)` loin de zéro, sans quoi la progression divise par ~0 et part à l'infini
- * au premier cran de molette.
+ * à un seul système, un corps sans lune) n'aplatisse son groupe à l'échelle zéro, ce que
+ * three.js accepte sans rien signaler. Le plafond est 1 : un enfant peut occuper tout le
+ * repère de son parent — c'est le cas du palier corps, qui vit dans les coordonnées de son
+ * système sans changement d'échelle — mais jamais davantage.
  */
 const MIN_SCALE = 1e-4;
-const MAX_SCALE = 0.5;
+const MAX_SCALE = 1;
 
 /**
  * Seuils de fondu, en progression dans la bande de transition.
