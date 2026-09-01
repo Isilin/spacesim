@@ -237,6 +237,58 @@ test("la traversée coûte une poignée de crans, pas une centaine", async ({
   expect(notches).toBeLessThan(20);
 });
 
+test("les noms apparaissent sur les objets quand ils sont assez gros", async ({
+  page,
+}) => {
+  // Les noms vivaient dans une liste latérale : lire la carte demandait un aller-retour
+  // permanent entre le canvas et une colonne de 210 px. Ils se posent désormais sur les
+  // objets (chantier 36.3), et n'apparaissent qu'au-delà d'un seuil de taille apparente —
+  // sans quoi les deux cents galaxies d'un univers plein écriraient leur nom en même temps
+  // sur quelques pixels chacune.
+  //
+  // Un sprite ne laisse rien dans le DOM : `data-map-labels` est le seul point depuis
+  // lequel ce test peut affirmer qu'un nom est lisible.
+  await registerFreshEmpire(page, {
+    prefix: "maplabel",
+    empireName: "Nommeurs E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+
+  await expect
+    .poll(async () => Number(await host.getAttribute("data-map-labels")), {
+      timeout: 15_000,
+    })
+    .toBeGreaterThan(0);
+
+  // Un système peuplé : c'est là que le seuil se voit travailler. Vu de loin, seuls les
+  // plus gros corps sont nommés ; en s'approchant, les autres le deviennent à leur tour.
+  await page.getByRole("button", { name: "Ma capitale" }).click();
+  await expect
+    .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
+    .toBe("system");
+  await page.waitForTimeout(800);
+  const far = Number(await host.getAttribute("data-map-labels"));
+
+  const box = (await host.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  for (let i = 0; i < 4; i++) {
+    await page.mouse.wheel(0, -240);
+    await page.waitForTimeout(60);
+  }
+
+  // Le seuil, et rien d'autre : le palier n'a pas changé, donc aucun objet n'a été monté
+  // ni démonté entre les deux mesures.
+  expect(await host.getAttribute("data-map-tier")).toBe("system");
+  await expect
+    .poll(async () => Number(await host.getAttribute("data-map-labels")), {
+      timeout: 10_000,
+    })
+    .toBeGreaterThan(far);
+});
+
 test("sélectionner ouvre une infobox sur la carte, cliquer à côté la referme", async ({
   page,
 }) => {

@@ -42,6 +42,7 @@ import {
   systemScenePosition,
 } from "./GalaxyLayer.js";
 import { fitDistance, MapCanvas } from "./MapCanvas.js";
+import { MapLabels, type LabelItem } from "./MapLabels.js";
 import { MapList } from "./MapList.js";
 import {
   bodyLocalPosition,
@@ -145,6 +146,15 @@ function deepestTier(path: AnchorPath): TierName {
   if (path.galaxyId) return "galaxy";
   return "universe";
 }
+
+/**
+ * Rayon de lecture commun aux objets manufacturés d'un système, en unités système.
+ *
+ * Comptoir, station, avant-poste et flotte se rendent entre 4 et 11 unités ; leur nom
+ * apparaît au même moment plutôt qu'un par un, ce qui donne une carte qui se lit d'un coup
+ * au lieu de se remplir par paliers arbitraires.
+ */
+const FEATURE_RADIUS = 6;
 
 /** Compose une translation locale avec le placement de son parent. */
 function under(parent: Placement, local: Vec3): Vec3 {
@@ -722,6 +732,94 @@ export function MapScene({
   }, [showsBody, system, body]);
 
   /**
+   * Objets à nommer sur la carte (chantier 36.3).
+   *
+   * **Le palier courant seulement.** Ceux de l'enfant seraient tous sous le seuil de taille
+   * apparente jusqu'au franchissement — mesuré : une planète dans un système qui remplit
+   * tout juste le cadre vaut 0,011, sous les 0,013 requis. Les monter d'avance coûterait
+   * des sprites que personne ne voit, et obligerait la résolution du clic à traiter deux
+   * paliers à la fois.
+   */
+  const labelItems = useMemo((): LabelItem[] => {
+    const out: LabelItem[] = [];
+
+    if (tier === "universe") {
+      for (const g of universe.galaxies) {
+        const at = galaxyScenePosition(g);
+        out.push({
+          id: g.id,
+          text: g.name,
+          tier,
+          at: () => at,
+          radius: GALAXY_DISC,
+        });
+      }
+      return out;
+    }
+
+    if (tier === "galaxy" && galaxy && placements.galaxy) {
+      const parent = placements.galaxy;
+      for (const s of galaxy.systems) {
+        const at = under(parent, systemScenePosition(s));
+        out.push({
+          id: s.id,
+          text: s.name,
+          tier,
+          at: () => at,
+          radius: SYSTEM_NODE * parent.scale,
+        });
+      }
+      return out;
+    }
+
+    const parent = placements.system;
+    if (!system || !parent) return out;
+
+    // Au palier corps, seuls le corps ancré et ses lunes sont nommés : le reste du système
+    // est hors du cadre. Le palier corps ne change pas d'échelle, ses objets se situent
+    // dans les mêmes coordonnées qu'au palier système.
+    const bodies =
+      tier === "body" && body
+        ? [body, ...moonsOf(system, body)]
+        : system.planets;
+
+    for (const p of bodies) {
+      out.push({
+        id: p.id,
+        text: p.name,
+        tier,
+        at: () => under(parent, bodyLocalPosition(system, p, tickAt())),
+        radius: bodyRadiusOf(p) * parent.scale,
+      });
+    }
+
+    if (tier === "system")
+      for (const f of features)
+        out.push({
+          id: f.id,
+          text: f.name,
+          tier,
+          at: f.at,
+          // Les objets manufacturés vont de 4 à 11 unités système selon leur nature : un
+          // rayon commun suffit à décider d'un seuil d'affichage, et évite de faire
+          // remonter une taille de rendu jusqu'ici.
+          radius: FEATURE_RADIUS * parent.scale,
+        });
+
+    return out;
+  }, [
+    tier,
+    universe,
+    galaxy,
+    system,
+    body,
+    placements.galaxy,
+    placements.system,
+    features,
+    tickAt,
+  ]);
+
+  /**
    * Cadrage initial du canvas. Figé au montage, et surtout pas recalculé : `FitCamera` se
    * rejoue dès que la valeur change, et le rejouer à chaque franchissement annulerait la
    * traversée qu'on vient de faire.
@@ -928,6 +1026,18 @@ export function MapScene({
     () => onViewChange(publishable, publishableDepth()),
     [publishable, publishableDepth, onViewChange],
   );
+
+  /**
+   * Nombre d'étiquettes lisibles, publié sur l'hôte (chantier 36.3).
+   *
+   * Un sprite ne laisse rien dans le DOM, pas plus que la caméra : c'est le seul point
+   * depuis lequel un test peut affirmer qu'un nom est apparu. Même geste que
+   * `data-map-tier` et `data-map-depth`, et écrit depuis la même horloge — la boucle
+   * d'images.
+   */
+  const publishLabelCount = useCallback((count: number) => {
+    hostRef.current?.setAttribute("data-map-labels", String(count));
+  }, []);
 
   /**
    * Objet sélectionné : sa nature, et la position de scène où poser son infobox.
@@ -1142,6 +1252,16 @@ export function MapScene({
           onChildMount={setChildMounted}
         />
         {!jump && <DepthPublisher depthRef={depthRef} publish={publish} />}
+
+        {/* Étiquettes hors des couches : elles vivent en coordonnées de scène et portent
+            elles-mêmes leur fondu de palier (chantier 36.3). */}
+        <MapLabels
+          items={labelItems}
+          depthRef={depthRef}
+          onSelect={(id) => pickFromList(id, false)}
+          onOpen={(id) => pickFromList(id, true)}
+          onVisibleCount={publishLabelCount}
+        />
         {jump && (
           <CameraJump
             request={jump}
