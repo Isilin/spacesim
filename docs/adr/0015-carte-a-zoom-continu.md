@@ -2,7 +2,9 @@
 
 ## Statut
 
-Accepté
+Accepté — **partiellement renversée** par l'ADR
+[0017](0017-navigation-orbitale-et-etiquettes.md), qui retire le zoom-au-curseur et le
+panoramique, et fait du double-clic un vol sans fiche.
 
 ## Contexte
 
@@ -92,8 +94,8 @@ d'URL faisait boucler les deux sens l'un sur l'autre.
 
 Un clic simple ouvre une infobox ancrée sur l'objet ; un clic dans le vide la referme, via
 `onPointerMissed` de R3F — la seule API qui sache dire que le rayon n'a rencontré aucun objet.
-Un double-clic **vole** jusqu'à l'objet **et** ouvre sa fiche, dans une modale qui laisse la
-carte visible derrière elle.
+Un double-clic **vole** jusqu'à l'objet ~~**et** ouvre sa fiche~~ — l'ADR 0017 lui a retiré
+l'ouverture de fiche, qui rendait la modale bloquante après chaque descente.
 
 Une infobox posée sur la carte est **transparente aux événements**, son bouton excepté. Elle
 est ancrée sur l'objet qu'on vient de choisir, donc sur celui vers lequel on va zoomer :
@@ -111,10 +113,9 @@ propre nœud : c'est la page qui écoute Échap tant qu'une sélection existe.
   plan. Le geste demandé est « simplement sélectionner ouvre l'infobox » ; faire paner la vue
   à chaque clic le contredirait. Viser se fait à la molette — elle suit le curseur — ou au
   double-clic, qui vole.
-- **Le double-clic ne peut plus s'enchaîner** pour descendre : la modale qu'il ouvre est
-  bloquante, il faut la refermer (Échap) pour continuer à naviguer. C'est le prix du geste
-  demandé — vol *et* fiche — et il se paie à chaque descente au double-clic. La molette,
-  elle, traverse sans rien ouvrir.
+- ~~**Le double-clic ne peut plus s'enchaîner** pour descendre~~ — **corrigé par l'ADR
+  0017** : le double-clic vole désormais sans ouvrir de fiche, et les descentes
+  s'enchaînent. La fiche s'obtient par le bouton de l'infobox.
 - Le palier corps devient une vraie scène 3D, et `BodyView` perd son schéma orbital : il
   disait la même chose que la carte, en figé.
 - Le fil d'Ariane disparaît, faute de niveaux à remonter. Le retour se fait à la molette, ou

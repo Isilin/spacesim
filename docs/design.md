@@ -2185,3 +2185,50 @@ Deux constats sans correctif, qui sont des décisions plutôt que des défauts :
 Le budget d'images se mesure **conteneur `app` de dev arrêté** : laissé debout, il dispute
 le processeur au pilote OpenGL logiciel et fait tomber la mesure du palier système de 42 à
 moins de 20. Le seuil du test n'était pas en cause.
+
+## Chantier 36 — Navigation orbitale, étiquettes et ciel (01/09/2026)
+
+Six gênes relevées à l'usage après le chantier 35, toutes rapportées manette en main. Les
+décisions structurantes sont dans l'ADR
+[0017](adr/0017-navigation-orbitale-et-etiquettes.md), qui **renverse deux points** de l'ADR
+0015 : le zoom-au-curseur et le double-clic qui ouvrait une fiche.
+
+- **36.1** `tiers.ts` : `zoomStep`, `dollyEase`, `labelOpacity` — l'arithmétique du zoom
+  amorti et du seuil d'apparition des noms, pure et testée comme le reste du module.
+- **36.2** La caméra tourne autour de ce qu'elle regarde : panoramique et zoom-au-curseur
+  retirés, dolly repris à la main, amorti, calibré sur la bande à traverser.
+- **36.3** Les noms se posent sur les objets, en sprites cliquables.
+- **36.4** La liste DOM devient un panneau dépliable en surimpression, l'état retenu.
+- **36.5** Le double-clic vole et rien d'autre ; le clic simple attend de savoir si un second
+  suit ; la sélection remonte au parent quand on quitte un palier.
+- **36.6** Le nœud d'un système garde sa taille à l'écran, puis rejoint celle de l'étoile.
+- **36.7** Les galaxies perdent leur disque peint : leurs étoiles se mêlent d'elles-mêmes.
+
+### Ce que la navigation gagne, et ce qu'elle coûte
+
+Neuf crans de molette pour descendre d'un palier, contre une trentaine. La traversée
+complète du test de bout en bout passe de 28,6 s à 8,8 s.
+
+Le prix est **la visée** : la cible de caméra n'étant plus déplaçable à la souris, atteindre
+un objet qui n'est pas au centre demande un double-clic. La molette ne fait plus que la
+profondeur, le glisser que l'orbite.
+
+### Ce que ce chantier a appris sur la mesure
+
+Le palier système semblait tomber de 42 à 21 img/s. Ni la boucle par image ni le rendu n'y
+étaient pour quelque chose : c'était la **rastérisation des vingt noms au montage de la
+couche**, un pic qui tombait exactement dans la fenêtre de mesure. Les textures se créent
+désormais à la première apparition de l'étiquette.
+
+Et le test lui-même mesurait le montage en croyant mesurer le repos. Sans pause de
+stabilisation, la même configuration rendait 17 ou 60 images selon l'humeur de la machine —
+trois runs consécutifs suffisaient à obtenir les deux. Une mesure qui varie du simple au
+triple ne dit rien, et on a failli optimiser à l'aveugle contre elle.
+
+| | avant chantier 36 | après |
+|---|---|---|
+| univers au repos | 59-62 | 51-61 |
+| système au repos | 37-48 | 37-55 |
+
+Toujours **conteneur `app` arrêté** : relancé sans qu'on y prenne garde par un
+`docker compose run` sans `--no-deps`, il a faussé la moitié des relevés de ce chantier.
