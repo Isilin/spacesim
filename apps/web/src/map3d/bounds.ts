@@ -93,3 +93,31 @@ export function focusOf(
     ],
   };
 }
+
+/**
+ * Cadrage d'un palier enfant, exprimé dans les unités de son parent (chantier 35.2).
+ *
+ * Chaque palier calcule son `Focus` dans SON repère ; la scène, elle, le rend imbriqué
+ * dans le parent par un `<group position scale>`. Les deux cadrages ne sont donc pas
+ * comparables tels quels, alors que c'est précisément leur comparaison qui définit la
+ * bande de transition (`tierProgress`). Cette fonction fait le passage.
+ *
+ * Le centre subit la translation et l'échelle, les dimensions seulement l'échelle — ce
+ * qui suffit, `fitDistance()` ne lisant que `half` et `radius`.
+ */
+export function nestedFocus(
+  child: Focus,
+  anchor: readonly [number, number, number],
+  scale: number,
+): Focus {
+  return {
+    id: child.id,
+    center: [
+      anchor[0] + child.center[0] * scale,
+      anchor[1] + child.center[1] * scale,
+      anchor[2] + child.center[2] * scale,
+    ],
+    radius: child.radius * scale,
+    half: [child.half[0] * scale, child.half[1] * scale, child.half[2] * scale],
+  };
+}

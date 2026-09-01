@@ -122,6 +122,11 @@ function FitCamera({
   const applied = useRef("");
   const handled = useRef(false);
   const fits = useRef(0);
+  /**
+   * Dernière position que ce composant a lui-même posée. Sert à reconnaître qu'un autre
+   * l'a déplacée depuis (chantier 35.2).
+   */
+  const placed = useRef<[number, number, number] | null>(null);
 
   // La caméra appartient au joueur dès qu'il y touche. Le cadrage automatique ne vaut
   // que tant qu'il n'a rien fait : R3F mesure son canvas en plusieurs temps, et un
@@ -137,7 +142,29 @@ function FitCamera({
 
   useEffect(() => {
     const isNewScene = applied.current !== signature;
-    if (!isNewScene && handled.current) return;
+    /**
+     * La caméra n'appartient plus au cadrage automatique dès que **quiconque** l'a
+     * déplacée, pas seulement le joueur à la souris (chantier 35.2).
+     *
+     * L'événement `start` d'`OrbitControls` ne dit rien d'un déplacement programmatique :
+     * un saut de palier posait la caméra sur une galaxie, puis la mesure suivante de R3F
+     * — qui en fait plusieurs — rejouait ce cadrage et ramenait la vue à l'amas. La
+     * descente ne se produisait jamais, et rien ne le signalait.
+     */
+    const moved =
+      placed.current !== null &&
+      // Tolérance relative au cadrage, pas égalité stricte : `OrbitControls` recompose la
+      // position par un aller-retour en coordonnées sphériques à chaque image, ce qui la
+      // fait bouger de quelques 10⁻¹⁰ même immobile. Sur l'égalité, la caméra aurait été
+      // déclarée « déplacée » dès la première image et le recadrage tardif — celui qui
+      // corrige le rapport d'image mesuré par R3F — n'aurait plus jamais eu lieu.
+      Math.hypot(
+        camera.position.x - placed.current[0],
+        camera.position.y - placed.current[1],
+        camera.position.z - placed.current[2],
+      ) >
+        radius * 1e-3;
+    if (!isNewScene && (handled.current || moved)) return;
     applied.current = signature;
     if (isNewScene) handled.current = false;
 
@@ -150,6 +177,7 @@ function FitCamera({
     const aspect = size.width / Math.max(1, size.height);
     const [x, y, z] = cameraPositionFor(target, aspect);
     camera.position.set(x, y, z);
+    placed.current = [x, y, z];
     camera.far = fitDistance(target, aspect) * 12;
     camera.updateProjectionMatrix();
     controls?.target.set(cx, cy, cz);
@@ -196,6 +224,15 @@ interface Props {
    * réellement la scène.
    */
   register?: "schematic" | "lit";
+  /**
+   * Hôte du canvas, quand l'appelant a besoin d'y écrire lui-même (chantier 35.2).
+   *
+   * `TierCamera` publie la profondeur de zoom sur cette section, et il vit **dans** le
+   * canvas : le contexte React ne traverse pas la frontière du réconciliateur de R3F, il
+   * faut donc que la référence descende par les props. Absente, `MapCanvas` garde la
+   * sienne et rien ne change.
+   */
+  hostRef?: RefObject<HTMLElement | null>;
   children: ReactNode;
 }
 
@@ -212,6 +249,7 @@ export function MapCanvas({
   ariaLabel,
   focus,
   register = "schematic",
+  hostRef: providedRef,
   children,
 }: Props) {
   const { t } = useTranslation();
@@ -223,7 +261,8 @@ export function MapCanvas({
    * l'écouteur clavier sur un descendant de l'élément focusé — où un `keydown` ne
    * remonte jamais.
    */
-  const hostRef = useRef<HTMLElement>(null);
+  const ownRef = useRef<HTMLElement>(null);
+  const hostRef = providedRef ?? ownRef;
   return (
     // `tabIndex` : la section doit pouvoir recevoir le focus pour que les raccourcis
     // clavier de la caméra s'appliquent. Le canvas, lui, reste hors du parcours.
@@ -271,6 +310,11 @@ export function MapCanvas({
           enablePan
           enableDamping
           dampingFactor={0.15}
+          // Le zoom suit le curseur (chantier 35.2). Sans cela la molette rapproche
+          // toujours la caméra du même point, et l'objet dans lequel on descend est celui
+          // qui se trouve au centre de l'écran plutôt que celui qu'on vise — ce qui rend
+          // le zoom continu inutilisable dès qu'on veut choisir sa galaxie.
+          zoomToCursor
           maxDistance={distance * 6}
           minDistance={distance * 0.02}
         />

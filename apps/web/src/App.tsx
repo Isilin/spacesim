@@ -36,7 +36,6 @@ import { EmpireView } from "./EmpireView.js";
 import { CommunicationView } from "./CommunicationView.js";
 import { CorporationView } from "./CorporationView.js";
 import { InboxView } from "./InboxView.js";
-import { GalaxyScene } from "./map3d/GalaxyScene.js";
 import { FleetsView } from "./FleetsView.js";
 import { ShipDesigner } from "./ShipDesigner.js";
 import { GatewaysPanel } from "./GatewaysPanel.js";
@@ -47,7 +46,7 @@ import { LogisticsView } from "./LogisticsView.js";
 import { StationsView } from "./StationsView.js";
 import { SystemPanel } from "./SystemPanel.js";
 import { SystemScene } from "./map3d/SystemScene.js";
-import { UniverseScene } from "./map3d/UniverseScene.js";
+import { MapScene } from "./map3d/MapScene.js";
 import { useGameConnection } from "./hooks/useGameConnection.js";
 import { useGameStore } from "./state/game-store.js";
 import { useNotifications } from "./useNotifications.js";
@@ -176,11 +175,15 @@ function MapPage({
   };
 
   const fleetSystemIds = fleets.map((f) => f.systemId);
-  // Système « survolé » à ce niveau (chantier 9.4) : affiché dans le panneau latéral avec
-  // un bouton d'ouverture, sans quitter la vue galaxie.
+  // Système « survolé » (chantier 9.4) : affiché dans le panneau latéral avec un bouton
+  // d'ouverture, sans quitter la carte. Cherché dans tout l'univers depuis le chantier
+  // 35.2 : le zoom continu descend dans une galaxie sans que l'URL en porte trace, donc
+  // se limiter à `viewGalaxy` laissait le panneau vide juste après une descente.
   const focusedSystem =
-    level === "galaxy" && viewGalaxy && focus
-      ? (viewGalaxy.systems.find((s) => s.id === focus) ?? null)
+    focus && (level === "galaxy" || level === "universe")
+      ? (universe.galaxies
+          .flatMap((g) => g.systems)
+          .find((s) => s.id === focus) ?? null)
       : null;
 
   return (
@@ -233,26 +236,22 @@ function MapPage({
             </>
           )}
         </nav>
-        {level === "universe" ? (
-          <UniverseScene
+        {level === "universe" || level === "galaxy" ? (
+          // Un seul composant pour les deux premiers paliers depuis le chantier 35.2 :
+          // ils ne s'excluent plus, le zoom passe de l'un à l'autre en continu.
+          <MapScene
             universe={universe}
             colonies={colonies}
             gateways={gateways}
-            selectedId={focus}
-            onSelect={(g) => setFocus(g.id)}
-            onOpenGalaxy={(g) => openGalaxy(g.id)}
-          />
-        ) : level === "galaxy" && viewGalaxy ? (
-          <GalaxyScene
-            galaxy={viewGalaxy}
-            colonies={colonies}
             stations={stations}
             foreignStations={foreignStations}
             exploredSystemIds={exploredSystemIds}
             claimedSystemIds={game.claimedSystemIds}
             territories={territories}
+            routeGalaxyId={viewGalaxy?.id ?? null}
             selectedId={focus}
-            onSelect={(s) => setFocus(s.id)}
+            onSelectGalaxy={(g) => setFocus(g.id)}
+            onSelectSystem={(s) => setFocus(s.id)}
             onOpenSystem={openSystem}
           />
         ) : viewBody && viewSystem ? (
