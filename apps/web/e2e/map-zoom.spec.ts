@@ -59,7 +59,7 @@ async function settledTier(
 test("le zoom descend dans une galaxie et remonte, sans changer de canvas", async ({
   page,
 }) => {
-  // Le double-clic vole (620 ms) puis on remonte une bande entière à la molette.
+  // Le vol dure 620 ms, puis on remonte une bande entière à la molette.
   test.setTimeout(90_000);
   await registerFreshEmpire(page, {
     prefix: "mapzoom",
@@ -81,10 +81,6 @@ test("le zoom descend dans une galaxie et remonte, sans changer de canvas", asyn
   await expect
     .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
     .toBe("galaxy");
-
-  // Le double-clic vole ET ouvre la fiche (chantier 35.6) : la refermer pour rendre la
-  // carte à la molette.
-  await page.keyboard.press("Escape");
 
   // L'invariant du chantier : un seul canvas, du premier palier au dernier. Deux canvas
   // successifs, c'est l'ancien modèle qui est revenu.
@@ -160,7 +156,6 @@ test("la traversée va de l'amas jusqu'à un corps, puis en revient", async ({
   await expect
     .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
     .toBe("galaxy");
-  await page.keyboard.press("Escape");
 
   // Puis la capitale : le brouillard vide les systèmes inexplorés de leurs corps, et un
   // système vide n'a rien dans quoi descendre. Le raccourci vise le seul système dont on
@@ -170,7 +165,8 @@ test("la traversée va de l'amas jusqu'à un corps, puis en revient", async ({
     .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
     .toBe("system");
 
-  // Une lune s'ouvre en fiche, pas en palier : viser une planète.
+  // Viser une planète : une lune se laisse survoler comme les autres corps depuis que
+  // le double-clic vole (chantier 36.5), mais la planète est la descente attendue ici.
   const bodies = page.getByRole("navigation", { name: /système|system/i });
   await expect(bodies.getByRole("button").first()).toBeVisible();
   await bodies
@@ -181,7 +177,6 @@ test("la traversée va de l'amas jusqu'à un corps, puis en revient", async ({
   await expect
     .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
     .toBe("body");
-  await page.keyboard.press("Escape");
 
   // Un seul canvas de l'amas jusqu'à la planète : c'est ce qui distingue une traversée
   // continue de quatre scènes qui se remplacent.
@@ -405,12 +400,13 @@ test("l'infobox laisse zoomer sous elle et se referme d'un Échap", async ({
   await expect(infobox).toBeHidden();
 });
 
-test("le double-clic vole jusqu'à l'objet et ouvre sa fiche", async ({
+test("le double-clic vole seul, la fiche s'ouvre depuis l'infobox", async ({
   page,
 }) => {
-  // Ouvrir un corps était un NIVEAU de carte : la scène 3D disparaissait au profit d'une
-  // fiche SVG. La modale laisse la carte derrière elle et se referme d'une touche —
-  // regarder et lire cessent d'être exclusifs.
+  // Le double-clic ouvrait AUSSI la fiche (chantier 35.6), et la modale étant bloquante,
+  // il fallait appuyer sur Échap entre deux descentes. Il vole désormais, et rien de plus
+  // (chantier 36.5) : les descentes s'enchaînent. La fiche — qui n'existait pas pour une
+  // galaxie avant le 35.6 — s'obtient par le bouton de l'infobox.
   await registerFreshEmpire(page, {
     prefix: "mapsheet",
     empireName: "Liseurs E2E",
@@ -426,19 +422,66 @@ test("le double-clic vole jusqu'à l'objet et ouvre sa fiche", async ({
   const name = (await row.locator("span").first().innerText()).trim();
   await row.dblclick();
 
-  // La fiche d'une galaxie n'existait pas avant le chantier 35.6 : sélectionner une
-  // galaxie n'ouvrait rien du tout.
-  const sheet = page.getByRole("dialog", { name: new RegExp(name, "i") });
-  await expect(sheet).toBeVisible();
-  await expect(sheet).toContainText(/Systèmes|Systems/i);
-
-  // Et la caméra a bel et bien volé : le double-clic ne fait pas qu'ouvrir une fiche.
+  // La caméra vole…
   await expect
     .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
     .toBe("galaxy");
 
+  // …et rien ne s'est ouvert au passage. Ni la fiche, ni l'infobox que le premier clic du
+  // double-clic déclenchait : c'est le délai de discrimination qui l'en empêche.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  // Un clic simple, lui, ouvre bien l'infobox — après son délai.
+  await page.getByRole("navigation", { name: /galaxie|galaxy/i });
+  const galaxyList = page.getByRole("navigation", { name: /galaxie|galaxy/i });
+  await galaxyList.getByRole("button").first().click();
+  const infobox = page.getByRole("dialog");
+  await expect(infobox).toBeVisible();
+
+  // Et c'est son bouton qui ouvre la fiche.
+  await infobox.getByRole("button").first().click();
+  const sheet = page.getByRole("dialog");
+  await expect(sheet).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(sheet).toBeHidden();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  // La galaxie, elle, garde sa fiche accessible par l'URL — le nom en atteste.
+  expect(name.length).toBeGreaterThan(0);
+});
+
+test("la sélection remonte au parent quand on quitte un palier", async ({
+  page,
+}) => {
+  // Sortir d'une planète en gardant la planète sélectionnée laisserait l'infobox décrire
+  // un objet devenu invisible, et le bouton « Ouvrir la fiche » ouvrirait autre chose que
+  // ce qu'on regarde (chantier 36.5).
+  test.setTimeout(90_000);
+  await registerFreshEmpire(page, {
+    prefix: "maplift",
+    empireName: "Remontants E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+
+  await page.getByRole("button", { name: "Ma capitale" }).click();
+  await expect
+    .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
+    .toBe("system");
+
+  const bodies = page.getByRole("navigation", { name: /système|system/i });
+  const row = bodies.getByRole("button").first();
+  const body = (await row.locator("span").first().innerText()).trim();
+  await row.click();
+  const infobox = page.getByRole("dialog");
+  await expect(infobox).toContainText(body);
+
+  // Remonter d'un palier : l'infobox doit changer d'objet, pas rester sur un corps qu'on
+  // ne voit plus.
+  expect(await wheelOutTo(page, "galaxy")).toContain("galaxy");
+  await expect(infobox).not.toContainText(body);
 });
 
 test("le budget d'images tient au milieu d'une transition", async ({

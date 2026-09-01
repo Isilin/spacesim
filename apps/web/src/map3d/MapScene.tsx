@@ -156,6 +156,16 @@ function deepestTier(path: AnchorPath): TierName {
  */
 const FEATURE_RADIUS = 6;
 
+/**
+ * Délai avant qu'un clic simple n'ouvre l'infobox (chantier 36.5).
+ *
+ * Le double-clic vole ; son PREMIER clic ouvrait l'infobox, aussitôt remplacée par le
+ * mouvement de caméra. La carte clignotait à chaque descente. Attendre de savoir si un
+ * second clic arrive coûte un quart de seconde à la sélection — c'est le prix d'un geste
+ * qui ne se contredit pas lui-même.
+ */
+const SELECT_DELAY = 250;
+
 /** Compose une translation locale avec le placement de son parent. */
 function under(parent: Placement, local: Vec3): Vec3 {
   return [
@@ -485,11 +495,18 @@ interface Props {
   onSelectGalaxy: (galaxy: Galaxy) => void;
   onSelectSystem: (system: StarSystem) => void;
   onSelectBody: (body: Planet) => void;
-  onOpenBody: (body: Planet) => void;
   /** Ouvre la fiche complète d'un objet — le double-clic vole ET ouvre. */
   onOpenFiche: (id: string) => void;
   /** Sélectionne un objet du système qui n'est ni galaxie, ni système, ni corps. */
-  onSelectFeature: (id: string) => void;
+  /**
+   * Sélection par identifiant, quelle que soit la nature de l'objet.
+   *
+   * Les trois précédentes prennent une entité parce que la couche qui les appelle l'a déjà
+   * sous la main. Celle-ci sert là où seul l'identifiant est connu : les objets d'un
+   * système sans type propre (chantier 35.8), et la remontée de sélection au franchissement
+   * (chantier 36.5), qui peut aussi n'avoir plus rien à sélectionner.
+   */
+  onSelectId: (id: string | null) => void;
   /** Clic dans le vide : referme l'infobox. */
   onClearSelection: () => void;
   /** Publie ce que la caméra vise et à quelle profondeur, pour que l'URL les suive. */
@@ -532,9 +549,8 @@ export function MapScene({
   onSelectGalaxy,
   onSelectSystem,
   onSelectBody,
-  onOpenBody,
   onOpenFiche,
-  onSelectFeature,
+  onSelectId,
   onClearSelection,
   onViewChange,
 }: Props) {
@@ -996,18 +1012,78 @@ export function MapScene({
       if (!next) return from;
       // On ne descend que dans quelque chose : sans placement, il n'y a rien à cadrer.
       if (delta === 1 && !placements[next]) return from;
+      // En remontant, la sélection remonte avec la vue (chantier 36.5) : sortir d'une
+      // planète sélectionne son système, sortir d'un système sa galaxie. Sans cela
+      // l'infobox continuerait de décrire un objet devenu invisible, et la fiche que son
+      // bouton ouvre ne serait plus celle de ce qu'on regarde.
+      if (delta === -1) liftSelection(next);
       return next;
     });
   };
 
   /**
-   * Double-clic ou entrée de liste : voler jusqu'à l'objet ET ouvrir sa fiche.
+   * Ramène la sélection au palier atteint en remontant.
    *
-   * Distinct de l'élection d'ancre, qui change de cible en continu pendant que le joueur
-   * se déplace — y attacher un vol collerait la caméra à chaque galaxie survolée.
+   * Ne touche à rien si l'objet sélectionné appartient déjà à ce palier ou au-dessus : on
+   * ne reprend au joueur que ce qui a quitté l'écran.
+   */
+  const liftSelection = (reached: TierName) => {
+    if (!selectedId) return;
+    const path = anchorPathOf(universe, selectedId);
+    const owner = features.some((f) => f.id === selectedId)
+      ? "system"
+      : deepestTier(path);
+    if (tierIndex(owner) <= tierIndex(reached)) return;
+    const parent =
+      reached === "universe"
+        ? path.galaxyId
+        : reached === "galaxy"
+          ? path.systemId
+          : path.bodyId;
+    onSelectId(parent);
+  };
+
+  /**
+   * Sélection différée : elle n'a lieu que si aucun second clic ne suit.
+   *
+   * Une référence et non un état : le minuteur ne concerne pas le rendu, et le passer par
+   * React re-rendrait la carte deux fois par clic.
+   */
+  const pendingSelect = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelSelect = useCallback(() => {
+    if (pendingSelect.current === null) return;
+    clearTimeout(pendingSelect.current);
+    pendingSelect.current = null;
+  }, []);
+  const selectSoon = useCallback(
+    (run: () => void) => {
+      cancelSelect();
+      pendingSelect.current = setTimeout(() => {
+        pendingSelect.current = null;
+        run();
+      }, SELECT_DELAY);
+    },
+    [cancelSelect],
+  );
+  // Un démontage en plein délai laisserait le minuteur écrire dans un composant parti.
+  useEffect(() => cancelSelect, [cancelSelect]);
+
+  /** Clic dans le vide : referme, et annule une sélection encore en attente. */
+  const clearSelection = useCallback(() => {
+    cancelSelect();
+    onClearSelection();
+  }, [cancelSelect, onClearSelection]);
+
+  /**
+   * Vol jusqu'à un objet, et rien d'autre (chantier 36.5).
+   *
+   * Il ouvrait aussi la fiche depuis le chantier 35.6, ce qui rendait la modale bloquante
+   * après chaque descente : impossible d'enchaîner les double-clics pour traverser sans
+   * appuyer sur Échap entre deux. La fiche s'obtient désormais par le bouton de l'infobox,
+   * ou par `?open=` dans l'URL.
    */
   const dive = (name: TierName, id: string) => {
-    onOpenFiche(id);
+    cancelSelect();
     const path = anchorFor(name, id);
     const next = computePlacements(
       universe,
@@ -1020,6 +1096,31 @@ export function MapScene({
     setAnchors(path);
     if (target)
       setJump({ tier: arrival, focus: target.scene, child: null, progress: 0 });
+  };
+
+  /**
+   * Vol de recentrage sur un objet qui n'a pas de palier sous lui (chantier 36.5).
+   *
+   * Comptoir, station, avant-poste, ceinture, site : rien ne se trouve « sous » eux, il n'y
+   * a donc nulle part où descendre. Le double-clic les ramène quand même au centre — depuis
+   * que la vue n'est plus libre, c'est le seul geste qui déplace la cible de la caméra.
+   */
+  const flyToFeature = (id: string, at: Vec3) => {
+    cancelSelect();
+    // Assez large pour que l'objet ne remplisse pas le cadre : on vient le regarder, pas
+    // s'y coller.
+    const radius = FEATURE_RADIUS * (placements.system?.scale ?? 1) * 8;
+    setJump({
+      tier,
+      focus: {
+        id,
+        center: [at[0], at[1], at[2]],
+        radius,
+        half: [radius, radius, radius],
+      },
+      child: null,
+      progress: 0,
+    });
   };
 
   const publish = useCallback(
@@ -1186,29 +1287,28 @@ export function MapScene({
   const pickFromList = (id: string, open: boolean) => {
     const feature = features.find((f) => f.id === id);
     if (feature) {
-      if (open) onOpenFiche(feature.openId);
-      else onSelectFeature(id);
+      if (open) flyToFeature(feature.id, feature.at());
+      else selectSoon(() => onSelectId(id));
       return;
     }
     if (tier === "body" || tier === "system") {
       const target = system?.planets.find((p) => p.id === id);
       if (!target) return;
-      if (!open) onSelectBody(target);
-      else if (target.kind === "moon" || tier === "body") onOpenBody(target);
-      else dive("system", target.id);
+      if (open) dive("system", target.id);
+      else selectSoon(() => onSelectBody(target));
       return;
     }
     if (tier === "galaxy") {
       const target = galaxy?.systems.find((s) => s.id === id);
       if (!target) return;
       if (open) dive("galaxy", target.id);
-      else onSelectSystem(target);
+      else selectSoon(() => onSelectSystem(target));
       return;
     }
     const target = universe.galaxies.find((g) => g.id === id);
     if (!target) return;
     if (open) dive("universe", target.id);
-    else onSelectGalaxy(target);
+    else selectSoon(() => onSelectGalaxy(target));
   };
 
   return (
@@ -1218,7 +1318,7 @@ export function MapScene({
         focus={initialFocus}
         hostRef={hostRef}
         overlayRef={overlayRef}
-        onPointerMissed={onClearSelection}
+        onPointerMissed={clearSelection}
       >
         <LightRig depthRef={depthRef} />
         <TierCamera
@@ -1280,7 +1380,7 @@ export function MapScene({
               target={selection.target}
               portal={overlayRef}
               onOpen={openSelection}
-              onClose={onClearSelection}
+              onClose={clearSelection}
             />
           </MovingGroup>
         )}
@@ -1293,7 +1393,7 @@ export function MapScene({
               gateways={gateways}
               focus={placements.universe.local}
               selectedId={selectedId}
-              onSelect={onSelectGalaxy}
+              onSelect={(g) => selectSoon(() => onSelectGalaxy(g))}
               onOpenGalaxy={(g) => dive("universe", g.id)}
             />
           </FadingGroup>
@@ -1318,7 +1418,7 @@ export function MapScene({
               now={Date.now()}
               focus={placements.galaxy.local}
               selectedId={selectedId}
-              onSelect={onSelectSystem}
+              onSelect={(sys) => selectSoon(() => onSelectSystem(sys))}
               onOpenSystem={(s) => dive("galaxy", s.id)}
             />
           </FadingGroup>
@@ -1342,10 +1442,8 @@ export function MapScene({
               fleets={fleets}
               foreignFleets={foreignFleets}
               selectedBodyId={selectedId}
-              onSelectBody={onSelectBody}
-              onOpenBody={(b) =>
-                b.kind === "moon" ? onOpenBody(b) : dive("system", b.id)
-              }
+              onSelectBody={(b) => selectSoon(() => onSelectBody(b))}
+              onOpenBody={(b) => dive("system", b.id)}
             />
           </FadingGroup>
         )}
@@ -1360,8 +1458,8 @@ export function MapScene({
                 colonies={colonies}
                 stations={stations}
                 selectedBodyId={selectedId}
-                onSelectBody={onSelectBody}
-                onOpenBody={onOpenBody}
+                onSelectBody={(b) => selectSoon(() => onSelectBody(b))}
+                onOpenBody={(b) => dive("system", b.id)}
               />
             </FadingGroup>
           </MovingGroup>

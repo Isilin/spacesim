@@ -293,9 +293,8 @@ function MapPage({
           onSelectGalaxy={(g) => setSelectedId(g.id)}
           onSelectSystem={(s) => setSelectedId(s.id)}
           onSelectBody={(b) => setSelectedId(b.id)}
-          onOpenBody={(b) => openSheet(b.id)}
           onOpenFiche={openSheet}
-          onSelectFeature={setSelectedId}
+          onSelectId={setSelectedId}
           onClearSelection={() => setSelectedId(null)}
           onViewChange={onViewChange}
         />
