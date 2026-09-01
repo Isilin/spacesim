@@ -144,6 +144,25 @@ function MapPage({
     token: number;
   } | null>(null);
 
+  /**
+   * Échap referme l'infobox (chantier 35.12).
+   *
+   * `Popover` sait déjà se fermer sur Échap, mais par un `onKeyDown` posé sur son propre
+   * nœud : il ne se déclenche que si le focus est dedans. Or l'infobox est montée avec
+   * `autoFocus={false}` — le prendre retirerait au joueur les raccourcis de caméra. La
+   * touche n'atteignait donc jamais rien, et le clavier n'avait aucun moyen de refermer ce
+   * qu'il venait d'ouvrir depuis la liste. Sur le document, faute d'un nœud focusé à qui
+   * la confier.
+   */
+  useEffect(() => {
+    if (!selectedId) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedId(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [selectedId]);
+
   const index = useMemo(() => buildUniverseIndex(universe), [universe]);
 
   /**

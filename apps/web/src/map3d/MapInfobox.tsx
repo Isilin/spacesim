@@ -63,12 +63,16 @@ export function MapInfobox({ target, portal, onOpen, onClose }: Props) {
       // taille en pixels. Sans cela, un palier à l'échelle 10⁻³ la réduirait à rien — les
       // couches de carte sont imbriquées, pas à l'échelle de l'écran.
       //
-      // Décalée sur le côté plutôt que centrée sur l'objet : posée dessus, elle le
-      // masquait — et surtout elle avalait la molette, la carte cessant de zoomer
-      // exactement là où le joueur venait de cliquer.
+      // Décalée sur le côté plutôt que centrée sur l'objet, qu'elle masquait.
+      //
+      // `pointerEvents: "none"` (chantier 35.12) : le décalage ne suffisait pas. Une
+      // infobox opaque aux événements avale la molette, et elle est ancrée exactement là
+      // où le joueur vient de cliquer — donc là où il va zoomer. La carte cessait de
+      // répondre sur une bande de 240 px de large jusqu'à ce qu'on referme l'infobox.
+      // Seul son bouton reprend les événements, par `.map-infobox button`.
       zIndexRange={[40, 0]}
       portal={portal as RefObject<HTMLElement>}
-      style={{ pointerEvents: "auto", transform: "translate(16px, -50%)" }}
+      style={{ pointerEvents: "none", transform: "translate(16px, -50%)" }}
     >
       <Popover
         aria-label={t("mapInfobox.ariaLabel", { name })}

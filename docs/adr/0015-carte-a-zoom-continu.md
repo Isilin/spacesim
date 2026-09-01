@@ -95,8 +95,22 @@ Un clic simple ouvre une infobox ancrée sur l'objet ; un clic dans le vide la r
 Un double-clic **vole** jusqu'à l'objet **et** ouvre sa fiche, dans une modale qui laisse la
 carte visible derrière elle.
 
+Une infobox posée sur la carte est **transparente aux événements**, son bouton excepté. Elle
+est ancrée sur l'objet qu'on vient de choisir, donc sur celui vers lequel on va zoomer :
+opaque, elle avale la molette et la carte cesse de répondre exactement là où le joueur
+regarde. Le décalage latéral ne suffit pas — il ne traite que le cas où le curseur tombe sur
+l'ancre.
+
+Elle ne prend pas le focus, sous peine de retirer à la section les raccourcis de caméra. Sa
+fermeture au clavier ne peut donc pas venir du `Popover` lui-même, qui lie sa touche à son
+propre nœud : c'est la page qui écoute Échap tant qu'une sélection existe.
+
 ## Conséquences
 
+- **Sélectionner ne déplace pas la cible de la caméra**, contrairement à ce que prévoyait le
+  plan. Le geste demandé est « simplement sélectionner ouvre l'infobox » ; faire paner la vue
+  à chaque clic le contredirait. Viser se fait à la molette — elle suit le curseur — ou au
+  double-clic, qui vole.
 - **Le double-clic ne peut plus s'enchaîner** pour descendre : la modale qu'il ouvre est
   bloquante, il faut la refermer (Échap) pour continuer à naviguer. C'est le prix du geste
   demandé — vol *et* fiche — et il se paie à chaque descente au double-clic. La molette,

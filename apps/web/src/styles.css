@@ -1695,6 +1695,13 @@
 .map-infobox p {
   margin: 0;
 }
+/* L'infobox laisse passer la molette (chantier 35.12) : elle est posée sur l'objet qu'on
+   vient de sélectionner, donc sur celui vers lequel on va zoomer. Opaque aux événements,
+   elle rendait la carte insensible au zoom là précisément où le joueur regardait. Seul son
+   bouton reprend la main — le reste n'est que du texte. */
+.map-infobox button {
+  pointer-events: auto;
+}
 
 .map-list {
   width: 210px;

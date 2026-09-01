@@ -233,6 +233,44 @@ test("sélectionner ouvre une infobox sur la carte, cliquer à côté la referme
   await expect(infobox).toBeHidden();
 });
 
+test("l'infobox laisse zoomer sous elle et se referme d'un Échap", async ({
+  page,
+}) => {
+  // Les deux défauts que la passe visuelle du chantier 35.12 a trouvés, et qu'aucun test
+  // ne pouvait voir : ils ne se manifestent que si le curseur est SUR l'infobox, ce que
+  // les tests précédents évitaient soigneusement en visant un coin vide du canvas.
+  //
+  // L'infobox est ancrée sur l'objet qu'on vient de sélectionner — donc sur celui vers
+  // lequel on va zoomer. Opaque aux événements, elle avalait la molette : la carte
+  // cessait de répondre exactement là où le joueur regardait. Et Échap ne la fermait pas,
+  // le `Popover` liant sa touche à un nœud qui n'a jamais le focus ici.
+  await registerFreshEmpire(page, {
+    prefix: "mapthru",
+    empireName: "Traversants E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+
+  const list = page.getByRole("navigation", { name: /univers|universe/i });
+  await list.getByRole("button").first().click();
+  const infobox = page.getByRole("dialog");
+  await expect(infobox).toBeVisible();
+
+  const before = Number(await host.getAttribute("data-map-depth"));
+  const box = (await infobox.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  for (let i = 0; i < 8; i++) await page.mouse.wheel(0, -200);
+  await page.waitForTimeout(250);
+  expect(Number(await host.getAttribute("data-map-depth"))).toBeGreaterThan(
+    before,
+  );
+
+  await page.keyboard.press("Escape");
+  await expect(infobox).toBeHidden();
+});
+
 test("le double-clic vole jusqu'à l'objet et ouvre sa fiche", async ({
   page,
 }) => {

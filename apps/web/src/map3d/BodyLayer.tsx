@@ -9,6 +9,7 @@ import {
 import { useRef } from "react";
 import type { Group } from "three";
 import { focusOf, type Focus } from "./bounds.js";
+import { hasRings, PlanetRings } from "./PlanetRings.js";
 import { ProceduralBody } from "./ProceduralBody.js";
 import { bodyRadiusOf } from "./SystemLayer.js";
 import { orbitColor } from "./theme.js";
@@ -185,6 +186,10 @@ export function BodyLayer({
           radius={radius}
           selected={false}
         />
+        {/* Les mêmes anneaux qu'au palier système (chantier 35.12) : la géante les portait
+            de loin et les perdait de près, au moment exact où l'on s'approchait pour les
+            regarder. */}
+        {hasRings(body) && <PlanetRings body={body} radius={radius} />}
       </group>
 
       {/* Deux rayons distincts : un corps peut porter colonie ET station (chantier 24). */}

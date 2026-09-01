@@ -2107,6 +2107,7 @@ carte du 24/07/2026).
   et teintés par leur gisement, anneaux de géantes gazeuses, formes de sites par nature,
   morphologies de galaxie, nébuleuses.
 - **35.11** ADR, documentation, remesure.
+- **35.12** Contrôle visuel final, et les trois défauts qu'il a trouvés — voir plus bas.
 
 ### Budget d'images
 
@@ -2146,3 +2147,41 @@ Cinq d'entre eux ne se manifestaient qu'**à l'intermittence**, et l'un uniqueme
 suite de tests complète — il fallait assez de galaxies pour que celle qu'on survole ne soit
 pas celle qu'on vise. La leçon du chantier 31.24 se confirme : sur une carte 3D, ce qui n'est
 pas publié dans le DOM n'existe pas pour la vérification.
+
+### Et ce que l'instrumentation ne pouvait pas trouver (35.12)
+
+Trois défauts de plus sont sortis du **contrôle visuel** final, qu'aucun des vingt-deux tests
+de bout en bout n'attrapait — parce qu'ils visaient tous soigneusement un coin vide du canvas
+pour éviter d'ouvrir quelque chose par mégarde.
+
+- **L'infobox avalait la molette.** Elle est ancrée sur l'objet qu'on vient de sélectionner,
+  c'est-à-dire sur celui vers lequel on va zoomer : opaque aux événements, elle rendait la
+  carte insensible au zoom là précisément où le joueur regardait. Un correctif antérieur
+  la décalait de 16 px en croyant traiter le problème ; il ne traitait que le cas où le
+  curseur tombait pile sur l'ancre.
+- **Échap ne la fermait pas.** `Popover` lie sa touche à son propre nœud, et l'infobox est
+  montée sans prendre le focus — le lui donner retirerait au joueur les raccourcis de caméra.
+  La touche n'atteignait donc rien, et le clavier ne pouvait pas refermer ce qu'il venait
+  d'ouvrir depuis la liste.
+- **Une géante gazeuse perdait ses anneaux au palier corps.** `PlanetRings` vivait dans
+  `SystemLayer` ; le palier corps dessinait le même corps sans eux, au moment exact où l'on
+  s'approche assez pour les regarder. Le prédicat et le composant vivent désormais dans
+  `PlanetRings.tsx`, pour que deux paliers ne puissent plus en donner deux versions.
+
+Les deux premiers sont couverts depuis par un test qui pose le curseur **sur** l'infobox,
+seul endroit d'où ils sont visibles.
+
+Deux constats sans correctif, qui sont des décisions plutôt que des défauts :
+
+- **Un système inexploré n'a aucun corps connu**, donc aucune entrée de liste et aucun palier
+  corps atteignable. Sa classe d'étoile est la plus banale, par le même brouillard — voir
+  l'ADR [0016](adr/0016-classes-d-etoiles-derivees.md). La variété du ciel est donc une
+  récompense d'exploration, pas un décor offert au premier regard.
+- **Sélectionner ne déplace pas la cible de la caméra.** Le plan le prévoyait ; le geste
+  demandé était « simplement sélectionner ouvre l'infobox », et faire paner la vue à chaque
+  clic le contredirait. On vise à la molette, qui suit le curseur, ou au double-clic, qui
+  vole.
+
+Le budget d'images se mesure **conteneur `app` de dev arrêté** : laissé debout, il dispute
+le processeur au pilote OpenGL logiciel et fait tomber la mesure du palier système de 42 à
+moins de 20. Le seuil du test n'était pas en cause.
