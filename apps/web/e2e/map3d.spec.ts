@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { framesPerSecond, registerFreshEmpire } from "./helpers.js";
+import {
+  framesPerSecond,
+  openMapObjects,
+  registerFreshEmpire,
+} from "./helpers.js";
 
 /**
  * Référence de performance et de mise en page de la carte 3D (chantier 31.17).
@@ -40,6 +44,7 @@ test("la carte 3D rend et tient un budget d'images à chaque niveau", async ({
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   await expect(page).toHaveURL(/\/map$/);
 
   // Niveau univers : le canvas doit exister ET avoir une taille — WebGL n'a pas de
@@ -82,6 +87,7 @@ test("la carte 3D reste utilisable sur un écran de téléphone", async ({
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   await expectSizedCanvas(page, 280);
 
   // Rien ne doit déborder horizontalement (contrainte de responsive du chantier 27.22).
@@ -105,6 +111,7 @@ test("la caméra reste au joueur une fois qu'il l'a touchée", async ({
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   await page.getByRole("button", { name: "Ma capitale" }).click();
   await expect(page).toHaveURL(/\/map\?.*at=/);
 

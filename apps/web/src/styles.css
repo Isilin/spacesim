@@ -1641,6 +1641,8 @@
   width: 100%;
   height: 100%;
   min-height: 420px;
+  /* Repère du panneau d'objets, posé hors du flux par-dessus la carte (chantier 36.4). */
+  position: relative;
 }
 
 /* Fond PLAT, volontairement : la vignette radiale d'origine était peinte derrière un
@@ -1703,11 +1705,50 @@
   pointer-events: auto;
 }
 
+/* Panneau d'objets dépliable (chantier 36.4). Hors du flux : depuis que les noms se
+   posent sur les objets, une colonne de 210 px prise en permanence sur la carte ne se
+   justifie plus. Hors du flux le met AUSSI hors du chemin de la molette — l'écouteur de
+   zoom vit sur la section du canvas, dont ce panneau n'est pas un descendant. */
+.map-objects {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  /* `min-height: 0` sur une colonne flex : sans lui la liste refuse de défiler et
+     déborde du panneau. */
+  min-height: 0;
+  max-height: calc(100% - 16px);
+}
+
+.map-objects-toggle {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.map-objects-toggle:hover,
+.map-objects-toggle[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 .map-list {
   width: 210px;
-  flex: 0 0 auto;
   overflow-y: auto;
-  max-height: 100%;
+  min-height: 0;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
 }
 
 .map-list ul {
@@ -1758,8 +1799,7 @@
   }
 
   .map-list {
-    width: 100%;
-    max-height: 180px;
+    max-height: 40vh;
   }
 }
 

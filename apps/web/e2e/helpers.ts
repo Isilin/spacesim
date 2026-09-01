@@ -43,3 +43,18 @@ export function framesPerSecond(page: Page): Promise<number> {
       }),
   );
 }
+
+/**
+ * Déplie le panneau d'objets de la carte s'il ne l'est pas déjà (chantier 36.4).
+ *
+ * Il s'ouvre replié au premier chargement depuis que les noms se posent sur les objets :
+ * toute spec qui passe par la liste DOM doit donc l'ouvrir. Le libellé porte un compte et
+ * dépend de la locale — d'où la recherche par le début du mot, commun au français et à
+ * l'anglais.
+ */
+export async function openMapObjects(page: Page): Promise<void> {
+  const toggle = page.getByRole("button", { name: /\d+ obje/i });
+  if ((await toggle.getAttribute("aria-expanded")) === "false")
+    await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}

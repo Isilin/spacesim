@@ -60,6 +60,10 @@ export const commonFr = {
     pulsar: "Pulsar",
     blackHole: "Trou noir",
   },
+  mapList: {
+    toggle_one: "{{count}} objet",
+    toggle_other: "{{count}} objets",
+  },
   mapInfobox: {
     ariaLabel: "Détail de {{name}}",
     galaxySystems: "{{count}} systèmes",
@@ -756,6 +760,10 @@ export const commonEn: typeof commonFr = {
     whiteDwarf: "White dwarf",
     pulsar: "Pulsar",
     blackHole: "Black hole",
+  },
+  mapList: {
+    toggle_one: "{{count}} object",
+    toggle_other: "{{count}} objects",
   },
   mapInfobox: {
     ariaLabel: "Detail of {{name}}",

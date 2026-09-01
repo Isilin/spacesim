@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { framesPerSecond, registerFreshEmpire } from "./helpers.js";
+import {
+  framesPerSecond,
+  openMapObjects,
+  registerFreshEmpire,
+} from "./helpers.js";
 
 /**
  * Traversée continue des paliers de carte (chantier 35.2).
@@ -63,6 +67,7 @@ test("le zoom descend dans une galaxie et remonte, sans changer de canvas", asyn
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   await expect(page).toHaveURL(/\/map$/);
 
   const host = page.locator(".map-canvas");
@@ -108,6 +113,7 @@ test("la profondeur de zoom varie en continu à l'intérieur d'un palier", async
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   const host = page.locator(".map-canvas");
   expect(await settledTier(page)).toBe("universe");
 
@@ -141,6 +147,7 @@ test("la traversée va de l'amas jusqu'à un corps, puis en revient", async ({
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   const host = page.locator(".map-canvas");
   expect(await settledTier(page)).toBe("universe");
 
@@ -214,6 +221,7 @@ test("la traversée coûte une poignée de crans, pas une centaine", async ({
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   const host = page.locator(".map-canvas");
   expect(await settledTier(page)).toBe("universe");
 
@@ -237,6 +245,37 @@ test("la traversée coûte une poignée de crans, pas une centaine", async ({
   expect(notches).toBeLessThan(20);
 });
 
+test("le panneau d'objets s'ouvre replié et retient son état", async ({
+  page,
+}) => {
+  // La liste prenait 210 px de largeur en permanence. Depuis que les noms se posent sur
+  // les objets (chantier 36.3), elle se replie — mais elle reste le seul chemin clavier
+  // vers la scène, et ce test tient les deux promesses : elle est repliée par défaut, et
+  // elle est toujours atteignable.
+  await registerFreshEmpire(page, {
+    prefix: "mappanel",
+    empireName: "Replieurs E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  const list = page.getByRole("navigation", { name: /univers|universe/i });
+  const toggle = page.getByRole("button", { name: /\d+ obje/i });
+
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(list).toBeHidden();
+
+  await toggle.click();
+  await expect(list).toBeVisible();
+
+  // L'état survit au rechargement : c'est ce que « mémorisé » veut dire, et rien d'autre
+  // dans la carte ne le vérifierait.
+  await page.reload();
+  await expect(page.locator(".map-canvas canvas")).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: /univers|universe/i }),
+  ).toBeVisible();
+});
+
 test("les noms apparaissent sur les objets quand ils sont assez gros", async ({
   page,
 }) => {
@@ -254,6 +293,7 @@ test("les noms apparaissent sur les objets quand ils sont assez gros", async ({
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   const host = page.locator(".map-canvas");
   expect(await settledTier(page)).toBe("universe");
 
@@ -300,6 +340,7 @@ test("sélectionner ouvre une infobox sur la carte, cliquer à côté la referme
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   const host = page.locator(".map-canvas");
   expect(await settledTier(page)).toBe("universe");
 
@@ -342,6 +383,7 @@ test("l'infobox laisse zoomer sous elle et se referme d'un Échap", async ({
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   const host = page.locator(".map-canvas");
   expect(await settledTier(page)).toBe("universe");
 
@@ -375,6 +417,7 @@ test("le double-clic vole jusqu'à l'objet et ouvre sa fiche", async ({
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   const host = page.locator(".map-canvas");
   expect(await settledTier(page)).toBe("universe");
 
@@ -411,6 +454,7 @@ test("le budget d'images tient au milieu d'une transition", async ({
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   const host = page.locator(".map-canvas");
   expect(await settledTier(page)).toBe("universe");
 
@@ -451,6 +495,7 @@ test("la carte montre tout ce que le système contient, pas seulement ses corps"
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   const host = page.locator(".map-canvas");
   expect(await settledTier(page)).toBe("universe");
   await page.getByRole("button", { name: "Ma capitale" }).click();
