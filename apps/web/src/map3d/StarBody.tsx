@@ -35,6 +35,7 @@ const FRAGMENT = /* glsl */ `
   uniform vec3 uEdge;
   uniform float uTime;
   uniform float uSeed;
+  uniform float uOpacity;
   varying vec3 vPos;
   varying vec3 vNormal;
 
@@ -65,7 +66,7 @@ const FRAGMENT = /* glsl */ `
     // Assombrissement inversé : le bord d'une étoile est plus lumineux que son centre.
     float limb = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 1.6);
     vec3 base = mix(uCore, uEdge, clamp(granules * 0.9, 0.0, 1.0));
-    gl_FragColor = vec4(base * (0.85 + 0.6 * limb), 1.0);
+    gl_FragColor = vec4(base * (0.85 + 0.6 * limb), uOpacity);
   }
 `;
 
@@ -83,11 +84,12 @@ const HALO_VERTEX = /* glsl */ `
 
 const HALO_FRAGMENT = /* glsl */ `
   uniform vec3 uColor;
+  uniform float uOpacity;
   varying vec3 vNormal;
   varying vec3 vView;
   void main() {
     float rim = pow(1.0 - abs(dot(normalize(vNormal), normalize(vView))), 2.0);
-    gl_FragColor = vec4(uColor, rim * 0.55);
+    gl_FragColor = vec4(uColor, rim * 0.55 * uOpacity);
   }
 `;
 
@@ -107,11 +109,16 @@ export function StarBody({
       uEdge: { value: new Color("#ff8a3d") },
       uTime: { value: 0 },
       uSeed: { value: seedOf(id) },
+      // Piloté par `FadingGroup` (chantier 35.4).
+      uOpacity: { value: 1 },
     }),
     [id],
   );
   const haloUniforms = useMemo(
-    () => ({ uColor: { value: new Color("#ffae52") } }),
+    () => ({
+      uColor: { value: new Color("#ffae52") },
+      uOpacity: { value: 1 },
+    }),
     [],
   );
 
@@ -129,6 +136,7 @@ export function StarBody({
           vertexShader={VERTEX}
           fragmentShader={FRAGMENT}
           uniforms={uniforms}
+          transparent
         />
       </mesh>
       {/* Halo additif rendu sur la face INTERNE : la coque ne masque donc jamais l'étoile

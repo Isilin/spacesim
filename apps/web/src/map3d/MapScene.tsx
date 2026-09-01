@@ -25,6 +25,7 @@ import { useTranslation } from "react-i18next";
 import type { AmbientLight, Group, Vector3 } from "three";
 import { BodyLayer, bodyFocus, moonsOf } from "./BodyLayer.js";
 import { nestedFocus, type Focus } from "./bounds.js";
+import { FadingGroup } from "./FadingGroup.js";
 import {
   galaxyFocus,
   GalaxyLayer,
@@ -748,24 +749,24 @@ export function MapScene({
         {jump && <CameraJump request={jump} onDone={() => setJump(null)} />}
 
         {shows("universe") && placements.universe && (
-          <UniverseLayer
-            universe={universe}
-            colonizedGalaxyIds={colonizedGalaxyIds}
-            gateways={gateways}
-            focus={placements.universe.local}
-            selectedId={selectedId}
-            onSelect={onSelectGalaxy}
-            onOpenGalaxy={(g) => dive("universe", g.id)}
-          />
+          <FadingGroup tier="universe" depthRef={depthRef}>
+            <UniverseLayer
+              universe={universe}
+              colonizedGalaxyIds={colonizedGalaxyIds}
+              gateways={gateways}
+              focus={placements.universe.local}
+              selectedId={selectedId}
+              onSelect={onSelectGalaxy}
+              onOpenGalaxy={(g) => dive("universe", g.id)}
+            />
+          </FadingGroup>
         )}
 
         {shows("galaxy") && galaxy && placements.galaxy && (
-          <group
-            position={[
-              placements.galaxy.position[0],
-              placements.galaxy.position[1],
-              placements.galaxy.position[2],
-            ]}
+          <FadingGroup
+            tier="galaxy"
+            depthRef={depthRef}
+            position={placements.galaxy.position}
             scale={placements.galaxy.scale}
           >
             <GalaxyLayer
@@ -781,16 +782,14 @@ export function MapScene({
               onSelect={onSelectSystem}
               onOpenSystem={(s) => dive("galaxy", s.id)}
             />
-          </group>
+          </FadingGroup>
         )}
 
         {shows("system") && system && placements.system && (
-          <group
-            position={[
-              placements.system.position[0],
-              placements.system.position[1],
-              placements.system.position[2],
-            ]}
+          <FadingGroup
+            tier="system"
+            depthRef={depthRef}
+            position={placements.system.position}
             scale={placements.system.scale}
           >
             <SystemLayer
@@ -804,21 +803,23 @@ export function MapScene({
                 b.kind === "moon" ? onOpenBody(b) : dive("system", b.id)
               }
             />
-          </group>
+          </FadingGroup>
         )}
 
         {showsBody && system && body && bodyAt && placements.body && (
           <MovingGroup at={bodyAt} scale={placements.body.scale}>
-            <BodyLayer
-              system={system}
-              body={body}
-              tickAt={tickAt}
-              colonies={colonies}
-              stations={stations}
-              selectedBodyId={selectedId}
-              onSelectBody={onSelectBody}
-              onOpenBody={onOpenBody}
-            />
+            <FadingGroup tier="body" depthRef={depthRef}>
+              <BodyLayer
+                system={system}
+                body={body}
+                tickAt={tickAt}
+                colonies={colonies}
+                stations={stations}
+                selectedBodyId={selectedId}
+                onSelectBody={onSelectBody}
+                onOpenBody={onOpenBody}
+              />
+            </FadingGroup>
           </MovingGroup>
         )}
       </MapCanvas>

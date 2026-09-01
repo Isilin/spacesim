@@ -38,6 +38,13 @@ interface ControlsHandle {
  */
 const OVERSHOOT = 4;
 
+/**
+ * Part de l'écart à la cible rattrapée par image, à pleine progression. Assez faible pour
+ * qu'un panoramique volontaire reste possible en cours de descente, assez forte pour que
+ * la frontière soit franchie avec l'enfant au centre du cadre.
+ */
+const RECENTER = 0.08;
+
 export interface AnchorCandidate {
   id: string;
   position: Vec3;
@@ -202,6 +209,27 @@ export function TierCamera({
           parentFrame * 0.15;
     controls.maxDistance =
       tierIndex(tier) > 0 ? parentFrame * 1e4 : parentFrame * 3;
+
+    // Recentrage progressif sur ce dans quoi on descend (chantier 35.4).
+    //
+    // `zoomToCursor` déplace la cible vers le pointeur, qui peut viser le vide entre deux
+    // galaxies. On franchissait alors la frontière avec le contenu du palier atteint hors
+    // du cadre : la carte se vidait, le fondu ayant fait disparaître le palier quitté sans
+    // que rien ne le remplace à l'écran. La caméra ET sa cible se décalent d'autant, ce
+    // qui préserve la distance et l'angle de vue — on ne reprend au joueur que sa visée,
+    // et seulement à mesure qu'il s'engage.
+    if (childFocus && progress > 0) {
+      const pull = Math.min(RECENTER, RECENTER * progress);
+      const dx = (childFocus.center[0] - controls.target.x) * pull;
+      const dy = (childFocus.center[1] - controls.target.y) * pull;
+      const dz = (childFocus.center[2] - controls.target.z) * pull;
+      controls.target.x += dx;
+      controls.target.y += dy;
+      controls.target.z += dz;
+      camera.position.x += dx;
+      camera.position.y += dy;
+      camera.position.z += dz;
+    }
 
     const blend = tierBlend(progress);
 
