@@ -1649,6 +1649,7 @@
    selon l'angle, et son centre (#0d1420, plus clair que `--bg`) effaçait la grille par
    manque de contraste. Un repère de profondeur doit vivre DANS la scène, pas derrière. */
 .map-canvas {
+  position: relative;
   flex: 1;
   min-width: 0;
   min-height: 420px;
@@ -1658,8 +1659,35 @@
   overflow: hidden;
 }
 
+/* Surcouche des infobox (chantier 35.5). Elle vit DEHORS du conteneur de R3F, qui porte
+   `aria-hidden` : y laisser l'infobox la rendait invisible aux lecteurs d'écran, et donc
+   introuvable par son rôle. `pointer-events: none` laisse passer les clics vers le canvas ;
+   l'infobox elle-même les reprend. */
+.map-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 /* Liste DOM parallèle au canvas (chantier 31.16) : seul chemin accessible vers les
    objets de la scène, et le plus rapide pour trouver un nom dans une vue dense. */
+/* Infobox de carte (chantier 35.5). Le cadre vient du `Popover` du design system ; il
+   n'y a ici qu'à régler l'espacement et à borner la largeur, l'infobox étant posée par
+   drei au-dessus du canvas et n'ayant aucun conteneur qui la contraigne. */
+.map-infobox {
+  display: grid;
+  gap: 8px;
+  min-width: 150px;
+  max-width: 240px;
+}
+.map-infobox h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.map-infobox p {
+  margin: 0;
+}
+
 .map-list {
   width: 210px;
   flex: 0 0 auto;

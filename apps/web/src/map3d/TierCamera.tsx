@@ -128,25 +128,32 @@ export function TierCamera({
   const mounted = useRef(false);
   const anchored = useRef<string | null>(anchorId);
   const depthAttr = useRef("");
+  const tierAttr = useRef("");
   const tracked = useRef<{ key: string; at: Vec3 } | null>(null);
+  /** Progression de l'image précédente : sert à distinguer une descente d'un recul. */
+  const advance = useRef(0);
   /**
    * Verrou de franchissement : `onCross` déclenche un rendu React, et `useFrame` tourne
    * plusieurs fois avant que le nouveau palier n'arrive. Sans lui, un seul franchissement
    * en déclencherait une poignée et la carte traverserait deux paliers d'un coup.
+   *
+   * Il retient le palier depuis lequel on a franchi, et non un simple booléen remis à zéro
+   * par un effet : l'effet et la boucle d'images ne battent pas sur la même horloge, et une
+   * cascade — un saut qui vise un système depuis l'univers — s'arrêtait par intermittence
+   * au palier intermédiaire, le verrou n'ayant pas encore été rouvert quand l'image
+   * suivante passait. Comparé au palier courant, il se rouvre au moment même où celui-ci
+   * change.
    */
-  const crossing = useRef(false);
+  const crossedFrom = useRef<TierName | null>(null);
+  /** Direction de franchissement observée, et depuis combien d'images de suite. */
+  const steady = useRef<{ direction: -1 | 0 | 1; frames: number }>({
+    direction: 0,
+    frames: 0,
+  });
 
   useEffect(() => {
     anchored.current = anchorId;
   }, [anchorId]);
-
-  useEffect(() => {
-    host.current?.setAttribute("data-map-tier", tier);
-    // Le verrou se rouvre dès que le palier a effectivement changé, sans quoi un saut qui
-    // traverse plusieurs bandes d'un coup — « Ma capitale », qui vise un système depuis
-    // l'univers — s'arrêterait au premier palier franchi.
-    crossing.current = false;
-  }, [host, tier]);
 
   useFrame(() => {
     if (!controls) return;
@@ -218,7 +225,12 @@ export function TierCamera({
     // que rien ne le remplace à l'écran. La caméra ET sa cible se décalent d'autant, ce
     // qui préserve la distance et l'angle de vue — on ne reprend au joueur que sa visée,
     // et seulement à mesure qu'il s'engage.
-    if (childFocus && progress > 0) {
+    // Uniquement en descente. `zoomToCursor` réalise le dézoom en déplaçant la cible ;
+    // la ramener dans le même souffle annulait une partie du recul, et remonter de trois
+    // paliers demandait deux fois plus de crans de molette.
+    const rising = progress > advance.current + 1e-4;
+    advance.current = progress;
+    if (childFocus && progress > 0 && rising) {
       const pull = Math.min(RECENTER, RECENTER * progress);
       const dx = (childFocus.center[0] - controls.target.x) * pull;
       const dy = (childFocus.center[1] - controls.target.y) * pull;
@@ -262,17 +274,36 @@ export function TierCamera({
     // Le verrou se relâche de lui-même dès que la vue est revenue franchement dans la
     // bande. Le lier au palier ne suffirait pas : au sommet de l'échelle la remontée est
     // refusée, le palier ne change pas, et le verrou resterait fermé pour toujours.
-    if (!descending && !ascending) crossing.current = false;
-    else if (!crossing.current) {
-      crossing.current = true;
-      onCross(descending ? 1 : -1);
+    // Un franchissement demande DEUX images de suite. R3F mesure son canvas après le
+    // premier rendu : la caméra part d'un cadrage calculé sur un rapport d'image
+    // provisoire, plus reculé que le bon, ce qui se lit une image durant comme un dézoom
+    // au-delà de la frontière. Au chargement d'un lien profond, la carte remontait ainsi
+    // d'un palier avant même d'avoir été mesurée.
+    const direction = descending ? 1 : ascending ? -1 : 0;
+    if (direction === 0 || direction !== steady.current.direction) {
+      steady.current = { direction, frames: 1 };
+    } else {
+      steady.current.frames += 1;
+    }
+    if (direction === 0) crossedFrom.current = null;
+    else if (steady.current.frames >= 2 && crossedFrom.current !== tier) {
+      crossedFrom.current = tier;
+      onCross(direction);
     }
 
     // Profondeur continue, partagée par référence avec l'éclairage et les fondus.
     depthRef.current = tierIndex(tier) + Math.min(1, Math.max(0, progress));
 
-    // La même, publiée dans le DOM : une caméra 3D n'y laisse rien, et c'est le seul
-    // point sur lequel un test de bout en bout peut affirmer que la traversée a eu lieu.
+    // Palier et profondeur publiés dans le DOM, depuis la MÊME horloge. Une caméra 3D n'y
+    // laisse rien, et c'est le seul point sur lequel un test de bout en bout peut affirmer
+    // que la traversée a eu lieu. Le palier venait d'un effet React : il pouvait rester en
+    // retard d'un commit sur la profondeur, et une cascade de franchissements — un saut
+    // qui vise un système depuis l'univers — publiait alors un palier intermédiaire que
+    // rien ne corrigeait ensuite, faute de nouveau changement à signaler.
+    if (tier !== tierAttr.current) {
+      tierAttr.current = tier;
+      host.current?.setAttribute("data-map-tier", tier);
+    }
     const depth = depthRef.current.toFixed(2);
     if (depth !== depthAttr.current) {
       depthAttr.current = depth;

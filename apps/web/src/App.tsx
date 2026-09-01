@@ -258,6 +258,7 @@ function MapPage({
           onSelectSystem={(s) => setSelectedId(s.id)}
           onSelectBody={(b) => setSelectedId(b.id)}
           onOpenBody={(b) => openSheet(b.id)}
+          onClearSelection={() => setSelectedId(null)}
           onViewChange={onViewChange}
         />
       </section>

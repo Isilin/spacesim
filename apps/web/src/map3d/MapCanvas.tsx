@@ -227,6 +227,21 @@ interface Props {
    * sienne et rien ne change.
    */
   hostRef?: RefObject<HTMLElement | null>;
+  /**
+   * Clic dans le vide (chantier 35.5). API de R3F prévue pour exactement cela : elle ne se
+   * déclenche que si le rayon n'a rencontré aucun objet de la scène, ce qu'aucun
+   * gestionnaire posé sur le DOM ne saurait distinguer.
+   */
+  onPointerMissed?: () => void;
+  /**
+   * Surcouche DOM au-dessus du canvas (chantier 35.5), hors du conteneur de R3F.
+   *
+   * Ce conteneur porte `aria-hidden` — WebGL n'expose aucune structure. Une infobox
+   * portalisée dedans par drei héritait donc de cet attribut : invisible aux lecteurs
+   * d'écran, et introuvable par son rôle. La surcouche est le seul endroit du canvas où du
+   * DOM annoncé peut vivre.
+   */
+  overlayRef?: RefObject<HTMLDivElement | null>;
   children: ReactNode;
 }
 
@@ -243,6 +258,8 @@ export function MapCanvas({
   ariaLabel,
   focus,
   hostRef: providedRef,
+  onPointerMissed,
+  overlayRef,
   children,
 }: Props) {
   const { t } = useTranslation();
@@ -283,6 +300,7 @@ export function MapCanvas({
         }}
         // Le fond vient du thème, pas d'une couleur codée ici.
         gl={{ antialias: true, alpha: true }}
+        onPointerMissed={onPointerMissed}
       >
         {children}
         {/* Après `OrbitControls` : le cadrage a besoin des contrôles pour poser la
@@ -306,6 +324,7 @@ export function MapCanvas({
         <FitCamera focus={focus} host={hostRef} />
         <CameraKeys focus={focus} host={hostRef} />
       </Canvas>
+      {overlayRef && <div ref={overlayRef} className="map-overlay" />}
     </section>
   );
 }

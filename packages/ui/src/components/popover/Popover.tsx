@@ -16,6 +16,15 @@ export interface PopoverProps {
   /** Fermeture au clavier (Échap) — optionnel : un `Popover` sans état d'ouverture
    *  propre (rendu conditionnel par l'appelant) n'a rien à fermer lui-même. */
   onClose?: () => void;
+  /**
+   * Prise de focus au montage (chantier 35.5). Vrai par défaut, comme avant.
+   *
+   * À passer à faux quand le panneau s'ouvre au clic dans une zone qui pilote elle-même le
+   * clavier : sur la carte, prendre le focus le retire à la section qui porte les
+   * raccourcis de caméra, et le joueur perd le pilotage de sa vue en sélectionnant un
+   * objet. Le chemin clavier, lui, le passe à vrai — c'est là qu'il sert.
+   */
+  autoFocus?: boolean;
 }
 
 /** Panneau contextuel non modal (chantier 27.21) : contrairement à `Modal`, le reste de
@@ -26,16 +35,18 @@ export function Popover({
   children,
   "aria-label": ariaLabel,
   onClose,
+  autoFocus = true,
 }: PopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!autoFocus) return;
     ref.current
       ?.querySelector<HTMLElement>(
         'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
       )
       ?.focus();
-  }, []);
+  }, [autoFocus]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Escape") {

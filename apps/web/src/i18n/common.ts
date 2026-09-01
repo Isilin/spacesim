@@ -45,6 +45,13 @@ export const commonFr = {
     explored: "exploré",
     unexplored: "inexploré",
   },
+  mapInfobox: {
+    ariaLabel: "Détail de {{name}}",
+    galaxySystems: "{{count}} systèmes",
+    systemBodies: "{{planets}} planètes · {{moons}} lunes",
+    moons: "{{count}} lunes",
+    open: "Ouvrir la fiche",
+  },
   app: {
     universe: "Univers",
     openSystemView: "Ouvrir la vue système",
@@ -715,6 +722,13 @@ export const commonFr = {
 };
 
 export const commonEn: typeof commonFr = {
+  mapInfobox: {
+    ariaLabel: "Detail of {{name}}",
+    galaxySystems: "{{count}} systems",
+    systemBodies: "{{planets}} planets · {{moons}} moons",
+    moons: "{{count}} moons",
+    open: "Open sheet",
+  },
   app: {
     universe: "Universe",
     openSystemView: "Open system view",

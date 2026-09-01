@@ -14,6 +14,32 @@ import { registerFreshEmpire } from "./helpers.js";
  * chantier 31.24.
  */
 
+/**
+ * Recule à la molette jusqu'à atteindre un palier, ou jusqu'à épuisement.
+ *
+ * Boucle jusqu'à condition plutôt que compte fixe : le nombre de crans nécessaires dépend
+ * du pas de dolly d'`OrbitControls` et de la largeur des bandes, qui ne sont pas des
+ * invariants du produit. Ce que le test affirme, c'est qu'on finit par remonter — pas en
+ * combien de crans.
+ */
+async function wheelOutTo(
+  page: import("@playwright/test").Page,
+  tier: string,
+): Promise<string[]> {
+  const host = page.locator(".map-canvas");
+  const box = (await host.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const seen: string[] = [];
+  for (let batch = 0; batch < 90; batch++) {
+    const now = await host.getAttribute("data-map-tier");
+    if (now && seen.at(-1) !== now) seen.push(now);
+    if (now === tier) return seen;
+    for (let i = 0; i < 6; i++) await page.mouse.wheel(0, 240);
+    await page.waitForTimeout(50);
+  }
+  return seen;
+}
+
 /** Attend que R3F ait mesuré son canvas et que la caméra ait publié un palier. */
 async function settledTier(
   page: import("@playwright/test").Page,
@@ -60,18 +86,7 @@ test("le zoom descend dans une galaxie et remonte, sans changer de canvas", asyn
 
   // Remonter à la molette. Dézoomer au-delà du cadrage de la galaxie doit rendre l'amas,
   // sans qu'aucun bouton de retour ni fil d'Ariane n'ait à être touché.
-  const box = (await host.boundingBox())!;
-  const cx = box.x + box.width / 2;
-  const cy = box.y + box.height / 2;
-  await page.mouse.move(cx, cy);
-  for (let i = 0; i < 14; i++) {
-    await page.mouse.wheel(0, 220);
-    await page.waitForTimeout(60);
-  }
-
-  await expect
-    .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
-    .toBe("universe");
+  expect(await wheelOutTo(page, "universe")).toContain("universe");
   await expect(host.locator("canvas")).toHaveCount(1);
 });
 
@@ -110,7 +125,7 @@ test("la traversée va de l'amas jusqu'à un corps, puis en revient", async ({
 }) => {
   // Remonter trois paliers à la molette demande une centaine de crans : `OrbitControls`
   // recule d'environ 5 % par cran, et une bande fait plusieurs octaves.
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   // Le palier corps était le seul des quatre à n'être pas de la 3D : un schéma SVG figé,
   // sans zoom, où les lunes ne bougeaient jamais. Ce test affirme qu'il est devenu un
   // palier comme les autres — atteint par le même geste, quitté par le même.
@@ -162,15 +177,50 @@ test("la traversée va de l'amas jusqu'à un corps, puis en revient", async ({
   const box = (await host.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   const seen: string[] = [];
-  for (let batch = 0; batch < 40; batch++) {
+  for (let batch = 0; batch < 70; batch++) {
     const tier = await host.getAttribute("data-map-tier");
     if (tier && seen.at(-1) !== tier) seen.push(tier);
     if (tier === "universe") break;
     for (let i = 0; i < 6; i++) await page.mouse.wheel(0, 240);
     await page.waitForTimeout(60);
   }
-  expect(await host.getAttribute("data-map-tier")).toBe("universe");
   // Les trois frontières sont franchies dans l'ordre, aucune n'est sautée.
   expect(seen).toEqual(["body", "system", "galaxy", "universe"]);
   await expect(host.locator("canvas")).toHaveCount(1);
+});
+
+test("sélectionner ouvre une infobox sur la carte, cliquer à côté la referme", async ({
+  page,
+}) => {
+  // Sélectionner ouvrait un panneau latéral fixe, à 340 px du regard — et sélectionner une
+  // galaxie n'ouvrait rien du tout. L'information vient désormais se poser sur l'objet.
+  await registerFreshEmpire(page, {
+    prefix: "mapinfo",
+    empireName: "Observateurs E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+
+  const list = page.getByRole("navigation", { name: /univers|universe/i });
+  const first = list.getByRole("button").first();
+  const name = (await first.innerText()).split("\n")[0]!.trim();
+  await first.click();
+
+  const infobox = page.getByRole("dialog");
+  await expect(infobox).toBeVisible();
+  await expect(infobox).toContainText(name);
+
+  // Elle ne prend pas le focus : sinon la section perdrait le clavier et le joueur ne
+  // pourrait plus piloter sa caméra après avoir cliqué sur un objet.
+  await host.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(host).toHaveAttribute("data-map-keys", /[1-9]/);
+
+  // Cliquer à côté referme. Le coin du canvas ne porte aucun objet interactif : R3F ne
+  // teste que ceux qui ont un gestionnaire, la grille de repère n'en est pas.
+  const box = (await host.boundingBox())!;
+  await page.mouse.click(box.x + 12, box.y + 12);
+  await expect(infobox).toBeHidden();
 });

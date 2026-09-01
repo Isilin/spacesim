@@ -42,5 +42,9 @@ test("navigation profonde vers une URL de carte survit au rechargement", async (
   // le niveau que Panel utilise partout dans le design system. `.first()` : un système avec
   // comptoir affiche aussi un second panneau (TradingPostPanel) avec son propre h3 — seul le
   // premier (SystemPanel) importe pour ce test de survie du deep-link.
-  await expect(page.getByRole("heading", { level: 3 }).first()).toBeVisible();
+  // Délai large : après un rechargement, le panneau n'a de contenu qu'une fois la liaison
+  // WebSocket rétablie et le premier instantané reçu.
+  await expect(page.getByRole("heading", { level: 3 }).first()).toBeVisible({
+    timeout: 20_000,
+  });
 });

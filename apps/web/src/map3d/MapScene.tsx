@@ -26,6 +26,7 @@ import type { AmbientLight, Group, Vector3 } from "three";
 import { BodyLayer, bodyFocus, moonsOf } from "./BodyLayer.js";
 import { nestedFocus, type Focus } from "./bounds.js";
 import { FadingGroup } from "./FadingGroup.js";
+import { MapInfobox, type MapTarget } from "./MapInfobox.js";
 import {
   galaxyFocus,
   GalaxyLayer,
@@ -92,6 +93,42 @@ type Placements = Partial<Record<TierName, Placement>>;
 
 function place(local: Focus, position: Vec3, scale: number): Placement {
   return { position, scale, local, scene: nestedFocus(local, position, scale) };
+}
+
+/**
+ * Chemin d'ancrage après avoir visé `id` au palier `name`.
+ *
+ * Fonction pure du chemin **précédent**, et non du chemin capturé au rendu : l'élection
+ * d'ancre tourne à chaque image et son `setAnchors` peut se retrouver mis en file APRÈS
+ * celui d'un saut. Sur un état capturé, elle reposait alors le chemin d'avant le saut et
+ * effaçait le système qu'on venait de viser — l'URL annonçait un palier système avec une
+ * ancre de galaxie, et un rechargement rouvrait la carte sur rien.
+ *
+ * Réélire le même objet ne touche à rien, pour la même raison.
+ */
+function anchorFrom(
+  previous: AnchorPath,
+  name: TierName,
+  id: string | null,
+): AnchorPath {
+  if (name === "universe")
+    return id === previous.galaxyId
+      ? previous
+      : { galaxyId: id, systemId: null, bodyId: null };
+  if (name === "galaxy")
+    return id === previous.systemId
+      ? previous
+      : { ...previous, systemId: id, bodyId: null };
+  // Dernier palier : il n'y a pas d'enfant à ancrer sous un corps.
+  return name === "system" ? { ...previous, bodyId: id } : previous;
+}
+
+/** Palier le plus profond que décrit un chemin d'ancrage. */
+function deepestTier(path: AnchorPath): TierName {
+  if (path.bodyId) return "body";
+  if (path.systemId) return "system";
+  if (path.galaxyId) return "galaxy";
+  return "universe";
 }
 
 /** Compose une translation locale avec le placement de son parent. */
@@ -239,6 +276,16 @@ function LightRig({ depthRef }: { depthRef: RefObject<number> }) {
 }
 
 interface JumpRequest {
+  /**
+   * Palier d'arrivée, posé en même temps que le cadrage.
+   *
+   * Un saut explicite peut traverser plusieurs bandes — « Ma capitale » vise un système
+   * depuis l'univers. Laisser la caméra les redécouvrir une par une, à raison d'un
+   * franchissement par image, faisait dépendre l'arrivée d'une course entre la boucle de
+   * rendu et les rendus de React : la traversée s'arrêtait par intermittence au palier
+   * intermédiaire. Un saut sait où il va ; il n'a pas à le redécouvrir.
+   */
+  tier: TierName;
   focus: Focus;
   /** Cadrage de l'enfant, quand la distance doit se poser DANS la bande. */
   child: Focus | null;
@@ -317,7 +364,7 @@ function DepthPublisher({
   publish,
 }: {
   depthRef: RefObject<number>;
-  publish: (depth: number) => void;
+  publish: () => void;
 }) {
   const last = useRef({ at: 0, depth: depthRef.current });
   useFrame(() => {
@@ -329,7 +376,7 @@ function DepthPublisher({
       return;
     }
     last.current = { at: now, depth };
-    publish(depth);
+    publish();
   });
   return null;
 }
@@ -358,6 +405,8 @@ interface Props {
   onSelectSystem: (system: StarSystem) => void;
   onSelectBody: (body: Planet) => void;
   onOpenBody: (body: Planet) => void;
+  /** Clic dans le vide : referme l'infobox. */
+  onClearSelection: () => void;
   /** Publie l'ancre et la profondeur atteintes, pour que l'URL les suive. */
   onViewChange: (anchor: AnchorPath, depth: number) => void;
 }
@@ -396,11 +445,14 @@ export function MapScene({
   onSelectSystem,
   onSelectBody,
   onOpenBody,
+  onClearSelection,
   onViewChange,
 }: Props) {
   const { t } = useTranslation();
   /** Partagé avec `TierCamera`, qui vit dans le canvas et doit écrire sur la section. */
   const hostRef = useRef<HTMLElement>(null);
+  /** Surcouche DOM des infobox : hors du conteneur `aria-hidden` de R3F. */
+  const overlayRef = useRef<HTMLDivElement>(null);
   const depthRef = useRef(routeDepth ?? 0);
 
   const [anchors, setAnchors] = useState<AnchorPath>(routeAnchor);
@@ -491,7 +543,12 @@ export function MapScene({
     restored.current = true;
     const fraction = (routeDepth ?? 0) % 1;
     if (fraction <= 0.02 || !child) return;
-    setJump({ focus: current.scene, child: child.scene, progress: fraction });
+    setJump({
+      tier,
+      focus: current.scene,
+      child: child.scene,
+      progress: fraction,
+    });
     // Au montage seulement : rejouer cette restauration reprendrait au joueur la vue
     // qu'il s'est donnée depuis.
     // biome-ignore lint/correctness/useExhaustiveDependencies: voir ci-dessus.
@@ -505,9 +562,22 @@ export function MapScene({
   const publishable =
     tier === "universe" && !childMounted ? NO_ANCHOR : anchors;
 
+  /**
+   * Profondeur publiable, jamais en deçà du palier courant.
+   *
+   * `depthRef` est écrit par la boucle de rendu, `tier` par React : au moment où une ancre
+   * change, la profondeur peut encore décrire le palier d'avant. L'URL portait alors un
+   * `z` d'un palier plus haut que le `at` qui l'accompagnait, et un rechargement rouvrait
+   * la carte au-dessus de ce qu'elle visait.
+   */
+  const publishableDepth = useCallback(
+    () => Math.max(depthRef.current, tierIndex(tier)),
+    [tier],
+  );
+
   useEffect(() => {
-    onViewChange(publishable, depthRef.current);
-  }, [publishable, onViewChange]);
+    onViewChange(publishable, publishableDepth());
+  }, [publishable, publishableDepth, onViewChange]);
 
   /**
    * Saut demandé de l'extérieur : recherche, raccourci de `MapNav`.
@@ -534,7 +604,13 @@ export function MapScene({
           ? next.galaxy
           : next.universe;
     setAnchors(path);
-    if (target) setJump({ focus: target.scene, child: null, progress: 0 });
+    if (target)
+      setJump({
+        tier: deepestTier(path),
+        focus: target.scene,
+        child: null,
+        progress: 0,
+      });
     // Ne dépend QUE du jeton. L'univers, les sites et le tick sont lus par référence :
     // les deux derniers changent d'identité à chaque tick serveur, et les avoir en
     // dépendances rejouait le saut toutes les cinq secondes — ce qui ramenait l'ancre au
@@ -606,14 +682,7 @@ export function MapScene({
         : (placements.system?.scale ?? 1) * 20;
 
   const anchorFor = (name: TierName, id: string | null): AnchorPath =>
-    name === "universe"
-      ? { galaxyId: id, systemId: null, bodyId: null }
-      : name === "galaxy"
-        ? { ...anchors, systemId: id, bodyId: null }
-        : name === "system"
-          ? { ...anchors, bodyId: id }
-          : // Dernier palier : il n'y a pas d'enfant à ancrer sous un corps.
-            anchors;
+    anchorFrom(anchors, name, id);
 
   const cross = (delta: 1 | -1) => {
     setTier((from) => {
@@ -639,15 +708,93 @@ export function MapScene({
       sites,
       tick,
     );
-    const target = next[TIER_ORDER[tierIndex(name) + 1] ?? "universe"];
+    const arrival = TIER_ORDER[tierIndex(name) + 1] ?? "universe";
+    const target = next[arrival];
     setAnchors(path);
-    if (target) setJump({ focus: target.scene, child: null, progress: 0 });
+    if (target)
+      setJump({ tier: arrival, focus: target.scene, child: null, progress: 0 });
   };
 
   const publish = useCallback(
-    (depth: number) => onViewChange(publishable, depth),
-    [publishable, onViewChange],
+    () => onViewChange(publishable, publishableDepth()),
+    [publishable, publishableDepth, onViewChange],
   );
+
+  /**
+   * Objet sélectionné : sa nature, et la position de scène où poser son infobox.
+   *
+   * La position est une fonction et non une valeur : un corps orbite, et son infobox doit
+   * le suivre plutôt que rester où il était au moment du clic.
+   */
+  const selection = useMemo((): {
+    target: MapTarget;
+    at: () => Vec3;
+  } | null => {
+    if (!selectedId) return null;
+    const path = anchorPathOf(universe, selectedId);
+
+    if (path.bodyId === selectedId && system && placements.system) {
+      if (path.systemId !== system.id) return null;
+      const picked = system.planets.find((p) => p.id === selectedId);
+      if (!picked) return null;
+      const parent = placements.system;
+      return {
+        target: {
+          kind: "body",
+          body: picked,
+          moons: moonsOf(system, picked).length,
+        },
+        at: () => under(parent, bodyLocalPosition(system, picked, tickAt())),
+      };
+    }
+
+    if (path.systemId === selectedId && galaxy && placements.galaxy) {
+      if (path.galaxyId !== galaxy.id) return null;
+      const picked = galaxy.systems.find((sys) => sys.id === selectedId);
+      if (!picked) return null;
+      const parent = placements.galaxy;
+      const at = under(parent, systemScenePosition(picked));
+      return {
+        target: {
+          kind: "system",
+          system: picked,
+          explored: explored.has(picked.id),
+          colonized: colonizedSystemIds.has(picked.id),
+        },
+        at: () => at,
+      };
+    }
+
+    if (path.galaxyId === selectedId) {
+      const picked = universe.galaxies.find((g) => g.id === selectedId);
+      if (!picked) return null;
+      const at = galaxyScenePosition(picked);
+      return {
+        target: {
+          kind: "galaxy",
+          galaxy: picked,
+          colonized: colonizedGalaxyIds.has(picked.id),
+        },
+        at: () => at,
+      };
+    }
+    return null;
+  }, [
+    selectedId,
+    universe,
+    galaxy,
+    system,
+    placements,
+    tickAt,
+    explored,
+    colonizedSystemIds,
+    colonizedGalaxyIds,
+  ]);
+
+  const openSelection = () => {
+    if (!selection) return;
+    if (selection.target.kind === "body") onOpenBody(selection.target.body);
+  };
 
   const label =
     tier === "body" && body
@@ -717,7 +864,13 @@ export function MapScene({
 
   return (
     <div className="map3d">
-      <MapCanvas ariaLabel={label} focus={initialFocus} hostRef={hostRef}>
+      <MapCanvas
+        ariaLabel={label}
+        focus={initialFocus}
+        hostRef={hostRef}
+        overlayRef={overlayRef}
+        onPointerMissed={onClearSelection}
+      >
         <LightRig depthRef={depthRef} />
         <TierCamera
           host={hostRef}
@@ -741,12 +894,35 @@ export function MapScene({
               ? { key: body?.id ?? "", at: bodyAt }
               : null
           }
-          onAnchor={(id) => setAnchors(anchorFor(tier, id))}
+          onAnchor={(id) => setAnchors((prev) => anchorFrom(prev, tier, id))}
           onCross={cross}
           onChildMount={setChildMounted}
         />
         <DepthPublisher depthRef={depthRef} publish={publish} />
-        {jump && <CameraJump request={jump} onDone={() => setJump(null)} />}
+        {jump && (
+          <CameraJump
+            request={jump}
+            onDone={() => {
+              setTier(jump.tier);
+              setJump(null);
+            }}
+          />
+        )}
+
+        {/* Posée hors des couches : l'infobox survit au franchissement d'un palier, et ne
+            s'efface pas avec la couche qui portait l'objet sélectionné. */}
+        {selection && (
+          <MovingGroup at={selection.at} scale={1}>
+            <MapInfobox
+              target={selection.target}
+              portal={overlayRef}
+              onOpen={
+                selection.target.kind === "body" ? openSelection : undefined
+              }
+              onClose={onClearSelection}
+            />
+          </MovingGroup>
+        )}
 
         {shows("universe") && placements.universe && (
           <FadingGroup tier="universe" depthRef={depthRef}>
