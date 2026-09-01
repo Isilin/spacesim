@@ -484,6 +484,15 @@ export {
   type SystemSite,
 } from "./sim/exploration/sites.js";
 export {
+  GALAXY_MORPHOLOGIES,
+  STAR_CLASSES,
+  galaxyMorphologyOf,
+  isDarkStar,
+  starClassOf,
+  type GalaxyMorphology,
+  type StarClass,
+} from "./sim/exploration/stars.js";
+export {
   galaxyGraph,
   universeGraph,
   shortestPath,
