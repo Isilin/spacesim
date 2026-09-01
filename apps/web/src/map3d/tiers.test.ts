@@ -5,11 +5,15 @@ import {
   clipPlanesFor,
   descend,
   distanceForProgress,
+  dollyEase,
   electAnchor,
+  labelOpacity,
   nestingScale,
+  streakFactor,
   tierAt,
   tierBlend,
   tierProgress,
+  zoomStep,
   type CameraPose,
   type Vec3,
 } from "./tiers.js";
@@ -264,5 +268,118 @@ describe("échelle de paliers", () => {
     expect(tierAt(99)).toBe("body");
     expect(childTierOf("body")).toBeNull();
     expect(childTierOf("universe")).toBe("galaxy");
+  });
+});
+
+describe("zoomStep", () => {
+  // Une bande mesurée sur l'univers de dev : la galaxie se cadre à 3700, le système
+  // imbriqué à 275, soit ~2,6 octaves.
+  const PARENT = 3700;
+  const CHILD = 275;
+
+  it("traverse une bande en un nombre de crans constant, quelle que soit l'échelle", () => {
+    // C'est TOUT le réglage du zoom : ni la distance ni le palier n'entrent en jeu, seul
+    // le nombre de crans que le joueur doit donner. Un pas absolu serait imperceptible au
+    // palier univers et brutal au palier corps.
+    const wide = zoomStep(PARENT, CHILD, 0);
+    const narrow = zoomStep(3.7, 0.275, 0);
+    expect(wide).toBeCloseTo(narrow, 10);
+
+    let distance = PARENT;
+    let notches = 0;
+    // Marge relative : au douzième cran la distance vaut `CHILD` à 10⁻¹³ près, et une
+    // comparaison stricte compterait un cran de plus pour un résidu d'arrondi.
+    while (distance > CHILD * (1 + 1e-9) && notches < 100) {
+      distance *= Math.exp(-zoomStep(PARENT, CHILD, 0));
+      notches++;
+    }
+    expect(notches).toBe(12);
+  });
+
+  it("garde un pas fini et utile quand aucune bande n'est en vue", () => {
+    // Dernier palier, ou rien à viser : sans repli le zoom se figerait là où il n'y a
+    // précisément rien pour le calibrer.
+    for (const [parent, child] of [
+      [3700, 0],
+      [3700, 3700],
+      [3700, 9000],
+      [Number.NaN, 1],
+    ]) {
+      const step = zoomStep(parent!, child!, 0);
+      expect(Number.isFinite(step)).toBe(true);
+      expect(step).toBeGreaterThan(0);
+    }
+  });
+
+  it("accélère sur un défilement soutenu, sans s'emballer", () => {
+    const single = zoomStep(PARENT, CHILD, 0);
+    expect(zoomStep(PARENT, CHILD, 5)).toBeGreaterThan(single);
+    // Le plafond est ce qui distingue une accélération d'une fuite : sans lui, dix
+    // secondes de molette traverseraient la carte entière en une image.
+    expect(zoomStep(PARENT, CHILD, 1000) / single).toBeCloseTo(2.5, 10);
+    expect(streakFactor(0)).toBe(1);
+    expect(streakFactor(-4)).toBe(1);
+  });
+});
+
+describe("dollyEase", () => {
+  it("converge vers la distance visée sans la dépasser", () => {
+    let d = 1000;
+    for (let i = 0; i < 200; i++) d = dollyEase(d, 100, 1 / 60);
+    expect(d).toBeCloseTo(100, 4);
+
+    // Jamais de dépassement : un zoom qui rebondit se lit comme un défaut, pas comme une
+    // inertie.
+    let up = 100;
+    for (let i = 0; i < 200; i++) {
+      const next = dollyEase(up, 1000, 1 / 60);
+      expect(next).toBeGreaterThanOrEqual(up);
+      expect(next).toBeLessThanOrEqual(1000);
+      up = next;
+    }
+  });
+
+  it("avance à la même vitesse quelle que soit la cadence d'images", () => {
+    // Sur un écran à 144 Hz, un amortissement par IMAGE serait deux fois et demie plus
+    // rapide que sur un écran à 60. C'est le temps écoulé qui compte.
+    let slow = 1000;
+    slow = dollyEase(slow, 100, 1 / 30);
+    let fast = 1000;
+    fast = dollyEase(fast, 100, 1 / 60);
+    fast = dollyEase(fast, 100, 1 / 60);
+    expect(fast).toBeCloseTo(slow, 6);
+  });
+
+  it("ne rend jamais de distance absurde", () => {
+    expect(dollyEase(Number.NaN, 100, 1 / 60)).toBe(100);
+    expect(dollyEase(100, 0, 1 / 60)).toBe(100);
+    expect(Number.isFinite(dollyEase(100, 50, Number.NaN))).toBe(true);
+    // Un onglet remis au premier plan livre un `dt` de plusieurs secondes : borné, sinon
+    // la vue saute d'un bout à l'autre de la carte à la première image.
+    expect(dollyEase(1000, 100, 30)).toBeGreaterThan(100);
+  });
+});
+
+describe("labelOpacity", () => {
+  it("ne nomme un objet qu'une fois qu'il est assez gros pour être lu", () => {
+    // Sans seuil, les deux cents galaxies d'un univers plein écriraient leur nom en même
+    // temps sur quelques pixels chacune.
+    expect(labelOpacity(0.001)).toBe(0);
+    expect(labelOpacity(0.05)).toBe(1);
+    expect(labelOpacity(0)).toBe(0);
+    expect(labelOpacity(Number.NaN)).toBe(0);
+  });
+
+  it("passe de l'un à l'autre par un fondu, jamais d'un coup", () => {
+    // Un objet posé sur le seuil clignoterait à chaque image sans cette plage.
+    const middle = labelOpacity(0.017);
+    expect(middle).toBeGreaterThan(0);
+    expect(middle).toBeLessThan(1);
+    let previous = 0;
+    for (let a = 0.012; a <= 0.024; a += 0.001) {
+      const now = labelOpacity(a);
+      expect(now).toBeGreaterThanOrEqual(previous);
+      previous = now;
+    }
   });
 });

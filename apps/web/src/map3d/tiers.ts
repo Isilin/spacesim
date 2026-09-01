@@ -243,6 +243,104 @@ export function clipPlanesFor(
   return { near: d * NEAR_RATIO, far: d + frame * 3 };
 }
 
+/**
+ * Crans de molette visés pour traverser une bande entière (chantier 36.2).
+ *
+ * C'est le seul réglage de vitesse du zoom, et il est exprimé dans la seule unité qui ait
+ * un sens pour le joueur : combien de crans pour passer d'un palier au suivant. Le pas en
+ * distance s'en déduit, et **suit donc l'échelle** — une bande large donne des crans larges.
+ * Régler une vitesse absolue aurait été régler la vitesse d'un seul palier.
+ */
+const NOTCHES_PER_BAND = 12;
+
+/**
+ * Pas de repli quand aucune bande n'est en vue : rien à viser, ou dernier palier. 15 % de
+ * la distance par cran — assez pour se dégager, sans quoi le zoom se figerait là où il n'y
+ * a précisément rien pour le calibrer.
+ */
+const FALLBACK_STEP = Math.log(1.15);
+
+/** Plafond de l'accélération au défilement continu, et pente pour l'atteindre. */
+const MAX_STREAK = 2.5;
+const STREAK_SLOPE = 0.15;
+
+/** Part de l'écart rattrapée en une image à 60 Hz. */
+const DOLLY_SMOOTH = 0.18;
+
+/**
+ * Accélération d'un défilement soutenu.
+ *
+ * `streak` est le nombre de crans déjà enchaînés sans pause — c'est l'appelant qui le tient,
+ * la fonction reste pure. Traverser trois paliers d'un trait devient deux fois et demie plus
+ * court, alors qu'un cran isolé garde sa précision : ce sont deux gestes différents, et le
+ * même pas ne peut pas servir les deux.
+ */
+export function streakFactor(streak: number): number {
+  if (!Number.isFinite(streak) || streak <= 0) return 1;
+  return Math.min(MAX_STREAK, 1 + streak * STREAK_SLOPE);
+}
+
+/**
+ * Pas d'un cran de molette, en logarithme de distance (chantier 36.2).
+ *
+ * Le pas se déduit de la bande à traverser, jamais d'une constante en unités de scène : la
+ * carte couvre six ordres de grandeur, et un pas absolu serait à la fois imperceptible au
+ * palier univers et brutal au palier corps.
+ */
+export function zoomStep(
+  parentFrame: number,
+  childFrame: number,
+  streak: number,
+): number {
+  const span = bandSpan(parentFrame, childFrame);
+  const base = span > 0 ? span / NOTCHES_PER_BAND : FALLBACK_STEP;
+  return base * streakFactor(streak);
+}
+
+/**
+ * Distance de l'image suivante, en route vers la distance visée (chantier 36.2).
+ *
+ * `OrbitControls` amortit la rotation mais applique le dolly d'un bloc : chaque cran est un
+ * saut, et c'est ce qui donne au zoom son côté saccadé. La molette écrit désormais une
+ * distance *visée* et c'est cette fonction qui l'approche.
+ *
+ * L'interpolation se fait **en logarithme** : un zoom se vit en octaves, pas en unités. Une
+ * interpolation linéaire irait vite au loin et s'endormirait de près, dans une même course.
+ *
+ * Le facteur dépend du temps écoulé et non du nombre d'images : sur un écran à 144 Hz, un
+ * amortissement par image serait deux fois plus rapide que sur un écran à 60.
+ */
+export function dollyEase(
+  current: number,
+  target: number,
+  dt: number,
+): number {
+  if (!Number.isFinite(current) || current <= 0) return target;
+  if (!Number.isFinite(target) || target <= 0) return current;
+  const step = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 1 / 60;
+  const k = 1 - (1 - DOLLY_SMOOTH) ** (step * 60);
+  const from = Math.log(current);
+  return Math.exp(from + (Math.log(target) - from) * k);
+}
+
+/**
+ * Seuils d'apparition d'une étiquette, en taille apparente (rayon / distance).
+ *
+ * Calés sur le champ de vision : `FOV = 50°` donne une demi-hauteur visible de `0,466 · d`,
+ * si bien qu'une taille apparente de 0,013 vaut un rayon d'environ dix pixels sur un canvas
+ * de 700 px de haut. On nomme donc un objet dès qu'il fait une vingtaine de pixels de large,
+ * et pas avant — c'est ce seuil qui empêche les deux cents galaxies d'un univers plein
+ * d'écrire leur nom en même temps.
+ */
+const LABEL_MIN = 0.013;
+const LABEL_FULL = 0.022;
+
+/** Opacité d'une étiquette pour une taille apparente donnée (chantier 36.3). */
+export function labelOpacity(apparent: number): number {
+  if (!Number.isFinite(apparent) || apparent <= 0) return 0;
+  return smoothstep(LABEL_MIN, LABEL_FULL, apparent);
+}
+
 /** Passage d'un point dans le repère de l'enfant : `p' = (p - ancre) / échelle`. */
 export function toChildFrame(point: Vec3, anchor: Vec3, scale: number): Vec3 {
   const s = safeScale(scale);
