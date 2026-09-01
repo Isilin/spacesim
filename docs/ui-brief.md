@@ -74,8 +74,10 @@ L'existant n'a que 8 variables de couleur et AUCUNE échelle. Il faut :
 | EmptyState | ~15 `<p class="muted">Aucun…</p>` | ~15 |
 | Gauge (jauge avec dépassement) | composant local ShipDesigner | 4 |
 
-Hors design system (restent dans l'app, mais consomment les tokens) : les cartes SVG
-(univers/galaxie/système/corps), le schéma de coque, le graphe de recherche.
+Hors design system (restent dans l'app, mais consomment les tokens) : la carte 3D et son
+infobox, le schéma de coque, le graphe de recherche. La carte était quatre vues SVG
+(univers/galaxie/système/corps) ; elle est passée en `react-three-fiber` au chantier 31, puis
+en carte unique à zoom continu au chantier 35 (ADR 0015).
 
 ## Contraintes non négociables
 

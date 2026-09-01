@@ -2063,3 +2063,86 @@ débris.
 Dette soldée : `ShipHullDiagram` gardait une copie locale de `isHeavyTier` et un
 `MAX_TONNAGE` écrit en dur qui masquaient `shipScale.ts`, module créé au chantier 33
 précisément pour éviter cette divergence.
+
+## Chantier 35 — Carte à zoom continu (livré)
+
+La carte avait quatre niveaux qui s'excluaient : changer de niveau démontait un canvas pour
+en monter un autre, et la caméra claquait d'un cadrage à l'autre. Le niveau corps était le
+seul à n'être pas de la 3D — un schéma SVG figé de 320 px où les lunes ne tournaient jamais,
+alors que la simulation les fait orbiter depuis le chantier 31. Sélectionner une galaxie
+n'ouvrait rien du tout, et ceintures comme sites de scan n'avaient aucun gestionnaire de clic.
+
+Décisions structurantes : ADR [0015](adr/0015-carte-a-zoom-continu.md) pour la traversée
+continue, ADR [0016](adr/0016-classes-d-etoiles-derivees.md) pour les classes d'étoiles.
+Ce chantier **renverse** deux décisions écrites plus haut dans ce document : « LOD par niveau
+de carte » (chantier 31) et « double-clic réservé à l'ouverture des sous-cartes » (polish
+carte du 24/07/2026).
+
+### Partie A — la traversée (35.1 à 35.7)
+
+- **35.1** `map3d/tiers.ts` : arithmétique pure de la profondeur — progression dans une bande,
+  seuils de fondu, conversion de pose entre repères, plans de coupe, élection d'ancre. Aucun
+  import de `three`, aucun composant, aucun état.
+- **35.2** `MapScene` et `TierCamera` : univers ↔ galaxie en continu. `UniverseScene` et
+  `GalaxyScene` deviennent des couches sans canvas ni liste.
+- **35.3** Paliers système et corps intégrés, `BodyLayer` écrit, les quatre routes de carte
+  réduites à `/map`, `useMapLevel` remplacé par `useMapView`.
+- **35.4** `FadingGroup` : les couches s'effacent et réapparaissent avec la profondeur, par
+  mutation directe des matériaux. Les deux shaders de corps gagnent un `uOpacity`.
+- **35.5** `MapInfobox` posée sur l'objet, `onPointerMissed` pour la refermer, `autoFocus`
+  optionnel sur `Popover`.
+- **35.6** `MapSheet` en modale, `GalaxyFiche` — qui n'existait pas —, vol de caméra animé au
+  double-clic, schéma SVG de `BodyView` supprimé.
+- **35.7** Relevé de référence du budget d'images, transition comprise.
+
+### Partie B — le peuplement (35.8 à 35.11)
+
+- **35.8** Comptoirs, stations siennes et étrangères, avant-postes et flottes posés sur la
+  carte. `StationModel` et `ShipModel` existaient depuis le chantier 31.21 mais ne servaient
+  qu'aux aperçus : ce que le joueur construisait n'apparaissait pas là où il l'avait
+  construit.
+- **35.9** `sim/exploration/stars.ts` : classes d'étoiles et morphologies de galaxie dérivées
+  de l'identifiant, conditionnées par le contenu du système.
+- **35.10** Habillage : classes d'étoiles, trou noir avec disque d'accrétion, rochers déformés
+  et teintés par leur gisement, anneaux de géantes gazeuses, formes de sites par nature,
+  morphologies de galaxie, nébuleuses.
+- **35.11** ADR, documentation, remesure.
+
+### Budget d'images
+
+Relevé sur cette machine, en WebGL logiciel (`map3d.spec.ts` et `map-zoom.spec.ts`) :
+
+| | avant chantier 35 | après |
+|---|---|---|
+| univers au repos | 61 | 59-62 |
+| système au repos | 53 | 37-48 |
+| transition univers→galaxie | non mesuré | 54-61 |
+
+Le palier système paie le peuplement du chantier 35.8 et l'habillage du 35.10 — il dessine
+désormais ce que le jeu contient. Le seuil du test (20 img/s) reste largement tenu. La mesure
+est bruitée en rendu logiciel : les fourchettes valent mieux que les valeurs isolées.
+
+### Ce qui a été coupé
+
+Les **comètes** figuraient au plan comme optionnelles, « à couper en premier si le budget
+d'images serre ». Il serre : le palier système a déjà perdu un cinquième de son budget. Une
+orbite très excentrique avec sa queue en points, ajoutée par système, se paierait exactement
+là où il reste le moins de marge.
+
+La **lentille gravitationnelle** du trou noir a été écartée pour une raison technique et non
+budgétaire : voir l'ADR 0016.
+
+### Ce que ce chantier a appris sur la vérification
+
+Six défauts de synchronisation n'ont été trouvés qu'en instrumentant, et aucun n'aurait
+échoué à un test unitaire : l'URL qui se relisait elle-même et faisait descendre la carte
+toute seule au chargement ; l'effet de saut qui rejouait toutes les cinq secondes parce qu'il
+dépendait du tick ; les bornes de dolly d'`OrbitControls` réappliquées à chaque rendu React ;
+l'élection d'ancre qui écrasait un saut en cours ; le palier publié par un effet quand la
+profondeur l'était par la boucle d'images ; `FitCamera` qui ne rendait la caméra au joueur que
+sur un glissement à la souris, jamais sur un déplacement programmatique.
+
+Cinq d'entre eux ne se manifestaient qu'**à l'intermittence**, et l'un uniquement sous une
+suite de tests complète — il fallait assez de galaxies pour que celle qu'on survole ne soit
+pas celle qu'on vise. La leçon du chantier 31.24 se confirme : sur une carte 3D, ce qui n'est
+pas publié dans le DOM n'existe pas pour la vérification.
