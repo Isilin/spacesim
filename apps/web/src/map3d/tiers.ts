@@ -310,11 +310,7 @@ export function zoomStep(
  * Le facteur dépend du temps écoulé et non du nombre d'images : sur un écran à 144 Hz, un
  * amortissement par image serait deux fois plus rapide que sur un écran à 60.
  */
-export function dollyEase(
-  current: number,
-  target: number,
-  dt: number,
-): number {
+export function dollyEase(current: number, target: number, dt: number): number {
   if (!Number.isFinite(current) || current <= 0) return target;
   if (!Number.isFinite(target) || target <= 0) return current;
   const step = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 1 / 60;

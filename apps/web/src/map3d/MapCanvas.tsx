@@ -307,14 +307,17 @@ export function MapCanvas({
             cible, et `makeDefault` ne les publie qu'une fois montés. */}
         <OrbitControls
           makeDefault
-          enablePan
+          // Navigation orbitale (chantier 36.2) : on tourne autour de ce qu'on regarde,
+          // on ne dérive pas. Le panoramique et le zoom-au-curseur déplaçaient la cible
+          // n'importe où, y compris dans le vide entre deux objets — on perdait son objet
+          // de vue en zoomant dessus.
+          enablePan={false}
+          // Le zoom est repris à la main par `TierCamera` : `OrbitControls` amortit la
+          // rotation mais applique le dolly d'un bloc, et son pas fixe demandait ~35 crans
+          // par palier. Le nôtre est amorti et calibré sur la bande à traverser.
+          enableZoom={false}
           enableDamping
           dampingFactor={0.15}
-          // Le zoom suit le curseur (chantier 35.2). Sans cela la molette rapproche
-          // toujours la caméra du même point, et l'objet dans lequel on descend est celui
-          // qui se trouve au centre de l'écran plutôt que celui qu'on vise — ce qui rend
-          // le zoom continu inutilisable dès qu'on veut choisir sa galaxie.
-          zoomToCursor
           // Bornes de dolly volontairement absentes (chantier 35.3) : `TierCamera` les
           // recalcule à chaque image sur le palier courant. Les poser ici, sur le cadrage
           // du montage, les faisait réapparaître à chaque rendu React et ramener la caméra

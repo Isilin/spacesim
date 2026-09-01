@@ -197,6 +197,46 @@ test("la traversée va de l'amas jusqu'à un corps, puis en revient", async ({
   await expect(host.locator("canvas")).toHaveCount(1);
 });
 
+test("la traversée coûte une poignée de crans, pas une centaine", async ({
+  page,
+}) => {
+  // Le zoom du chantier 35 empruntait le dolly d'`OrbitControls` : un pas fixe de ~5 % par
+  // cran, soit une trentaine de crans par palier et plus de cent pour aller de l'amas à une
+  // lune. Le pas se déduit désormais de la bande à traverser, et un défilement soutenu
+  // accélère (chantier 36.2).
+  //
+  // Ce test compte les crans. Sans lui, un retour au pas fixe rendrait exactement les mêmes
+  // images aux mêmes paliers : rien d'autre ne distingue un zoom praticable d'un zoom
+  // épuisant.
+  await registerFreshEmpire(page, {
+    prefix: "mapcrans",
+    empireName: "Compteurs E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+
+  // La DESCENTE est le geste coûteux : elle part du cadrage large et doit parcourir toute
+  // la bande. Remonter, au contraire, ne demande qu'à dépasser le cadrage du palier — un
+  // cran y suffit depuis une vue déjà pleine, et le mesurer ne dirait rien.
+  const box = (await host.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  let notches = 0;
+  while (notches < 120) {
+    if ((await host.getAttribute("data-map-tier")) === "galaxy") break;
+    await page.mouse.wheel(0, -240);
+    notches++;
+    await page.waitForTimeout(30);
+  }
+  console.log(`[36.2] crans pour descendre d'un palier : ${notches}`);
+  expect(await host.getAttribute("data-map-tier")).toBe("galaxy");
+  // Douze crans calibrent la bande, l'accélération raccourcit un défilement soutenu. La
+  // borne laisse de la marge pour l'amortissement, pas pour un retour au pas fixe, qui en
+  // réclamait plus de trente.
+  expect(notches).toBeLessThan(20);
+});
+
 test("sélectionner ouvre une infobox sur la carte, cliquer à côté la referme", async ({
   page,
 }) => {

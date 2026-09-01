@@ -11,10 +11,12 @@ import { fitDistance } from "./MapCanvas.js";
 import {
   clipPlanesFor,
   distanceForProgress,
+  dollyEase,
   electAnchor,
   tierBlend,
   tierIndex,
   tierProgress,
+  zoomStep,
   type TierName,
   type Vec3,
 } from "./tiers.js";
@@ -44,6 +46,35 @@ const OVERSHOOT = 4;
  * la frontière soit franchie avec l'enfant au centre du cadre.
  */
 const RECENTER = 0.08;
+
+/**
+ * Au-delà de ce délai entre deux crans, le défilement n'est plus tenu pour continu et
+ * l'accélération retombe.
+ */
+const STREAK_WINDOW = 180;
+
+/**
+ * Délai minimal entre deux incréments d'accélération.
+ *
+ * Une molette crantée envoie une dizaine d'événements par seconde, un pavé tactile en
+ * envoie soixante : sans ce garde, le même geste accélérerait six fois plus vite sur l'un
+ * que sur l'autre. Une seconde de défilement soutenu mène au plafond, quel que soit le
+ * périphérique.
+ */
+const STREAK_TICK = 30;
+
+/**
+ * Poids d'un événement de molette, borné.
+ *
+ * `deltaY` vaut ~100 par cran sur une molette et quelques unités sur un pavé tactile.
+ * Ignorer l'amplitude — ce que fait `OrbitControls` — rend le pavé tactile incontrôlable ;
+ * la suivre sans borne rend une molette « à haute résolution » erratique.
+ */
+function wheelWeight(deltaY: number): number {
+  if (!Number.isFinite(deltaY) || deltaY === 0) return 0;
+  const magnitude = Math.min(1.5, Math.max(0.15, Math.abs(deltaY) / 100));
+  return Math.sign(deltaY) * magnitude;
+}
 
 export interface AnchorCandidate {
   id: string;
@@ -103,9 +134,11 @@ interface Props {
  * le palier courant est franchi (`onCross`). Elles se comptent sur les doigts d'une main
  * pour une traversée complète.
  *
- * Ce composant ne touche pas au dolly : c'est `OrbitControls` qui produit la distance, et
- * on la lit. Reprendre la molette à la main aurait coûté l'inertie et le zoom-au-curseur
- * qu'il donne déjà.
+ * Il produit aussi le dolly depuis le chantier 36.2. `OrbitControls` amortit la rotation
+ * mais applique le zoom d'un bloc, et son pas fixe demandait une trentaine de crans par
+ * palier : la molette est reprise ici, où la bande à traverser et les bornes du palier sont
+ * déjà connues. Ce qui reste à `OrbitControls`, c'est la rotation — le seul geste souris
+ * qui subsiste depuis que le panoramique a disparu.
  */
 export function TierCamera({
   host,
@@ -151,11 +184,45 @@ export function TierCamera({
     frames: 0,
   });
 
+  /**
+   * Distance visée par la molette, distance réellement posée à l'image précédente, et
+   * crans en attente (chantier 36.2).
+   *
+   * `applied` est ce qui distingue un mouvement qu'on a produit d'un mouvement subi : vol,
+   * cadrage, franchissement de palier déplacent tous la caméra sans passer par ici. Sans
+   * cette comparaison, la visée d'avant survivrait au vol et ramènerait aussitôt la caméra
+   * à l'endroit d'où elle vient.
+   */
+  const aim = useRef<number | null>(null);
+  const applied = useRef<number | null>(null);
+  const pending = useRef(0);
+  const streak = useRef({ count: 0, at: 0 });
+
   useEffect(() => {
     anchored.current = anchorId;
   }, [anchorId]);
 
-  useFrame(() => {
+  useEffect(() => {
+    const node = host.current;
+    if (!node) return;
+    const onWheel = (event: WheelEvent) => {
+      // La liste et l'infobox appellent `stopPropagation` sur leur propre surface : ce qui
+      // arrive ici est une molette destinée à la carte.
+      event.preventDefault();
+      const now = performance.now();
+      const run = streak.current;
+      if (now - run.at > STREAK_WINDOW) run.count = 0;
+      else if (now - run.at >= STREAK_TICK) run.count += 1;
+      run.at = now;
+      pending.current += wheelWeight(event.deltaY);
+    };
+    // `passive: false` : sans quoi le navigateur refuse le `preventDefault` et la page
+    // défile derrière la carte à chaque cran.
+    node.addEventListener("wheel", onWheel, { passive: false });
+    return () => node.removeEventListener("wheel", onWheel);
+  }, [host]);
+
+  useFrame((_, delta) => {
     if (!controls) return;
 
     // Suivi de l'ancre AVANT toute mesure : la distance caméra-cible doit être lue après
@@ -179,26 +246,7 @@ export function TierCamera({
 
     const aspect = size.width / Math.max(1, size.height);
     const parentFrame = fitDistance(parentFocus, aspect);
-    const distance = camera.position.distanceTo(controls.target);
-
-    // Plans de coupe. Indispensable et pas cosmétique : `MapCanvas` ne fixe que `far`,
-    // donc `near` vaut le défaut de three.js (0,1) — au palier corps, où la caméra
-    // regarde à quelques centièmes d'unité, toute la scène passerait devant lui.
-    const { near, far } = clipPlanesFor(distance, parentFrame);
-    // Seuil de 2 % : recalculer la matrice de projection à chaque image serait payer un
-    // recalcul complet pour un changement invisible.
-    if (
-      Math.abs(camera.near - near) > near * 0.02 ||
-      Math.abs(camera.far - far) > far * 0.02
-    ) {
-      camera.near = near;
-      camera.far = far;
-      camera.updateProjectionMatrix();
-    }
-
     const childFrame = childFocus ? fitDistance(childFocus, aspect) : 0;
-    const progress =
-      childFrame > 0 ? tierProgress(distance, parentFrame, childFrame) : 0;
 
     // Bornes de dolly, refaites à chaque palier. `OrbitControls` les tient de props
     // calculées sur un cadrage fixe ; laissées telles quelles, un cran de molette
@@ -217,17 +265,70 @@ export function TierCamera({
     controls.maxDistance =
       tierIndex(tier) > 0 ? parentFrame * 1e4 : parentFrame * 3;
 
+    // Dolly amorti (chantier 36.2). `OrbitControls` amortit la rotation mais applique le
+    // zoom d'un bloc : chaque cran était un saut. La molette écrit ici une distance visée,
+    // et l'image en cours s'en rapproche — le mouvement devient continu.
+    const before = camera.position.distanceTo(controls.target);
+    const moved =
+      applied.current === null ||
+      Math.abs(before - applied.current) > before * 1e-3;
+    // Quelqu'un d'autre a bougé la caméra : vol, cadrage initial, franchissement. La visée
+    // repart de là où la caméra se trouve réellement, sans quoi elle la rappellerait.
+    if (moved) aim.current = before;
+    if (pending.current !== 0) {
+      const step = zoomStep(parentFrame, childFrame, streak.current.count);
+      aim.current = (aim.current ?? before) * Math.exp(pending.current * step);
+      pending.current = 0;
+    }
+    const goal = Math.min(
+      controls.maxDistance,
+      Math.max(controls.minDistance, aim.current ?? before),
+    );
+    aim.current = goal;
+    const eased = dollyEase(before, goal, delta);
+    if (Math.abs(eased - before) > before * 1e-6) {
+      const dx = camera.position.x - controls.target.x;
+      const dy = camera.position.y - controls.target.y;
+      const dz = camera.position.z - controls.target.z;
+      const length = Math.hypot(dx, dy, dz) || 1;
+      camera.position.set(
+        controls.target.x + (dx / length) * eased,
+        controls.target.y + (dy / length) * eased,
+        controls.target.z + (dz / length) * eased,
+      );
+    }
+    applied.current = camera.position.distanceTo(controls.target);
+
+    const distance = applied.current;
+
+    // Plans de coupe. Indispensable et pas cosmétique : `MapCanvas` ne fixe que `far`,
+    // donc `near` vaut le défaut de three.js (0,1) — au palier corps, où la caméra
+    // regarde à quelques centièmes d'unité, toute la scène passerait devant lui.
+    const { near, far } = clipPlanesFor(distance, parentFrame);
+    // Seuil de 2 % : recalculer la matrice de projection à chaque image serait payer un
+    // recalcul complet pour un changement invisible.
+    if (
+      Math.abs(camera.near - near) > near * 0.02 ||
+      Math.abs(camera.far - far) > far * 0.02
+    ) {
+      camera.near = near;
+      camera.far = far;
+      camera.updateProjectionMatrix();
+    }
+
+    const progress =
+      childFrame > 0 ? tierProgress(distance, parentFrame, childFrame) : 0;
+
     // Recentrage progressif sur ce dans quoi on descend (chantier 35.4).
     //
-    // `zoomToCursor` déplace la cible vers le pointeur, qui peut viser le vide entre deux
-    // galaxies. On franchissait alors la frontière avec le contenu du palier atteint hors
-    // du cadre : la carte se vidait, le fondu ayant fait disparaître le palier quitté sans
-    // que rien ne le remplace à l'écran. La caméra ET sa cible se décalent d'autant, ce
-    // qui préserve la distance et l'angle de vue — on ne reprend au joueur que sa visée,
-    // et seulement à mesure qu'il s'engage.
-    // Uniquement en descente. `zoomToCursor` réalise le dézoom en déplaçant la cible ;
-    // la ramener dans le même souffle annulait une partie du recul, et remonter de trois
-    // paliers demandait deux fois plus de crans de molette.
+    // C'est ce qui **réalise la visée** depuis le chantier 36.1 : la cible n'est plus
+    // déplaçable à la souris, et sans ce glissement on franchirait la frontière avec le
+    // contenu du palier atteint hors du cadre — la carte se viderait, le fondu ayant fait
+    // disparaître le palier quitté sans que rien ne le remplace. La caméra ET sa cible se
+    // décalent d'autant, ce qui préserve la distance et l'angle de vue.
+    //
+    // Uniquement en descente : se recoller à l'enfant qu'on est en train de quitter
+    // annulerait une partie du recul, et remonter demanderait deux fois plus de crans.
     const rising = progress > advance.current + 1e-4;
     advance.current = progress;
     if (childFocus && progress > 0 && rising) {
