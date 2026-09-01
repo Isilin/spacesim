@@ -132,12 +132,19 @@ function GalaxyCloud({
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
+      {/* Taille en PIXELS, pas en unités monde (chantier 36.7). C'est ce qui fait que les
+          étoiles se mêlent d'elles-mêmes : en dézoomant, elles se resserrent à l'écran
+          sans rapetisser, et le mélange additif les fond en une lueur. Avec l'atténuation
+          par la distance, elles auraient rapetissé jusqu'à disparaître, ce qui obligeait à
+          peindre un disque par-dessus pour que la galaxie reste visible. */}
       <pointsMaterial
         color={color}
-        size={2.4}
-        sizeAttenuation
+        size={2}
+        sizeAttenuation={false}
         transparent
-        opacity={0.9}
+        opacity={0.55}
+        depthWrite={false}
+        blending={AdditiveBlending}
       />
     </points>
   );
@@ -275,8 +282,14 @@ export function UniverseLayer({
                       : "#7f95ad"
               }
             />
-            {/* Disque de saisie : quasi invisible, il porte le clic là où le nuage
-                de points serait trop épars pour être visé. */}
+            {/* Disque de saisie : plus peint du tout depuis le chantier 36.7, mais
+                toujours là pour porter le clic — le nuage de points est trop épars pour
+                être visé au pixel près.
+
+                `colorWrite={false}` et non `visible={false}` : three.js retire du raycast
+                tout objet invisible, et les galaxies deviendraient incliquables.
+                `depthWrite={false}` avec : un disque qui n'écrit rien en couleur mais
+                écrit en profondeur masquerait les étoiles derrière lui. */}
             {/* biome-ignore lint/a11y/useKeyWithClickEvents: `mesh` est un objet de
                 scène three.js, pas un nœud DOM — il ne peut recevoir ni focus ni
                 événement clavier. Le chemin accessible est la liste DOM parallèle
@@ -286,19 +299,7 @@ export function UniverseLayer({
               onDoubleClick={() => onOpenGalaxy(galaxy)}
             >
               <circleGeometry args={[GALAXY_DISC, 32]} />
-              <meshBasicMaterial
-                color={
-                  selected
-                    ? "#4fc1ff"
-                    : colonized
-                      ? "#56d364"
-                      : activeGatewayIds.has(galaxy.id)
-                        ? "#b48fe0"
-                        : "#2f3d4d"
-                }
-                transparent
-                opacity={selected ? 0.28 : 0.12}
-              />
+              <meshBasicMaterial colorWrite={false} depthWrite={false} />
             </mesh>
           </group>
         );

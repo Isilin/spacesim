@@ -47,6 +47,7 @@ import { MapList } from "./MapList.js";
 import {
   bodyLocalPosition,
   bodyRadiusOf,
+  STAR_CORE,
   derivedOrbit,
   SystemLayer,
   systemExtent,
@@ -1407,6 +1408,17 @@ export function MapScene({
             scale={placements.galaxy.scale}
           >
             <GalaxyLayer
+              depthRef={depthRef}
+              // Rayon de l'étoile ramené au repère de la galaxie : le rapport des deux
+              // échelles de placement dit exactement ce que vaut une unité système vue
+              // d'ici. Sans lui, le fondu troquerait un nœud de 11 unités contre une
+              // étoile de 0,3.
+              starRadius={
+                placements.system
+                  ? (STAR_CORE * placements.system.scale) /
+                    placements.galaxy.scale
+                  : SYSTEM_NODE * 0.05
+              }
               galaxy={galaxy}
               colonizedSystemIds={colonizedSystemIds}
               stations={stations}

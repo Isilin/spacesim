@@ -8,12 +8,64 @@ import {
   type Station,
   type Territory,
 } from "@spacesim/shared";
-import { useMemo } from "react";
+import { useFrame } from "@react-three/fiber";
+import { useMemo, useRef, type RefObject } from "react";
+import type { Mesh } from "three";
 import { focusOf, type Focus } from "./bounds.js";
 import type { Vec3 } from "./tiers.js";
 
 /** Rayon du nœud d'un système dans le repère de la galaxie. */
 export const SYSTEM_NODE = 11;
+
+/**
+ * Rayon du point d'un système à l'écran, en pixels (chantier 36.6).
+ *
+ * Le nœud avait une taille fixe en unités MONDE : il grossissait donc en zoomant, puis
+ * cédait la place à une étoile trente-cinq fois plus petite dans le même repère. Le fondu
+ * échangeait deux objets de tailles apparentes sans rapport. Il garde désormais sa taille
+ * à l'écran tout le palier, et ne rejoint celle de l'étoile qu'au moment de lui céder la
+ * place.
+ */
+const NODE_PIXELS = 5;
+
+/** Champ de vision vertical de la carte — doit suivre `MapCanvas`. */
+const HALF_FOV = ((50 / 2) * Math.PI) / 180;
+
+/**
+ * Tient les nœuds de système à taille écran constante, puis les fait converger vers la
+ * taille de l'étoile réelle pendant la bande de transition.
+ *
+ * Une seule boucle pour tous les nœuds, et une écriture directe sur les objets : la taille
+ * change à chaque image, et la faire passer par React re-rendrait la galaxie entière
+ * soixante fois par seconde.
+ */
+function useNodeScale(
+  nodes: RefObject<(Mesh | null)[]>,
+  depthRef: RefObject<number>,
+  starRadius: number,
+): void {
+  useFrame(({ camera, size }) => {
+    const perPixel = (2 * Math.tan(HALF_FOV)) / Math.max(1, size.height);
+    // Progression dans la bande galaxie -> système. Hors bande, zéro : le point garde sa
+    // taille d'écran.
+    const blend = Math.min(1, Math.max(0, depthRef.current - 1));
+    for (const mesh of nodes.current ?? []) {
+      const parent = mesh?.parent;
+      if (!mesh || !parent) continue;
+      const e = parent.matrixWorld.elements;
+      const scale = Math.hypot(e[0]!, e[1]!, e[2]!) || 1;
+      const distance = Math.hypot(
+        camera.position.x - e[12]!,
+        camera.position.y - e[13]!,
+        camera.position.z - e[14]!,
+      );
+      // Rayon qui garde le point à la même taille à l'écran, exprimé dans le repère local.
+      const screen = (distance * perPixel * NODE_PIXELS) / scale;
+      const target = screen + (starRadius - screen) * blend;
+      mesh.scale.setScalar(Math.max(1e-6, target));
+    }
+  });
+}
 
 /** Recentre la galaxie : le générateur pose ses systèmes dans un pavé, pas autour de 0. */
 export function systemScenePosition(s: {
@@ -86,6 +138,16 @@ interface Props {
   /** Cadrage de la galaxie dans SON repère — `MapScene` l'imbrique ensuite. */
   focus: Focus;
   selectedId: string | null;
+  /** Profondeur continue, écrite par `TierCamera` à chaque image. */
+  depthRef: RefObject<number>;
+  /**
+   * Rayon qu'aura l'étoile du système ancré, dans le repère de la galaxie (chantier 36.6).
+   *
+   * C'est la cible vers laquelle le point converge pendant la bande, pour que le fondu
+   * n'échange pas deux objets de tailles apparentes sans rapport. Les autres nœuds
+   * convergent vers la même valeur : ils sont déjà transparents quand elle est atteinte.
+   */
+  starRadius: number;
   onSelect: (system: StarSystem) => void;
   onOpenSystem: (system: StarSystem) => void;
 }
@@ -112,9 +174,14 @@ export function GalaxyLayer({
   now,
   focus,
   selectedId,
+  depthRef,
+  starRadius,
   onSelect,
   onOpenSystem,
 }: Props) {
+  const nodes = useRef<(Mesh | null)[]>([]);
+  useNodeScale(nodes, depthRef, starRadius);
+
   const byId = useMemo(
     () => new Map(galaxy.systems.map((s) => [s.id, s])),
     [galaxy],
@@ -198,7 +265,7 @@ export function GalaxyLayer({
           </mesh>
         );
       })}
-      {galaxy.systems.map((system) => {
+      {galaxy.systems.map((system, index) => {
         const position = systemScenePosition(system);
         const selected = system.id === selectedId;
         const color = selected
@@ -220,16 +287,16 @@ export function GalaxyLayer({
                 ni focusable ni clavier — le chemin accessible est la liste DOM
                 parallèle rendue à côté (chantier 31.16). */}
             <mesh
+              ref={(node) => {
+                nodes.current[index] = node;
+              }}
+              // Géométrie unitaire : c'est l'échelle, écrite à chaque image, qui donne
+              // sa taille au point. Un système revendiqué se rend d'un tiers plus gros.
+              scale={claimed.has(system.id) ? SYSTEM_NODE * 1.3 : SYSTEM_NODE}
               onClick={() => onSelect(system)}
               onDoubleClick={() => onOpenSystem(system)}
             >
-              <sphereGeometry
-                args={[
-                  claimed.has(system.id) ? SYSTEM_NODE * 1.3 : SYSTEM_NODE,
-                  16,
-                  16,
-                ]}
-              />
+              <sphereGeometry args={[1, 16, 16]} />
               <meshBasicMaterial color={color} />
             </mesh>
           </group>

@@ -1,5 +1,5 @@
 import { useFrame } from "@react-three/fiber";
-import { useMemo, useRef, type RefObject } from "react";
+import { useRef, type RefObject } from "react";
 import { CanvasTexture, LinearFilter, type Sprite } from "three";
 import { layerOpacity } from "./FadingGroup.js";
 import { themeColor } from "./theme.js";
@@ -145,19 +145,12 @@ export function MapLabels({
 }: Props) {
   const sprites = useRef<(Sprite | null)[]>([]);
   const published = useRef(-1);
-  const sized = useMemo(
-    () =>
-      items.map((item) => {
-        const texture = labelTexture(item.text);
-        const image = texture.image as { width: number; height: number };
-        return {
-          item,
-          texture,
-          ratio: image.width / Math.max(1, image.height),
-        };
-      }),
-    [items],
-  );
+  /**
+   * Rapport largeur/hauteur de chaque texture, rempli à la rastérisation.
+   *
+   * Zéro tant que l'étiquette n'a jamais été lisible : la texture n'existe pas encore.
+   */
+  const ratios = useRef<number[]>([]);
 
   useFrame(({ camera, size }) => {
     // Axe « haut de l'écran », lu de la matrice caméra : `camera.up` reste (0,1,0) quoi que
@@ -171,14 +164,26 @@ export function MapLabels({
     // Hauteur d'un pixel écran en unités de scène, à distance 1 : le reste est
     // proportionnel à la distance.
     const perPixel = (2 * Math.tan(HALF_FOV)) / Math.max(1, size.height);
-    const depth = depthRef.current;
+
+    // Opacité de couche calculée UNE fois : tous les items appartiennent au palier
+    // courant, et `tierBlend` alloue un objet à chaque appel. Vingt appels par image,
+    // c'est mille deux cents objets par seconde pour une valeur commune.
+    const layer =
+      items.length > 0 ? layerOpacity(items[0]!.tier, depthRef.current) : 0;
+    if (layer <= INVISIBLE) {
+      for (const sprite of sprites.current) if (sprite) sprite.visible = false;
+      if (published.current !== 0) {
+        published.current = 0;
+        onVisibleCount(0);
+      }
+      return;
+    }
     let visible = 0;
 
-    for (let i = 0; i < sized.length; i++) {
+    for (let i = 0; i < items.length; i++) {
       const sprite = sprites.current[i];
-      const entry = sized[i];
-      if (!sprite || !entry) continue;
-      const { item, ratio } = entry;
+      const item = items[i];
+      if (!sprite || !item) continue;
 
       const [x, y, z] = item.at();
       const distance = Math.hypot(
@@ -191,19 +196,35 @@ export function MapLabels({
         continue;
       }
 
-      const opacity =
-        labelOpacity(item.radius / distance) * layerOpacity(item.tier, depth);
+      const opacity = labelOpacity(item.radius / distance) * layer;
       // Un sprite invisible sort aussi du raycast : c'est three.js qui l'ignore, et c'est
       // ce qui empêche une étiquette effacée de rester cliquable.
       sprite.visible = opacity > INVISIBLE;
       if (!sprite.visible) continue;
       visible++;
 
-      (sprite.material as { opacity: number }).opacity = opacity;
+      const material = sprite.material as {
+        opacity: number;
+        map: CanvasTexture | null;
+        needsUpdate: boolean;
+      };
+      // Rastérisation à la PREMIÈRE apparition, et pas au montage de la couche (chantier
+      // 36.7). Dessiner vingt noms dans un canvas 2D puis les téléverser coûtait un pic
+      // qui tombait exactement au moment où l'on arrive dans un système — la moitié du
+      // budget d'images de la première seconde, pour des étiquettes dont deux seulement
+      // se voyaient. Le cache de module fait que remonter la même couche est gratuit.
+      if (!material.map) {
+        const texture = labelTexture(item.text);
+        const image = texture.image as { width: number; height: number };
+        ratios.current[i] = image.width / Math.max(1, image.height);
+        material.map = texture;
+        material.needsUpdate = true;
+      }
+      material.opacity = opacity;
 
       // Taille écran constante : la hauteur en unités de scène suit la distance.
       const height = distance * perPixel * PIXEL_HEIGHT;
-      sprite.scale.set(height * ratio, height, 1);
+      sprite.scale.set(height * (ratios.current[i] ?? 4), height, 1);
 
       // Posée au-dessus de l'objet, d'un rayon et demi plus la demi-hauteur du texte —
       // assez pour dégager un corps qui remplit déjà l'écran, sans décrocher l'étiquette
@@ -220,21 +241,20 @@ export function MapLabels({
 
   return (
     <>
-      {sized.map((entry, index) => (
+      {items.map((item, index) => (
         // biome-ignore lint/a11y/useKeyWithClickEvents: objet de scène three.js, ni
         // focusable ni clavier — le chemin accessible est la liste DOM parallèle
         // (chantier 31.16), qui porte les mêmes actions.
         <sprite
-          key={entry.item.id}
+          key={item.id}
           ref={(node) => {
             sprites.current[index] = node;
           }}
           visible={false}
-          onClick={() => onSelect(entry.item.id)}
-          onDoubleClick={() => onOpen(entry.item.id)}
+          onClick={() => onSelect(item.id)}
+          onDoubleClick={() => onOpen(item.id)}
         >
           <spriteMaterial
-            map={entry.texture}
             transparent
             // Une étiquette se lit par-dessus ce qu'elle nomme : écrire dans le tampon de
             // profondeur la ferait découper par le corps qu'elle surplombe.

@@ -57,6 +57,11 @@ test("la carte 3D rend et tient un budget d'images à chaque niveau", async ({
   });
   await expect(universeList.getByRole("button").first()).toBeVisible();
 
+  // Laisser la scène se poser avant de compter (chantier 36.7). Monter une couche coûte
+  // des textures et des géométries ; mesurer dans la seconde qui suit revient à mesurer
+  // ce montage, pas le régime permanent que ce test prétend surveiller. Sans cette pause,
+  // la même configuration rendait 17 ou 60 images selon l'humeur de la machine.
+  await page.waitForTimeout(700);
   const universeFps = await framesPerSecond(page);
   // Le seuil est bas à dessein : il attrape un rendu effondré (boucle bloquée,
   // re-render par image), pas une variation de machine.
@@ -67,6 +72,7 @@ test("la carte 3D rend et tient un budget d'images à chaque niveau", async ({
   await page.getByRole("button", { name: "Ma capitale" }).click();
   await expect(page).toHaveURL(/\/map\?.*at=/);
   await expectSizedCanvas(page, 200);
+  await page.waitForTimeout(700);
   const systemFps = await framesPerSecond(page);
   expect(systemFps).toBeGreaterThan(20);
 
