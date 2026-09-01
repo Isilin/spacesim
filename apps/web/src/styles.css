@@ -1671,6 +1671,14 @@
 
 /* Liste DOM parallèle au canvas (chantier 31.16) : seul chemin accessible vers les
    objets de la scène, et le plus rapide pour trouver un nom dans une vue dense. */
+/* Rangée de statistiques d'une fiche (chantier 35.6). */
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-bottom: 10px;
+}
+
 /* Infobox de carte (chantier 35.5). Le cadre vient du `Popover` du design system ; il
    n'y a ici qu'à régler l'espacement et à borner la largeur, l'infobox étant posée par
    drei au-dessus du canvas et n'ayant aucun conteneur qui la contraigne. */

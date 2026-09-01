@@ -27,7 +27,6 @@ import {
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
-import { BodyView } from "./BodyView.js";
 import { ColonyView } from "./ColonyView.js";
 import { EmpireView } from "./EmpireView.js";
 import { CommunicationView } from "./CommunicationView.js";
@@ -36,13 +35,14 @@ import { InboxView } from "./InboxView.js";
 import { FleetsView } from "./FleetsView.js";
 import { ShipDesigner } from "./ShipDesigner.js";
 import { GatewaysPanel } from "./GatewaysPanel.js";
+import { MapSheet } from "./MapSheet.js";
 import { useMapView } from "./hooks/useMapView.js";
 import { MapNav, type NavTarget } from "./MapNav.js";
 import { ResearchView } from "./ResearchView.js";
 import { LogisticsView } from "./LogisticsView.js";
 import { StationsView } from "./StationsView.js";
 import { SystemPanel } from "./SystemPanel.js";
-import { MapScene, type AnchorPath } from "./map3d/MapScene.js";
+import { MapScene } from "./map3d/MapScene.js";
 import { useGameConnection } from "./hooks/useGameConnection.js";
 import { buildUniverseIndex } from "./state/selectors.js";
 import { useGameStore } from "./state/game-store.js";
@@ -151,30 +151,38 @@ function MapPage({
     [setSearchParams],
   );
 
+  /**
+   * Suit la caméra dans l'URL. **Ne supprime jamais** ce qu'elle vise : seul un geste
+   * explicite le fait, par `goTo`.
+   *
+   * La carte publie sa position en continu et se trouve, l'instant d'un vol, encore au
+   * palier de départ où elle ne vise rien. Publier cette absence effaçait l'ancre que le
+   * raccourci venait d'écrire, et le vol partait vers une cible que l'URL ne nommait plus.
+   */
   const onViewChange = useCallback(
-    (path: AnchorPath, viewDepth: number) => {
-      const at = path.bodyId ?? path.systemId ?? path.galaxyId;
+    (at: string | null, viewDepth: number) => {
       const next = new URLSearchParams(searchParams);
-      if (at) {
-        next.set("at", at);
-        next.set("z", viewDepth.toFixed(2));
-      } else {
-        // Rien de visé : une profondeur seule ne décrit aucune vue, et `?z=0.00` sur une
-        // carte au repos n'est que du bruit dans la barre d'adresse.
-        next.delete("at");
-        next.delete("z");
-      }
+      if (at) next.set("at", at);
+      // Une profondeur seule ne décrit aucune vue : sans cible, rien à écrire.
+      if (!next.get("at")) return;
+      next.set("z", viewDepth.toFixed(2));
       if (next.toString() === searchParams.toString()) return;
       writeView(next);
     },
     [searchParams, writeView],
   );
 
-  /** Ouvre la fiche complète d'un élément — la modale viendra au chantier 35.6. */
+  /**
+   * Ouvre la fiche complète d'un élément dans la modale.
+   *
+   * La sélection est effacée au passage : l'infobox et la fiche décriraient le même objet
+   * en même temps, l'une derrière l'autre.
+   */
   const openSheet = (id: string | null) => {
     const next = new URLSearchParams(searchParams);
     if (id) next.set("open", id);
     else next.delete("open");
+    setSelectedId(null);
     writeView(next, true);
   };
 
@@ -258,27 +266,26 @@ function MapPage({
           onSelectSystem={(s) => setSelectedId(s.id)}
           onSelectBody={(b) => setSelectedId(b.id)}
           onOpenBody={(b) => openSheet(b.id)}
+          onOpenFiche={openSheet}
           onClearSelection={() => setSelectedId(null)}
           onViewChange={onViewChange}
         />
       </section>
+      {/* Ouverture pleine : une modale qui laisse la carte visible derrière elle, au lieu
+          du niveau de carte qui la remplaçait (chantier 35.6). */}
+      {open && (
+        <MapSheet
+          universe={universe}
+          openId={open}
+          effects={effects}
+          portalLinks={portalLinks}
+          now={now}
+          onOpenBody={(b) => openSheet(b.id)}
+          onClose={() => openSheet(null)}
+        />
+      )}
       <aside className="side-panel">
-        {openBody && openSystem ? (
-          <>
-            <BodyView
-              system={openSystem}
-              body={openBody}
-              effects={effects}
-              now={now}
-              selectedBodyId={selectedId}
-              onSelectBody={(b) => setSelectedId(b.id)}
-              onOpenBody={(b) => openSheet(b.id)}
-            />
-            <Button onClick={() => openSheet(null)}>
-              {t("app.closeSheet")}
-            </Button>
-          </>
-        ) : shownSystem ? (
+        {shownSystem ? (
           <SystemPanel
             system={shownSystem}
             effects={effects}

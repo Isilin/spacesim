@@ -26,10 +26,6 @@ interface Props {
   body: Planet;
   effects: EmpireEffects;
   now: number;
-  selectedBodyId: string | null;
-  onSelectBody: (body: Planet) => void;
-  /** Ouvre un autre corps du même système (lune, planète parente). */
-  onOpenBody: (body: Planet) => void;
 }
 
 const ATMOSPHERE_KEYS: Record<Atmosphere, string> = {
@@ -40,28 +36,15 @@ const ATMOSPHERE_KEYS: Record<Atmosphere, string> = {
   dense: "bodyView.atmosphereDense",
 };
 
-const BODY_COLORS: Record<string, string> = {
-  telluric: "#7fb069",
-  oceanic: "#4f8fc1",
-  volcanic: "#c1574f",
-  frozen: "#a8c6dd",
-  arid: "#c1a05a",
-  gas: "#b08fc9",
-};
-
-/** Taille du schéma orbital (viewBox carré). */
-const SCHEMA = 320;
-
-/** Vue d'un corps : schéma orbital, fiche physique, gisements, sol occupé. */
-export function BodyView({
-  system,
-  body,
-  effects,
-  now,
-  selectedBodyId,
-  onSelectBody,
-  onOpenBody,
-}: Props) {
+/**
+ * Fiche d'un corps : caractéristiques physiques, gisements, sol occupé (chantier 10).
+ *
+ * Le schéma orbital SVG qu'elle portait a disparu au chantier 35.6. Il figurait les lunes
+ * à leur angle initial, figées, sur un dessin de 320 px sans zoom — le palier corps de la
+ * carte montre les mêmes orbites, en 3D et en mouvement. Ce qui reste ici est ce que la
+ * carte ne dit pas : des chiffres.
+ */
+export function BodyView({ system, body, effects, now }: Props) {
   const { t, i18n } = useTranslation();
   const [searchParams] = useSearchParams();
   const activeColony = useGameStore(
@@ -75,13 +58,6 @@ export function BodyView({
   const moons = system.planets.filter((p) => p.parentPlanetId === body.id);
   const physicals = bodyPhysicals(body, parent?.orbitRadius);
   const colony = colonies.find((c) => c.planetId === body.id);
-  const station = stations.find((s) => s.bodyId === body.id);
-  const color = BODY_COLORS[body.type] ?? "#8899aa";
-
-  const c = SCHEMA / 2;
-  // Rayon du corps à l'écran : borné, le schéma n'est pas à l'échelle réelle.
-  const bodyRadius = body.kind === "moon" ? 26 : body.type === "gas" ? 46 : 34;
-  const moonOrbit = (i: number) => bodyRadius + 26 + i * 24;
 
   if (!game) return null;
 
@@ -116,114 +92,6 @@ export function BodyView({
       )}
 
       <div className="body-layout">
-        <svg
-          className="body-schema"
-          viewBox={`0 0 ${SCHEMA} ${SCHEMA}`}
-          role="img"
-          aria-label={t("bodyView.schemaAriaLabel", { name: body.name })}
-        >
-          {/* Orbites des lunes, puis les lunes elles-mêmes (cliquables). */}
-          {moons.map((moon, i) => (
-            <circle
-              key={`o-${moon.id}`}
-              cx={c}
-              cy={c}
-              r={moonOrbit(i)}
-              className="orbit-ring"
-            />
-          ))}
-          <circle
-            cx={c}
-            cy={c}
-            r={bodyRadius}
-            fill={color}
-            className="body-dot"
-          />
-          {colony && (
-            <circle cx={c} cy={c} r={bodyRadius + 7} className="colony-ring" />
-          )}
-          {/* Anneau de soute orbitale : son remplissage dit ce qui est prêt à partir. */}
-          {colony && orbitalCap(colony, effects) > 0 && (
-            <circle
-              cx={c}
-              cy={c}
-              r={bodyRadius + 14}
-              className="orbital-ring"
-              pathLength={100}
-              strokeDasharray={`${Math.min(100, (orbitalUsed(colony) / orbitalCap(colony, effects)) * 100)} 100`}
-            />
-          )}
-          {/* Anneau de station : rayon distinct de l'anneau de colonie, un corps peut porter
-           *  les deux (chantier 24). */}
-          {station && (
-            <circle
-              cx={c}
-              cy={c}
-              r={bodyRadius + 20}
-              className="station-ring"
-            />
-          )}
-          {moons.map((moon, i) => {
-            const angle = moon.orbitAngle;
-            const x = c + Math.cos(angle) * moonOrbit(i);
-            const y = c + Math.sin(angle) * moonOrbit(i);
-            return (
-              <g
-                key={moon.id}
-                className={`body ${selectedBodyId === moon.id ? "selected" : ""}`}
-                onMouseDown={(event) => {
-                  if (event.button !== 0) return;
-                  event.stopPropagation();
-                  if (event.detail === 2) onOpenBody(moon);
-                  else onSelectBody(moon);
-                }}
-              >
-                <circle cx={x} cy={y} r={12} className="body-hit" />
-                <circle
-                  cx={x}
-                  cy={y}
-                  r={6}
-                  fill={BODY_COLORS[moon.type]}
-                  className="body-dot"
-                />
-                {colonies.some((col) => col.planetId === moon.id) && (
-                  <circle cx={x} cy={y} r={9} className="colony-ring" />
-                )}
-                <text
-                  x={x}
-                  y={y - 12}
-                  textAnchor="middle"
-                  className="body-label"
-                >
-                  {moon.name}
-                </text>
-              </g>
-            );
-          })}
-          {/* Encart : position du corps sur son orbite autour de l'étoile (ou de sa planète). */}
-          <g
-            transform={`translate(${SCHEMA - 58}, 58)`}
-            className="orbit-inset"
-          >
-            <circle r={40} className="orbit-ring" />
-            <circle r={4} className="star-core" />
-            <circle
-              cx={Math.cos((parent ?? body).orbitAngle) * 40}
-              cy={Math.sin((parent ?? body).orbitAngle) * 40}
-              r={5}
-              fill={color}
-              className="body-dot"
-            />
-            <text y={56} textAnchor="middle" className="body-label">
-              {parent
-                ? t("bodyView.orbitOfParent", { parent: parent.name })
-                : t("bodyView.orbitRadius", {
-                    radius: Math.round(body.orbitRadius),
-                  })}
-            </text>
-          </g>
-        </svg>
-
         <div className="body-panels">
           <Panel title={t("bodyView.readings")}>
             <dl className="body-stats">

@@ -55,6 +55,8 @@ async function settledTier(
 test("le zoom descend dans une galaxie et remonte, sans changer de canvas", async ({
   page,
 }) => {
+  // Le double-clic vole (620 ms) puis on remonte une bande entière à la molette.
+  test.setTimeout(90_000);
   await registerFreshEmpire(page, {
     prefix: "mapzoom",
     empireName: "Traverseurs E2E",
@@ -74,6 +76,10 @@ test("le zoom descend dans une galaxie et remonte, sans changer de canvas", asyn
   await expect
     .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
     .toBe("galaxy");
+
+  // Le double-clic vole ET ouvre la fiche (chantier 35.6) : la refermer pour rendre la
+  // carte à la molette.
+  await page.keyboard.press("Escape");
 
   // L'invariant du chantier : un seul canvas, du premier palier au dernier. Deux canvas
   // successifs, c'est l'ancien modèle qui est revenu.
@@ -147,6 +153,7 @@ test("la traversée va de l'amas jusqu'à un corps, puis en revient", async ({
   await expect
     .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
     .toBe("galaxy");
+  await page.keyboard.press("Escape");
 
   // Puis la capitale : le brouillard vide les systèmes inexplorés de leurs corps, et un
   // système vide n'a rien dans quoi descendre. Le raccourci vise le seul système dont on
@@ -167,6 +174,7 @@ test("la traversée va de l'amas jusqu'à un corps, puis en revient", async ({
   await expect
     .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
     .toBe("body");
+  await page.keyboard.press("Escape");
 
   // Un seul canvas de l'amas jusqu'à la planète : c'est ce qui distingue une traversée
   // continue de quatre scènes qui se remplacent.
@@ -223,4 +231,39 @@ test("sélectionner ouvre une infobox sur la carte, cliquer à côté la referme
   const box = (await host.boundingBox())!;
   await page.mouse.click(box.x + 12, box.y + 12);
   await expect(infobox).toBeHidden();
+});
+
+test("le double-clic vole jusqu'à l'objet et ouvre sa fiche", async ({
+  page,
+}) => {
+  // Ouvrir un corps était un NIVEAU de carte : la scène 3D disparaissait au profit d'une
+  // fiche SVG. La modale laisse la carte derrière elle et se referme d'une touche —
+  // regarder et lire cessent d'être exclusifs.
+  await registerFreshEmpire(page, {
+    prefix: "mapsheet",
+    empireName: "Liseurs E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+
+  const list = page.getByRole("navigation", { name: /univers|universe/i });
+  const row = list.getByRole("button").first();
+  const name = (await row.locator("span").first().innerText()).trim();
+  await row.dblclick();
+
+  // La fiche d'une galaxie n'existait pas avant le chantier 35.6 : sélectionner une
+  // galaxie n'ouvrait rien du tout.
+  const sheet = page.getByRole("dialog", { name: new RegExp(name, "i") });
+  await expect(sheet).toBeVisible();
+  await expect(sheet).toContainText(/Systèmes|Systems/i);
+
+  // Et la caméra a bel et bien volé : le double-clic ne fait pas qu'ouvrir une fiche.
+  await expect
+    .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
+    .toBe("galaxy");
+
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
 });

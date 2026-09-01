@@ -45,6 +45,13 @@ export const commonFr = {
     explored: "exploré",
     unexplored: "inexploré",
   },
+  galaxyFiche: {
+    systems: "Systèmes",
+    explored: "Explorés",
+    colonized: "Colonisés",
+    claimed: "Revendiqués",
+    rank: "Rang {{rank}} · gisements ×{{bonus}}",
+  },
   mapInfobox: {
     ariaLabel: "Détail de {{name}}",
     galaxySystems: "{{count}} systèmes",
@@ -722,6 +729,13 @@ export const commonFr = {
 };
 
 export const commonEn: typeof commonFr = {
+  galaxyFiche: {
+    systems: "Systems",
+    explored: "Explored",
+    colonized: "Colonized",
+    claimed: "Claimed",
+    rank: "Rank {{rank}} · deposits ×{{bonus}}",
+  },
   mapInfobox: {
     ariaLabel: "Detail of {{name}}",
     galaxySystems: "{{count}} systems",

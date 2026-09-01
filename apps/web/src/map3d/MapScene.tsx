@@ -293,13 +293,19 @@ interface JumpRequest {
   progress: number;
 }
 
+/** Durée d'un vol vers une cible, en ms. */
+const FLIGHT_MS = 620;
+
 /**
- * Recadrage instantané (chantiers 35.2 et 35.3).
+ * Vol de caméra vers une cible (chantiers 35.2, 35.3 puis 35.6).
  *
- * Sert aux sauts explicites — double-clic, arrivée par la recherche — et à la restauration
- * de la profondeur portée par l'URL. Sans `child`, on cadre la cible à 95 % de sa distance
- * de cadrage : ce n'est pas un détail esthétique, cela pose la progression juste au-delà de
- * 1 et déclenche le franchissement à l'image suivante.
+ * Sert aux gestes explicites — double-clic, recherche, raccourci — et à la restauration de
+ * la profondeur portée par l'URL. Le recadrage était sec ; il est désormais animé, et c'est
+ * ce qui donne au double-clic le sens que le joueur en attend : on **descend** vers l'objet
+ * en traversant les paliers, on n'y est pas téléporté.
+ *
+ * Sans `child`, on cadre la cible à 95 % de sa distance de cadrage : ce n'est pas un détail
+ * esthétique, cela pose la progression juste au-delà de 1 et déclenche le franchissement.
  */
 function CameraJump({
   request,
@@ -311,10 +317,17 @@ function CameraJump({
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as ControlsHandle | null;
   const size = useThree((s) => s.size);
-  // Lu par référence : un redimensionnement du canvas ne doit pas rejouer le saut et
+  // Lu par référence : un redimensionnement du canvas ne doit pas rejouer le vol et
   // reprendre au joueur la vue qu'il s'est donnée depuis.
   const measured = useRef(size);
   measured.current = size;
+
+  const flight = useRef<{
+    at: number;
+    from: { target: Vec3; distance: number };
+    to: { target: Vec3; distance: number };
+    direction: Vec3;
+  } | null>(null);
 
   useEffect(() => {
     if (!controls) return;
@@ -329,22 +342,59 @@ function CameraJump({
             request.progress,
           )
         : parent * 0.95;
-    // Direction de vue conservée : le joueur a peut-être tourné la caméra, un saut ne
-    // doit pas lui reprendre son point de vue en même temps que sa position.
+
+    // Direction de vue conservée : le joueur a peut-être tourné la caméra, un vol ne doit
+    // pas lui reprendre son point de vue en même temps que sa position.
     const dx = camera.position.x - controls.target.x;
     const dy = camera.position.y - controls.target.y;
     const dz = camera.position.z - controls.target.z;
     const length = Math.hypot(dx, dy, dz) || 1;
-    const [tx, ty, tz] = request.focus.center;
-    controls.target.set(tx, ty, tz);
+    flight.current = {
+      at: performance.now(),
+      from: {
+        target: [controls.target.x, controls.target.y, controls.target.z],
+        distance: length,
+      },
+      to: { target: request.focus.center, distance },
+      direction: [dx / length, dy / length, dz / length],
+    };
+  }, [request, camera, controls]);
+
+  useFrame(() => {
+    const flying = flight.current;
+    if (!flying || !controls) return;
+    const k = Math.min(1, (performance.now() - flying.at) / FLIGHT_MS);
+    // Hermite : le vol démarre et s'arrête en douceur, il ne claque à aucun bout.
+    const eased = k * k * (3 - 2 * k);
+
+    const [tx, ty, tz] = flying.from.target;
+    const [ux, uy, uz] = flying.to.target;
+    const target: Vec3 = [
+      tx + (ux - tx) * eased,
+      ty + (uy - ty) * eased,
+      tz + (uz - tz) * eased,
+    ];
+    // Distance interpolée **géométriquement**, pas linéairement : une carte dont les
+    // paliers s'emboîtent par facteurs d'échelle se parcourt en octaves. Linéairement, le
+    // vol traverserait toutes les bandes profondes dans les dernières images et l'arrivée
+    // serait un à-coup.
+    const distance =
+      flying.from.distance *
+      (flying.to.distance / flying.from.distance) ** eased;
+
+    controls.target.set(target[0], target[1], target[2]);
     camera.position.set(
-      tx + (dx / length) * distance,
-      ty + (dy / length) * distance,
-      tz + (dz / length) * distance,
+      target[0] + flying.direction[0] * distance,
+      target[1] + flying.direction[1] * distance,
+      target[2] + flying.direction[2] * distance,
     );
     controls.update();
-    onDone();
-  }, [request, camera, controls, onDone]);
+
+    if (k >= 1) {
+      flight.current = null;
+      onDone();
+    }
+  });
 
   return null;
 }
@@ -405,10 +455,12 @@ interface Props {
   onSelectSystem: (system: StarSystem) => void;
   onSelectBody: (body: Planet) => void;
   onOpenBody: (body: Planet) => void;
+  /** Ouvre la fiche complète d'un objet — le double-clic vole ET ouvre. */
+  onOpenFiche: (id: string) => void;
   /** Clic dans le vide : referme l'infobox. */
   onClearSelection: () => void;
-  /** Publie l'ancre et la profondeur atteintes, pour que l'URL les suive. */
-  onViewChange: (anchor: AnchorPath, depth: number) => void;
+  /** Publie ce que la caméra vise et à quelle profondeur, pour que l'URL les suive. */
+  onViewChange: (at: string | null, depth: number) => void;
 }
 
 /**
@@ -445,6 +497,7 @@ export function MapScene({
   onSelectSystem,
   onSelectBody,
   onOpenBody,
+  onOpenFiche,
   onClearSelection,
   onViewChange,
 }: Props) {
@@ -555,12 +608,25 @@ export function MapScene({
   }, []);
 
   /**
-   * Ancre publiable. Tant qu'on n'a rien engagé — palier univers, enfant pas même monté —
-   * l'ancre n'est que « la galaxie la plus proche du centre de l'écran », ce qui ne décrit
-   * aucune intention et n'a rien à faire dans la barre d'adresse.
+   * Ce que l'URL doit nommer : l'objet dans lequel la caméra **est**, pas celui qu'elle a
+   * élu plus bas.
+   *
+   * Publier l'ancre la plus profonde faisait dire à `?at=` « cette planète » alors que la
+   * vue était encore celle du système — la fraction de `?z=` décrit déjà la descente en
+   * cours. Au palier univers, tant que rien n'est engagé, l'ancre n'est que « la galaxie la
+   * plus proche du centre de l'écran » : aucune intention, rien à mettre dans la barre
+   * d'adresse.
    */
   const publishable =
-    tier === "universe" && !childMounted ? NO_ANCHOR : anchors;
+    tier === "body"
+      ? anchors.bodyId
+      : tier === "system"
+        ? anchors.systemId
+        : tier === "galaxy"
+          ? anchors.galaxyId
+          : childMounted
+            ? anchors.galaxyId
+            : null;
 
   /**
    * Profondeur publiable, jamais en deçà du palier courant.
@@ -576,8 +642,11 @@ export function MapScene({
   );
 
   useEffect(() => {
+    // Rien tant qu'un vol est en cours : la caméra est encore au palier de départ, et
+    // publier de là effaçait l'ancre que le geste venait tout juste d'écrire dans l'URL.
+    if (jump) return;
     onViewChange(publishable, publishableDepth());
-  }, [publishable, publishableDepth, onViewChange]);
+  }, [jump, publishable, publishableDepth, onViewChange]);
 
   /**
    * Saut demandé de l'extérieur : recherche, raccourci de `MapNav`.
@@ -695,12 +764,13 @@ export function MapScene({
   };
 
   /**
-   * Double-clic ou entrée de liste : ancrer ET sauter la bande d'un coup.
+   * Double-clic ou entrée de liste : voler jusqu'à l'objet ET ouvrir sa fiche.
    *
    * Distinct de l'élection d'ancre, qui change de cible en continu pendant que le joueur
-   * se déplace — y attacher un saut collerait la caméra à chaque galaxie survolée.
+   * se déplace — y attacher un vol collerait la caméra à chaque galaxie survolée.
    */
   const dive = (name: TierName, id: string) => {
+    onOpenFiche(id);
     const path = anchorFor(name, id);
     const next = computePlacements(
       universe,
@@ -792,8 +862,7 @@ export function MapScene({
   ]);
 
   const openSelection = () => {
-    if (!selection) return;
-    if (selection.target.kind === "body") onOpenBody(selection.target.body);
+    if (selectedId) onOpenFiche(selectedId);
   };
 
   const label =
@@ -898,7 +967,7 @@ export function MapScene({
           onCross={cross}
           onChildMount={setChildMounted}
         />
-        <DepthPublisher depthRef={depthRef} publish={publish} />
+        {!jump && <DepthPublisher depthRef={depthRef} publish={publish} />}
         {jump && (
           <CameraJump
             request={jump}
@@ -916,9 +985,7 @@ export function MapScene({
             <MapInfobox
               target={selection.target}
               portal={overlayRef}
-              onOpen={
-                selection.target.kind === "body" ? openSelection : undefined
-              }
+              onOpen={openSelection}
               onClose={onClearSelection}
             />
           </MovingGroup>
