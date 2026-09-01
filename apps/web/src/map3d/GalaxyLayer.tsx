@@ -1,6 +1,7 @@
 import {
   MAP_HEIGHT,
   MAP_WIDTH,
+  type Fleet,
   type ForeignStation,
   type Galaxy,
   type StarSystem,
@@ -74,6 +75,14 @@ interface Props {
   territories: Territory[];
   /** Itinéraire retenu à afficher (chantier 31.10), suite d'ids de systèmes. */
   highlightedRoute?: string[];
+  /**
+   * Flottes en déplacement : un transit va d'un système à un autre, il vit à ce palier.
+   * Les flottes étrangères n'en sont pas : la vue redactée ne porte pas leur mouvement,
+   * seulement le système où elles sont vues.
+   */
+  fleets: Fleet[];
+  /** Horloge locale, pour interpoler les transits. */
+  now: number;
   /** Cadrage de la galaxie dans SON repère — `MapScene` l'imbrique ensuite. */
   focus: Focus;
   selectedId: string | null;
@@ -99,6 +108,8 @@ export function GalaxyLayer({
   claimedSystemIds,
   territories,
   highlightedRoute,
+  fleets,
+  now,
   focus,
   selectedId,
   onSelect,
@@ -158,6 +169,33 @@ export function GalaxyLayer({
             // L'itinéraire retenu ressort ; le reste du graphe s'efface.
             color={routePairs.has(key) ? "#4fc1ff" : "#223148"}
           />
+        );
+      })}
+      {/* Flottes en transit (chantier 35.8). `ShipModel` existait depuis le chantier 31.21
+          mais ne servait qu'à l'aperçu du concepteur : une flotte en route n'apparaissait
+          nulle part, alors que c'est le mouvement le plus lisible de la carte. */}
+      {fleets.map((fleet) => {
+        const move = fleet.movement;
+        if (!move) return null;
+        const from = byId.get(fleet.systemId);
+        const to = byId.get(move.toSystemId);
+        if (!from || !to) return null;
+        const span = Math.max(1, move.arrivesAt - move.departedAt);
+        const k = Math.min(1, Math.max(0, (now - move.departedAt) / span));
+        const a = systemScenePosition(from);
+        const b = systemScenePosition(to);
+        return (
+          <mesh
+            key={fleet.id}
+            position={[
+              a[0] + (b[0] - a[0]) * k,
+              a[1] + (b[1] - a[1]) * k,
+              a[2] + (b[2] - a[2]) * k,
+            ]}
+          >
+            <coneGeometry args={[SYSTEM_NODE * 0.4, SYSTEM_NODE * 1.2, 6]} />
+            <meshBasicMaterial color="#4fc1ff" />
+          </mesh>
         );
       })}
       {galaxy.systems.map((system) => {

@@ -69,6 +69,20 @@ export function siteColor(kind: string): string {
 }
 
 /**
+ * Teinte d'une faction NPC (chantier 35.8). Repli générique obligatoire : une faction
+ * ajoutée depuis l'admin doit rendre une couleur neutre, pas casser la vue.
+ */
+const FACTIONS: Record<string, string> = {
+  syndicate: "#e0b64f",
+  consortium: "#8fb8e0",
+  guild: "#c9a0dc",
+};
+
+export function factionTint(factionId: string): string {
+  return FACTIONS[factionId] ?? "#b9a37a";
+}
+
+/**
  * Graine numérique stable tirée d'un identifiant. Deux corps du même type doivent
  * différer sans rien persister : c'est l'id qui fait la variété, comme partout ailleurs
  * dans la génération de l'univers.

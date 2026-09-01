@@ -6,8 +6,10 @@ import {
   type Contract,
   type EmpireEffects,
   type Fleet,
+  type ForeignFleet,
   type ForeignStation,
   type GameState,
+  type MiningOutpost,
   type Gateway,
   type Mission,
   type Station,
@@ -87,6 +89,8 @@ interface MapPageProps {
   colonies: Colony[];
   stations: Station[];
   foreignStations: ForeignStation[];
+  outposts: MiningOutpost[];
+  foreignFleets: ForeignFleet[];
   missions: Mission[];
   exploredSystemIds: string[];
   /** Sites révélés par les scans (chantier 31.11), rendus dans la vue système. */
@@ -115,6 +119,8 @@ function MapPage({
   colonies,
   stations,
   foreignStations,
+  outposts,
+  foreignFleets,
   missions,
   exploredSystemIds,
   sites,
@@ -252,6 +258,9 @@ function MapPage({
           gateways={gateways}
           stations={stations}
           foreignStations={foreignStations}
+          outposts={outposts}
+          fleets={fleets}
+          foreignFleets={foreignFleets}
           sites={sites}
           exploredSystemIds={exploredSystemIds}
           claimedSystemIds={game.claimedSystemIds}
@@ -267,6 +276,7 @@ function MapPage({
           onSelectBody={(b) => setSelectedId(b.id)}
           onOpenBody={(b) => openSheet(b.id)}
           onOpenFiche={openSheet}
+          onSelectFeature={setSelectedId}
           onClearSelection={() => setSelectedId(null)}
           onViewChange={onViewChange}
         />
@@ -325,6 +335,7 @@ export function App({ auth }: Props) {
     battles,
     foreignFleets,
     foreignColonies,
+    outposts,
     stations,
     foreignStations,
     leaderboard,
@@ -606,6 +617,8 @@ export function App({ auth }: Props) {
               colonies={colonies}
               stations={stations}
               foreignStations={foreignStations}
+              outposts={outposts}
+              foreignFleets={foreignFleets}
               missions={missions}
               exploredSystemIds={exploredSystemIds}
               sites={sites}

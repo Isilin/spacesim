@@ -2,16 +2,23 @@ import { useFrame } from "@react-three/fiber";
 import {
   bodyPositionAt,
   sitePosition,
+  type Fleet,
+  type ForeignFleet,
+  type ForeignStation,
+  type MiningOutpost,
   type Planet,
   type StarSystem,
+  type Station,
   type SystemSite,
 } from "@spacesim/shared";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { type Group, type InstancedMesh, Object3D } from "three";
-import { seedOf, siteColor } from "./appearance.js";
+import { factionTint, seedOf, siteColor } from "./appearance.js";
 import { focusOf, type Focus } from "./bounds.js";
 import { ProceduralBody } from "./ProceduralBody.js";
 import { StarBody } from "./StarBody.js";
+import { StationModel } from "./StationModel.js";
+import { TradingPostModel } from "./TradingPostModel.js";
 import { orbitColor } from "./theme.js";
 import type { Vec3 } from "./tiers.js";
 
@@ -175,6 +182,52 @@ function OrbitRing({ body }: { body: Planet }) {
   );
 }
 
+/** Taille de lecture des objets manufacturés dans le repère du système. */
+const TRADING_POST = 11;
+const STATION = 9;
+const OUTPOST = 4;
+const FLEET = 5;
+
+/**
+ * Orbite d'un objet que le modèle ne situe pas (chantier 35.8).
+ *
+ * Un comptoir n'a ni rayon ni angle : le modèle ne lui en donne pas, et lui en ajouter
+ * demanderait une colonne et une régénération. La position se **dérive de l'identifiant**,
+ * comme le reste de l'univers — stable d'une session à l'autre, sans rien persister.
+ */
+export function derivedOrbit(id: string, extent: number): Vec3 {
+  const angle = seedOf(`${id}:angle`) * Math.PI * 2;
+  const radius = extent * (0.35 + seedOf(`${id}:radius`) * 0.45);
+  return [
+    Math.cos(angle) * radius,
+    Math.sin(angle) * radius,
+    (seedOf(`${id}:z`) - 0.5) * extent * 0.06,
+  ];
+}
+
+/** Objet manufacturé accroché à un corps : il suit son orbite. */
+function InOrbitOf({
+  system,
+  body,
+  tickAt,
+  offset,
+  children,
+}: {
+  system: StarSystem;
+  body: Planet;
+  tickAt: () => number;
+  offset: number;
+  children: ReactNode;
+}) {
+  const ref = useRef<Group>(null);
+  useFrame(() => {
+    if (!ref.current) return;
+    const p = bodyPositionAt(system, body, tickAt());
+    ref.current.position.set(p.x + offset, p.y + offset * 0.35, p.z);
+  });
+  return <group ref={ref}>{children}</group>;
+}
+
 interface Props {
   system: StarSystem;
   /** Sites révélés par un scan (chantier 31.11) — absents tant que le système n'est pas scanné. */
@@ -190,6 +243,12 @@ interface Props {
    * corps est centré sur la planète et ne la montre pas tourner autour de son étoile.
    */
   hiddenBodyIds?: ReadonlySet<string>;
+  /** Stations, avant-postes et flottes — absents de la carte jusqu'au chantier 35.8. */
+  stations: Station[];
+  foreignStations: ForeignStation[];
+  outposts: MiningOutpost[];
+  fleets: Fleet[];
+  foreignFleets: ForeignFleet[];
   selectedBodyId: string | null;
   onSelectBody: (planet: Planet) => void;
   onOpenBody: (planet: Planet) => void;
@@ -209,12 +268,22 @@ export function SystemLayer({
   sites,
   tickAt,
   hiddenBodyIds,
+  stations,
+  foreignStations,
+  outposts,
+  fleets,
+  foreignFleets,
   selectedBodyId,
   onSelectBody,
   onOpenBody,
 }: Props) {
   const planets = system.planets.filter((p) => p.kind === "planet");
   const drawn = system.planets.filter((p) => !hiddenBodyIds?.has(p.id));
+  const extent = systemExtent(system, sites);
+  const bodyById = new Map(system.planets.map((p) => [p.id, p]));
+  const beltById = new Map(system.belts.map((b) => [b.id, b]));
+  const here = <T extends { systemId: string }>(list: T[]) =>
+    list.filter((x) => x.systemId === system.id);
 
   return (
     <>
@@ -243,6 +312,109 @@ export function SystemLayer({
           onSelect={() => onSelectBody(body)}
           onOpen={() => onOpenBody(body)}
         />
+      ))}
+
+      {/* Comptoir NPC. Il n'était pas rendu : un système qui en porte un était
+          indiscernable d'un système vide, alors que c'est le seul endroit où l'on peut
+          commercer sans rien avoir bâti. */}
+      {system.station && (
+        <group
+          position={
+            derivedOrbit(system.station.id, extent) as [number, number, number]
+          }
+        >
+          <TradingPostModel
+            id={system.station.id}
+            color={factionTint(system.station.factionId)}
+            size={TRADING_POST}
+          />
+        </group>
+      )}
+
+      {/* Stations du joueur : la silhouette est celle qu'il a bâtie, cellule par cellule.
+          `StationModel` existait depuis le chantier 31.21 mais n'était utilisé qu'en
+          aperçu — ce qu'on construit apparaissait nulle part sur la carte. */}
+      {here(stations).map((station) => {
+        const body = bodyById.get(station.bodyId);
+        if (!body) return null;
+        return (
+          <InOrbitOf
+            key={station.id}
+            system={system}
+            body={body}
+            tickAt={tickAt}
+            offset={bodyRadiusOf(body) * 2.2}
+          >
+            <StationModel station={station} size={STATION} />
+          </InOrbitOf>
+        );
+      })}
+
+      {/* Stations étrangères : même place, teinte du propriétaire, silhouette générique —
+          le modèle redacté ne porte pas les zones. */}
+      {here(foreignStations).map((station) => {
+        const body = bodyById.get(station.bodyId);
+        if (!body) return null;
+        return (
+          <InOrbitOf
+            key={station.id}
+            system={system}
+            body={body}
+            tickAt={tickAt}
+            offset={bodyRadiusOf(body) * 2.2}
+          >
+            <TradingPostModel
+              id={station.id}
+              color={station.ownerColor}
+              size={STATION}
+            />
+          </InOrbitOf>
+        );
+      })}
+
+      {/* Avant-postes miniers, sur la ceinture qu'ils exploitent. */}
+      {outposts.map((outpost) => {
+        const belt = beltById.get(outpost.beltId);
+        if (!belt) return null;
+        const angle = seedOf(`${outpost.id}:angle`) * Math.PI * 2;
+        return (
+          <group
+            key={outpost.id}
+            rotation={[belt.inclination, 0, belt.ascendingNode]}
+          >
+            <mesh
+              position={[
+                Math.cos(angle) * belt.orbitRadius,
+                Math.sin(angle) * belt.orbitRadius,
+                0,
+              ]}
+            >
+              <boxGeometry args={[OUTPOST, OUTPOST, OUTPOST * 1.6]} />
+              <meshStandardMaterial color="#9a8f6a" roughness={0.9} />
+            </mesh>
+          </group>
+        );
+      })}
+
+      {/* Flottes stationnées, siennes et étrangères. En transit elles vivent au palier
+          galaxie : un déplacement va d'un système à un autre. */}
+      {[
+        ...here(fleets).map((f) => ({ id: f.id, color: "#4fc1ff" })),
+        ...here(foreignFleets).map((f) => ({ id: f.id, color: f.ownerColor })),
+      ].map((fleet) => (
+        <mesh
+          key={fleet.id}
+          position={
+            derivedOrbit(`fleet:${fleet.id}`, extent * 0.4) as [
+              number,
+              number,
+              number,
+            ]
+          }
+        >
+          <coneGeometry args={[FLEET * 0.5, FLEET * 1.6, 6]} />
+          <meshStandardMaterial color={fleet.color} roughness={0.5} />
+        </mesh>
       ))}
 
       {/* Sites du scan : figés, une épave à la dérive n'a pas de période utile. */}

@@ -57,6 +57,11 @@ export const commonFr = {
     galaxySystems: "{{count}} systèmes",
     systemBodies: "{{planets}} planètes · {{moons}} lunes",
     moons: "{{count}} lunes",
+    tradingPost: "Comptoir de commerce",
+    station: "Station orbitale",
+    foreignStation: "Station de {{owner}}",
+    belt: "Ceinture · {{list}}",
+    beltMined: "Ceinture · avant-poste minier",
     open: "Ouvrir la fiche",
   },
   app: {
@@ -741,6 +746,11 @@ export const commonEn: typeof commonFr = {
     galaxySystems: "{{count}} systems",
     systemBodies: "{{planets}} planets · {{moons}} moons",
     moons: "{{count}} moons",
+    tradingPost: "Trading post",
+    station: "Orbital station",
+    foreignStation: "Station of {{owner}}",
+    belt: "Belt · {{list}}",
+    beltMined: "Belt · mining outpost",
     open: "Open sheet",
   },
   app: {

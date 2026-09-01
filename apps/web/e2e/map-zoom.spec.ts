@@ -303,3 +303,61 @@ test("le budget d'images tient au milieu d'une transition", async ({
   );
   expect(fps).toBeGreaterThan(20);
 });
+
+test("la carte montre tout ce que le système contient, pas seulement ses corps", async ({
+  page,
+}) => {
+  // Le comptoir NPC n'était PAS rendu : un système qui en portait un était indiscernable
+  // d'un système vide, alors que c'est le seul endroit où l'on peut commercer sans rien
+  // avoir bâti. Ceintures et sites de scan n'avaient même pas de gestionnaire de clic.
+  //
+  // La vérité vient du panneau latéral, qui compte ce que le système contient à partir des
+  // MÊMES données que la carte : le générateur tire 0 à 2 ceintures et un comptoir une fois
+  // sur trois, aucun compte n'est donc écrit en dur ici.
+  test.setTimeout(90_000);
+  await registerFreshEmpire(page, {
+    prefix: "mapfeat",
+    empireName: "Inventaires E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+  await page.getByRole("button", { name: "Ma capitale" }).click();
+  await expect
+    .poll(() => host.getAttribute("data-map-tier"), { timeout: 20_000 })
+    .toBe("system");
+
+  // Attendre le panneau : il ne décrit le système qu'une fois la vue arrivée dessus, et
+  // lire son texte avant lèverait sur un panneau encore vide.
+  const summaryRow = page
+    .locator("aside")
+    .getByText(/planètes/)
+    .first();
+  await expect(summaryRow).toBeVisible({ timeout: 20_000 });
+  const summary = await summaryRow.innerText();
+  const belts = Number(/(\d+) ceintures?/.exec(summary)?.[1] ?? 0);
+  const posts = Number(/(\d+) comptoirs?/.exec(summary)?.[1] ?? 0);
+
+  const list = page.locator("nav.map-list");
+  // Délais larges : la liste se reconstruit au rythme des ticks serveur, et la suite
+  // complète en fait tourner une vingtaine d'empires sur la même instance.
+  await expect(
+    list.getByRole("button").filter({ hasText: "Ceinture" }),
+  ).toHaveCount(belts, { timeout: 20_000 });
+  await expect(
+    list.getByRole("button").filter({ hasText: "Comptoir de commerce" }),
+  ).toHaveCount(posts, { timeout: 20_000 });
+
+  // Et chacun s'ouvre en infobox, comme un corps. Aucun ne se sélectionnait avant.
+  const feature = list
+    .getByRole("button")
+    .filter({ hasText: /Ceinture|Comptoir de commerce/ })
+    .first();
+  if ((await feature.count()) === 0) return;
+  const name = (await feature.locator("span").first().innerText()).trim();
+  await feature.click();
+  const infobox = page.getByRole("dialog");
+  await expect(infobox).toBeVisible();
+  await expect(infobox).toContainText(name);
+});

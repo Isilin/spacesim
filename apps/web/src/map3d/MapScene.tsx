@@ -2,15 +2,20 @@ import { useFrame, useThree } from "@react-three/fiber";
 import {
   TICK_MS,
   type Colony,
+  type Fleet,
+  type ForeignFleet,
   type ForeignStation,
   type Galaxy,
+  type MiningOutpost,
   type Gateway,
   type Planet,
   type StarSystem,
   type Station,
   type SystemSite,
   type Territory,
+  type ResourceId,
   type Universe,
+  sitePosition,
 } from "@spacesim/shared";
 import {
   useCallback,
@@ -22,8 +27,10 @@ import {
   type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { resourceLabel } from "../labels.js";
 import type { AmbientLight, Group, Vector3 } from "three";
 import { BodyLayer, bodyFocus, moonsOf } from "./BodyLayer.js";
+import { seedOf } from "./appearance.js";
 import { nestedFocus, type Focus } from "./bounds.js";
 import { FadingGroup } from "./FadingGroup.js";
 import { MapInfobox, type MapTarget } from "./MapInfobox.js";
@@ -35,7 +42,14 @@ import {
 } from "./GalaxyLayer.js";
 import { fitDistance, MapCanvas } from "./MapCanvas.js";
 import { MapList } from "./MapList.js";
-import { bodyLocalPosition, SystemLayer, systemFocus } from "./SystemLayer.js";
+import {
+  bodyLocalPosition,
+  bodyRadiusOf,
+  derivedOrbit,
+  SystemLayer,
+  systemExtent,
+  systemFocus,
+} from "./SystemLayer.js";
 import { TierCamera, type AnchorCandidate } from "./TierCamera.js";
 import {
   distanceForProgress,
@@ -293,6 +307,9 @@ interface JumpRequest {
   progress: number;
 }
 
+/** Élection suspendue : une liste vide, stable, plutôt qu'un tableau neuf par rendu. */
+const EMPTY_CANDIDATES: AnchorCandidate[] = [];
+
 /** Durée d'un vol vers une cible, en ms. */
 const FLIGHT_MS = 620;
 
@@ -437,6 +454,9 @@ interface Props {
   gateways: Gateway[];
   stations: Station[];
   foreignStations: ForeignStation[];
+  outposts: MiningOutpost[];
+  fleets: Fleet[];
+  foreignFleets: ForeignFleet[];
   sites: SystemSite[];
   exploredSystemIds: string[];
   claimedSystemIds: string[];
@@ -457,6 +477,8 @@ interface Props {
   onOpenBody: (body: Planet) => void;
   /** Ouvre la fiche complète d'un objet — le double-clic vole ET ouvre. */
   onOpenFiche: (id: string) => void;
+  /** Sélectionne un objet du système qui n'est ni galaxie, ni système, ni corps. */
+  onSelectFeature: (id: string) => void;
   /** Clic dans le vide : referme l'infobox. */
   onClearSelection: () => void;
   /** Publie ce que la caméra vise et à quelle profondeur, pour que l'URL les suive. */
@@ -483,6 +505,9 @@ export function MapScene({
   gateways,
   stations,
   foreignStations,
+  outposts,
+  fleets,
+  foreignFleets,
   sites,
   exploredSystemIds,
   claimedSystemIds,
@@ -498,6 +523,7 @@ export function MapScene({
   onSelectBody,
   onOpenBody,
   onOpenFiche,
+  onSelectFeature,
   onClearSelection,
   onViewChange,
 }: Props) {
@@ -558,6 +584,118 @@ export function MapScene({
     if (!s || !system || !body) return null;
     return (): Vec3 => under(s, bodyLocalPosition(system, body, tickAt()));
   }, [placements.system, system, body, tickAt]);
+
+  /**
+   * Ce que le système contient en plus de ses corps : comptoir, stations, avant-postes,
+   * ceintures, sites de scan (chantier 35.8).
+   *
+   * Construit ici et non dans la couche 3D parce que **les deux** en ont besoin : la scène
+   * pour les dessiner, la liste DOM pour les nommer. Aucun n etait nomme nulle part, et
+   * ceintures et sites n avaient meme pas de gestionnaire de clic.
+   */
+  const features = useMemo(() => {
+    const post = system?.station;
+    if (!system || !placements.system) return [];
+    const parent = placements.system;
+    const extent = systemExtent(system, systemSites);
+    const out: {
+      id: string;
+      name: string;
+      detail: string;
+      at: () => Vec3;
+      openId: string;
+    }[] = [];
+
+    if (post)
+      out.push({
+        id: post.id,
+        name: post.name,
+        detail: t("mapInfobox.tradingPost"),
+        at: () => under(parent, derivedOrbit(post.id, extent)),
+        openId: system.id,
+      });
+
+    const orbiting = (bodyId: string) => {
+      const body = system.planets.find((p) => p.id === bodyId);
+      if (!body) return null;
+      const offset = bodyRadiusOf(body) * 2.2;
+      return (): Vec3 => {
+        const [x, y, z] = bodyLocalPosition(system, body, tickAt());
+        return under(parent, [x + offset, y + offset * 0.35, z]);
+      };
+    };
+
+    for (const station of stations.filter((x) => x.systemId === system.id)) {
+      const at = orbiting(station.bodyId);
+      if (at)
+        out.push({
+          id: station.id,
+          name: station.name,
+          detail: t("mapInfobox.station"),
+          at,
+          openId: system.id,
+        });
+    }
+    for (const station of foreignStations.filter(
+      (x) => x.systemId === system.id,
+    )) {
+      const at = orbiting(station.bodyId);
+      if (at)
+        out.push({
+          id: station.id,
+          name: station.name,
+          detail: t("mapInfobox.foreignStation", { owner: station.ownerName }),
+          at,
+          openId: system.id,
+        });
+    }
+    for (const belt of system.belts) {
+      const mined = outposts.some((o) => o.beltId === belt.id);
+      const angle = seedOf(`${belt.id}:label`) * Math.PI * 2;
+      const at = under(parent, [
+        Math.cos(angle) * belt.orbitRadius,
+        Math.sin(angle) * belt.orbitRadius,
+        0,
+      ]);
+      out.push({
+        id: belt.id,
+        name: belt.name,
+        detail: mined
+          ? t("mapInfobox.beltMined")
+          : t("mapInfobox.belt", {
+              list:
+                Object.keys(belt.deposits)
+                  .map((r) => resourceLabel(r as ResourceId))
+                  .join(" · ") || t("bodyView.noDeposits"),
+            }),
+        at: () => at,
+        openId: system.id,
+      });
+    }
+    for (const site of systemSites) {
+      const p = sitePosition(site);
+      const at = under(parent, [p.x, p.y, p.z]);
+      out.push({
+        id: site.id,
+        name: t(`systemPanel.siteKind.${site.kind}`),
+        detail: t("systemPanel.siteOrbit", {
+          radius: Math.round(site.orbitRadius),
+        }),
+        at: () => at,
+        openId: system.id,
+      });
+    }
+    return out;
+  }, [
+    system,
+    systemSites,
+    placements.system,
+    stations,
+    foreignStations,
+    outposts,
+    tickAt,
+    t,
+  ]);
 
   const index = tierIndex(tier);
   const current = placements[tier] ?? placements.universe!;
@@ -801,6 +939,16 @@ export function MapScene({
     at: () => Vec3;
   } | null => {
     if (!selectedId) return null;
+    const feature = features.find((f) => f.id === selectedId);
+    if (feature)
+      return {
+        target: {
+          kind: "feature" as const,
+          name: feature.name,
+          detail: feature.detail,
+        },
+        at: feature.at,
+      };
     const path = anchorPathOf(universe, selectedId);
 
     if (path.bodyId === selectedId && system && placements.system) {
@@ -859,10 +1007,16 @@ export function MapScene({
     explored,
     colonizedSystemIds,
     colonizedGalaxyIds,
+    features,
   ]);
 
   const openSelection = () => {
-    if (selectedId) onOpenFiche(selectedId);
+    if (!selectedId) return;
+    // Un comptoir ou une ceinture n a pas de fiche propre : c est celle de son systeme qui
+    // porte le marche, le scan et la revendication.
+    onOpenFiche(
+      features.find((f) => f.id === selectedId)?.openId ?? selectedId,
+    );
   };
 
   const label =
@@ -888,7 +1042,15 @@ export function MapScene({
     tier === "body" && system && body
       ? [body, ...moonsOf(system, body)].map(bodyEntry)
       : tier === "system" && system
-        ? system.planets.map(bodyEntry)
+        ? [
+            ...system.planets.map(bodyEntry),
+            ...features.map((f) => ({
+              id: f.id,
+              label: f.name,
+              detail: f.detail,
+              selected: f.id === selectedId,
+            })),
+          ]
         : tier === "galaxy" && galaxy
           ? galaxy.systems.map((s) => ({
               id: s.id,
@@ -910,6 +1072,12 @@ export function MapScene({
             }));
 
   const pickFromList = (id: string, open: boolean) => {
+    const feature = features.find((f) => f.id === id);
+    if (feature) {
+      if (open) onOpenFiche(feature.openId);
+      else onSelectFeature(id);
+      return;
+    }
     if (tier === "body" || tier === "system") {
       const target = system?.planets.find((p) => p.id === id);
       if (!target) return;
@@ -946,7 +1114,11 @@ export function MapScene({
           tier={tier}
           parentFocus={current.scene}
           childFocus={child?.scene ?? null}
-          candidates={candidates}
+          // Aucun candidat pendant un vol : la caméra survole alors d'autres objets, et
+          // l'élection en désignerait un au passage — effaçant la cible que le geste
+          // venait de fixer. Le défaut ne se voyait qu'avec assez de galaxies pour que
+          // celle qu'on survole ne soit pas celle qu'on vise.
+          candidates={jump ? EMPTY_CANDIDATES : candidates}
           candidateFootprint={candidateFootprint}
           anchorId={
             tier === "universe"
@@ -1020,6 +1192,8 @@ export function MapScene({
               exploredSystemIds={exploredSystemIds}
               claimedSystemIds={claimedSystemIds}
               territories={territories}
+              fleets={fleets}
+              now={Date.now()}
               focus={placements.galaxy.local}
               selectedId={selectedId}
               onSelect={onSelectSystem}
@@ -1040,6 +1214,11 @@ export function MapScene({
               sites={systemSites}
               tickAt={tickAt}
               hiddenBodyIds={takenOver}
+              stations={stations}
+              foreignStations={foreignStations}
+              outposts={outposts}
+              fleets={fleets}
+              foreignFleets={foreignFleets}
               selectedBodyId={selectedId}
               onSelectBody={onSelectBody}
               onOpenBody={(b) =>

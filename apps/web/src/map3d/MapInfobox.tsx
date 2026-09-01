@@ -14,7 +14,13 @@ export type MapTarget =
       explored: boolean;
       colonized: boolean;
     }
-  | { kind: "body"; body: Planet; moons: number };
+  | { kind: "body"; body: Planet; moons: number }
+  /**
+   * Tout ce que le système contient d'autre : comptoir, station, avant-poste, ceinture,
+   * site de scan. Aucun n'était sélectionnable avant le chantier 35.8 — la ceinture et le
+   * site n'avaient même pas de gestionnaire de clic.
+   */
+  | { kind: "feature"; name: string; detail: string };
 
 interface Props {
   target: MapTarget;
@@ -45,7 +51,9 @@ export function MapInfobox({ target, portal, onOpen, onClose }: Props) {
       ? target.galaxy.name
       : target.kind === "system"
         ? target.system.name
-        : target.body.name;
+        : target.kind === "body"
+          ? target.body.name
+          : target.name;
 
   return (
     <Html
@@ -106,6 +114,9 @@ export function MapInfobox({ target, portal, onOpen, onClose }: Props) {
                 ? ` · ${t("mapInfobox.moons", { count: target.moons })}`
                 : ""}
             </p>
+          )}
+          {target.kind === "feature" && (
+            <p className="small muted">{target.detail}</p>
           )}
           {onOpen && (
             <Button size="sm" onClick={onOpen}>
