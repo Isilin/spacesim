@@ -19,3 +19,27 @@ export async function registerFreshEmpire(
   await page.getByRole("button", { name: "Fonder l'empire" }).click();
   await expect(page.getByText(/Colonie mère/)).toBeVisible({ timeout: 15_000 });
 }
+
+/**
+ * Compte les images produites en une seconde — mesure directe du budget d'animation.
+ *
+ * Partagé depuis le chantier 35.7 : le rendu 3D est la seule partie du jeu où une
+ * régression de performance ne casse aucun test unitaire et ne se voit qu'à l'usage, et il
+ * faut désormais la mesurer au repos ET pendant une transition de palier, où deux couches
+ * coexistent.
+ */
+export function framesPerSecond(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        let frames = 0;
+        const start = performance.now();
+        const tick = () => {
+          frames++;
+          if (performance.now() - start >= 1000) resolve(frames);
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }),
+  );
+}

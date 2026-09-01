@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { registerFreshEmpire } from "./helpers.js";
+import { framesPerSecond, registerFreshEmpire } from "./helpers.js";
 
 /**
  * Traversée continue des paliers de carte (chantier 35.2).
@@ -266,4 +266,40 @@ test("le double-clic vole jusqu'à l'objet et ouvre sa fiche", async ({
 
   await page.keyboard.press("Escape");
   await expect(sheet).toBeHidden();
+});
+
+test("le budget d'images tient au milieu d'une transition", async ({
+  page,
+}) => {
+  // Mesuré AU MILIEU de la bande et pas au repos : c'est le seul moment où deux paliers
+  // sont dessinés en même temps, et donc le seul que le relevé du chantier 31.17 ne
+  // couvrait pas. Une transition qui coûte des images est une transition à retailler.
+  test.setTimeout(90_000);
+  await registerFreshEmpire(page, {
+    prefix: "mapfps",
+    empireName: "Métreurs E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+
+  const box = (await host.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  for (let i = 0; i < 90; i++) {
+    const depth = Number(await host.getAttribute("data-map-depth"));
+    if (depth >= 0.55 && depth <= 0.95) break;
+    await page.mouse.wheel(0, -240);
+    await page.waitForTimeout(30);
+  }
+
+  const depth = Number(await host.getAttribute("data-map-depth"));
+  expect(depth).toBeGreaterThan(0.4);
+  expect(depth).toBeLessThan(1);
+
+  const fps = await framesPerSecond(page);
+  console.log(
+    `[35.7] images/s — transition univers→galaxie ${fps} à z=${depth}`,
+  );
+  expect(fps).toBeGreaterThan(20);
 });

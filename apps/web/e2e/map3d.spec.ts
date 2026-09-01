@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { registerFreshEmpire } from "./helpers.js";
+import { framesPerSecond, registerFreshEmpire } from "./helpers.js";
 
 /**
  * Référence de performance et de mise en page de la carte 3D (chantier 31.17).
@@ -9,23 +9,6 @@ import { registerFreshEmpire } from "./helpers.js";
  * Ce relevé est aussi le point de comparaison de la passe d'habillage (chantier 31.23),
  * qui ajoutera shaders et géométries sur cette même scène.
  */
-
-/** Compte les images produites en une seconde — mesure directe du budget d'animation. */
-async function framesPerSecond(page: import("@playwright/test").Page) {
-  return page.evaluate(
-    () =>
-      new Promise<number>((resolve) => {
-        let frames = 0;
-        const start = performance.now();
-        const tick = () => {
-          frames++;
-          if (performance.now() - start >= 1000) resolve(frames);
-          else requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-      }),
-  );
-}
 
 /**
  * R3F dimensionne son canvas via un `ResizeObserver`, donc APRÈS le premier rendu :
