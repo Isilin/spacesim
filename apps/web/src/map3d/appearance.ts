@@ -1,4 +1,9 @@
-import type { PlanetType } from "@spacesim/shared";
+import type {
+  GalaxyMorphology,
+  PlanetType,
+  ResourceId,
+  StarClass,
+} from "@spacesim/shared";
 
 /**
  * Registre d'apparence (chantier 31.18). Traduit une donnée de jeu — type de planète,
@@ -66,6 +71,151 @@ const SITES: Record<string, string> = {
 
 export function siteColor(kind: string): string {
   return SITES[kind] ?? "#c8ccd2";
+}
+
+/**
+ * Apparence d'une étoile selon sa classe (chantier 35.10).
+ *
+ * `radius` et `corona` sont des facteurs appliqués aux tailles de lecture du palier
+ * système : une géante doit se voir immense sans que son système cesse de tenir dans le
+ * cadre. `light` est ce que la ponctuelle centrale émet — une naine rouge éclaire peu et
+ * rouge, un trou noir n'éclaire pas du tout et laisse son disque d'accrétion s'en charger.
+ */
+export interface StarAppearance {
+  core: string;
+  edge: string;
+  halo: string;
+  radius: number;
+  corona: number;
+  light: string;
+  intensity: number;
+  /** Vitesse de défilement de la granulation : une géante bout lentement. */
+  churn: number;
+}
+
+const GENERIC_STAR: StarAppearance = {
+  core: "#fff0c2",
+  edge: "#ff8a3d",
+  halo: "#ffae52",
+  radius: 1,
+  corona: 1,
+  light: "#ffffff",
+  intensity: 3,
+  churn: 1,
+};
+
+const STARS: Record<StarClass, StarAppearance> = {
+  redDwarf: {
+    core: "#ffb27a",
+    edge: "#d8452a",
+    halo: "#e0603a",
+    radius: 0.62,
+    corona: 0.8,
+    light: "#ffb089",
+    intensity: 2,
+    churn: 0.55,
+  },
+  mainSequence: GENERIC_STAR,
+  giant: {
+    core: "#ffd9a0",
+    edge: "#e05a2a",
+    halo: "#ff8a4a",
+    radius: 1.7,
+    corona: 1.5,
+    light: "#ffd0a0",
+    intensity: 3.6,
+    churn: 0.4,
+  },
+  whiteDwarf: {
+    core: "#f2f8ff",
+    edge: "#9fc4ff",
+    halo: "#cfe2ff",
+    radius: 0.34,
+    corona: 0.55,
+    light: "#dceaff",
+    intensity: 2.4,
+    churn: 1.8,
+  },
+  pulsar: {
+    core: "#eaf4ff",
+    edge: "#7aa8ff",
+    halo: "#9fd0ff",
+    radius: 0.3,
+    corona: 0.5,
+    light: "#cfe4ff",
+    intensity: 2.6,
+    churn: 2.6,
+  },
+  blackHole: {
+    // L'horizon ne rend rien de tout cela — c'est le disque qui porte la teinte, et la
+    // lumière qu'il émet, chaude et faible, remplace celle d'une étoile absente.
+    core: "#000000",
+    edge: "#000000",
+    halo: "#ff8a3d",
+    radius: 0.55,
+    corona: 1.6,
+    light: "#ffb37a",
+    intensity: 1.1,
+    churn: 1,
+  },
+};
+
+export function starAppearance(starClass: string): StarAppearance {
+  return STARS[starClass as StarClass] ?? GENERIC_STAR;
+}
+
+/**
+ * Apparence d'une galaxie selon sa morphologie (chantier 35.10). `arms` à zéro décrit un
+ * nuage sans bras — c'est ce qui distingue une elliptique d'une spirale.
+ */
+export interface GalaxyAppearance {
+  arms: number;
+  /** Nombre de tours parcourus par un bras, en radians. */
+  winding: number;
+  /** Longueur de la barre centrale, en part du rayon. Zéro pour une spirale simple. */
+  bar: number;
+  /** Dispersion perpendiculaire aux bras, en part du rayon. */
+  scatter: number;
+}
+
+const GENERIC_GALAXY: GalaxyAppearance = {
+  arms: 2,
+  winding: Math.PI * 3,
+  bar: 0,
+  scatter: 0.28,
+};
+
+const GALAXIES: Record<GalaxyMorphology, GalaxyAppearance> = {
+  spiral: GENERIC_GALAXY,
+  barred: { arms: 2, winding: Math.PI * 2.2, bar: 0.42, scatter: 0.22 },
+  elliptical: { arms: 0, winding: 0, bar: 0, scatter: 1 },
+  irregular: { arms: 3, winding: Math.PI * 1.2, bar: 0, scatter: 0.75 },
+};
+
+export function galaxyAppearance(morphology: string): GalaxyAppearance {
+  return GALAXIES[morphology as GalaxyMorphology] ?? GENERIC_GALAXY;
+}
+
+/**
+ * Teinte d'une ceinture selon ce qu'on y extrait (chantier 35.10). Une ceinture de fer ne
+ * doit pas ressembler à une ceinture de glace : c'est la seule information qu'elle porte, et
+ * elle était invisible.
+ */
+const ORES: Record<string, string> = {
+  ore: "#8a7458",
+  metals: "#8f9aa6",
+  components: "#9a86c4",
+  energy: "#c4a86a",
+  food: "#7e9463",
+};
+
+export function asteroidTint(
+  deposits: Partial<Record<ResourceId, number>>,
+): string {
+  const best = Object.entries(deposits).sort(
+    (a, b) => (b[1] ?? 0) - (a[1] ?? 0),
+  )[0];
+  return (best && ORES[best[0]]) ?? "#6b5a44";
 }
 
 /**

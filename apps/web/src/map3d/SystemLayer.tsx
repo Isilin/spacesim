@@ -2,6 +2,7 @@ import { useFrame } from "@react-three/fiber";
 import {
   bodyPositionAt,
   sitePosition,
+  starClassOf,
   type Fleet,
   type ForeignFleet,
   type ForeignStation,
@@ -11,11 +12,25 @@ import {
   type Station,
   type SystemSite,
 } from "@spacesim/shared";
-import { useEffect, useRef, type ReactNode } from "react";
-import { type Group, type InstancedMesh, Object3D } from "three";
-import { factionTint, seedOf, siteColor } from "./appearance.js";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import {
+  Color,
+  DoubleSide,
+  type Group,
+  type InstancedMesh,
+  Object3D,
+} from "three";
+import { ASTEROID_SHAPES, asteroidGeometry } from "./asteroids.js";
+import {
+  asteroidTint,
+  factionTint,
+  seedOf,
+  siteColor,
+  starAppearance,
+} from "./appearance.js";
 import { focusOf, type Focus } from "./bounds.js";
 import { ProceduralBody } from "./ProceduralBody.js";
+import { BlackHole } from "./BlackHole.js";
 import { StarBody } from "./StarBody.js";
 import { StationModel } from "./StationModel.js";
 import { TradingPostModel } from "./TradingPostModel.js";
@@ -118,6 +133,9 @@ function OrbitingBody({
           radius={bodyRadiusOf(body)}
           selected={selected}
         />
+        {body.type === "gas" && seedOf(`${body.id}:rings`) > 0.5 && (
+          <PlanetRings body={body} radius={bodyRadiusOf(body)} />
+        )}
       </group>
     </group>
   );
@@ -131,39 +149,123 @@ function OrbitingBody({
 const ASTEROIDS = 90;
 
 function AsteroidBelt({ belt }: { belt: StarSystem["belts"][number] }) {
-  const ref = useRef<InstancedMesh>(null);
+  const first = useRef<InstancedMesh>(null);
+  const second = useRef<InstancedMesh>(null);
+  const third = useRef<InstancedMesh>(null);
+  const refs = [first, second, third];
+
+  // Trois silhouettes tirées de l'identifiant de la ceinture, réparties entre trois
+  // instances : la géométrie reste partagée, mais le motif cesse de se répéter à
+  // l'identique quatre-vingt-dix fois.
+  const shapes = useMemo(
+    () =>
+      Array.from({ length: ASTEROID_SHAPES }, (_, k) =>
+        asteroidGeometry(`${belt.id}:shape${k}`, 1.6),
+      ),
+    [belt.id],
+  );
+  const tint = asteroidTint(belt.deposits);
+  const perShape = Math.ceil(ASTEROIDS / ASTEROID_SHAPES);
+
   useEffect(() => {
-    const mesh = ref.current;
-    if (!mesh) return;
     const dummy = new Object3D();
-    for (let i = 0; i < ASTEROIDS; i++) {
-      const angle = (i / ASTEROIDS) * Math.PI * 2;
-      // Dispersion dérivée de l'id : deux ceintures ne se ressemblent pas.
-      const spread = (seedOf(`${belt.id}:${i}`) - 0.5) * 14;
-      const radius = belt.orbitRadius + spread;
-      dummy.position.set(
-        Math.cos(angle) * radius,
-        Math.sin(angle) * radius,
-        (seedOf(`${belt.id}:z${i}`) - 0.5) * 8,
-      );
-      const scale = 0.8 + seedOf(`${belt.id}:s${i}`) * 2.2;
-      dummy.scale.setScalar(scale);
-      dummy.rotation.set(angle, spread, i);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
+    for (const [shape, ref] of refs.entries()) {
+      const mesh = ref.current;
+      if (!mesh) continue;
+      for (let n = 0; n < perShape; n++) {
+        const i = shape * perShape + n;
+        const angle = (i / ASTEROIDS) * Math.PI * 2;
+        // Dispersion dérivée de l'id : deux ceintures ne se ressemblent pas.
+        const spread = (seedOf(`${belt.id}:${i}`) - 0.5) * 14;
+        const radius = belt.orbitRadius + spread;
+        dummy.position.set(
+          Math.cos(angle) * radius,
+          Math.sin(angle) * radius,
+          (seedOf(`${belt.id}:z${i}`) - 0.5) * 8,
+        );
+        dummy.scale.setScalar(0.8 + seedOf(`${belt.id}:s${i}`) * 2.2);
+        dummy.rotation.set(angle, spread, i);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(n, dummy.matrix);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
     }
-    mesh.instanceMatrix.needsUpdate = true;
-  }, [belt]);
+    // biome-ignore lint/correctness/useExhaustiveDependencies: les trois références sont
+    // stables ; seul le contenu de la ceinture décide des matrices.
+  }, [belt, perShape]);
 
   return (
     <group rotation={[belt.inclination, 0, belt.ascendingNode]}>
-      <instancedMesh ref={ref} args={[undefined, undefined, ASTEROIDS]}>
-        {/* Icosaèdre non subdivisé : anguleux comme un caillou, trois fois moins de
-            sommets qu'une sphère. */}
-        <icosahedronGeometry args={[1.6, 0]} />
-        <meshStandardMaterial color="#6b5a44" roughness={1} />
-      </instancedMesh>
+      {shapes.map((geometry, k) => (
+        <instancedMesh
+          key={`${belt.id}:${k}`}
+          ref={refs[k]}
+          args={[geometry, undefined, perShape]}
+        >
+          {/* La teinte vient du gisement : une ceinture de fer ne ressemble plus à une
+              ceinture de glace, et c'était la seule chose qu'elle avait à dire. */}
+          <meshStandardMaterial color={tint} roughness={1} />
+        </instancedMesh>
+      ))}
     </group>
+  );
+}
+
+const RING_VERTEX = /* glsl */ `
+  varying vec3 vPos;
+  void main() {
+    vPos = position;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+/** Bandes concentriques et lacunes, tirées du seul rayon. */
+const RING_FRAGMENT = /* glsl */ `
+  uniform vec3 uColor;
+  uniform float uSeed;
+  uniform float uOpacity;
+  varying vec3 vPos;
+  void main() {
+    float r = length(vPos.xy);
+    float bands = 0.45
+      + 0.35 * sin(r * 5.5 + uSeed * 30.0)
+      + 0.2 * sin(r * 17.0 + uSeed * 11.0);
+    // Une lacune franche, comme la division de Cassini : c'est elle qui fait lire un
+    // système d'anneaux plutôt qu'un disque uni.
+    float gap = smoothstep(0.02, 0.06, abs(fract(r * 1.7 + uSeed) - 0.5));
+    gl_FragColor = vec4(uColor, clamp(bands, 0.0, 1.0) * gap * 0.7 * uOpacity);
+  }
+`;
+
+/**
+ * Anneaux d'une géante gazeuse (chantier 35.10). Une géante sur deux en porte, tirée de son
+ * identifiant : des bandes radiales avec leurs lacunes, ce que trois anneaux concentriques
+ * ne rendraient pas.
+ */
+function PlanetRings({ body, radius }: { body: Planet; radius: number }) {
+  const uniforms = useMemo(
+    () => ({
+      uColor: { value: new Color("#c9b79a") },
+      uSeed: { value: seedOf(`${body.id}:rings`) },
+      uOpacity: { value: 1 },
+    }),
+    [body.id],
+  );
+  return (
+    <mesh rotation={[1.2 + seedOf(`${body.id}:tilt`) * 0.4, 0, 0]}>
+      {/* Un seul segment radial : c'est le fragment qui calcule le rayon, subdiviser dans
+          cette direction n'ajoute aucun détail et multiplie les triangles d'un anneau
+          transparent — donc trié à chaque image. */}
+      <ringGeometry args={[radius * 1.5, radius * 2.6, 64, 1]} />
+      <shaderMaterial
+        vertexShader={RING_VERTEX}
+        fragmentShader={RING_FRAGMENT}
+        uniforms={uniforms}
+        transparent
+        depthWrite={false}
+        side={DoubleSide}
+      />
+    </mesh>
   );
 }
 
@@ -284,15 +386,38 @@ export function SystemLayer({
   const beltById = new Map(system.belts.map((b) => [b.id, b]));
   const here = <T extends { systemId: string }>(list: T[]) =>
     list.filter((x) => x.systemId === system.id);
+  const starClass = starClassOf(system);
+  const look = starAppearance(starClass);
 
   return (
     <>
-      {/* L'étoile est au centre du repère du système : une lumière ponctuelle à son
-          origine locale suffit à donner leur relief aux corps qui l'entourent. */}
-      <pointLight position={[0, 0, 0]} intensity={3} decay={0.4} />
-
-      {/* L'étoile : surface procédurale, et source de lumière du registre `lit`. */}
-      <StarBody id={system.id} radius={STAR_CORE} coronaRadius={STAR_CORONA} />
+      {/* L'étoile, et la lumière du système. Elle prend sa teinte et son intensité de sa
+          classe (chantier 35.10) : une naine rouge éclaire peu et rouge. Un trou noir
+          n'éclaire pas du tout — c'est son disque d'accrétion qui s'en charge, et il porte
+          donc sa propre lumière. */}
+      {starClass === "blackHole" ? (
+        <BlackHole
+          id={system.id}
+          radius={STAR_CORE * look.radius}
+          discRadius={STAR_CORONA * look.corona}
+          color={look.halo}
+        />
+      ) : (
+        <>
+          <pointLight
+            position={[0, 0, 0]}
+            color={look.light}
+            intensity={look.intensity}
+            decay={0.4}
+          />
+          <StarBody
+            id={system.id}
+            radius={STAR_CORE}
+            coronaRadius={STAR_CORONA}
+            starClass={starClass}
+          />
+        </>
+      )}
 
       {planets.map((planet) => (
         <OrbitRing key={`ring-${planet.id}`} body={planet} />
@@ -421,8 +546,24 @@ export function SystemLayer({
       {sites.map((site) => {
         const p = sitePosition(site);
         return (
-          <mesh key={site.id} position={[p.x, p.y, p.z]}>
-            <octahedronGeometry args={[5]} />
+          <mesh
+            key={site.id}
+            position={[p.x, p.y, p.z]}
+            rotation={[
+              seedOf(site.id) * 6.283,
+              seedOf(`${site.id}:r`) * 6.283,
+              0,
+            ]}
+          >
+            {/* Une forme par nature (chantier 35.10) : les trois ne se distinguaient que
+                par leur teinte, ce qui ne se lit pas de loin. */}
+            {site.kind === "wreck" ? (
+              <boxGeometry args={[12, 3, 3]} />
+            ) : site.kind === "cache" ? (
+              <boxGeometry args={[5, 5, 5]} />
+            ) : (
+              <octahedronGeometry args={[5]} />
+            )}
             <meshBasicMaterial color={siteColor(site.kind)} />
           </mesh>
         );

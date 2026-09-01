@@ -52,6 +52,14 @@ export const commonFr = {
     claimed: "Revendiqués",
     rank: "Rang {{rank}} · gisements ×{{bonus}}",
   },
+  starClass: {
+    redDwarf: "Naine rouge",
+    mainSequence: "Séquence principale",
+    giant: "Géante rouge",
+    whiteDwarf: "Naine blanche",
+    pulsar: "Pulsar",
+    blackHole: "Trou noir",
+  },
   mapInfobox: {
     ariaLabel: "Détail de {{name}}",
     galaxySystems: "{{count}} systèmes",
@@ -740,6 +748,14 @@ export const commonEn: typeof commonFr = {
     colonized: "Colonized",
     claimed: "Claimed",
     rank: "Rank {{rank}} · deposits ×{{bonus}}",
+  },
+  starClass: {
+    redDwarf: "Red dwarf",
+    mainSequence: "Main sequence",
+    giant: "Red giant",
+    whiteDwarf: "White dwarf",
+    pulsar: "Pulsar",
+    blackHole: "Black hole",
   },
   mapInfobox: {
     ariaLabel: "Detail of {{name}}",

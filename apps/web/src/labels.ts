@@ -222,3 +222,11 @@ export function installationLabel(id: InstallationId): {
     description: t(`installation.${id}.description`),
   };
 }
+
+/**
+ * Libellé d'une classe d'étoile (chantier 35.10). Repli sur la classe brute plutôt que sur
+ * du vide : une classe ajoutée sans traduction doit rester lisible.
+ */
+export function starClassLabel(starClass: string): string {
+  return i18n.t(`starClass.${starClass}`, { defaultValue: starClass });
+}

@@ -16,6 +16,7 @@ import {
   type ResourceId,
   type Universe,
   sitePosition,
+  starClassOf,
 } from "@spacesim/shared";
 import {
   useCallback,
@@ -978,6 +979,7 @@ export function MapScene({
           system: picked,
           explored: explored.has(picked.id),
           colonized: colonizedSystemIds.has(picked.id),
+          starClass: starClassOf(picked),
         },
         at: () => at,
       };

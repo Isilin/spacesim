@@ -1,7 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { AdditiveBlending, BackSide, Color, type ShaderMaterial } from "three";
-import { seedOf } from "./appearance.js";
+import { seedOf, starAppearance } from "./appearance.js";
 
 /**
  * Étoile procédurale (chantier 33.8).
@@ -35,6 +35,7 @@ const FRAGMENT = /* glsl */ `
   uniform vec3 uEdge;
   uniform float uTime;
   uniform float uSeed;
+  uniform float uChurn;
   uniform float uOpacity;
   varying vec3 vPos;
   varying vec3 vNormal;
@@ -60,8 +61,8 @@ const FRAGMENT = /* glsl */ `
   void main() {
     vec3 p = normalize(vPos);
     float granules =
-      noise(p * 5.0 + vec3(0.0, uTime * 0.05, 0.0)) * 0.6 +
-      noise(p * 13.0 - vec3(uTime * 0.09, 0.0, 0.0)) * 0.4;
+      noise(p * 5.0 + vec3(0.0, uTime * 0.05 * uChurn, 0.0)) * 0.6 +
+      noise(p * 13.0 - vec3(uTime * 0.09 * uChurn, 0.0, 0.0)) * 0.4;
 
     // Assombrissement inversé : le bord d'une étoile est plus lumineux que son centre.
     float limb = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 1.6);
@@ -97,29 +98,38 @@ export function StarBody({
   id,
   radius,
   coronaRadius,
+  starClass = "mainSequence",
 }: {
   id: string;
   radius: number;
   coronaRadius: number;
+  /**
+   * Classe de l'étoile (chantier 35.10), dérivée du système par `starClassOf`. Elle règle
+   * la teinte, la taille, l'étendue de la couronne et la vitesse de la granulation — une
+   * géante bout lentement, une naine blanche vibre.
+   */
+  starClass?: string;
 }) {
   const surface = useRef<ShaderMaterial>(null);
+  const look = starAppearance(starClass);
   const uniforms = useMemo(
     () => ({
-      uCore: { value: new Color("#fff0c2") },
-      uEdge: { value: new Color("#ff8a3d") },
+      uCore: { value: new Color(look.core) },
+      uEdge: { value: new Color(look.edge) },
       uTime: { value: 0 },
       uSeed: { value: seedOf(id) },
+      uChurn: { value: look.churn },
       // Piloté par `FadingGroup` (chantier 35.4).
       uOpacity: { value: 1 },
     }),
-    [id],
+    [id, look.core, look.edge, look.churn],
   );
   const haloUniforms = useMemo(
     () => ({
-      uColor: { value: new Color("#ffae52") },
+      uColor: { value: new Color(look.halo) },
       uOpacity: { value: 1 },
     }),
-    [],
+    [look.halo],
   );
 
   useFrame((state) => {
@@ -130,7 +140,7 @@ export function StarBody({
   return (
     <>
       <mesh>
-        <sphereGeometry args={[radius, 48, 48]} />
+        <sphereGeometry args={[radius * look.radius, 48, 48]} />
         <shaderMaterial
           ref={surface}
           vertexShader={VERTEX}
@@ -142,7 +152,7 @@ export function StarBody({
       {/* Halo additif rendu sur la face INTERNE : la coque ne masque donc jamais l'étoile
           qu'elle entoure, quel que soit l'angle. */}
       <mesh>
-        <sphereGeometry args={[coronaRadius, 32, 32]} />
+        <sphereGeometry args={[coronaRadius * look.corona, 32, 32]} />
         <shaderMaterial
           vertexShader={HALO_VERTEX}
           fragmentShader={HALO_FRAGMENT}

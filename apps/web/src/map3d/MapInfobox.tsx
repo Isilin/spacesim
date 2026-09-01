@@ -3,7 +3,7 @@ import type { Galaxy, Planet, StarSystem } from "@spacesim/shared";
 import { Button, Popover } from "@spacesim/ui";
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { planetTypeLabel } from "../labels.js";
+import { planetTypeLabel, starClassLabel } from "../labels.js";
 
 /** Ce que l'infobox sait décrire — les trois natures d'objet que la carte sait viser. */
 export type MapTarget =
@@ -13,6 +13,8 @@ export type MapTarget =
       system: StarSystem;
       explored: boolean;
       colonized: boolean;
+      /** Classe de l'étoile, dérivée du système (chantier 35.10). */
+      starClass: string;
     }
   | { kind: "body"; body: Planet; moons: number }
   /**
@@ -85,6 +87,8 @@ export function MapInfobox({ target, portal, onOpen, onClose }: Props) {
           )}
           {target.kind === "system" && (
             <p className="small muted">
+              {starClassLabel(target.starClass)}
+              {" · "}
               {t("mapInfobox.systemBodies", {
                 planets: target.system.planets.filter(
                   (p) => p.kind === "planet",
