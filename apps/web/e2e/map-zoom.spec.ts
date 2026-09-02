@@ -240,6 +240,68 @@ test("la traversée coûte une poignée de crans, pas une centaine", async ({
   expect(notches).toBeLessThan(20);
 });
 
+test("cliquer le nom d'un objet le sélectionne", async ({ page }) => {
+  // Les étiquettes sont des sprites, donc cliquables par le raycast (chantier 36.3). Rien
+  // ne le vérifierait autrement : un sprite ne laisse aucune trace dans le DOM, et sa
+  // position à l'écran n'est publiée nulle part.
+  //
+  // D'où le balayage. Au palier corps la caméra SUIT le corps ancré, qui se trouve donc au
+  // centre exact du canvas, et son étiquette droit au-dessus. En remontant depuis le
+  // centre on traverse trois zones : le corps lui-même, qui ouvre son infobox ; le vide,
+  // qui la referme ; puis l'étiquette, qui la rouvre. C'est ce troisième palier que ce
+  // test cherche — le vide traversé entre les deux est ce qui prouve qu'on a cliqué
+  // l'étiquette et non le corps.
+  test.setTimeout(120_000);
+  await registerFreshEmpire(page, {
+    prefix: "maplabelclick",
+    empireName: "Pointeurs E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+
+  await page.getByRole("button", { name: "Ma capitale" }).click();
+  await expect
+    .poll(() => host.getAttribute("data-map-tier"), { timeout: 20_000 })
+    .toBe("system");
+
+  const row = page
+    .getByRole("navigation", { name: /système|system/i })
+    .getByRole("button")
+    .filter({ hasNotText: /Lune|Moon/ })
+    .first();
+  const name = (await row.locator("span").first().innerText()).trim();
+  await row.dblclick();
+  await expect
+    .poll(() => host.getAttribute("data-map-tier"), { timeout: 20_000 })
+    .toBe("body");
+  await page.waitForTimeout(1000);
+
+  const box = (await host.boundingBox())!;
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  const infobox = page.getByRole("dialog");
+
+  let leftTheBody = false;
+  let hitTheLabel = false;
+  // Pas de 8 px : l'étiquette fait une quinzaine de pixels de haut, un pas plus large
+  // pourrait passer par-dessus.
+  for (let dy = 0; dy <= 360 && !hitTheLabel; dy += 8) {
+    await page.mouse.click(cx, cy - dy);
+    await page.waitForTimeout(300);
+    if ((await infobox.count()) === 0) {
+      leftTheBody = true;
+      continue;
+    }
+    if (leftTheBody) hitTheLabel = true;
+  }
+
+  expect(hitTheLabel).toBe(true);
+  await expect(infobox).toContainText(name);
+});
+
 test("le panneau d'objets s'ouvre replié et retient son état", async ({
   page,
 }) => {
