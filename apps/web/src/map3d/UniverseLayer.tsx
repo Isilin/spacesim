@@ -290,13 +290,20 @@ export function UniverseLayer({
                       : "#7f95ad"
               }
             />
-            {/* Disque de saisie : plus peint du tout depuis le chantier 36.7, mais
+            {/* Volume de saisie : plus peint du tout depuis le chantier 36.7, mais
                 toujours là pour porter le clic — le nuage de points est trop épars pour
                 être visé au pixel près.
 
+                Une SPHÈRE et non un disque (chantier 40.10). Le disque vivait dans le plan
+                galactique : vu par la tranche il se réduisait à un trait, et la galaxie
+                devenait impossible à cliquer sous l'angle où l'on regarde le plus souvent
+                l'amas. Une sphère présente le même cercle sous tous les angles, sans rien
+                coûter par image — là où orienter un disque vers la caméra aurait demandé une
+                référence et un quaternion par galaxie, jusqu'à deux cents.
+
                 `colorWrite={false}` et non `visible={false}` : three.js retire du raycast
                 tout objet invisible, et les galaxies deviendraient incliquables.
-                `depthWrite={false}` avec : un disque qui n'écrit rien en couleur mais
+                `depthWrite={false}` avec : un volume qui n'écrit rien en couleur mais
                 écrit en profondeur masquerait les étoiles derrière lui. */}
             {/* biome-ignore lint/a11y/useKeyWithClickEvents: `mesh` est un objet de
                 scène three.js, pas un nœud DOM — il ne peut recevoir ni focus ni
@@ -306,7 +313,9 @@ export function UniverseLayer({
               onClick={() => onSelect(galaxy)}
               onDoubleClick={() => onOpenGalaxy(galaxy)}
             >
-              <circleGeometry args={[GALAXY_DISC, 32]} />
+              {/* Peu de segments : la géométrie ne sert qu'au raycast, qui la teste
+                  triangle par triangle sur toutes les galaxies à chaque clic. */}
+              <sphereGeometry args={[GALAXY_DISC, 12, 8]} />
               <meshBasicMaterial colorWrite={false} depthWrite={false} />
             </mesh>
           </group>
