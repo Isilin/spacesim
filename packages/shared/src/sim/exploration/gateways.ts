@@ -1,5 +1,10 @@
 import type { ResourceId } from "../../model/resources.js";
-import type { Galaxy, Gateway, Universe } from "../../model/universe.js";
+import type {
+  ClientUniverse,
+  Galaxy,
+  Gateway,
+  Universe,
+} from "../../model/universe.js";
 
 /** Coût de référence d'un portail (galaxie voisine) — pharaonique, couvert par convois. */
 export const GATEWAY_COST: Partial<Record<ResourceId, number>> = {
@@ -85,7 +90,7 @@ export function gatewayProgressRatio(gateway: Gateway): number {
  * réseau se déploie de proche en proche, comme les liaisons entre systèmes.
  */
 export function galaxyParentIndex(
-  universe: Universe,
+  universe: ClientUniverse,
   index: number,
 ): number | null {
   if (index <= 0 || index >= universe.galaxies.length) return null;
@@ -101,7 +106,7 @@ export function galaxyParentIndex(
  * du générateur pur — ne pas l'appeler sur un univers chargé depuis la DB.
  */
 export function computeGalaxyParentIndex(
-  universe: Universe,
+  universe: ClientUniverse,
   index: number,
 ): number | null {
   if (index <= 0 || index >= universe.galaxies.length) return null;
@@ -150,7 +155,7 @@ export function galaxyLinks(universe: Universe): GalaxyLink[] {
  * exige que toute la chaîne de portails jusqu'à elle soit active.
  */
 export function gatewayLinks(
-  universe: Universe,
+  universe: ClientUniverse,
   gateways: readonly Gateway[],
 ): [string, string][] {
   const indexById = new Map(

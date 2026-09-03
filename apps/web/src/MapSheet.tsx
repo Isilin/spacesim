@@ -1,5 +1,6 @@
-import type { EmpireEffects, Planet, Universe } from "@spacesim/shared";
+import type { EmpireEffects, Planet, ClientUniverse } from "@spacesim/shared";
 import { Modal } from "@spacesim/ui";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { BodyView } from "./BodyView.js";
 import { GalaxyFiche } from "./GalaxyFiche.js";
@@ -7,7 +8,7 @@ import { SystemPanel } from "./SystemPanel.js";
 import { buildUniverseIndex } from "./state/selectors.js";
 
 interface Props {
-  universe: Universe;
+  universe: ClientUniverse;
   /** Identifiant de l'élément ouvert — galaxie, système ou corps. */
   openId: string;
   effects: EmpireEffects;
@@ -38,7 +39,13 @@ export function MapSheet({
   onClose,
 }: Props) {
   const { t } = useTranslation();
-  const path = buildUniverseIndex(universe).get(openId);
+  // Mémoïsé sur l'identité de l'univers, et non reconstruit à chaque rendu : l'index
+  // parcourt tous les corps de toutes les galaxies. Cela pesait trois cents insertions
+  // quand une galaxie comptait quatorze systèmes, treize mille depuis le chantier 37 — et
+  // la modale se rend à chaque tick, donc à chaque snapshot reçu.
+  const path = useMemo(() => buildUniverseIndex(universe), [universe]).get(
+    openId,
+  );
   if (!path) return null;
 
   const galaxy = universe.galaxies.find((g) => g.id === path.galaxyId) ?? null;

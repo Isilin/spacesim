@@ -2,11 +2,17 @@ import { describe, expect, it } from "vitest";
 import type { Galaxy, Planet, StarSystem } from "../../model/universe.js";
 import { generateUniverse } from "../../universe.js";
 import {
+  galacticCoreDisc,
+  galacticCoreHorizon,
   galaxyMorphologyOf,
   GALAXY_MORPHOLOGIES,
   starClassOf,
   STAR_CLASSES,
 } from "./stars.js";
+import {
+  GALAXY_RADIUS_PER_ROOT_SYSTEM,
+  MIN_SYSTEM_DISTANCE,
+} from "../../constants.js";
 
 /**
  * Classes d'étoiles et morphologies dérivées (chantier 35.9).
@@ -110,5 +116,47 @@ describe("galaxyMorphologyOf", () => {
     // Une galaxie de quelques systèmes n'a pas de bras à montrer.
     const sparse = { id: "gal-sparse", systems: [] } as unknown as Galaxy;
     expect(["irregular", "elliptical"]).toContain(galaxyMorphologyOf(sparse));
+  });
+});
+
+describe("galacticCore", () => {
+  /**
+   * Plage réelle du générateur : `MIN_GALAXY_SYSTEMS` à `HOME_GALAXY_SYSTEMS`
+   * (`universe.ts`). Les bornes sont recopiées ici plutôt qu'importées — elles sont privées
+   * au générateur, et ce qui compte est que le cœur tienne sur toute l'étendue qu'une galaxie
+   * peut prendre, pas qu'il suive une constante.
+   */
+  const SIZES = [300, 340, 400, 460, 520];
+
+  it("laisse le vide central de la galaxie libre", () => {
+    // LE verrou du chantier. `generatePositions` ne pose aucun système en deçà de 0,08·R dans
+    // les morphologies non barrées : c'est ce vide que le cœur occupe. Débordé, il cesserait
+    // d'être un bulbe pour devenir une nappe posée sur les systèmes internes — et c'est ce
+    // test qui alertera si la plage de tailles d'une galaxie change un jour.
+    for (const n of SIZES) {
+      const hollow = 0.08 * GALAXY_RADIUS_PER_ROOT_SYSTEM * Math.sqrt(n);
+      expect(galacticCoreDisc(n)).toBeLessThan(hollow);
+    }
+  });
+
+  it("grossit avec la galaxie, assez pour que ça se voie", () => {
+    // La demande était que la taille dépende de celle de la galaxie. Une loi en √n aurait
+    // rendu la même image partout : c'est cet écart qui prouve le contraire.
+    for (let i = 1; i < SIZES.length; i++) {
+      expect(galacticCoreDisc(SIZES[i]!)).toBeGreaterThan(
+        galacticCoreDisc(SIZES[i - 1]!),
+      );
+    }
+    expect(galacticCoreDisc(520) / galacticCoreDisc(300)).toBeGreaterThan(1.5);
+  });
+
+  it("reste un objet, jamais un décor ni un obstacle", () => {
+    // Plus gros que l'emprise d'un nœud de système (`SYSTEM_NODE`, 3 dans ce repère), sinon
+    // il ne se distingue pas du champ d'étoiles ; plus petit que la moitié de la maille
+    // locale, sinon il avale ses voisins.
+    for (const n of SIZES) {
+      expect(galacticCoreHorizon(n)).toBeGreaterThan(3);
+      expect(galacticCoreHorizon(n)).toBeLessThan(MIN_SYSTEM_DISTANCE / 2);
+    }
   });
 });

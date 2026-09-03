@@ -18,7 +18,7 @@ import {
   type ResourceId,
   type Route,
   type StationMarketAccess,
-  type Universe,
+  type ClientUniverse,
 } from "@spacesim/shared";
 import { useState } from "react";
 import {
@@ -51,7 +51,7 @@ interface Props {
   tradableStocks: Partial<Record<ResourceId, number>>;
   activeColony: Colony | null;
   missions: Mission[];
-  universe: Universe;
+  universe: ClientUniverse;
   transferSpeedMult: number;
   routes: Route[];
   blueprints: Blueprint[];

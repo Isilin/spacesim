@@ -3,7 +3,7 @@ import type {
   Galaxy,
   Planet,
   StarSystem,
-  Universe,
+  ClientUniverse,
 } from "@spacesim/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useGameStore } from "./game-store.js";
@@ -34,7 +34,7 @@ describe("findGalaxyById / findSystemById / findBodyById", () => {
       galaxy("gal-0", [system("sys-0", [planet("p-0")])]),
       galaxy("gal-1"),
     ],
-  } as unknown as Universe;
+  } as unknown as ClientUniverse;
 
   it("trouve une galaxie/un système/un corps existant", () => {
     const g = findGalaxyById(universe, "gal-0");

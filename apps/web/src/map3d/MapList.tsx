@@ -67,12 +67,18 @@ export function writePanelOpen(open: boolean): void {
 export function MapList({ label, entries, onSelect, onOpen }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(readPanelOpen);
+  const [query, setQuery] = useState("");
 
   const toggle = () => {
     const next = !open;
     setOpen(next);
     writePanelOpen(next);
   };
+
+  const needle = query.trim().toLocaleLowerCase();
+  const shown = needle
+    ? entries.filter((e) => e.label.toLocaleLowerCase().includes(needle))
+    : entries;
 
   return (
     <div className="map-objects">
@@ -86,8 +92,19 @@ export function MapList({ label, entries, onSelect, onOpen }: Props) {
       </button>
       {open && (
         <nav className="map-list" aria-label={label}>
+          {/* Filtre (chantier 37.7). Une galaxie affichait quatorze systèmes : on les
+              parcourait à l'œil. Elle en affiche quatre cents, et le seul chemin clavier
+              vers les objets de la carte deviendrait inutilisable sans de quoi viser. */}
+          <input
+            type="search"
+            className="map-list-filter"
+            value={query}
+            placeholder={t("mapList.filter")}
+            aria-label={t("mapList.filter")}
+            onChange={(e) => setQuery(e.target.value)}
+          />
           <ul>
-            {entries.map((entry) => (
+            {shown.map((entry) => (
               <li key={entry.id}>
                 <button
                   type="button"

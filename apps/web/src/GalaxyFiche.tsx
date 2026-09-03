@@ -1,4 +1,4 @@
-import { galaxyIndexOfId, type Galaxy } from "@spacesim/shared";
+import { systemCountOf, galaxyIndexOfId, type Galaxy } from "@spacesim/shared";
 import { Panel, Stat } from "@spacesim/ui";
 import { useTranslation } from "react-i18next";
 import { GatewaysPanel } from "./GatewaysPanel.js";
@@ -43,7 +43,9 @@ export function GalaxyFiche({ galaxy, now }: Props) {
         <div className="stat-row">
           <Stat
             label={t("galaxyFiche.systems")}
-            value={String(galaxy.systems.length)}
+            // `systemCountOf` et non `systems.length` : une galaxie hors de portée
+            // arrive en condensé, sans ses systèmes, mais avec son compte.
+            value={String(systemCountOf(galaxy))}
           />
           <Stat
             label={t("galaxyFiche.explored")}

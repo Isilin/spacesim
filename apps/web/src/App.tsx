@@ -16,7 +16,7 @@ import {
   type SystemSite,
   type TechId,
   type Territory,
-  type Universe,
+  type ClientUniverse,
 } from "@spacesim/shared";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Select, Toast, ToastStack, TopBar } from "@spacesim/ui";
@@ -83,7 +83,7 @@ function useNow(): number {
 }
 
 interface MapPageProps {
-  universe: Universe;
+  universe: ClientUniverse;
   game: GameState;
   colony: Colony | null;
   colonies: Colony[];

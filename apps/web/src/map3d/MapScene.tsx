@@ -14,9 +14,11 @@ import {
   type SystemSite,
   type Territory,
   type ResourceId,
-  type Universe,
+  type ClientUniverse,
+  galacticCoreDisc,
   sitePosition,
   starClassOf,
+  systemCountOf,
 } from "@spacesim/shared";
 import {
   useCallback,
@@ -38,14 +40,18 @@ import { MapInfobox, type MapTarget } from "./MapInfobox.js";
 import {
   galaxyFocus,
   GalaxyLayer,
+  SYSTEM_LABEL_EXTENT,
   SYSTEM_NODE,
   systemScenePosition,
 } from "./GalaxyLayer.js";
 import { fitDistance, MapCanvas } from "./MapCanvas.js";
 import { MapLabels, type LabelItem } from "./MapLabels.js";
 import { MapList } from "./MapList.js";
+import { Picker } from "./Picker.js";
+import { SelectionMark } from "./SelectionMark.js";
 import {
   bodyLocalPosition,
+  bodyLabelExtent,
   bodyRadiusOf,
   STAR_CORE,
   derivedOrbit,
@@ -53,7 +59,7 @@ import {
   systemExtent,
   systemFocus,
 } from "./SystemLayer.js";
-import { TierCamera, type AnchorCandidate } from "./TierCamera.js";
+import { TierCamera } from "./TierCamera.js";
 import {
   distanceForProgress,
   nestingScale,
@@ -65,6 +71,7 @@ import {
 } from "./tiers.js";
 import {
   GALAXY_DISC,
+  galaxyContentScale,
   galaxyScenePosition,
   UniverseLayer,
   universeFocus,
@@ -113,31 +120,58 @@ function place(local: Focus, position: Vec3, scale: number): Placement {
 }
 
 /**
- * Chemin d'ancrage après avoir visé `id` au palier `name`.
+ * L'objet désigné, quand c'est exactement ce dans quoi le palier courant peut descendre
+ * (chantier 38).
  *
- * Fonction pure du chemin **précédent**, et non du chemin capturé au rendu : l'élection
- * d'ancre tourne à chaque image et son `setAnchors` peut se retrouver mis en file APRÈS
- * celui d'un saut. Sur un état capturé, elle reposait alors le chemin d'avant le saut et
- * effaçait le système qu'on venait de viser — l'URL annonçait un palier système avec une
- * ancre de galaxie, et un rechargement rouvrait la carte sur rien.
- *
- * Réélire le même objet ne touche à rien, pour la même raison.
+ * C'est la moitié de l'invariant « la sélection est l'ancre » : sélectionner un objet d'un
+ * autre palier, ou un objet du système qui n'a rien sous lui — comptoir, ceinture, site, dont
+ * `anchorPathOf` ne rend aucun chemin — ne vise rien. Il n'y a donc pas de cas particulier à
+ * écrire pour eux : les trois comparaisons échouent, et la visée est nulle.
  */
-function anchorFrom(
-  previous: AnchorPath,
-  name: TierName,
+export function slotIdFor(
+  path: AnchorPath,
+  tier: TierName,
   id: string | null,
+): string | null {
+  if (!id) return null;
+  if (tier === "universe") return path.galaxyId === id ? id : null;
+  if (tier === "galaxy") return path.systemId === id ? id : null;
+  if (tier === "system") return path.bodyId === id ? id : null;
+  // Dernier palier : il n'y a rien sous un corps.
+  return null;
+}
+
+/**
+ * Chemin matérialisé : l'ascendance jusqu'au palier courant, plus ce qui est visé dessous
+ * (chantier 38).
+ *
+ * L'autre moitié de l'invariant, et la raison pour laquelle il tient. `anchors` porte deux
+ * choses que le code confondait : l'**ascendance**, qui ne doit jamais avoir de trou — sans
+ * elle `placements[tier]` est absent et le cadrage retombe sur celui de l'amas — et la
+ * **visée**, le seul créneau sous le palier courant, qui peut parfaitement être nulle.
+ *
+ * Cette fonction efface toujours ce qui est sous la visée. Son aînée `anchorFrom` rendait le
+ * chemin précédent inchangé quand l'identifiant ne changeait pas, donc avec le `systemId`
+ * fantôme d'une visite antérieure : une couche montée que le joueur n'avait pas visée, et
+ * dans laquelle il ne pouvait pas descendre.
+ */
+export function pathFor(
+  ancestry: AnchorPath,
+  tier: TierName,
+  aimId: string | null,
 ): AnchorPath {
-  if (name === "universe")
-    return id === previous.galaxyId
-      ? previous
-      : { galaxyId: id, systemId: null, bodyId: null };
-  if (name === "galaxy")
-    return id === previous.systemId
-      ? previous
-      : { ...previous, systemId: id, bodyId: null };
-  // Dernier palier : il n'y a pas d'enfant à ancrer sous un corps.
-  return name === "system" ? { ...previous, bodyId: id } : previous;
+  if (tier === "universe")
+    return { galaxyId: aimId, systemId: null, bodyId: null };
+  if (tier === "galaxy")
+    return { galaxyId: ancestry.galaxyId, systemId: aimId, bodyId: null };
+  if (tier === "system")
+    return {
+      galaxyId: ancestry.galaxyId,
+      systemId: ancestry.systemId,
+      bodyId: aimId,
+    };
+  // Palier corps : l'ascendance est complète, il n'y a plus de créneau à remplir.
+  return ancestry;
 }
 
 /** Palier le plus profond que décrit un chemin d'ancrage. */
@@ -158,14 +192,13 @@ function deepestTier(path: AnchorPath): TierName {
 const FEATURE_RADIUS = 6;
 
 /**
- * Délai avant qu'un clic simple n'ouvre l'infobox (chantier 36.5).
+ * Étiquettes montées au plus, à un palier donné (chantier 37.7).
  *
- * Le double-clic vole ; son PREMIER clic ouvrait l'infobox, aussitôt remplacée par le
- * mouvement de caméra. La carte clignotait à chaque descente. Attendre de savoir si un
- * second clic arrive coûte un quart de seconde à la sélection — c'est le prix d'un geste
- * qui ne se contredit pas lui-même.
+ * Chaque étiquette est un sprite et une texture rasterisée à la demande. Le seuil de taille
+ * apparente en cache la plupart, mais il les monte quand même : à cinq cents systèmes par
+ * galaxie, le coût était payé cinq cents fois pour une dizaine de noms visibles.
  */
-const SELECT_DELAY = 250;
+const LABEL_BUDGET = 60;
 
 /** Compose une translation locale avec le placement de son parent. */
 function under(parent: Placement, local: Vec3): Vec3 {
@@ -184,7 +217,7 @@ interface Resolved {
 
 /** Chemin complet menant à un objet quelconque de l'univers. */
 export function anchorPathOf(
-  universe: Universe,
+  universe: ClientUniverse,
   id: string | null,
 ): AnchorPath {
   if (!id) return NO_ANCHOR;
@@ -203,7 +236,10 @@ export function anchorPathOf(
 }
 
 /** Résout un chemin d'ancrage en entités, en s'arrêtant au premier maillon manquant. */
-export function resolveAnchor(universe: Universe, path: AnchorPath): Resolved {
+export function resolveAnchor(
+  universe: ClientUniverse,
+  path: AnchorPath,
+): Resolved {
   const galaxy = universe.galaxies.find((g) => g.id === path.galaxyId) ?? null;
   const system =
     (galaxy && galaxy.systems.find((s) => s.id === path.systemId)) || null;
@@ -221,7 +257,7 @@ export function resolveAnchor(universe: Universe, path: AnchorPath): Resolved {
  * encore.
  */
 export function computePlacements(
-  universe: Universe,
+  universe: ClientUniverse,
   resolved: Resolved,
   sites: readonly SystemSite[],
   tick: number,
@@ -231,11 +267,10 @@ export function computePlacements(
 
   const { galaxy, system, body } = resolved;
   if (galaxy) {
-    const local = galaxyFocus(galaxy);
     out.galaxy = place(
-      local,
+      galaxyFocus(galaxy),
       galaxyScenePosition(galaxy),
-      nestingScale(GALAXY_DISC, local.radius),
+      galaxyContentScale(galaxy),
     );
   }
   if (out.galaxy && system) {
@@ -329,8 +364,8 @@ interface JumpRequest {
   progress: number;
 }
 
-/** Élection suspendue : une liste vide, stable, plutôt qu'un tableau neuf par rendu. */
-const EMPTY_CANDIDATES: AnchorCandidate[] = [];
+/** Pool suspendu pendant un vol : une liste vide et stable, plutôt qu'un tableau par rendu. */
+const NOTHING_TO_PICK: { id: string; at: () => Vec3; radius: number }[] = [];
 
 /** Durée d'un vol vers une cible, en ms. */
 const FLIGHT_MS = 620;
@@ -471,7 +506,7 @@ function DepthPublisher({
 }
 
 interface Props {
-  universe: Universe;
+  universe: ClientUniverse;
   colonies: Colony[];
   gateways: Gateway[];
   stations: Station[];
@@ -558,11 +593,24 @@ export function MapScene({
   const { t } = useTranslation();
   /** Partagé avec `TierCamera`, qui vit dans le canvas et doit écrire sur la section. */
   const hostRef = useRef<HTMLElement>(null);
+  /**
+   * Le picking tolérant, publié depuis l'intérieur du canvas (chantier 40).
+   *
+   * `onPointerMissed` est une prop de `<Canvas>`, donc posée d'ici, où il n'y a ni caméra ni
+   * cadre. `Picker` vit dedans et a les deux : il dépose sa fonction ici.
+   */
+  const pick = useRef<((event: MouseEvent) => void) | null>(null);
   /** Surcouche DOM des infobox : hors du conteneur `aria-hidden` de R3F. */
   const overlayRef = useRef<HTMLDivElement>(null);
   const depthRef = useRef(routeDepth ?? 0);
 
-  const [anchors, setAnchors] = useState<AnchorPath>(routeAnchor);
+  /**
+   * Ascendance : le chemin matérialisé jusqu'au palier courant (chantier 38).
+   *
+   * Ses seuls écrivains sont le franchissement descendant, le saut externe et le double-clic.
+   * Le créneau de visée, lui, n'est écrit par personne : il est lu de `selectedId`.
+   */
+  const [ancestry, setAncestry] = useState<AnchorPath>(routeAnchor);
   const [tier, setTier] = useState<TierName>(() =>
     tierAt(routeDepth ?? 0) === "universe" && routeAnchor.galaxyId
       ? // L'URL peut porter une ancre sans profondeur (lien ancien, saut direct) : on se
@@ -583,6 +631,52 @@ export function MapScene({
     [tick, lastTickAt],
   );
 
+  /**
+   * Chemin complet de l'objet sélectionné. Mémoïsé : `anchorPathOf` balaye galaxies,
+   * systèmes et corps, et une galaxie en compte jusqu'à cinq cents (ADR 0018).
+   */
+  const selectedPath = useMemo(
+    () => anchorPathOf(universe, selectedId),
+    [universe, selectedId],
+  );
+  /** Ce que la sélection désigne, s'il y a lieu — voir `slotIdFor`. */
+  const selectedAim = slotIdFor(selectedPath, tier, selectedId);
+
+  /**
+   * Visée retenue le temps d'une descente engagée (chantier 38).
+   *
+   * Effacer la sélection referme l'infobox — un clic dans le vide, une touche Échap. Mais la
+   * sélection EST la visée : sans ce garde, l'effacer en pleine descente viderait le créneau
+   * enfant, `placements` perdrait cette couche et elle se démonterait sous les yeux du joueur,
+   * au milieu du fondu qui la faisait apparaître.
+   *
+   * Une descente entamée ne s'annule donc qu'en reculant, ce qui est le geste qui la défait.
+   * Le garde se libère tout seul : sortir de la bande démonte l'enfant, et remet la mémoire
+   * à zéro.
+   */
+  const [engaged, setEngaged] = useState<string | null>(null);
+  const aimId = selectedAim ?? (childMounted ? engaged : null);
+
+  /**
+   * Le chemin matérialisé : l'ascendance jusqu'au palier courant, plus la visée dessous.
+   *
+   * Pendant un vol, c'est l'ascendance NUE. Un vol pose sa destination dans l'ascendance mais
+   * n'atteint son palier qu'à l'arrivée : `tier` décrit encore l'origine, et `pathFor`
+   * effacerait tout ce qui se trouve sous ce palier-là — c'est-à-dire précisément ce vers
+   * quoi on vole. Les couches intermédiaires disparaîtraient, `childFocus` tomberait à `null`,
+   * et la borne de dolly, privée de bande, rappellerait la caméra vers le palier de départ
+   * pendant que le vol l'emmène : « Ma capitale » n'atteignait plus le système.
+   */
+  const anchors = useMemo(
+    () => (jump ? ancestry : pathFor(ancestry, tier, aimId)),
+    [jump, ancestry, tier, aimId],
+  );
+
+  useEffect(() => {
+    if (selectedAim) setEngaged(selectedAim);
+    else if (!childMounted) setEngaged(null);
+  }, [selectedAim, childMounted]);
+
   const resolved = useMemo(
     () => resolveAnchor(universe, anchors),
     [universe, anchors],
@@ -601,8 +695,8 @@ export function MapScene({
    */
   const placements = useMemo(
     () => computePlacements(universe, resolved, sites, tick),
-    // biome-ignore lint/correctness/useExhaustiveDependencies: `tick` est volontairement
-    // hors dépendances — seule la géométrie stable des paliers est mémoïsée ici.
+    // `tick` est volontairement hors dépendances — seule la géométrie stable des paliers
+    // est mémoïsée ici.
     [universe, resolved, sites],
   );
 
@@ -622,10 +716,6 @@ export function MapScene({
    * ceintures et sites n avaient meme pas de gestionnaire de clic.
    */
   const features = useMemo(() => {
-    const post = system?.station;
-    if (!system || !placements.system) return [];
-    const parent = placements.system;
-    const extent = systemExtent(system, systemSites);
     const out: {
       id: string;
       name: string;
@@ -633,6 +723,36 @@ export function MapScene({
       at: () => Vec3;
       openId: string;
     }[] = [];
+
+    /**
+     * Cœur galactique (chantier 39) : le seul objet nommé du palier galaxie qui ne soit pas
+     * un système. Il entre ici et non par un septième type parce que `selection`,
+     * `pickFromList` et `openSelection` consultent déjà cette liste SANS regarder le palier —
+     * l'infobox, le vol de caméra et l'ouverture de fiche lui viennent donc sans une ligne.
+     *
+     * Le gate sur le palier n'est pas cosmétique : `placements.galaxy` existe aussi au palier
+     * univers, où la couche galaxie est montée en enfant, et le cœur apparaîtrait alors dans
+     * la liste des galaxies.
+     *
+     * `placements.galaxy.position` EST le centre de la galaxie, pas un point voisin : c'est
+     * `galaxyScenePosition`, ce que dit déjà le commentaire de `aim`.
+     */
+    if (tier === "galaxy" && galaxy && placements.galaxy) {
+      const at = placements.galaxy.position;
+      out.push({
+        id: `${galaxy.id}:core`,
+        name: t("mapInfobox.galacticCoreName", { galaxy: galaxy.name }),
+        detail: t("mapInfobox.galacticCore"),
+        at: () => at,
+        // Un trou noir n'a pas de fiche propre : c'est celle de sa galaxie qui la porte.
+        openId: galaxy.id,
+      });
+    }
+
+    const post = system?.station;
+    if (!system || !placements.system) return out;
+    const parent = placements.system;
+    const extent = systemExtent(system, systemSites);
 
     if (post)
       out.push({
@@ -715,6 +835,9 @@ export function MapScene({
     }
     return out;
   }, [
+    tier,
+    galaxy,
+    placements.galaxy,
     system,
     systemSites,
     placements.system,
@@ -776,16 +899,46 @@ export function MapScene({
 
     if (tier === "galaxy" && galaxy && placements.galaxy) {
       const parent = placements.galaxy;
-      for (const s of galaxy.systems) {
-        const at = under(parent, systemScenePosition(s));
+      // Les plus proches du centre de la galaxie d'abord, puis coupe au budget. Le seuil de
+      // taille apparente (`LABEL_MIN`) masque déjà l'immense majorité de ces noms, mais il
+      // ne les empêche pas d'être MONTÉS : à cinq cents systèmes, cela faisait cinq cents
+      // sprites et autant de textures rasterisées pour une poignée de noms lisibles.
+      const centered = galaxy.systems
+        .map((s) => ({ system: s, at: under(parent, systemScenePosition(s)) }))
+        .sort(
+          (a, b) =>
+            Math.hypot(
+              a.at[0] - parent.position[0],
+              a.at[1] - parent.position[1],
+              a.at[2] - parent.position[2],
+            ) -
+            Math.hypot(
+              b.at[0] - parent.position[0],
+              b.at[1] - parent.position[1],
+              b.at[2] - parent.position[2],
+            ),
+        )
+        .slice(0, LABEL_BUDGET);
+      for (const { system: s, at } of centered) {
         out.push({
           id: s.id,
           text: s.name,
           tier,
           at: () => at,
-          radius: SYSTEM_NODE * parent.scale,
+          radius: SYSTEM_LABEL_EXTENT * parent.scale,
         });
       }
+      // Le cœur, hors budget : il est seul, et son emprise est de deux ordres au-dessus de
+      // celle d'un système — il se nomme donc bien avant que le premier nom de système
+      // n'atteigne son seuil.
+      for (const f of features)
+        out.push({
+          id: f.id,
+          text: f.name,
+          tier,
+          at: f.at,
+          radius: galacticCoreDisc(systemCountOf(galaxy)) * parent.scale,
+        });
       return out;
     }
 
@@ -806,7 +959,8 @@ export function MapScene({
         text: p.name,
         tier,
         at: () => under(parent, bodyLocalPosition(system, p, tickAt())),
-        radius: bodyRadiusOf(p) * parent.scale,
+        radius: bodyLabelExtent(p) * parent.scale,
+        lift: bodyRadiusOf(p) * parent.scale,
       });
     }
 
@@ -856,9 +1010,8 @@ export function MapScene({
       child: child.scene,
       progress: fraction,
     });
-    // Au montage seulement : rejouer cette restauration reprendrait au joueur la vue
-    // qu'il s'est donnée depuis.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: voir ci-dessus.
+    // Dépendances volontairement vides : au montage seulement. Rejouer cette restauration
+    // reprendrait au joueur la vue qu'il s'est donnée depuis.
   }, []);
 
   /**
@@ -926,7 +1079,8 @@ export function MapScene({
         : path.galaxyId
           ? next.galaxy
           : next.universe;
-    setAnchors(path);
+    onSelectId(jumpTo.id);
+    setAncestry(path);
     if (target)
       setJump({
         tier: deepestTier(path),
@@ -972,120 +1126,108 @@ export function MapScene({
   const world = useRef({ universe, sites, tick });
   world.current = { universe, sites, tick };
 
-  /** Candidats à l'ancrage du palier suivant, en unités de scène. */
-  const candidates = useMemo<AnchorCandidate[]>(() => {
-    if (tier === "universe")
-      return universe.galaxies.map((g) => ({
-        id: g.id,
-        position: galaxyScenePosition(g),
-      }));
+  /**
+   * Tout ce qui se sélectionne au palier courant (chantier 40).
+   *
+   * Ce fut d'abord la liste des seuls candidats à l'ancrage — galaxies, systèmes, planètes,
+   * de quoi savoir dans quoi descendre. Elle sert maintenant à désigner, donc elle doit
+   * contenir **tout ce qu'on peut vouloir montrer du doigt** : les lunes, et tout le
+   * manufacturé du système, qui n'a aucun gestionnaire de clic dans la scène et n'était
+   * atteignable que par son étiquette ou par la liste DOM.
+   *
+   * La position est une **fonction** et non un point : un corps orbite, et un pool figé au
+   * dernier tick désignerait une place que la planète a quittée.
+   */
+  const selectables = useMemo(() => {
+    const out: { id: string; at: () => Vec3; radius: number }[] = [];
+    if (tier === "universe") {
+      for (const g of universe.galaxies) {
+        const at = galaxyScenePosition(g);
+        out.push({ id: g.id, at: () => at, radius: GALAXY_DISC });
+      }
+      return out;
+    }
     const g = placements.galaxy;
-    if (tier === "galaxy" && g && galaxy)
-      return galaxy.systems.map((s) => ({
-        id: s.id,
-        position: under(g, systemScenePosition(s)),
-      }));
+    if (tier === "galaxy" && g && galaxy) {
+      for (const s of galaxy.systems) {
+        const at = under(g, systemScenePosition(s));
+        out.push({ id: s.id, at: () => at, radius: SYSTEM_NODE * g.scale });
+      }
+      return out;
+    }
     const s = placements.system;
-    if (tier === "system" && s && system)
-      return system.planets
-        .filter((p) => p.kind === "planet")
-        .map((p) => ({
-          id: p.id,
-          position: under(s, bodyLocalPosition(system, p, tickAt())),
-        }));
-    return [];
-  }, [tier, universe, galaxy, system, placements, tickAt]);
+    if (!system || !s) return out;
+    // Au palier corps, seuls le corps ancé et ses lunes sont à l'écran.
+    const bodies =
+      tier === "body" && body
+        ? [body, ...moonsOf(system, body)]
+        : system.planets;
+    for (const p of bodies)
+      out.push({
+        id: p.id,
+        at: () => under(s, bodyLocalPosition(system, p, tickAt())),
+        radius: bodyRadiusOf(p) * s.scale,
+      });
+    for (const f of features)
+      out.push({ id: f.id, at: f.at, radius: FEATURE_RADIUS * s.scale });
+    return out;
+  }, [tier, universe, galaxy, system, body, placements, tickAt, features]);
 
-  /** Emprise d'un candidat dans la scène — cale le rayon d'élection de l'ancre. */
-  const candidateFootprint =
-    tier === "universe"
-      ? GALAXY_DISC
-      : tier === "galaxy"
-        ? SYSTEM_NODE * (placements.galaxy?.scale ?? 1)
-        : (placements.system?.scale ?? 1) * 20;
-
-  const anchorFor = (name: TierName, id: string | null): AnchorPath =>
-    anchorFrom(anchors, name, id);
-
+  /**
+   * Franchissement de palier, demandé par la caméra.
+   *
+   * Les effets sont **hors de tout updater** : `onCross` est appelé depuis la boucle
+   * d'images, qui voit toujours les props du dernier rendu, si bien que `tier`, `ancestry` et
+   * `aimId` sont ici les valeurs courantes. Ils vivaient dans un `setTier(from => …)`, ce
+   * qu'un updater ne doit pas porter — il doit être pur, et StrictMode l'invoque deux fois.
+   */
   const cross = (delta: 1 | -1) => {
-    setTier((from) => {
-      const next = TIER_ORDER[tierIndex(from) + delta];
-      if (!next) return from;
+    // Jamais pendant un vol. Un vol traverse des paliers en chemin — c'est même ce qu'on lui
+    // demande — et il pose lui-même le palier d'arrivée, qu'il connaît. Le laisser franchir
+    // en passant était sans conséquence tant que `cross` ne touchait qu'au palier ; depuis
+    // qu'il écrit l'ascendance, un franchissement parasite au palier univers y remet
+    // `systemId` à zéro, et « Ma capitale » atterrissait au palier système sans système.
+    if (jump) return;
+    const next = TIER_ORDER[tierIndex(tier) + delta];
+    if (!next) return;
+    if (delta === 1) {
       // On ne descend que dans quelque chose : sans placement, il n'y a rien à cadrer.
-      if (delta === 1 && !placements[next]) return from;
-      // En remontant, la sélection remonte avec la vue (chantier 36.5) : sortir d'une
-      // planète sélectionne son système, sortir d'un système sa galaxie. Sans cela
-      // l'infobox continuerait de décrire un objet devenu invisible, et la fiche que son
-      // bouton ouvre ne serait plus celle de ce qu'on regarde.
-      if (delta === -1) liftSelection(next);
-      return next;
-    });
+      if (!placements[next]) return;
+      // L'ascendance absorbe la visée. Le palier atteint repart sans visée : la sélection
+      // décrit désormais l'objet dans lequel on vient d'entrer, et le prochain cran élira.
+      setAncestry(pathFor(ancestry, tier, aimId));
+    } else {
+      // En remontant, la sélection devient ce qu'on vient de quitter (chantier 36.5, repris
+      // au 38). Ce n'est pas seulement que l'infobox décrirait sinon un objet devenu
+      // invisible : sans visée au palier atteint, le créneau enfant serait vide,
+      // `placements` perdrait cette couche, et elle se démonterait à l'instant précis où
+      // le parent est encore à opacité nulle — une image noire à chaque remontée.
+      onSelectId(
+        tier === "body"
+          ? ancestry.bodyId
+          : tier === "system"
+            ? ancestry.systemId
+            : ancestry.galaxyId,
+      );
+    }
+    setTier(next);
   };
 
   /**
-   * Ramène la sélection au palier atteint en remontant.
-   *
-   * Ne touche à rien si l'objet sélectionné appartient déjà à ce palier ou au-dessus : on
-   * ne reprend au joueur que ce qui a quitté l'écran.
-   */
-  const liftSelection = (reached: TierName) => {
-    if (!selectedId) return;
-    const path = anchorPathOf(universe, selectedId);
-    const owner = features.some((f) => f.id === selectedId)
-      ? "system"
-      : deepestTier(path);
-    if (tierIndex(owner) <= tierIndex(reached)) return;
-    const parent =
-      reached === "universe"
-        ? path.galaxyId
-        : reached === "galaxy"
-          ? path.systemId
-          : path.bodyId;
-    onSelectId(parent);
-  };
-
-  /**
-   * Sélection différée : elle n'a lieu que si aucun second clic ne suit.
-   *
-   * Une référence et non un état : le minuteur ne concerne pas le rendu, et le passer par
-   * React re-rendrait la carte deux fois par clic.
-   */
-  const pendingSelect = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancelSelect = useCallback(() => {
-    if (pendingSelect.current === null) return;
-    clearTimeout(pendingSelect.current);
-    pendingSelect.current = null;
-  }, []);
-  const selectSoon = useCallback(
-    (run: () => void) => {
-      cancelSelect();
-      pendingSelect.current = setTimeout(() => {
-        pendingSelect.current = null;
-        run();
-      }, SELECT_DELAY);
-    },
-    [cancelSelect],
-  );
-  // Un démontage en plein délai laisserait le minuteur écrire dans un composant parti.
-  useEffect(() => cancelSelect, [cancelSelect]);
-
-  /** Clic dans le vide : referme, et annule une sélection encore en attente. */
-  const clearSelection = useCallback(() => {
-    cancelSelect();
-    onClearSelection();
-  }, [cancelSelect, onClearSelection]);
-
-  /**
-   * Vol jusqu'à un objet, et rien d'autre (chantier 36.5).
+   * Vol jusqu'à un objet (chantiers 36.5 puis 38).
    *
    * Il ouvrait aussi la fiche depuis le chantier 35.6, ce qui rendait la modale bloquante
    * après chaque descente : impossible d'enchaîner les double-clics pour traverser sans
    * appuyer sur Échap entre deux. La fiche s'obtient désormais par le bouton de l'infobox,
    * ou par `?open=` dans l'URL.
+   *
+   * Il **sélectionne** avant de voler : c'est ce qu'un double-clic veut dire, et c'est ce
+   * qui rend le premier de ses deux clics inoffensif. Il fallait autrefois retarder tout clic
+   * simple d'un quart de seconde pour que celui-là n'ouvre pas une infobox que le vol allait
+   * remplacer ; la boîte décrit désormais la cible du vol, et le suit.
    */
   const dive = (name: TierName, id: string) => {
-    cancelSelect();
-    const path = anchorFor(name, id);
+    const path = pathFor(ancestry, name, id);
     const next = computePlacements(
       universe,
       resolveAnchor(universe, path),
@@ -1094,7 +1236,8 @@ export function MapScene({
     );
     const arrival = TIER_ORDER[tierIndex(name) + 1] ?? "universe";
     const target = next[arrival];
-    setAnchors(path);
+    onSelectId(id);
+    setAncestry(path);
     if (target)
       setJump({ tier: arrival, focus: target.scene, child: null, progress: 0 });
   };
@@ -1107,7 +1250,7 @@ export function MapScene({
    * que la vue n'est plus libre, c'est le seul geste qui déplace la cible de la caméra.
    */
   const flyToFeature = (id: string, at: Vec3) => {
-    cancelSelect();
+    onSelectId(id);
     // Assez large pour que l'objet ne remplisse pas le cadre : on vient le regarder, pas
     // s'y coller.
     const radius = FEATURE_RADIUS * (placements.system?.scale ?? 1) * 8;
@@ -1162,7 +1305,7 @@ export function MapScene({
         },
         at: feature.at,
       };
-    const path = anchorPathOf(universe, selectedId);
+    const path = selectedPath;
 
     if (path.bodyId === selectedId && system && placements.system) {
       if (path.systemId !== system.id) return null;
@@ -1213,6 +1356,7 @@ export function MapScene({
     return null;
   }, [
     selectedId,
+    selectedPath,
     universe,
     galaxy,
     system,
@@ -1223,6 +1367,38 @@ export function MapScene({
     colonizedGalaxyIds,
     features,
   ]);
+
+  /**
+   * Où la caméra doit converger (chantier 38).
+   *
+   * C'est **la fonction qui place déjà l'infobox**, et pas une seconde expression de la même
+   * position. Élection et recentrage visaient jusqu'ici deux points différents : les candidats
+   * donnaient l'origine d'une galaxie, le recentrage le centre de la boîte englobante de ses
+   * systèmes. La cible glissait donc vers un point d'où l'élection désignait parfois une autre
+   * galaxie — une des sources du ballotage. Ce n'est plus une coïncidence à maintenir, c'est
+   * le même appel, et la boîte est posée là où la caméra arrive.
+   *
+   * Le point visé d'une galaxie est donc `galaxyScenePosition`, et c'est bien son centre :
+   * depuis le chantier 37 une galaxie s'organise **autour de** (`MAP_WIDTH / 2`,
+   * `MAP_HEIGHT / 2`), ce que `constants.ts` nomme expressément comme la propriété qui garde
+   * intact le recentrage du client.
+   */
+  const aim = useMemo(
+    () => (aimId && selection ? selection.at : null),
+    [aimId, selection],
+  );
+
+  /**
+   * L'objet sélectionné, parmi ceux qui sont à l'écran au palier courant.
+   *
+   * Distinct de `selection`, qui décrit ce que l'infobox affiche : le cadre, lui, ne se pose
+   * que sur un objet effectivement rendu ici.
+   */
+  const marked = useMemo(
+    () =>
+      selectedId ? selectables.find((s) => s.id === selectedId) : undefined,
+    [selectedId, selectables],
+  );
 
   const openSelection = () => {
     if (!selectedId) return;
@@ -1266,22 +1442,32 @@ export function MapScene({
             })),
           ]
         : tier === "galaxy" && galaxy
-          ? galaxy.systems.map((s) => ({
-              id: s.id,
-              label: s.name,
-              detail: colonizedSystemIds.has(s.id)
-                ? t("galaxyMap.colonized")
-                : explored.has(s.id)
-                  ? t("galaxyMap.explored")
-                  : t("galaxyMap.unexplored"),
-              selected: s.id === selectedId,
-            }))
+          ? [
+              ...features.map((f) => ({
+                id: f.id,
+                label: f.name,
+                detail: f.detail,
+                selected: f.id === selectedId,
+              })),
+              ...galaxy.systems.map((s) => ({
+                id: s.id,
+                label: s.name,
+                detail: colonizedSystemIds.has(s.id)
+                  ? t("galaxyMap.colonized")
+                  : explored.has(s.id)
+                    ? t("galaxyMap.explored")
+                    : t("galaxyMap.unexplored"),
+                selected: s.id === selectedId,
+              })),
+            ]
           : universe.galaxies.map((g) => ({
               id: g.id,
               label: g.name,
               detail: colonizedGalaxyIds.has(g.id)
                 ? t("universeMap.colonized")
-                : undefined,
+                : g.systems.length === 0
+                  ? t("universeMap.outOfReach")
+                  : undefined,
               selected: g.id === selectedId,
             }));
 
@@ -1289,27 +1475,27 @@ export function MapScene({
     const feature = features.find((f) => f.id === id);
     if (feature) {
       if (open) flyToFeature(feature.id, feature.at());
-      else selectSoon(() => onSelectId(id));
+      else onSelectId(id);
       return;
     }
     if (tier === "body" || tier === "system") {
       const target = system?.planets.find((p) => p.id === id);
       if (!target) return;
       if (open) dive("system", target.id);
-      else selectSoon(() => onSelectBody(target));
+      else onSelectBody(target);
       return;
     }
     if (tier === "galaxy") {
       const target = galaxy?.systems.find((s) => s.id === id);
       if (!target) return;
       if (open) dive("galaxy", target.id);
-      else selectSoon(() => onSelectSystem(target));
+      else onSelectSystem(target);
       return;
     }
     const target = universe.galaxies.find((g) => g.id === id);
     if (!target) return;
     if (open) dive("universe", target.id);
-    else selectSoon(() => onSelectGalaxy(target));
+    else onSelectGalaxy(target);
   };
 
   return (
@@ -1319,7 +1505,13 @@ export function MapScene({
         focus={initialFocus}
         hostRef={hostRef}
         overlayRef={overlayRef}
-        onPointerMissed={clearSelection}
+        onPointerMissed={(event) => {
+          // Le rayon n'a rien rencontré de cliquable. Avant de conclure au vide, on laisse sa
+          // chance à la tolérance : la moitié du contenu d'un système n'a aucune géométrie
+          // cliquable, et le reste ne fait que quelques pixels en dézoomant.
+          if (pick.current) pick.current(event);
+          else onClearSelection();
+        }}
       >
         <LightRig depthRef={depthRef} />
         <TierCamera
@@ -1331,24 +1523,16 @@ export function MapScene({
           // l'élection en désignerait un au passage — effaçant la cible que le geste
           // venait de fixer. Le défaut ne se voyait qu'avec assez de galaxies pour que
           // celle qu'on survole ne soit pas celle qu'on vise.
-          candidates={jump ? EMPTY_CANDIDATES : candidates}
-          candidateFootprint={candidateFootprint}
-          anchorId={
-            tier === "universe"
-              ? anchors.galaxyId
-              : tier === "galaxy"
-                ? anchors.systemId
-                : tier === "system"
-                  ? anchors.bodyId
-                  : null
-          }
+          aimId={aimId}
+          // Aucune visée pendant un vol : la caméra est déjà menée par `CameraJump`, et le
+          // ressort la disputerait à l'objet qu'elle survole.
+          aimAt={jump ? null : aim}
           depthRef={depthRef}
           follow={
             bodyAt && (tier === "body" || (tier === "system" && childMounted))
               ? { key: body?.id ?? "", at: bodyAt }
               : null
           }
-          onAnchor={(id) => setAnchors((prev) => anchorFrom(prev, tier, id))}
           onCross={cross}
           onChildMount={setChildMounted}
         />
@@ -1356,6 +1540,19 @@ export function MapScene({
 
         {/* Étiquettes hors des couches : elles vivent en coordonnées de scène et portent
             elles-mêmes leur fondu de palier (chantier 36.3). */}
+        <Picker
+          host={hostRef}
+          // Rien à désigner pendant un vol : la caméra survole d'autres objets, et un clic
+          // en désignerait un au passage.
+          selectables={jump ? NOTHING_TO_PICK : selectables}
+          bind={pick}
+          onPick={onSelectId}
+        />
+
+        {/* Le cadre de sélection, hors des couches : il survit au franchissement d'un palier,
+            comme l'infobox. */}
+        <SelectionMark at={marked?.at ?? null} radius={marked?.radius ?? 0} />
+
         <MapLabels
           items={labelItems}
           depthRef={depthRef}
@@ -1381,7 +1578,7 @@ export function MapScene({
               target={selection.target}
               portal={overlayRef}
               onOpen={openSelection}
-              onClose={clearSelection}
+              onClose={onClearSelection}
             />
           </MovingGroup>
         )}
@@ -1394,7 +1591,7 @@ export function MapScene({
               gateways={gateways}
               focus={placements.universe.local}
               selectedId={selectedId}
-              onSelect={(g) => selectSoon(() => onSelectGalaxy(g))}
+              onSelect={onSelectGalaxy}
               onOpenGalaxy={(g) => dive("universe", g.id)}
             />
           </FadingGroup>
@@ -1408,7 +1605,6 @@ export function MapScene({
             scale={placements.galaxy.scale}
           >
             <GalaxyLayer
-              depthRef={depthRef}
               // Rayon de l'étoile ramené au repère de la galaxie : le rapport des deux
               // échelles de placement dit exactement ce que vaut une unité système vue
               // d'ici. Sans lui, le fondu troquerait un nœud de 11 unités contre une
@@ -1430,8 +1626,12 @@ export function MapScene({
               now={Date.now()}
               focus={placements.galaxy.local}
               selectedId={selectedId}
-              onSelect={(sys) => selectSoon(() => onSelectSystem(sys))}
+              onSelect={onSelectSystem}
               onOpenSystem={(s) => dive("galaxy", s.id)}
+              onSelectCore={() => onSelectId(`${galaxy.id}:core`)}
+              // Un cœur ne se descend pas comme un système : il n'y a pas de palier
+              // dessous. Le double-clic fait donc ce que fait le bouton de l'infobox.
+              onOpenCore={() => onOpenFiche(galaxy.id)}
             />
           </FadingGroup>
         )}
@@ -1453,8 +1653,7 @@ export function MapScene({
               outposts={outposts}
               fleets={fleets}
               foreignFleets={foreignFleets}
-              selectedBodyId={selectedId}
-              onSelectBody={(b) => selectSoon(() => onSelectBody(b))}
+              onSelectBody={onSelectBody}
               onOpenBody={(b) => dive("system", b.id)}
             />
           </FadingGroup>
@@ -1469,8 +1668,7 @@ export function MapScene({
                 tickAt={tickAt}
                 colonies={colonies}
                 stations={stations}
-                selectedBodyId={selectedId}
-                onSelectBody={(b) => selectSoon(() => onSelectBody(b))}
+                onSelectBody={onSelectBody}
                 onOpenBody={(b) => dive("system", b.id)}
               />
             </FadingGroup>

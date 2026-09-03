@@ -264,8 +264,41 @@ const FALLBACK_STEP = Math.log(1.15);
 const MAX_STREAK = 2.5;
 const STREAK_SLOPE = 0.15;
 
-/** Part de l'écart rattrapée en une image à 60 Hz. */
-const DOLLY_SMOOTH = 0.18;
+/**
+ * Demi-course du dolly, en secondes : au bout de ce délai, la moitié du chemin vers la
+ * distance visée est faite. Valeur reprise de l'ancien facteur par image (0,18 à 60 Hz),
+ * `ln 0,5 / (60 · ln 0,82)`, pour que le zoom garde exactement la vitesse qu'on lui connaît.
+ */
+const DOLLY_HALF_LIFE = 0.0582;
+
+/** Demi-course du recentrage sur la visée (chantier 38). */
+const AIM_HALF_LIFE = 0.2;
+
+/**
+ * Au-delà, `dt` ne décrit plus une image mais un onglet remis au premier plan : un lissage
+ * qui l'honorerait téléporterait la caméra.
+ */
+const MAX_STEP = 0.25;
+
+/**
+ * Part de l'écart rattrapée en `dt` secondes, pour une demi-course donnée. Au bout de
+ * `halfLife`, la moitié du chemin est faite — quelle que soit la cadence d'images.
+ *
+ * La demi-course est la seule unité de raideur qui ait un sens : un « facteur par image »
+ * est deux fois et demie plus rapide sur un écran à 144 Hz que sur un écran à 60.
+ *
+ * C'est un filtre exponentiel et **pas un ressort amorti** — celui de `maath/easing`, par
+ * exemple, qu'on aurait pu prendre tout fait. Les deux grandeurs lissées ici, la distance de
+ * vue et la cible de la caméra, sont déplacées à chaque image par d'autres mécanismes : le
+ * vol, le franchissement de palier, le suivi d'un corps en orbite. Un ressort retient une
+ * vitesse d'une image à l'autre ; il lirait ces déplacements comme un mouvement qu'il a
+ * produit, et rendrait cet élan dès qu'on le relâche.
+ */
+export function smoothFactor(halfLife: number, dt: number): number {
+  if (!Number.isFinite(halfLife) || halfLife <= 0) return 1;
+  const step = Number.isFinite(dt) && dt > 0 ? Math.min(dt, MAX_STEP) : 1 / 60;
+  return 1 - 0.5 ** (step / halfLife);
+}
 
 /**
  * Accélération d'un défilement soutenu.
@@ -313,10 +346,207 @@ export function zoomStep(
 export function dollyEase(current: number, target: number, dt: number): number {
   if (!Number.isFinite(current) || current <= 0) return target;
   if (!Number.isFinite(target) || target <= 0) return current;
-  const step = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 1 / 60;
-  const k = 1 - (1 - DOLLY_SMOOTH) ** (step * 60);
+  const k = smoothFactor(DOLLY_HALF_LIFE, dt);
   const from = Math.log(current);
   return Math.exp(from + (Math.log(target) - from) * k);
+}
+
+/**
+ * Déplacement de la cible vers ce qu'on vise, pour l'image en cours (chantier 38).
+ *
+ * Rend le **delta** et non le point d'arrivée : l'appelant le reporte sur la caméra ET sur sa
+ * cible, ce qui conserve la distance de vue et l'angle. Rendre le point laisserait le choix
+ * de n'en bouger qu'une, et c'est précisément le défaut qu'on ne veut pas pouvoir écrire.
+ *
+ * Interpolation **linéaire**, à la différence de `dollyEase` : une position n'est pas une
+ * octave, et zéro doit être atteignable.
+ *
+ * `null` au repos, sous `rest` : sans seuil la cible frémit indéfiniment, et la carte
+ * republierait sa profondeur pour un mouvement que personne ne voit.
+ */
+export function recenterStep(
+  from: Vec3,
+  to: Vec3,
+  dt: number,
+  rest: number,
+): Vec3 | null {
+  const dx = to[0] - from[0];
+  const dy = to[1] - from[1];
+  const dz = to[2] - from[2];
+  if (!Number.isFinite(dx) || !Number.isFinite(dy) || !Number.isFinite(dz))
+    return null;
+  const gap = Math.hypot(dx, dy, dz);
+  const floor = Number.isFinite(rest) && rest > 0 ? rest : 0;
+  if (gap <= floor) return null;
+  const k = smoothFactor(AIM_HALF_LIFE, dt);
+  return [dx * k, dy * k, dz * k];
+}
+
+/**
+ * Verticale du monde de la carte.
+ *
+ * Le plan galactique est XY et l'épaisseur est en Z (`MAP_DEPTH`) : les systèmes se posent en
+ * `cos → x, sin → y`, et l'inclinaison d'une orbite est une rotation autour de X. C'est donc
+ * Z, et pas le Y par défaut de three.js, qui est le haut de ce monde.
+ */
+const WORLD_UP: Vec3 = [0, 0, 1];
+
+/**
+ * Élévation maximale de la caméra au-dessus du plan galactique.
+ *
+ * Juste en deçà du pôle : à la verticale exacte, l'axe droit de la caméra n'est plus défini et
+ * l'image bascule d'un demi-tour pour un pixel de glisser.
+ */
+const MAX_ELEVATION = (89 * Math.PI) / 180;
+
+function sub3(a: Vec3, b: Vec3): Vec3 {
+  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+}
+
+function add3(a: Vec3, b: Vec3): Vec3 {
+  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+}
+
+function dot3(a: Vec3, b: Vec3): number {
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+function cross3(a: Vec3, b: Vec3): Vec3 {
+  return [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+}
+
+/** Vecteur unitaire, ou `null` s'il est dégénéré — l'appelant décide quoi faire du cas. */
+function unit3(a: Vec3): Vec3 | null {
+  const length = Math.hypot(a[0], a[1], a[2]);
+  if (!Number.isFinite(length) || length < 1e-12) return null;
+  return [a[0] / length, a[1] / length, a[2] / length];
+}
+
+/** Rotation d'un point autour d'un axe unitaire passant par un pivot (Rodrigues). */
+function rotateAbout(
+  point: Vec3,
+  pivot: Vec3,
+  axis: Vec3,
+  angle: number,
+): Vec3 {
+  const v = sub3(point, pivot);
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  const d = dot3(axis, v);
+  const k = cross3(axis, v);
+  return add3(pivot, [
+    v[0] * c + k[0] * s + axis[0] * d * (1 - c),
+    v[1] * c + k[1] * s + axis[1] * d * (1 - c),
+    v[2] * c + k[2] * s + axis[2] * d * (1 - c),
+  ]);
+}
+
+/**
+ * Fait tourner la caméra ET sa cible **rigidement** autour d'un pivot (chantier 40).
+ *
+ * `yaw` tourne autour de la verticale du monde : on fait le tour du pivot à élévation
+ * constante, comme un satellite à latitude fixe. `pitch` est le changement d'élévation, positif
+ * quand la caméra monte au-dessus du plan ; il tourne autour de l'axe **droit** de la caméra,
+ * qui est horizontal par construction et perpendiculaire au vecteur de vue — c'est ce qui rend
+ * le bornage exact plutôt qu'approché. Jamais de roulis : aucune rotation ne se fait autour de
+ * l'axe de vue.
+ *
+ * Rigide, et c'est tout l'intérêt : `OrbitControls` appelle `lookAt(target)` à chaque image,
+ * donc sa cible est toujours au centre de l'écran et il ne peut pas pivoter autour d'un point
+ * décentré. En faisant tourner la PAIRE, leur vecteur tourne d'autant et le `lookAt` qui suit
+ * rend exactement l'image tournée — le pivot, lui, reste où il est à l'écran.
+ *
+ * Le lacet s'applique d'abord, et l'axe droit est recalculé ensuite : le prendre avant le ferait
+ * tourner d'un lacet de retard, et la vue partirait de biais sur un geste en diagonale.
+ */
+export function orbitAround(
+  pose: CameraPose,
+  pivot: Vec3,
+  yaw: number,
+  pitch: number,
+): CameraPose {
+  const safeYaw = Number.isFinite(yaw) ? yaw : 0;
+  const safePitch = Number.isFinite(pitch) ? pitch : 0;
+  const yawed: CameraPose =
+    safeYaw === 0
+      ? pose
+      : {
+          position: rotateAbout(pose.position, pivot, WORLD_UP, safeYaw),
+          target: rotateAbout(pose.target, pivot, WORLD_UP, safeYaw),
+        };
+  if (safePitch === 0) return yawed;
+
+  const offset = unit3(sub3(yawed.position, yawed.target));
+  if (!offset) return yawed;
+  // Axe droit à partir de la direction de VUE : `offset` pointe de la cible vers la caméra.
+  const right = unit3(cross3(WORLD_UP, offset));
+  // Caméra à la verticale exacte du pivot : plus d'axe droit, le lacet seul s'applique.
+  if (!right) return yawed;
+
+  const elevation = Math.asin(
+    Math.min(1, Math.max(-1, dot3(offset, WORLD_UP))),
+  );
+  // Bornage EXACT et non approché : `offset` est perpendiculaire à `right`, donc la rotation
+  // se fait dans le plan qui contient l'offset et la verticale, et change l'élévation d'autant.
+  const applied = Math.min(
+    MAX_ELEVATION - elevation,
+    Math.max(-MAX_ELEVATION - elevation, safePitch),
+  );
+  if (applied === 0) return yawed;
+
+  // Rotation de `-applied` : `right` est l'axe droit de l'écran, et tourner autour de lui
+  // dans le sens direct fait DESCENDRE la caméra. On veut qu'un tangage positif la monte,
+  // pour que le bornage se lise `elevation + pitch` sans changement de signe en route.
+  return {
+    position: rotateAbout(yawed.position, pivot, right, -applied),
+    target: rotateAbout(yawed.target, pivot, right, -applied),
+  };
+}
+
+/**
+ * Homothétie de la caméra et de sa cible autour d'un pivot (chantier 40).
+ *
+ * Propriété recherchée : le pivot ne bouge pas à l'écran. C'est ce qui fait le zoom au curseur —
+ * le point sous la souris reste sous la souris — par opposition au dolly, qui rapproche la
+ * caméra de sa cible le long de l'axe de vue et laisse donc le CENTRE fixe.
+ *
+ * `ratio` est le même que celui du dolly : la distance caméra-cible est multipliée par lui, si
+ * bien que les bornes de palier et le calibrage de la molette s'appliquent à l'identique.
+ */
+export function zoomAbout(
+  pose: CameraPose,
+  pivot: Vec3,
+  ratio: number,
+): CameraPose {
+  if (!Number.isFinite(ratio) || ratio <= 0) return pose;
+  const at = (p: Vec3): Vec3 => [
+    pivot[0] + (p[0] - pivot[0]) * ratio,
+    pivot[1] + (p[1] - pivot[1]) * ratio,
+    pivot[2] + (p[2] - pivot[2]) * ratio,
+  ];
+  return { position: at(pose.position), target: at(pose.target) };
+}
+
+/**
+ * Ce que vaut un pixel d'écran, en unités de scène, à une distance donnée.
+ *
+ * La carte couvre six ordres de grandeur : tout ce qui doit garder une taille à l'ÉCRAN — le
+ * nœud d'un système, une étiquette, le cadre de sélection — passe par ce facteur. La formule
+ * vivait en trois copies distinctes, chacune avec sa propre recopie du demi-champ de vision et
+ * un commentaire « doit suivre `MapCanvas` ».
+ */
+export function worldPerPixel(
+  distance: number,
+  viewportHeight: number,
+  fovDegrees: number,
+): number {
+  if (!Number.isFinite(distance) || distance <= 0) return 0;
+  const half = (Math.max(1, Math.min(179, fovDegrees)) / 2) * (Math.PI / 180);
+  return (2 * Math.tan(half) * distance) / Math.max(1, viewportHeight);
 }
 
 /**
@@ -388,31 +618,48 @@ export function ascend(
   };
 }
 
+/** Un candidat projeté à l'écran. */
+export interface ScreenPoint {
+  id: string;
+  /** Position à l'écran, en **pixels**, dans le repère du cadre. */
+  at: readonly [number, number];
+  /** Profondeur NDC. Hors de `[-1, 1]`, le point est derrière la caméra ou au-delà du fond. */
+  depth: number;
+}
+
 /**
- * Élection de l'ancre : l'enfant dans lequel le zoom va descendre.
+ * Le plus proche du curseur à l'écran, dans un rayon donné (chantier 40).
  *
- * Rendre `null` n'est pas un échec mais une décision — on ne plonge pas dans le vide. Le
- * zoom est alors borné à la frontière du palier, et le joueur doit viser quelque chose
- * pour descendre. Sans cette règle, dézoomer puis rezoomer au milieu de nulle part ferait
- * descendre d'un palier sur un objet arbitraire.
+ * En **pixels** et non en coordonnées normalisées : celles-ci sont anisotropes — l'axe x
+ * couvre la largeur du cadre, l'axe y sa hauteur — si bien qu'un rayon exprimé en NDC serait
+ * plus large horizontalement sur un écran large. C'est l'appelant qui projette et convertit ;
+ * cette fonction ne fait plus que trancher.
+ *
+ * C'est ce qui rend sélectionnable un objet de trois pixels : le clic n'a pas à toucher sa
+ * géométrie, il lui suffit de passer à côté. Au-delà du rayon on rend `null`, et l'appelant y
+ * lit « le joueur a cliqué dans le vide ».
  */
-export function electAnchor<T extends { id: string; position: Vec3 }>(
-  target: Vec3,
-  candidates: readonly T[],
+export function nearestToCursor<T extends ScreenPoint>(
+  cursor: readonly [number, number],
+  points: readonly T[],
   maxDistance: number,
 ): T | null {
   if (!Number.isFinite(maxDistance) || maxDistance <= 0) return null;
-  // Comparaison au carré : la racine ne change pas l'ordre et coûte, ici, à chaque image.
+  // Comparaison au carré : la racine ne change pas l'ordre.
   const limit = maxDistance * maxDistance;
   let best: T | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
-  for (const candidate of candidates) {
-    const dx = candidate.position[0] - target[0];
-    const dy = candidate.position[1] - target[1];
-    const dz = candidate.position[2] - target[2];
-    const distance = dx * dx + dy * dy + dz * dz;
+  for (const point of points) {
+    const [x, y] = point.at;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    // Derrière la caméra, ou au-delà du plan lointain : la projection y rend des coordonnées
+    // d'écran parfaitement plausibles, et pour un point qu'on ne voit pas.
+    if (!(point.depth >= -1 && point.depth <= 1)) continue;
+    const dx = x - cursor[0];
+    const dy = y - cursor[1];
+    const distance = dx * dx + dy * dy;
     if (distance < bestDistance && distance <= limit) {
-      best = candidate;
+      best = point;
       bestDistance = distance;
     }
   }

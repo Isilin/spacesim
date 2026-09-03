@@ -22,7 +22,7 @@ import {
   type Station,
   type StationMarketAccess,
   type StationZone,
-  type Universe,
+  type ClientUniverse,
   type ZoneTypeId,
 } from "@spacesim/shared";
 import { useEffect, useState } from "react";
@@ -56,7 +56,7 @@ import { useGameStore } from "./state/game-store.js";
 
 interface Props {
   effects: EmpireEffects;
-  universe: Universe;
+  universe: ClientUniverse;
   portalLinks: [string, string][];
 }
 
@@ -312,7 +312,7 @@ interface TransferProps {
   station: Station;
   colonies: Colony[];
   routes: Route[];
-  universe: Universe;
+  universe: ClientUniverse;
   portalLinks: [string, string][];
   now: number;
   send: (msg: ClientMessage) => void;

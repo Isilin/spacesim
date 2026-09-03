@@ -75,7 +75,6 @@ function OrbitingMoon({
   parent,
   moon,
   tickAt,
-  selected,
   onSelect,
   onOpen,
 }: {
@@ -83,7 +82,6 @@ function OrbitingMoon({
   parent: Planet;
   moon: Planet;
   tickAt: () => number;
-  selected: boolean;
   onSelect: () => void;
   onOpen: () => void;
 }) {
@@ -109,7 +107,6 @@ function OrbitingMoon({
           id={moon.id}
           type={moon.type}
           radius={bodyRadiusOf(moon)}
-          selected={selected}
         />
       </group>
     </group>
@@ -140,7 +137,6 @@ interface Props {
   tickAt: () => number;
   colonies: Colony[];
   stations: Station[];
-  selectedBodyId: string | null;
   onSelectBody: (body: Planet) => void;
   onOpenBody: (body: Planet) => void;
 }
@@ -159,7 +155,6 @@ export function BodyLayer({
   tickAt,
   colonies,
   stations,
-  selectedBodyId,
   onSelectBody,
   onOpenBody,
 }: Props) {
@@ -180,12 +175,7 @@ export function BodyLayer({
             grillage de sélection — dimensionné pour le repérer de loin dans un système —
             le recouvrait entièrement. Les lunes gardent le leur, elles restent à choisir
             parmi d'autres. */}
-        <ProceduralBody
-          id={body.id}
-          type={body.type}
-          radius={radius}
-          selected={false}
-        />
+        <ProceduralBody id={body.id} type={body.type} radius={radius} />
         {/* Les mêmes anneaux qu'au palier système (chantier 35.12) : la géante les portait
             de loin et les perdait de près, au moment exact où l'on s'approchait pour les
             regarder. */}
@@ -210,7 +200,6 @@ export function BodyLayer({
           parent={body}
           moon={moon}
           tickAt={tickAt}
-          selected={moon.id === selectedBodyId}
           onSelect={() => onSelectBody(moon)}
           onOpen={() => onOpenBody(moon)}
         />

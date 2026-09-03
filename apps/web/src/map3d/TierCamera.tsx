@@ -1,10 +1,6 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import {
-  useEffect,
-  useRef,
-  type MutableRefObject,
-  type RefObject,
-} from "react";
+import { useGesture } from "@use-gesture/react";
+import { useRef, type MutableRefObject, type RefObject } from "react";
 import type { PerspectiveCamera, Vector3 } from "three";
 import type { Focus } from "./bounds.js";
 import { fitDistance } from "./MapCanvas.js";
@@ -12,11 +8,15 @@ import {
   clipPlanesFor,
   distanceForProgress,
   dollyEase,
-  electAnchor,
+  orbitAround,
+  recenterStep,
+  smoothFactor,
   tierBlend,
   tierIndex,
   tierProgress,
+  zoomAbout,
   zoomStep,
+  type CameraPose,
   type TierName,
   type Vec3,
 } from "./tiers.js";
@@ -41,11 +41,25 @@ interface ControlsHandle {
 const OVERSHOOT = 4;
 
 /**
- * Part de l'écart à la cible rattrapée par image, à pleine progression. Assez faible pour
- * qu'un panoramique volontaire reste possible en cours de descente, assez forte pour que
- * la frontière soit franchie avec l'enfant au centre du cadre.
+ * Repos du recentrage, en fraction de la distance de vue.
+ *
+ * Relatif et non absolu : la carte couvre six ordres de grandeur, et un seuil en unités de
+ * scène serait grossier au palier corps — où la caméra regarde à quelques centièmes d'unité —
+ * et d'une finesse inutile au palier univers. Un millième de la distance de vue vaut moins
+ * d'un pixel à l'écran, quelle que soit l'échelle.
  */
-const RECENTER = 0.08;
+const AIM_REST = 1e-3;
+
+/**
+ * Demi-course de l'amortissement de rotation, en secondes.
+ *
+ * `OrbitControls` amortissait la sienne à 0,15 par image ; il ne tourne plus (chantier 40) et
+ * cette valeur reproduit sa vitesse à 60 Hz, en étant cette fois indépendante de la cadence.
+ */
+const ROTATE_HALF_LIFE = 0.07;
+
+/** Sous cette rotation en attente, on s'arrête : sinon la vue frémit indéfiniment. */
+const ROTATE_REST = 1e-5;
 
 /**
  * Au-delà de ce délai entre deux crans, le défilement n'est plus tenu pour continu et
@@ -64,21 +78,18 @@ const STREAK_WINDOW = 180;
 const STREAK_TICK = 30;
 
 /**
- * Poids d'un événement de molette, borné.
+ * Poids d'un cran de molette, borné.
  *
- * `deltaY` vaut ~100 par cran sur une molette et quelques unités sur un pavé tactile.
- * Ignorer l'amplitude — ce que fait `OrbitControls` — rend le pavé tactile incontrôlable ;
- * la suivre sans borne rend une molette « à haute résolution » erratique.
+ * `use-gesture` a déjà ramené l'événement en pixels quel que soit son `deltaMode` — Firefox
+ * compte en LIGNES sur une molette, et la valeur brute y vaut trois au lieu de cent. Ce qui
+ * reste ici est une décision, pas une normalisation : suivre l'amplitude sans borne rend une
+ * molette « à haute résolution » erratique, l'ignorer — ce que fait `OrbitControls` — rend le
+ * pavé tactile incontrôlable.
  */
 function wheelWeight(deltaY: number): number {
   if (!Number.isFinite(deltaY) || deltaY === 0) return 0;
   const magnitude = Math.min(1.5, Math.max(0.15, Math.abs(deltaY) / 100));
   return Math.sign(deltaY) * magnitude;
-}
-
-export interface AnchorCandidate {
-  id: string;
-  position: Vec3;
 }
 
 interface Props {
@@ -89,16 +100,24 @@ interface Props {
   /** Cadrage du palier courant, en unités de scène. */
   parentFocus: Focus;
   /**
-   * Cadrage de l'enfant ancré, **déjà imbriqué** en unités de scène (`nestedFocus`).
+   * Cadrage de l'enfant visé, **déjà imbriqué** en unités de scène (`nestedFocus`).
    * `null` quand rien n'est visé, ou au dernier palier : il n'y a alors pas de bande,
    * donc pas de descente possible.
    */
   childFocus: Focus | null;
-  /** Candidats à l'ancrage, en unités de scène. */
-  candidates: readonly AnchorCandidate[];
-  /** Emprise d'un candidat dans la scène — cale le rayon d'élection. */
-  candidateFootprint: number;
-  anchorId: string | null;
+  /**
+   * Ce que la caméra vise : la sélection, quand elle est l'enfant immédiat du palier courant
+   * (chantier 38). `null` bascule la caméra en mode **libre** (chantier 40) — le zoom se fait
+   * au curseur, la rotation autour du point cliqué, et le dolly est borné à la frontière du
+   * palier : descendre demande de viser.
+   */
+  aimId: string | null;
+  /**
+   * Où se trouve la visée, à l'instant présent. Une fonction et non une position : un corps
+   * orbite, et un point figé au dernier tick serveur ferait poursuivre au ressort une place
+   * que la planète a quittée.
+   */
+  aimAt: (() => Vec3) | null;
   /**
    * Profondeur continue, écrite à chaque image (chantier 35.3).
    *
@@ -113,44 +132,46 @@ interface Props {
    * Les corps orbitent : sans cela, zoomer sur une planète la laisse glisser hors du cadre
    * en quelques secondes. Le décalage image à image est reporté sur la caméra ET sur sa
    * cible, ce qui conserve exactement le cadrage. La clé sert à ne pas reporter le saut
-   * qu'on observe en changeant d'ancre.
+   * qu'on observe en changeant de visée.
    */
   follow: { key: string; at: () => Vec3 } | null;
-  onAnchor: (id: string | null) => void;
   onCross: (delta: 1 | -1) => void;
   onChildMount: (mounted: boolean) => void;
 }
 
 /**
- * Pilotage du zoom continu (chantier 35.2).
+ * Pilotage du zoom continu (chantier 35.2), qui ne décide plus de ce qu'on vise (chantier 38).
  *
  * Tout ce qui doit être su à chaque image est calculé ici et **n'entre jamais dans l'état
  * React** : la profondeur change soixante fois par seconde, un `setState` par image
  * re-rendrait l'arbre entier. Même geste qu'`OrbitingBody`, qui écrit sa position
  * directement sur son `group`.
  *
- * Seules trois décisions **discrètes** remontent, et seulement quand elles changent :
- * quel enfant est visé (`onAnchor`), quand il faut le monter (`onChildMount`), et quand
- * le palier courant est franchi (`onCross`). Elles se comptent sur les doigts d'une main
- * pour une traversée complète.
+ * Seules des décisions **discrètes** remontent, et seulement quand elles changent : quand
+ * monter l'enfant (`onChildMount`), quand le palier courant est franchi (`onCross`), et quand
+ * le joueur désigne un objet (`onElect`). Elles se comptent sur les doigts d'une main pour
+ * une traversée complète.
+ *
+ * Ce composant élisait autrefois lui-même sa cible, à chaque image, en prenant le candidat le
+ * plus proche du centre du cadre — puis il tirait le cadre vers cette cible. Les deux se
+ * nourrissaient : la traction déplaçait le point depuis lequel l'élection mesurait, l'élection
+ * changeait de candidat, la traction s'inversait. C'est ce ballotage que le chantier 38
+ * supprime, en confiant la visée à la seule sélection.
  *
  * Il produit aussi le dolly depuis le chantier 36.2. `OrbitControls` amortit la rotation
  * mais applique le zoom d'un bloc, et son pas fixe demandait une trentaine de crans par
  * palier : la molette est reprise ici, où la bande à traverser et les bornes du palier sont
- * déjà connues. Ce qui reste à `OrbitControls`, c'est la rotation — le seul geste souris
- * qui subsiste depuis que le panoramique a disparu.
+ * déjà connues. Ce qui lui reste, c'est la rotation et le panoramique.
  */
 export function TierCamera({
   host,
   tier,
   parentFocus,
   childFocus,
-  candidates,
-  candidateFootprint,
-  anchorId,
+  aimId,
+  aimAt,
   depthRef,
   follow,
-  onAnchor,
   onCross,
   onChildMount,
 }: Props) {
@@ -159,12 +180,11 @@ export function TierCamera({
   const size = useThree((s) => s.size);
 
   const mounted = useRef(false);
-  const anchored = useRef<string | null>(anchorId);
   const depthAttr = useRef("");
   const tierAttr = useRef("");
+  const aimAttr = useRef<string | null | undefined>(undefined);
+  const elevationAttr = useRef("");
   const tracked = useRef<{ key: string; at: Vec3 } | null>(null);
-  /** Progression de l'image précédente : sert à distinguer une descente d'un recul. */
-  const advance = useRef(0);
   /**
    * Verrou de franchissement : `onCross` déclenche un rendu React, et `useFrame` tourne
    * plusieurs fois avant que le nouveau palier n'arrive. Sans lui, un seul franchissement
@@ -191,41 +211,110 @@ export function TierCamera({
    * `applied` est ce qui distingue un mouvement qu'on a produit d'un mouvement subi : vol,
    * cadrage, franchissement de palier déplacent tous la caméra sans passer par ici. Sans
    * cette comparaison, la visée d'avant survivrait au vol et ramènerait aussitôt la caméra
-   * à l'endroit d'où elle vient.
+   * à l'endroit d'où elle vient. Le recentrage, lui, translate caméra et cible du même
+   * vecteur : il conserve la distance, donc il ne réveille pas ce garde.
    */
   const aim = useRef<number | null>(null);
   const applied = useRef<number | null>(null);
   const pending = useRef(0);
   const streak = useRef({ count: 0, at: 0 });
 
-  useEffect(() => {
-    anchored.current = anchorId;
-  }, [anchorId]);
+  /** Un geste souris est en cours : le ressort rend la main au joueur. */
+  const gesture = useRef(false);
+  /** Ce geste est une rotation (bouton gauche), et non un panoramique. */
+  const rotating = useRef(false);
+  /** Lacet et tangage en attente, en radians, vidés progressivement par le ressort. */
+  const spin = useRef({ yaw: 0, pitch: 0 });
+  /**
+   * Autour de quoi on tourne et on zoome.
+   *
+   * En mode ciblé, la sélection : `orbitAround` se réduit alors à une orbite ordinaire, et
+   * l'homothétie à un dolly. En mode libre, **le centre du palier où l'on est** — l'amas, la
+   * galaxie, le système. La caméra fait le tour de ce qu'elle regarde, comme un tourne-disque.
+   *
+   * Ce fut un instant le point du plan focal sous le curseur, pour que le clic désigne ce
+   * autour de quoi on tourne. Trop malin : le joueur ne savait plus autour de quoi il tournait,
+   * et le centre d'un palier a l'avantage de ne pas bouger — il n'y a plus rien à figer au
+   * début d'un geste, ni à reprendre à chaque cran de molette.
+   */
+  const pivotOf = (): Vec3 => {
+    if (aimId === null) return parentFocus.center;
+    // La position VIVE de l'objet, et non `controls.target` qui lui court après : un corps
+    // orbite, et le ressort n'a pas forcément fini de converger. Pivoter sur la cible
+    // conserverait l'écart au lieu de le résorber — l'objet sélectionné tournait alors
+    // légèrement à côté du centre au lieu d'y rester.
+    const at = aimAt?.();
+    if (at) return at;
+    const target = controls?.target;
+    return target ? [target.x, target.y, target.z] : parentFocus.center;
+  };
 
-  useEffect(() => {
-    const node = host.current;
-    if (!node) return;
-    const onWheel = (event: WheelEvent) => {
-      // La liste et l'infobox appellent `stopPropagation` sur leur propre surface : ce qui
-      // arrive ici est une molette destinée à la carte.
-      event.preventDefault();
-      const now = performance.now();
-      const run = streak.current;
-      if (now - run.at > STREAK_WINDOW) run.count = 0;
-      else if (now - run.at >= STREAK_TICK) run.count += 1;
-      run.at = now;
-      pending.current += wheelWeight(event.deltaY);
-    };
-    // `passive: false` : sans quoi le navigateur refuse le `preventDefault` et la page
-    // défile derrière la carte à chaque cran.
-    node.addEventListener("wheel", onWheel, { passive: false });
-    return () => node.removeEventListener("wheel", onWheel);
-  }, [host]);
+  useGesture(
+    {
+      onWheel: ({ event, delta: [, deltaY] }) => {
+        if (deltaY === 0) return;
+        const now = performance.now();
+        const run = streak.current;
+        if (now - run.at > STREAK_WINDOW) run.count = 0;
+        else if (now - run.at >= STREAK_TICK) run.count += 1;
+        run.at = now;
+        pending.current += wheelWeight(deltaY);
+      },
+      onDrag: ({ first, last, buttons, delta: [dx, dy] }) => {
+        if (first) {
+          // Bouton gauche : la rotation, la nôtre — `OrbitControls` centre toujours sa cible
+          // et ne sait donc pas pivoter autour d'un point décentré. Bouton droit : son
+          // panoramique, qu'on lui laisse. Les deux suspendent le ressort : « le joueur a la
+          // main » se tient mieux qu'une exception.
+          rotating.current = buttons === 1;
+          // Seul le PANORAMIQUE suspend le ressort : lui seul éloigne délibérément la cible de
+          // ce qu'on vise. La rotation, elle, tourne AUTOUR de la visée : les deux vont dans
+          // le même sens, et suspendre le ressort pendant tout le geste laissait l'objet
+          // dériver hors du centre sans que rien ne l'y ramène.
+          gesture.current = !rotating.current;
+        } else if (rotating.current) {
+          // Même sensibilité qu'`OrbitControls` : un tour complet pour une hauteur de cadre
+          // traversée. Le lacet fait suivre la scène au curseur ; le tangage descend quand on
+          // tire vers le bas, ce qui est le sens attendu et l'inverse de celui qu'on avait.
+          const span = Math.max(1, size.height);
+          spin.current.yaw -= (2 * Math.PI * dx) / span;
+          spin.current.pitch += (2 * Math.PI * dy) / span;
+        }
+        if (last) {
+          gesture.current = false;
+          rotating.current = false;
+        }
+      },
+    },
+    {
+      target: host,
+      // `passive: false` : sans quoi le navigateur refuse le `preventDefault` et la page
+      // défile derrière la carte à chaque cran.
+      eventOptions: { passive: false },
+      wheel: { preventDefault: true },
+      drag: {
+        // Purement observateur : on ne capture pas le pointeur — `OrbitControls` le fait et
+        // c'est lui qui travaille — et on ne supprime aucun défaut du navigateur.
+        pointer: { capture: false, buttons: [1, 2] },
+        filterTaps: true,
+      },
+    },
+  );
 
   useFrame((_, delta) => {
     if (!controls) return;
 
-    // Suivi de l'ancre AVANT toute mesure : la distance caméra-cible doit être lue après
+    /** La pose courante, telle que `orbitAround` et `zoomAbout` la prennent et la rendent. */
+    const poseOf = (): CameraPose => ({
+      position: [camera.position.x, camera.position.y, camera.position.z],
+      target: [controls.target.x, controls.target.y, controls.target.z],
+    });
+    const apply = (pose: CameraPose) => {
+      camera.position.set(...pose.position);
+      controls.target.set(...pose.target);
+    };
+
+    // Suivi de la visée AVANT toute mesure : la distance caméra-cible doit être lue après
     // que les deux ont été recalées, sinon le déplacement de l'orbite se lit comme un
     // mouvement de zoom et fait franchir des paliers tout seul.
     if (follow) {
@@ -287,16 +376,44 @@ export function TierCamera({
     aim.current = goal;
     const eased = dollyEase(before, goal, delta);
     if (Math.abs(eased - before) > before * 1e-6) {
-      const dx = camera.position.x - controls.target.x;
-      const dy = camera.position.y - controls.target.y;
-      const dz = camera.position.z - controls.target.z;
-      const length = Math.hypot(dx, dy, dz) || 1;
-      camera.position.set(
-        controls.target.x + (dx / length) * eased,
-        controls.target.y + (dy / length) * eased,
-        controls.target.z + (dz / length) * eased,
-      );
+      if (aimId === null) {
+        // Mode LIBRE : homothétie autour du centre du palier, qui reste donc immobile à
+        // l'écran. Le rapport est celui du dolly, si bien que les bornes de palier et le
+        // calibrage de la molette s'appliquent à l'identique.
+        apply(zoomAbout(poseOf(), parentFocus.center, eased / before));
+      } else {
+        // Mode CIBLÉ : on se rapproche de la cible le long de l'axe de vue, elle ne bouge
+        // pas. C'est ce qui fait tourner le zoom autour de l'objet visé.
+        const dx = camera.position.x - controls.target.x;
+        const dy = camera.position.y - controls.target.y;
+        const dz = camera.position.z - controls.target.z;
+        const length = Math.hypot(dx, dy, dz) || 1;
+        camera.position.set(
+          controls.target.x + (dx / length) * eased,
+          controls.target.y + (dy / length) * eased,
+          controls.target.z + (dz / length) * eased,
+        );
+      }
     }
+
+    // Rotation amortie (chantier 40). `OrbitControls` ne tourne plus : il appelle
+    // `lookAt(target)` à chaque image, donc sa cible est toujours au centre de l'écran et il
+    // ne sait pas pivoter autour d'un point décentré. La nôtre fait tourner la PAIRE
+    // caméra/cible rigidement, ce qui laisse le pivot exactement où il est à l'écran.
+    const turn = spin.current;
+    if (
+      Math.abs(turn.yaw) > ROTATE_REST ||
+      Math.abs(turn.pitch) > ROTATE_REST
+    ) {
+      const k = smoothFactor(ROTATE_HALF_LIFE, delta);
+      apply(orbitAround(poseOf(), pivotOf(), turn.yaw * k, turn.pitch * k));
+      turn.yaw -= turn.yaw * k;
+      turn.pitch -= turn.pitch * k;
+    } else {
+      turn.yaw = 0;
+      turn.pitch = 0;
+    }
+
     applied.current = camera.position.distanceTo(controls.target);
 
     const distance = applied.current;
@@ -316,51 +433,35 @@ export function TierCamera({
       camera.updateProjectionMatrix();
     }
 
-    const progress =
-      childFrame > 0 ? tierProgress(distance, parentFrame, childFrame) : 0;
-
-    // Recentrage progressif sur ce dans quoi on descend (chantier 35.4).
+    // Recentrage continu sur ce qu'on vise (chantier 38).
     //
-    // C'est ce qui **réalise la visée** depuis le chantier 36.1 : la cible n'est plus
-    // déplaçable à la souris, et sans ce glissement on franchirait la frontière avec le
-    // contenu du palier atteint hors du cadre — la carte se viderait, le fondu ayant fait
-    // disparaître le palier quitté sans que rien ne le remplace. La caméra ET sa cible se
-    // décalent d'autant, ce qui préserve la distance et l'angle de vue.
+    // Il ne cherche plus un candidat : il suit la sélection, et **elle seule** — c'est tout
+    // ce qui reste de recentrage depuis le chantier 40, où l'élection automatique a été
+    // jugée non fiable. Sans sélection, la caméra ne se recentre sur rien.
     //
-    // Uniquement en descente : se recoller à l'enfant qu'on est en train de quitter
-    // annulerait une partie du recul, et remonter demanderait deux fois plus de crans.
-    const rising = progress > advance.current + 1e-4;
-    advance.current = progress;
-    if (childFocus && progress > 0 && rising) {
-      const pull = Math.min(RECENTER, RECENTER * progress);
-      const dx = (childFocus.center[0] - controls.target.x) * pull;
-      const dy = (childFocus.center[1] - controls.target.y) * pull;
-      const dz = (childFocus.center[2] - controls.target.z) * pull;
-      controls.target.x += dx;
-      controls.target.y += dy;
-      controls.target.z += dz;
-      camera.position.x += dx;
-      camera.position.y += dy;
-      camera.position.z += dz;
-    }
-
-    const blend = tierBlend(progress);
-
-    // L'ancre se réélit tant que l'enfant n'est pas monté, puis se fige : changer de cible
-    // en plein fondu échangerait une galaxie contre une autre sous les yeux du joueur.
-    if (!blend.childMounted && candidates.length > 0) {
-      const reach = Math.max(candidateFootprint * 6, distance * 0.3);
+    // La caméra ET sa cible se décalent d'autant, ce qui préserve la distance et l'angle.
+    const aimed = aimAt?.();
+    if (aimed && !gesture.current) {
       const t = controls.target;
-      const elected = electAnchor([t.x, t.y, t.z], candidates, reach);
-      // Élection COLLANTE : on remplace une ancre par une autre, jamais par rien. Un
-      // panoramique qui éloigne un instant la cible de tout candidat effaçait sinon la
-      // cible du joueur, et la carte se remettait à publier une ancre différente à chaque
-      // image — pour rien, puisque descendre exige justement une ancre.
-      if (elected && elected.id !== anchored.current) {
-        anchored.current = elected.id;
-        onAnchor(elected.id);
+      const step = recenterStep(
+        [t.x, t.y, t.z],
+        aimed,
+        delta,
+        distance * AIM_REST,
+      );
+      if (step) {
+        controls.target.x += step[0];
+        controls.target.y += step[1];
+        controls.target.z += step[2];
+        camera.position.x += step[0];
+        camera.position.y += step[1];
+        camera.position.z += step[2];
       }
     }
+
+    const progress =
+      childFrame > 0 ? tierProgress(distance, parentFrame, childFrame) : 0;
+    const blend = tierBlend(progress);
 
     if (blend.childMounted !== mounted.current) {
       mounted.current = blend.childMounted;
@@ -370,7 +471,7 @@ export function TierCamera({
     // La remontée se teste sur la distance et non sur la progression : au dernier palier
     // il n'y a pas d'enfant, donc pas de bande, donc pas de progression — et sans cela on
     // pourrait descendre dans un système sans jamais pouvoir en ressortir.
-    const descending = childFrame > 0 && progress >= 1 && anchored.current;
+    const descending = childFrame > 0 && progress >= 1 && aimId !== null;
     const ascending = distance > parentFrame * 1.02;
     // Le verrou se relâche de lui-même dès que la vue est revenue franchement dans la
     // bande. Le lier au palier ne suffirait pas : au sommet de l'échelle la remontée est
@@ -395,21 +496,60 @@ export function TierCamera({
     // Profondeur continue, partagée par référence avec l'éclairage et les fondus.
     depthRef.current = tierIndex(tier) + Math.min(1, Math.max(0, progress));
 
-    // Palier et profondeur publiés dans le DOM, depuis la MÊME horloge. Une caméra 3D n'y
-    // laisse rien, et c'est le seul point sur lequel un test de bout en bout peut affirmer
-    // que la traversée a eu lieu. Le palier venait d'un effet React : il pouvait rester en
-    // retard d'un commit sur la profondeur, et une cascade de franchissements — un saut
-    // qui vise un système depuis l'univers — publiait alors un palier intermédiaire que
+    // Palier, profondeur et visée publiés dans le DOM, depuis la MÊME horloge. Une caméra 3D
+    // n'y laisse rien, et c'est le seul point sur lequel un test de bout en bout peut
+    // affirmer que la traversée a eu lieu. Le palier venait d'un effet React : il pouvait
+    // rester en retard d'un commit sur la profondeur, et une cascade de franchissements — un
+    // saut qui vise un système depuis l'univers — publiait alors un palier intermédiaire que
     // rien ne corrigeait ensuite, faute de nouveau changement à signaler.
+    //
+    // `data-map-aim` est le seul témoin du chantier 38 : le ballotage qu'il corrige était un
+    // changement de cible par image, et une cible ne laisse aucune trace dans le DOM.
     if (tier !== tierAttr.current) {
       tierAttr.current = tier;
       host.current?.setAttribute("data-map-tier", tier);
     }
+    if (aimId !== aimAttr.current) {
+      aimAttr.current = aimId;
+      if (aimId) host.current?.setAttribute("data-map-aim", aimId);
+      else host.current?.removeAttribute("data-map-aim");
+    }
+    // Élévation de la caméra au-dessus du plan galactique, en degrés. Seul témoin possible du
+    // « yaw et non roll » du chantier 40 : un glisser HORIZONTAL doit la laisser intacte, un
+    // glisser VERTICAL la changer. Un roulis n'a, lui, aucune trace observable.
+    const rise = Math.round(
+      (Math.asin(
+        Math.min(
+          1,
+          Math.max(
+            -1,
+            (camera.position.z - controls.target.z) / (distance || 1),
+          ),
+        ),
+      ) *
+        180) /
+        Math.PI,
+    );
+    const elevation = String(rise);
+    if (elevation !== elevationAttr.current) {
+      elevationAttr.current = elevation;
+      host.current?.setAttribute("data-map-elevation", elevation);
+    }
+
     const depth = depthRef.current.toFixed(2);
     if (depth !== depthAttr.current) {
       depthAttr.current = depth;
       host.current?.setAttribute("data-map-depth", depth);
     }
+
+    // EN DERNIER, et c'est la seule place possible : drei met à jour `OrbitControls` en
+    // priorité -1, donc AVANT cette boucle. Son `lookAt(target)` est fait sur la pose de
+    // l'image précédente, et tout ce qu'on écrit ensuite — dolly, rotation, recentrage, suivi
+    // d'orbite — déplace la caméra et sa cible sans réorienter la première. L'image était donc
+    // rendue avec une orientation en retard d'une image sur la position : invisible à l'arrêt,
+    // mais en rotation continue le retard varie avec le temps d'image et se voit comme des
+    // à-coups — et la cible ne tombait jamais tout à fait au centre.
+    camera.lookAt(controls.target.x, controls.target.y, controls.target.z);
   });
 
   return null;

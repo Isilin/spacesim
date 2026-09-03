@@ -67,8 +67,30 @@ test("la carte 3D rend et tient un budget d'images à chaque niveau", async ({
   // re-render par image), pas une variation de machine.
   expect(universeFps).toBeGreaterThan(20);
 
-  // Niveau système : le plus chargé des trois — orbites, corps repositionnés à chaque
-  // image, sites du scan.
+  // Niveau galaxie : le plus peuplé depuis le chantier 37 — quatre à cinq cents systèmes
+  // et un millier d'arêtes, là où il y en avait quatorze et trente-cinq. Il n'était pas
+  // mesuré, et c'est exactement le palier que le chantier a chargé.
+  // La galaxie COLONISÉE : depuis le chantier 37.10, une galaxie hors de portée arrive en
+  // condensé, et c'est chez le joueur que le palier galaxie porte sa vraie charge.
+  await universeList
+    .getByRole("button")
+    .filter({ hasText: /colonis|coloniz/i })
+    .first()
+    .press("Enter");
+  await expect
+    .poll(
+      async () => page.locator(".map-canvas").getAttribute("data-map-tier"),
+      {
+        timeout: 15_000,
+      },
+    )
+    .toBe("galaxy");
+  await expectSizedCanvas(page, 200);
+  await page.waitForTimeout(700);
+  const galaxyFps = await framesPerSecond(page);
+  expect(galaxyFps).toBeGreaterThan(20);
+
+  // Niveau système : orbites, corps repositionnés à chaque image, sites du scan.
   await page.getByRole("button", { name: "Ma capitale" }).click();
   await expect(page).toHaveURL(/\/map\?.*at=/);
   await expectSizedCanvas(page, 200);
@@ -77,7 +99,7 @@ test("la carte 3D rend et tient un budget d'images à chaque niveau", async ({
   expect(systemFps).toBeGreaterThan(20);
 
   console.log(
-    `[31.17] images/s — univers ${universeFps}, système ${systemFps}`,
+    `[31.17] images/s — univers ${universeFps}, galaxie ${galaxyFps}, système ${systemFps}`,
   );
 });
 
@@ -145,13 +167,48 @@ test("la caméra reste au joueur une fois qu'il l'a touchée", async ({
   // ramenait la caméra à sa pose initiale.
   await page.waitForTimeout(6000);
   expect(await host.getAttribute("data-map-fits")).toBe(before);
+});
 
-  // Les raccourcis clavier (chantier 31.16) écoutent sur cette même section : c'est le
-  // seul chemin de navigation d'un utilisateur au clavier. Le compteur prouve que
-  // l'écouteur est bien posé sur l'élément focusé — il ne l'était pas, et rien ne le
-  // disait. Ce qu'il ne prouve pas : que la caméra bouge du bon nombre d'unités.
-  await host.focus();
-  await page.keyboard.press("ArrowRight");
-  await page.keyboard.press("ArrowUp");
-  await expect(host).toHaveAttribute("data-map-keys", "2");
+test("le cœur d'une galaxie est un objet nommé de la carte", async ({
+  page,
+}) => {
+  // Chantier 39. Une scène 3D ne laisse rien dans le DOM : la liste parallèle et l'infobox
+  // sont les deux seuls endroits depuis lesquels un test peut affirmer que le trou noir
+  // central existe pour le joueur, et pas seulement pour le rendu.
+  await registerFreshEmpire(page, {
+    prefix: "map3dcore",
+    empireName: "Astronomes E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
+
+  const universeList = page.getByRole("navigation", {
+    name: /univers|universe/i,
+  });
+  await universeList
+    .getByRole("button")
+    .filter({ hasText: /colonis|coloniz/i })
+    .first()
+    .press("Enter");
+  await expect
+    .poll(
+      async () => page.locator(".map-canvas").getAttribute("data-map-tier"),
+      { timeout: 15_000 },
+    )
+    .toBe("galaxy");
+
+  // En tête de liste : c'est le seul objet du palier qui ne soit pas un système, et il ne
+  // doit pas se perdre derrière quatre cents noms.
+  const core = page.getByRole("button", {
+    name: /A\* Trou noir supermassif/,
+  });
+  await expect(core).toBeVisible();
+
+  // Sélectionner pose l'infobox sur lui — la preuve qu'il est passé par `features`, donc
+  // par le même chemin qu'un comptoir ou une ceinture.
+  await core.click();
+  await expect(
+    page.getByRole("dialog", { name: /Détail de .+ A\*/ }),
+  ).toBeVisible();
 });

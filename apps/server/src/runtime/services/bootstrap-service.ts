@@ -1,4 +1,5 @@
 import {
+  STARTER_CLUSTER_RADIUS,
   computeEffects,
   emptyOrbital,
   emptyResources,
@@ -51,6 +52,31 @@ const NPC_EMPIRE_NAMES = [
   "Ligue Cindra",
   "Hégémonie Aurel",
 ];
+
+/**
+ * Bâtiments dont naît une colonie mère. Extrait en constante parce que leur NOMBRE décide
+ * du monde qu'on peut offrir à un joueur : voir `HOME_MIN_FREE_SLOTS`.
+ */
+const HOME_BUILDINGS = {
+  mine: 1,
+  power_plant: 1,
+  farm: 1,
+  habitat: 1,
+  shipyard: 1,
+  orbital_dock: 1,
+} as const;
+
+/**
+ * Emplacements qu'il doit RESTER sur le monde d'origine, une fois les bâtiments de départ
+ * posés (chantier 37.15).
+ *
+ * Une planète rocheuse en offre de 6 à 14, et la colonie mère en occupe six d'emblée : sur
+ * un monde à six, le joueur arrivait dans un berceau **plein**, tous ses boutons
+ * « Construire » désactivés d'entrée. Le tri par habitabilité seul ne le voyait pas — et à
+ * cinq cents systèmes par galaxie, il y a bien assez de candidats pour ne plus jamais
+ * tomber dessus.
+ */
+const HOME_MIN_FREE_SLOTS = 3;
 
 /**
  * Bootstrap des empires (compte joueur, PNJ, colonie mère) et outils de dev qui en
@@ -170,14 +196,7 @@ export class BootstrapService {
       // convoi doit rester possible sans attendre l'ascenseur (chantier 12).
       orbitalResources: { ...emptyOrbital(), ore: 150, food: 50 },
       liftRules: { ore: { keepGround: 250, direction: "up" } },
-      buildings: {
-        mine: 1,
-        power_plant: 1,
-        farm: 1,
-        habitat: 1,
-        shipyard: 1,
-        orbital_dock: 1,
-      },
+      buildings: { ...HOME_BUILDINGS },
       queue: [],
       population: 12,
       satisfaction: 80,
@@ -212,7 +231,14 @@ export class BootstrapService {
    * centre ayant encore de la place, en préférant celles déjà peuplées : les joueurs
    * se retrouvent voisins, avec commerce, frontières et PvP dès les premières heures.
    * Dans cette galaxie, on prend la planète la plus habitable d'un système vierge
-   * (brouillards disjoints). L'univers s'étend si plus aucune galaxie n'a de place.
+   * (brouillards disjoints), PRÈS DES EMPIRES DÉJÀ INSTALLÉS. L'univers s'étend si plus
+   * aucune galaxie n'a de place.
+   *
+   * Le voisinage est explicite depuis le chantier 37. Il était acquis par accident tant
+   * qu'une galaxie comptait quatorze systèmes : trier toutes ses planètes par habitabilité
+   * y désignait forcément un voisin. À cinq cents systèmes étalés sur quatre mille unités,
+   * le même tri posait les empires à cinquante sauts les uns des autres — la promesse de
+   * ce commentaire cessait d'être tenue sans que rien ne le signale.
    */
   private pickHomePlanet(): Planet | null {
     const starter = pickStarterGalaxy(this.galaxyOccupancy());
@@ -233,15 +259,43 @@ export class BootstrapService {
         if (sys) occupiedSystems.add(sys);
       }
     }
-    const candidates = this.runtime.universe.galaxies[starter]!.systems.flatMap(
-      (s) => s.planets,
-    )
-      .filter((p) => p.type !== "gas" && !occupiedPlanets.has(p.id))
+    const galaxy = this.runtime.universe.galaxies[starter]!;
+    const systemById = new Map(galaxy.systems.map((s) => [s.id, s]));
+    const buildable =
+      Object.values(HOME_BUILDINGS).reduce((n, k) => n + k, 0) +
+      HOME_MIN_FREE_SLOTS;
+    const candidates = galaxy.systems
+      .flatMap((s) => s.planets)
+      .filter(
+        (p) =>
+          p.type !== "gas" &&
+          !occupiedPlanets.has(p.id) &&
+          p.slots >= buildable,
+      )
       .sort((a, b) => b.habitability - a.habitability);
-    const freeSystem = candidates.filter(
+
+    // Ancre du voisinage : les colonies déjà posées dans cette galaxie. La première d'une
+    // galaxie vierge n'en a pas et se pose au mieux — c'est elle qui définit l'amas.
+    const settled = galaxy.systems.filter((s) => occupiedSystems.has(s.id));
+    const nearAnchor = (p: Planet): boolean => {
+      const at = systemById.get(p.systemId);
+      if (!at) return false;
+      return settled.some(
+        (s) =>
+          Math.hypot(s.x - at.x, s.y - at.y, s.z - at.z) <=
+          STARTER_CLUSTER_RADIUS,
+      );
+    };
+
+    const pool =
+      settled.length === 0 ? candidates : candidates.filter(nearAnchor);
+    // Aucun monde libre à portée : plutôt loin que nulle part — l'amas s'étire, mais un
+    // joueur entre toujours dans la partie.
+    const reachable = pool.length > 0 ? pool : candidates;
+    const freeSystem = reachable.filter(
       (p) => !occupiedSystems.has(p.systemId),
     );
-    return freeSystem[0] ?? candidates[0] ?? null;
+    return freeSystem[0] ?? reachable[0] ?? candidates[0] ?? null;
   }
 
   /**

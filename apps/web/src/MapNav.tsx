@@ -1,4 +1,4 @@
-import type { Colony, Universe } from "@spacesim/shared";
+import type { Colony, ClientUniverse } from "@spacesim/shared";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +14,7 @@ import { Button } from "@spacesim/ui";
 export type NavTarget = { kind: "universe" } | { kind: "at"; id: string };
 
 interface Props {
-  universe: Universe;
+  universe: ClientUniverse;
   colonies: Colony[];
   exploredSystemIds: string[];
   /** Systèmes où le joueur a une flotte (raccourci « mes flottes »). */

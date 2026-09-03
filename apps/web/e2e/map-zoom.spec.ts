@@ -113,6 +113,15 @@ test("la profondeur de zoom varie en continu à l'intérieur d'un palier", async
   const host = page.locator(".map-canvas");
   expect(await settledTier(page)).toBe("universe");
 
+  // Descendre exige de viser (chantier 40) : sans sélection, le zoom roule dans le palier
+  // courant et se borne à sa frontière. C'est la contrepartie assumée de la suppression de
+  // l'élection automatique, qui désignait pour le joueur et se trompait.
+  await page
+    .getByRole("navigation", { name: /univers|universe/i })
+    .getByRole("button")
+    .first()
+    .click();
+
   const box = (await host.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 
@@ -223,6 +232,15 @@ test("la traversée coûte une poignée de crans, pas une centaine", async ({
   // La DESCENTE est le geste coûteux : elle part du cadrage large et doit parcourir toute
   // la bande. Remonter, au contraire, ne demande qu'à dépasser le cadrage du palier — un
   // cran y suffit depuis une vue déjà pleine, et le mesurer ne dirait rien.
+  // Descendre exige de viser (chantier 40) : sans sélection, le zoom roule dans le palier
+  // courant et se borne à sa frontière. C'est la contrepartie assumée de la suppression de
+  // l'élection automatique, qui désignait pour le joueur et se trompait.
+  await page
+    .getByRole("navigation", { name: /univers|universe/i })
+    .getByRole("button")
+    .first()
+    .click();
+
   const box = (await host.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   let notches = 0;
@@ -247,10 +265,12 @@ test("cliquer le nom d'un objet le sélectionne", async ({ page }) => {
   //
   // D'où le balayage. Au palier corps la caméra SUIT le corps ancré, qui se trouve donc au
   // centre exact du canvas, et son étiquette droit au-dessus. En remontant depuis le
-  // centre on traverse trois zones : le corps lui-même, qui ouvre son infobox ; le vide,
-  // qui la referme ; puis l'étiquette, qui la rouvre. C'est ce troisième palier que ce
-  // test cherche — le vide traversé entre les deux est ce qui prouve qu'on a cliqué
-  // l'étiquette et non le corps.
+  // centre on quitte le corps, puis son nom REVIENT : cela ne peut être que l'étiquette,
+  // puisque la géométrie du corps est restée derrière.
+  //
+  // « Quitter le corps » ne veut plus dire « plus rien » depuis le chantier 40 : le clic
+  // attrape le plus proche dans un rayon de dix-huit pixels, si bien qu'entre le corps et
+  // son étiquette on peut tomber sur une lune. Ce qu'on suit, c'est donc le NOM affiché.
   test.setTimeout(120_000);
   await registerFreshEmpire(page, {
     prefix: "maplabelclick",
@@ -291,7 +311,9 @@ test("cliquer le nom d'un objet le sélectionne", async ({ page }) => {
   for (let dy = 0; dy <= 360 && !hitTheLabel; dy += 8) {
     await page.mouse.click(cx, cy - dy);
     await page.waitForTimeout(300);
-    if ((await infobox.count()) === 0) {
+    const shows =
+      (await infobox.count()) > 0 && (await infobox.innerText()).includes(name);
+    if (!shows) {
       leftTheBody = true;
       continue;
     }
@@ -410,11 +432,14 @@ test("sélectionner ouvre une infobox sur la carte, cliquer à côté la referme
   await expect(infobox).toBeVisible();
   await expect(infobox).toContainText(name);
 
-  // Elle ne prend pas le focus : sinon la section perdrait le clavier et le joueur ne
-  // pourrait plus piloter sa caméra après avoir cliqué sur un objet.
-  await host.focus();
-  await page.keyboard.press("ArrowRight");
-  await expect(host).toHaveAttribute("data-map-keys", /[1-9]/);
+  // Elle ne prend pas le focus. La caméra ne se pilote plus au clavier (chantier 38),
+  // mais la liste DOM reste le seul chemin clavier vers les objets : lui arracher le focus
+  // renverrait le joueur à l'endroit d'où il vient de partir, à chaque sélection.
+  expect(
+    await page.evaluate(
+      () => !!document.activeElement?.closest('[role="dialog"]'),
+    ),
+  ).toBe(false);
 
   // Cliquer à côté referme. Le coin du canvas ne porte aucun objet interactif : R3F ne
   // teste que ceux qui ont un gestionnaire, la grille de repère n'en est pas.
@@ -466,9 +491,15 @@ test("le double-clic vole seul, la fiche s'ouvre depuis l'infobox", async ({
   page,
 }) => {
   // Le double-clic ouvrait AUSSI la fiche (chantier 35.6), et la modale étant bloquante,
-  // il fallait appuyer sur Échap entre deux descentes. Il vole désormais, et rien de plus
-  // (chantier 36.5) : les descentes s'enchaînent. La fiche — qui n'existait pas pour une
-  // galaxie avant le 35.6 — s'obtient par le bouton de l'infobox.
+  // il fallait appuyer sur Échap entre deux descentes. Il vole désormais sans l'ouvrir
+  // (chantier 36.5) : les descentes s'enchaînent. La fiche s'obtient par le bouton de
+  // l'infobox.
+  //
+  // Il SÉLECTIONNE en revanche, depuis le chantier 38, et c'est le sens du geste : le premier
+  // clic désigne, le second y vole. Ce test affirmait l'inverse — aucun dialogue après un
+  // double-clic — parce que tout clic simple attendait alors un quart de seconde, de peur
+  // d'ouvrir une infobox que le vol allait remplacer. Elle décrit désormais la cible du vol
+  // et le suit : il n'y a plus de contradiction à arbitrer, donc plus de délai à payer.
   await registerFreshEmpire(page, {
     prefix: "mapsheet",
     empireName: "Liseurs E2E",
@@ -480,7 +511,14 @@ test("le double-clic vole seul, la fiche s'ouvre depuis l'infobox", async ({
   expect(await settledTier(page)).toBe("universe");
 
   const list = page.getByRole("navigation", { name: /univers|universe/i });
-  const row = list.getByRole("button").first();
+  // La galaxie COLONISÉE, et non la première venue. Depuis le chantier 37.10, une galaxie
+  // hors de portée arrive en condensé — sans ses systèmes, il n'y a rien à ouvrir dessous,
+  // et le double-clic se contente de la sélectionner. Le vol se vérifie donc là où il
+  // existe : chez le joueur.
+  const row = list
+    .getByRole("button")
+    .filter({ hasText: /colonis|coloniz/i })
+    .first();
   const name = (await row.locator("span").first().innerText()).trim();
   await row.dblclick();
 
@@ -489,12 +527,16 @@ test("le double-clic vole seul, la fiche s'ouvre depuis l'infobox", async ({
     .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
     .toBe("galaxy");
 
-  // …et rien ne s'est ouvert au passage. Ni la fiche, ni l'infobox que le premier clic du
-  // double-clic déclenchait : c'est le délai de discrimination qui l'en empêche.
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  // …et l'infobox décrit la cible du vol, pas l'objet qu'on vient de quitter. Elle est
+  // portée hors des couches et suivie par `MovingGroup` : le franchissement ne l'efface pas.
+  const flown = page.getByRole("dialog");
+  await expect(flown).toBeVisible();
+  await expect(flown).toContainText(name);
 
-  // Un clic simple, lui, ouvre bien l'infobox — après son délai.
-  await page.getByRole("navigation", { name: /galaxie|galaxy/i });
+  // La FICHE, elle, ne s'est pas ouverte : une seule boîte, et c'est l'infobox.
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+
+  // Un clic simple sélectionne aussi, et sans attendre.
   const galaxyList = page.getByRole("navigation", { name: /galaxie|galaxy/i });
   await galaxyList.getByRole("button").first().click();
   const infobox = page.getByRole("dialog");
@@ -563,6 +605,15 @@ test("le budget d'images tient au milieu d'une transition", async ({
   const host = page.locator(".map-canvas");
   expect(await settledTier(page)).toBe("universe");
 
+  // Descendre exige de viser (chantier 40) : sans sélection, le zoom roule dans le palier
+  // courant et se borne à sa frontière. C'est la contrepartie assumée de la suppression de
+  // l'élection automatique, qui désignait pour le joueur et se trompait.
+  await page
+    .getByRole("navigation", { name: /univers|universe/i })
+    .getByRole("button")
+    .first()
+    .click();
+
   const box = (await host.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   for (let i = 0; i < 90; i++) {
@@ -571,6 +622,12 @@ test("le budget d'images tient au milieu d'une transition", async ({
     await page.mouse.wheel(0, -240);
     await page.waitForTimeout(30);
   }
+
+  // Laisser la couche enfant finir de se monter avant de compter, comme le fait déjà le
+  // relevé du chantier 31.17 : franchir `CHILD_MOUNT_AT` construit des géométries et des
+  // textures, et les inclure dans la mesure reviendrait à mesurer le montage plutôt que la
+  // transition. Le dolly a convergé vers sa cible, la profondeur ne bouge plus.
+  await page.waitForTimeout(700);
 
   const depth = Number(await host.getAttribute("data-map-depth"));
   expect(depth).toBeGreaterThan(0.4);
@@ -640,4 +697,274 @@ test("la carte montre tout ce que le système contient, pas seulement ses corps"
   const infobox = page.getByRole("dialog");
   await expect(infobox).toBeVisible();
   await expect(infobox).toContainText(name);
+});
+
+test("la visée ne change pas en zoomant", async ({ page }) => {
+  // LE test du chantier 38. La caméra élisait sa cible à chaque image — le candidat le plus
+  // proche du centre du cadre — puis tirait le cadre vers cette cible. La traction déplaçait
+  // le point depuis lequel l'élection mesurait, l'élection changeait de candidat, la traction
+  // s'inversait : la vue partait de droite à gauche avant de se poser. Le joueur l'a décrit
+  // comme un ballotage.
+  //
+  // Rien d'autre ne peut l'observer. Une cible de caméra ne laisse aucune trace dans le DOM,
+  // et l'image d'arrivée est la même dans les deux cas — seul le chemin diffère. D'où
+  // `data-map-aim`, quatrième compteur posé sur la section hôte.
+  await registerFreshEmpire(page, {
+    prefix: "mapvisee",
+    empireName: "Viseurs E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+
+  // Sélectionner, c'est viser : c'est tout l'invariant du chantier.
+  const list = page.getByRole("navigation", { name: /univers|universe/i });
+  await list.getByRole("button").first().click();
+  await expect
+    .poll(() => host.getAttribute("data-map-aim"), { timeout: 15_000 })
+    .not.toBeNull();
+  const aimed = await host.getAttribute("data-map-aim");
+  const from = Number(await host.getAttribute("data-map-depth"));
+
+  const box = (await host.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const seen = new Set<string>();
+  let samples = 0;
+  for (let i = 0; i < 10; i++) {
+    await page.mouse.wheel(0, -160);
+    await page.waitForTimeout(80);
+    // On s'arrête au franchissement : descendre CONSOMME la visée, et le palier atteint
+    // repart sans en avoir — c'est voulu, ce n'est pas ce qu'on mesure ici.
+    if ((await host.getAttribute("data-map-tier")) !== "universe") break;
+    seen.add((await host.getAttribute("data-map-aim")) ?? "");
+    samples++;
+  }
+
+  // Le test ne doit pas passer à vide : il faut avoir réellement zoomé dans le palier.
+  expect(samples).toBeGreaterThanOrEqual(3);
+  expect(Number(await host.getAttribute("data-map-depth"))).toBeGreaterThan(
+    from,
+  );
+  // Une seule visée relevée sur toute la descente, et c'est celle qu'on avait choisie.
+  expect([...seen]).toEqual([aimed]);
+});
+
+test("glisser déplace la vue, le ressort la ramène sur ce qu'on vise", async ({
+  page,
+}) => {
+  // Le panoramique revient au chantier 38, sur le bouton droit. L'ADR 0017 l'avait retiré
+  // parce qu'on perdait de vue l'objet sur lequel on zoomait — mais le défaut n'était pas le
+  // panoramique, c'était qu'aucune cible n'était tenue.
+  //
+  // Ce qui ramène la vue n'est plus une élection au relâchement (chantier 40 : la carte ne
+  // désigne plus rien à la place du joueur) mais le ressort, qui suit la SÉLECTION et elle
+  // seule. Sans rien de sélectionné, un panoramique reste où on l'a laissé.
+  //
+  // L'infobox est ancrée sur la visée : c'est le seul point de la carte dont la position
+  // à l'écran soit lisible depuis le DOM.
+  await registerFreshEmpire(page, {
+    prefix: "mappano",
+    empireName: "Glisseurs E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+
+  const list = page.getByRole("navigation", { name: /univers|universe/i });
+  await list.getByRole("button").first().click();
+  const infobox = page.getByRole("dialog");
+  await expect(infobox).toBeVisible();
+
+  const box = (await host.boundingBox())!;
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  const offCentre = async () => {
+    const at = (await infobox.boundingBox())!;
+    return Math.hypot(at.x + at.width / 2 - cx, at.y + at.height / 2 - cy);
+  };
+
+  // Le ressort a déjà amené la visée au centre.
+  await expect.poll(offCentre, { timeout: 15_000 }).toBeLessThan(box.width / 4);
+
+  await page.mouse.move(cx, cy);
+  await page.mouse.down({ button: "right" });
+  for (let i = 1; i <= 10; i++) await page.mouse.move(cx + i * 20, cy + i * 10);
+
+  // Mesuré AVANT le relâchement. Le ressort est suspendu tant que le geste dure : c'est donc
+  // le déplacement du panoramique qu'on lit, et pas ce qu'il en reste après un aller-retour
+  // de Playwright. Sans `enablePan`, rien n'aurait bougé du tout.
+  const dragged = await offCentre();
+  expect(dragged).toBeGreaterThan(box.width / 6);
+
+  await page.mouse.up({ button: "right" });
+
+  // Puis le ressort ramène la vue sur ce qu'elle vise.
+  await expect.poll(offCentre, { timeout: 10_000 }).toBeLessThan(dragged / 2);
+});
+
+test("la rotation tourne autour de la verticale, elle ne roule pas", async ({
+  page,
+}) => {
+  // Le monde de la carte est Z-HAUT — le plan galactique est XY — alors que three.js prend Y
+  // par défaut. Un glisser horizontal faisait donc passer la caméra SOUS le disque au lieu
+  // d'en faire le tour, et l'image roulait. Le joueur l'a décrit comme « Roll & Pitch au lieu
+  // de Yaw & Pitch ».
+  //
+  // Un roulis ne laisse aucune trace dans le DOM. `data-map-elevation` — l'angle de la vue
+  // au-dessus du plan galactique — est le seul témoin possible : un lacet doit le laisser
+  // intact, un tangage le changer.
+  await registerFreshEmpire(page, {
+    prefix: "maplacet",
+    empireName: "Pivoteurs E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+  await expect
+    .poll(() => host.getAttribute("data-map-elevation"), { timeout: 15_000 })
+    .not.toBeNull();
+
+  const box = (await host.boundingBox())!;
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  const before = Number(await host.getAttribute("data-map-elevation"));
+
+  // Glisser HORIZONTAL : on fait le tour, à latitude constante.
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  for (let i = 1; i <= 12; i++) await page.mouse.move(cx + i * 18, cy);
+  await page.mouse.up();
+  await page.waitForTimeout(600);
+  const afterYaw = Number(await host.getAttribute("data-map-elevation"));
+  // Un degré de tolérance : l'attribut est arrondi à l'entier.
+  expect(Math.abs(afterYaw - before)).toBeLessThanOrEqual(1);
+
+  // Glisser VERTICAL : on monte au-dessus du plan.
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  for (let i = 1; i <= 12; i++) await page.mouse.move(cx, cy + i * 12);
+  await page.mouse.up();
+  await page.waitForTimeout(600);
+  const afterPitch = Number(await host.getAttribute("data-map-elevation"));
+  expect(Math.abs(afterPitch - afterYaw)).toBeGreaterThan(3);
+});
+
+test("cliquer à côté d'un objet le sélectionne quand même", async ({
+  page,
+}) => {
+  // En dézoomant, un objet ne fait plus que quelques pixels — et la moitié du contenu d'un
+  // système n'a de toute façon aucune géométrie cliquable : comptoir, avant-postes, flottes,
+  // ceintures ne portent aucun gestionnaire. Le clic attrape donc le plus proche dans un rayon
+  // de tolérance, sans avoir à toucher quoi que ce soit.
+  //
+  // Le pendant — au-delà du rayon, on désélectionne — est déjà couvert par « sélectionner ouvre
+  // une infobox », qui clique le coin du canvas. Le prouver ici demanderait un point dont on
+  // sache qu'il est vide APRÈS que le ressort a recentré la vue, et il n'y en a pas : recentrer
+  // change le cadrage, et une tolérance de dix-huit pixels rétrécit ce qu'on peut appeler « le
+  // vide ». Le test passait seul et échouait dans la suite complète, où l'univers compte plus
+  // de galaxies.
+  //
+  // L'infobox est ancrée sur l'objet : c'est le seul point de la carte dont la position à
+  // l'écran soit lisible depuis le DOM, donc le seul moyen de savoir où cliquer « à côté ».
+  await registerFreshEmpire(page, {
+    prefix: "mapclic",
+    empireName: "Viseurs E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+
+  const list = page.getByRole("navigation", { name: /univers|universe/i });
+  const row = list.getByRole("button").first();
+  const name = (await row.locator("span").first().innerText()).trim();
+  await row.click();
+
+  const infobox = page.getByRole("dialog");
+  await expect(infobox).toBeVisible();
+  // Laisser le ressort poser la visée avant de relever sa position.
+  await page.waitForTimeout(900);
+  const at = (await infobox.boundingBox())!;
+  // La boîte est décalée de 16 px à droite de l'objet et centrée verticalement dessus.
+  const ax = at.x - 16;
+  const ay = at.y + at.height / 2;
+
+  // On referme d'abord, pour que la réouverture prouve quelque chose.
+  await page.keyboard.press("Escape");
+  await expect(infobox).toBeHidden();
+
+  // Puis on clique À CÔTÉ, sans toucher la géométrie : la tolérance rattrape.
+  await page.mouse.click(ax + 9, ay + 9);
+  const again = page.getByRole("dialog");
+  await expect(again).toBeVisible();
+  await expect(again).toContainText(name);
+});
+
+test("l'objet sélectionné reste au centre quand on tourne autour", async ({
+  page,
+}) => {
+  // Régression du chantier 40.7. drei met à jour `OrbitControls` en priorité -1, donc AVANT
+  // la boucle de `TierCamera` : son `lookAt(target)` était fait sur la pose de l'image
+  // précédente, et tout ce qu'on écrivait ensuite déplaçait la caméra sans la réorienter.
+  // L'image était rendue avec une orientation en retard d'une image sur la position.
+  //
+  // Invisible à l'arrêt, et c'est ce qui rend ce test nécessaire : en rotation continue, le
+  // retard varie avec le temps d'image, se voit comme des à-coups, et laisse l'objet visé à
+  // côté du centre. L'infobox est ancrée sur lui : c'est le seul point de la carte dont la
+  // position à l'écran soit lisible depuis le DOM.
+  await registerFreshEmpire(page, {
+    prefix: "mapcentre",
+    empireName: "Centreurs E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+
+  const list = page.getByRole("navigation", { name: /univers|universe/i });
+  await list.getByRole("button").first().click();
+  const infobox = page.getByRole("dialog");
+  await expect(infobox).toBeVisible();
+
+  const box = (await host.boundingBox())!;
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  // La boîte est décalée de 16 px à droite de l'objet et centrée verticalement dessus.
+  const offCentre = async () => {
+    const at = (await infobox.boundingBox())!;
+    return Math.hypot(at.x - 16 - cx, at.y + at.height / 2 - cy);
+  };
+
+  await expect.poll(offCentre, { timeout: 15_000 }).toBeLessThan(15);
+
+  // On écarte volontairement la visée du centre, au panoramique : c'est le seul geste qui le
+  // fasse, et il crée un écart assez grand pour survivre au temps que met Playwright à jouer
+  // le geste suivant.
+  await page.mouse.move(cx, cy);
+  await page.mouse.down({ button: "right" });
+  for (let i = 1; i <= 10; i++) await page.mouse.move(cx + i * 30, cy + i * 12);
+  await page.mouse.up({ button: "right" });
+  const before = await offCentre();
+  expect(before).toBeGreaterThan(15);
+
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  for (let i = 1; i <= 14; i++) {
+    await page.mouse.move(cx + i * 16, cy + i * 4);
+    await page.waitForTimeout(60);
+  }
+  // Mesuré AVANT le relâchement : après, le ressort repartirait de toute façon et le test
+  // ne dirait plus rien de ce qui se passe PENDANT la rotation.
+  const during = await offCentre();
+  await page.mouse.up();
+
+  expect(during).toBeLessThan(15);
 });

@@ -1,4 +1,4 @@
-import { allSystems, type Universe } from "@spacesim/shared";
+import { allSystems, type ClientUniverse } from "@spacesim/shared";
 
 /**
  * Durée lisible pour un compte à rebours : `12s`, `3m05s`, `1h04`. Les timers font foi
@@ -18,7 +18,7 @@ export function formatDuration(ms: number): string {
 
 /** Système contenant un corps donné (utilitaire d'affichage partagé). */
 export function systemIdOf(
-  universe: Universe,
+  universe: ClientUniverse,
   planetId: string,
 ): string | undefined {
   return allSystems(universe).find((s) =>

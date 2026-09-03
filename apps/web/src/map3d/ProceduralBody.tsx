@@ -70,12 +70,10 @@ export function ProceduralBody({
   id,
   type,
   radius,
-  selected,
 }: {
   id: string;
   type: string;
   radius: number;
-  selected: boolean;
 }) {
   const look = bodyAppearance(type);
   const segments = radius < 4 ? 12 : radius < 8 ? 20 : 32;
@@ -107,19 +105,6 @@ export function ProceduralBody({
           transparent
         />
       </mesh>
-      {/* Halo de sélection : un anneau autour du corps, jamais une teinte appliquée à
-          la surface — celle-ci porte déjà l'information du type. */}
-      {selected && (
-        <mesh>
-          <sphereGeometry args={[radius * 1.35, segments, segments]} />
-          <meshBasicMaterial
-            color="#4fc1ff"
-            wireframe
-            transparent
-            opacity={0.5}
-          />
-        </mesh>
-      )}
     </>
   );
 }

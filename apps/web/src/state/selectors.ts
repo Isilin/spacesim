@@ -3,13 +3,16 @@ import type {
   Galaxy,
   Planet,
   StarSystem,
-  Universe,
+  ClientUniverse,
 } from "@spacesim/shared";
 import type { GameStoreState } from "./game-store.js";
 
 // ── Résolution des objets de carte par identifiant. ──
 
-export function findGalaxyById(universe: Universe, id: string): Galaxy | null {
+export function findGalaxyById(
+  universe: ClientUniverse,
+  id: string,
+): Galaxy | null {
   return universe.galaxies.find((g) => g.id === id) ?? null;
 }
 
@@ -38,7 +41,7 @@ export interface UniversePath {
  * seulement quand le serveur renvoie l'univers.
  */
 export function buildUniverseIndex(
-  universe: Universe,
+  universe: ClientUniverse,
 ): Map<string, UniversePath> {
   const index = new Map<string, UniversePath>();
   for (const galaxy of universe.galaxies) {

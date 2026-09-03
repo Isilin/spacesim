@@ -1751,6 +1751,23 @@
   background: var(--panel);
 }
 
+/* Filtre du panneau d'objets (chantier 37) : collant en tête, car la liste défile
+   maintenant sur des centaines d'entrées. */
+.map-list-filter {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+
 .map-list ul {
   list-style: none;
   margin: 0;
@@ -1815,11 +1832,6 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
-}
-
-.map-canvas:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
 }
 
 /* Aperçu 3D d'un objet manufacturé (chantiers 31.20-31.21). Hauteur explicite, même

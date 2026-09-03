@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   OBJECTIVE_DURATION_MS,
+  OBJECTIVE_KINDS,
   OBJECTIVE_REWARD_CREDITS,
 } from "@spacesim/shared";
 import { GameEngine } from "../../game.js";
@@ -15,7 +16,12 @@ describe("GameEngine — objectifs éphémères (chantier 17)", () => {
     advanceTicks(engine, 12);
     const objectives = engine.snapshotForEmpire(empire).objectives;
     expect(objectives.length).toBeGreaterThan(0);
-    expect(objectives[0]!.status).toBe("open");
+    // Ce que ce test prouve : qu'un objectif est TIRÉ. Son statut n'en fait pas partie —
+    // `lead_population` et `lead_influence` sont remplis d'emblée par le seul empire humain
+    // de la partie, qui devance forcément les PNJ. La seed étant tirée au hasard à chaque
+    // boot, exiger « open » faisait échouer ce test une fois sur trois selon le tirage.
+    expect(OBJECTIVE_KINDS).toContain(objectives[0]!.kind);
+    expect(objectives[0]!.deadline).toBeGreaterThan(objectives[0]!.createdAt);
   });
 
   it("un empire PNJ ne reçoit jamais d'objectif éphémère", async () => {

@@ -73,7 +73,11 @@ describe("MapList — chemin accessible de la carte 3D (chantier 31.16)", () => 
   it("se parcourt à la tabulation et sélectionne à l'activation", async () => {
     const user = userEvent.setup();
     const { onSelect } = setup();
-    // Première tabulation : le bouton de bascule. Puis les entrées, dans l'ordre.
+    // Bouton de bascule, puis champ de filtre (chantier 37), puis les entrées dans
+    // l'ordre. Le filtre est en tête à dessein : à quatre cents objets, viser un nom passe
+    // avant les parcourir un à un — et il reste sur le chemin de tabulation, donc
+    // atteignable sans souris.
+    await user.tab();
     await user.tab();
     await user.tab();
     await user.tab();
@@ -87,11 +91,23 @@ describe("MapList — chemin accessible de la carte 3D (chantier 31.16)", () => 
     const { onOpen, onSelect } = setup();
     await user.tab();
     await user.tab();
+    await user.tab();
     await user.keyboard("{Enter}");
     expect(onOpen).toHaveBeenCalledWith("a");
     // Et une seule fois : sans `preventDefault`, la touche déclencherait aussi le clic du
     // bouton, donc une sélection en plus du vol.
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("le filtre restreint la liste sans quitter le clavier", async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.type(screen.getByRole("searchbox"), "bet");
+    expect(
+      list()
+        .getAllByRole("button")
+        .map((b) => b.textContent),
+    ).toEqual(["Beta"]);
   });
 
   it("le double-clic ouvre aussi", async () => {

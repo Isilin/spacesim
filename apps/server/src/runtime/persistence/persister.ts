@@ -123,9 +123,15 @@ export class Persister {
 
   private tail: Promise<void> = Promise.resolve();
 
+  /**
+   * @param barrier Écritures à laisser finir AVANT d'ouvrir la transaction de flush.
+   * Sert aux galaxies neuves, écrites hors `WriteSet` (voir `GameRuntime.universeWrite`) :
+   * les lignes stagées ensuite les référencent par clé étrangère.
+   */
   constructor(
     private readonly writeSet: WriteSet,
     private readonly logger: Logger = consoleLogger,
+    private readonly barrier: () => Promise<void> = () => Promise.resolve(),
   ) {}
 
   flush(): Promise<void> {
@@ -135,6 +141,9 @@ export class Persister {
 
   private async runFlush(): Promise<void> {
     if (this.writeSet.isEmpty()) return;
+    // Une écriture d'univers en échec ne doit pas emporter le flush : elle a déjà été
+    // journalisée là où elle a été lancée, et la RAM fait autorité (ADR 0003).
+    await this.barrier().catch(() => undefined);
     const { upserts, deletes } = this.writeSet.drain();
     try {
       await withTransaction(async (tx) => {

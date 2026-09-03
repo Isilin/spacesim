@@ -63,6 +63,7 @@ export const commonFr = {
   mapList: {
     toggle_one: "{{count}} objet",
     toggle_other: "{{count}} objets",
+    filter: "Filtrer par nom",
   },
   mapInfobox: {
     ariaLabel: "Détail de {{name}}",
@@ -74,6 +75,9 @@ export const commonFr = {
     foreignStation: "Station de {{owner}}",
     belt: "Ceinture · {{list}}",
     beltMined: "Ceinture · avant-poste minier",
+    // Convention astronomique réelle (Sagittarius A*) : le cœur porte le nom de sa galaxie.
+    galacticCoreName: "{{galaxy}} A*",
+    galacticCore: "Trou noir supermassif",
     open: "Ouvrir la fiche",
   },
   app: {
@@ -468,13 +472,10 @@ export const commonFr = {
   modelPreview: {
     hint: "Aperçu 3D en rotation. Les détails chiffrés sont dans le panneau à côté.",
   },
-  mapCanvas: {
-    keyboardHint:
-      "Vue 3D : flèches pour se déplacer, plus et moins pour zoomer, zéro pour recadrer. La liste à côté donne accès aux mêmes objets.",
-  },
   universeMap: {
     ariaLabel: "Carte de l'univers",
     colonized: "colonisée",
+    outOfReach: "hors de portée",
     finalConstruction: "chantier final…",
     systemStats: "{{systems}} systèmes · {{explored}} explorés",
     coloniesSuffix: " · {{count}} colonies",
@@ -764,6 +765,7 @@ export const commonEn: typeof commonFr = {
   mapList: {
     toggle_one: "{{count}} object",
     toggle_other: "{{count}} objects",
+    filter: "Filter by name",
   },
   mapInfobox: {
     ariaLabel: "Detail of {{name}}",
@@ -775,6 +777,8 @@ export const commonEn: typeof commonFr = {
     foreignStation: "Station of {{owner}}",
     belt: "Belt · {{list}}",
     beltMined: "Belt · mining outpost",
+    galacticCoreName: "{{galaxy}} A*",
+    galacticCore: "Supermassive black hole",
     open: "Open sheet",
   },
   app: {
@@ -1187,13 +1191,10 @@ export const commonEn: typeof commonFr = {
   modelPreview: {
     hint: "Rotating 3D preview. Numeric details are in the panel alongside.",
   },
-  mapCanvas: {
-    keyboardHint:
-      "3D view: arrow keys to move, plus and minus to zoom, zero to recentre. The list alongside reaches the same objects.",
-  },
   universeMap: {
     ariaLabel: "Map of the universe",
     colonized: "colonized",
+    outOfReach: "out of reach",
     finalConstruction: "final construction…",
     systemStats: "{{systems}} systems · {{explored}} explored",
     coloniesSuffix: " · {{count}} colonies",

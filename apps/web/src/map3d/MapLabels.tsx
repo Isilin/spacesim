@@ -2,8 +2,14 @@ import { useFrame } from "@react-three/fiber";
 import { useRef, type RefObject } from "react";
 import { CanvasTexture, LinearFilter, type Sprite } from "three";
 import { layerOpacity } from "./FadingGroup.js";
+import { FOV } from "./MapCanvas.js";
 import { themeColor } from "./theme.js";
-import { labelOpacity, type TierName, type Vec3 } from "./tiers.js";
+import {
+  labelOpacity,
+  worldPerPixel,
+  type TierName,
+  type Vec3,
+} from "./tiers.js";
 
 /**
  * Étiquettes posées sur les objets de la carte (chantier 36.3).
@@ -47,19 +53,31 @@ export interface LabelItem {
   at: () => Vec3;
   /** Rayon de l'objet nommé, en unités de scène — décide du seuil d'apparition. */
   radius: number;
+  /**
+   * De combien poser le nom AU-DESSUS de l'objet, en unités de scène. Par défaut `radius`.
+   *
+   * Distinct de lui depuis le chantier 37.14 : le seuil d'apparition se règle sur une
+   * emprise de lecture, le dégagement sur ce qui est réellement DESSINÉ. Les deux ont
+   * divergé quand les corps ont été ramenés à leur juste taille — le nom, calé sur
+   * l'ancienne emprise, se posait alors hors du cadre du palier corps, qui suit le rayon
+   * rendu.
+   */
+  lift?: number;
 }
 
-/** Hauteur du texte à l'écran, en pixels. Constante : c'est tout l'intérêt du sprite. */
-const PIXEL_HEIGHT = 13;
-
-/** Champ de vision vertical de la carte, en radians — doit suivre `MapCanvas`. */
-const HALF_FOV = ((50 / 2) * Math.PI) / 180;
+/**
+ * Hauteur du texte à l'écran, en pixels. Constante : c'est tout l'intérêt du sprite.
+ *
+ * `TEXTURE_HEIGHT` suit, pour garder trois fois cette hauteur en pixels de texture : c'est
+ * ce suréchantillonnage qui tient le texte net sur le fond noir de la carte.
+ */
+const PIXEL_HEIGHT = 21;
 
 /**
  * Hauteur de la texture, en pixels de texture. Plus haute que l'affichage : un texte
  * crénelé se lit mal sur le fond noir de la carte.
  */
-const TEXTURE_HEIGHT = 48;
+const TEXTURE_HEIGHT = 64;
 
 /** Opacité en deçà de laquelle le sprite est retiré du rendu — et donc du raycast. */
 const INVISIBLE = 0.02;
@@ -153,17 +171,14 @@ export function MapLabels({
   const ratios = useRef<number[]>([]);
 
   useFrame(({ camera, size }) => {
-    // Axe « haut de l'écran », lu de la matrice caméra : `camera.up` reste (0,1,0) quoi que
-    // fasse `OrbitControls`, et décaler l'étiquette selon lui la ferait glisser de côté dès
-    // qu'on tourne la vue.
+    // Axe « haut de l'écran », lu de la matrice caméra plutôt que de `camera.up` : le
+    // second est la verticale du MONDE (Z depuis le chantier 40), le premier celle de
+    // l'IMAGE. Décaler l'étiquette selon la verticale du monde la ferait glisser de côté
+    // dès qu'on incline la vue.
     const cam = camera.matrixWorld.elements;
     const upX = cam[4]!;
     const upY = cam[5]!;
     const upZ = cam[6]!;
-
-    // Hauteur d'un pixel écran en unités de scène, à distance 1 : le reste est
-    // proportionnel à la distance.
-    const perPixel = (2 * Math.tan(HALF_FOV)) / Math.max(1, size.height);
 
     // Opacité de couche calculée UNE fois : tous les items appartiennent au palier
     // courant, et `tierBlend` alloue un objet à chaque appel. Vingt appels par image,
@@ -223,13 +238,13 @@ export function MapLabels({
       material.opacity = opacity;
 
       // Taille écran constante : la hauteur en unités de scène suit la distance.
-      const height = distance * perPixel * PIXEL_HEIGHT;
+      const height = worldPerPixel(distance, size.height, FOV) * PIXEL_HEIGHT;
       sprite.scale.set(height * (ratios.current[i] ?? 4), height, 1);
 
       // Posée au-dessus de l'objet, d'un rayon et demi plus la demi-hauteur du texte —
       // assez pour dégager un corps qui remplit déjà l'écran, sans décrocher l'étiquette
       // de ce qu'elle nomme.
-      const lift = item.radius * 1.5 + height / 2;
+      const lift = (item.lift ?? item.radius) * 1.5 + height / 2;
       sprite.position.set(x + upX * lift, y + upY * lift, z + upZ * lift);
     }
 
@@ -242,9 +257,12 @@ export function MapLabels({
   return (
     <>
       {items.map((item, index) => (
-        // biome-ignore lint/a11y/useKeyWithClickEvents: objet de scène three.js, ni
-        // focusable ni clavier — le chemin accessible est la liste DOM parallèle
-        // (chantier 31.16), qui porte les mêmes actions.
+        // Un sprite est un objet de scène three.js, ni focusable ni clavier : le chemin
+        // accessible est la liste DOM parallèle (chantier 31.16), qui porte les mêmes
+        // actions. La directive ci-dessous doit rester la DERNIÈRE ligne avant l'élément —
+        // biome n'attache une suppression qu'à la ligne qui la suit immédiatement, et deux
+        // lignes de commentaire s'étaient glissées entre les deux (chantier 40).
+        // biome-ignore lint/a11y/useKeyWithClickEvents: voir ci-dessus.
         <sprite
           key={item.id}
           ref={(node) => {

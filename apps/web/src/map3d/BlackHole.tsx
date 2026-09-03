@@ -23,6 +23,19 @@ import { seedOf } from "./appearance.js";
  * rien de visible.
  */
 
+/** Inclinaison du disque d'un trou noir stellaire : vu de face il ne dirait rien de sa rotation. */
+const STELLAR_TILT = 1.15;
+
+/**
+ * Le disque et le liseré ne captent pas le clic.
+ *
+ * Ils sont transparents et `depthWrite={false}` : on voit au travers, et ce qu'on voit doit
+ * rester cliquable. Sans cela le disque volerait le clic de tout ce qu'il recouvre — les
+ * orbites internes au palier système, la barre centrale d'une galaxie au palier galaxie.
+ * L'horizon, lui, est opaque : il est la silhouette de l'objet, et sa seule cible.
+ */
+const NO_RAYCAST = () => {};
+
 const DISC_VERTEX = /* glsl */ `
   varying vec2 vUv;
   varying vec3 vPos;
@@ -108,6 +121,8 @@ export function BlackHole({
   radius,
   discRadius,
   color,
+  light = true,
+  tilt = STELLAR_TILT,
 }: {
   id: string;
   /** Rayon de l'horizon. */
@@ -115,6 +130,18 @@ export function BlackHole({
   /** Rayon externe du disque d'accrétion. */
   discRadius: number;
   color: string;
+  /**
+   * Émet la lumière du disque. À couper là où rien n'est éclairé : au palier galaxie les
+   * nœuds de systèmes sont en `meshBasicMaterial`, insensibles à toute lumière, et cette
+   * source occuperait un emplacement pour rien.
+   */
+  light?: boolean;
+  /**
+   * Inclinaison du disque sur le plan du parent, en radians. Le cœur d'une galaxie passe 0 :
+   * son disque EST le plan galactique. Le gauchissement seedé du groupe (±0,25 rad) reste,
+   * et suffit à ce que deux cœurs ne se présentent pas sous le même angle.
+   */
+  tilt?: number;
 }) {
   const disc = useRef<ShaderMaterial>(null);
   const seed = seedOf(id);
@@ -150,7 +177,7 @@ export function BlackHole({
       </mesh>
 
       {/* Sphère de photons : un liseré, pas un halo. */}
-      <mesh>
+      <mesh raycast={NO_RAYCAST}>
         <sphereGeometry args={[radius * 1.18, 32, 32]} />
         <shaderMaterial
           vertexShader={RIM_VERTEX}
@@ -163,10 +190,11 @@ export function BlackHole({
         />
       </mesh>
 
-      {/* Disque d'accrétion, incliné : vu de face il ne dirait rien de sa rotation.
+      {/* Disque d'accrétion, incliné (cf. `tilt`) : vu de face il ne dirait rien de sa
+          rotation.
           Construit en rayon UNITAIRE puis mis à l'échelle — le shader raisonne en parts du
           disque, pas en unités de scène, et n'a donc pas à connaître la taille du système. */}
-      <mesh rotation={[1.15, 0, 0]} scale={discRadius}>
+      <mesh raycast={NO_RAYCAST} rotation={[tilt, 0, 0]} scale={discRadius}>
         <ringGeometry args={[(radius * 1.05) / discRadius, 1, 96, 8]} />
         <shaderMaterial
           ref={disc}
@@ -180,7 +208,7 @@ export function BlackHole({
       </mesh>
 
       {/* La lumière du système vient du disque, pas d'une étoile absente. */}
-      <pointLight color={color} intensity={1.1} decay={0.4} />
+      {light ? <pointLight color={color} intensity={1.1} decay={0.4} /> : null}
     </group>
   );
 }

@@ -1,4 +1,4 @@
-import type { Universe } from "@spacesim/shared";
+import type { ClientUniverse } from "@spacesim/shared";
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { AnchorPath } from "../map3d/MapScene.js";
@@ -28,7 +28,7 @@ const NOWHERE: AnchorPath = { galaxyId: null, systemId: null, bodyId: null };
  * chemin complet ; le joueur n'a donc pas à composer une URL à trois segments pour viser
  * une lune.
  */
-export function useMapView(universe: Universe): MapView {
+export function useMapView(universe: ClientUniverse): MapView {
   const [params] = useSearchParams();
   const at = params.get("at");
   const z = params.get("z");

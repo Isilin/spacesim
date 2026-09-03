@@ -6,13 +6,18 @@ import {
   descend,
   distanceForProgress,
   dollyEase,
-  electAnchor,
   labelOpacity,
+  nearestToCursor,
   nestingScale,
+  orbitAround,
+  recenterStep,
+  smoothFactor,
   streakFactor,
   tierAt,
   tierBlend,
   tierProgress,
+  worldPerPixel,
+  zoomAbout,
   zoomStep,
   type CameraPose,
   type Vec3,
@@ -236,25 +241,6 @@ describe("clipPlanesFor", () => {
   });
 });
 
-describe("electAnchor", () => {
-  const candidates = [
-    { id: "a", position: [0, 0, 0] as Vec3 },
-    { id: "b", position: [100, 0, 0] as Vec3 },
-  ];
-
-  it("retient le plus proche de la cible", () => {
-    expect(electAnchor([90, 0, 0], candidates, 50)?.id).toBe("b");
-    expect(electAnchor([10, 0, 0], candidates, 50)?.id).toBe("a");
-  });
-
-  it("ne rend rien quand la cible ne vise rien", () => {
-    // Décision, pas échec : on ne plonge pas dans le vide. Sans cette règle, rezoomer au
-    // milieu de nulle part ferait descendre d'un palier sur un objet arbitraire.
-    expect(electAnchor([500, 500, 0], candidates, 50)).toBeNull();
-    expect(electAnchor([0, 0, 0], [], 50)).toBeNull();
-  });
-});
-
 describe("échelle de paliers", () => {
   it("ne change de palier qu'une fois la bande franchie", () => {
     expect(tierAt(0)).toBe("universe");
@@ -357,6 +343,239 @@ describe("dollyEase", () => {
     // Un onglet remis au premier plan livre un `dt` de plusieurs secondes : borné, sinon
     // la vue saute d'un bout à l'autre de la carte à la première image.
     expect(dollyEase(1000, 100, 30)).toBeGreaterThan(100);
+  });
+});
+
+describe("smoothFactor", () => {
+  it("rattrape la moitié du chemin en une demi-course", () => {
+    // C'est la définition de l'unité, et la seule raison de préférer une demi-course à un
+    // « facteur par image » : elle se lit en secondes et se vérifie en une ligne.
+    expect(smoothFactor(0.2, 0.2)).toBeCloseTo(0.5, 12);
+    expect(smoothFactor(0.05, 0.05)).toBeCloseTo(0.5, 12);
+  });
+
+  it("compose : deux demi-pas valent un pas", () => {
+    const one = smoothFactor(0.2, 1 / 30);
+    const half = smoothFactor(0.2, 1 / 60);
+    // Ce qui RESTE se multiplie, ce qui est rattrapé ne s'additionne pas.
+    expect((1 - half) * (1 - half)).toBeCloseTo(1 - one, 12);
+  });
+
+  it("ne rend jamais de facteur absurde", () => {
+    expect(smoothFactor(0, 1 / 60)).toBe(1);
+    expect(smoothFactor(Number.NaN, 1 / 60)).toBe(1);
+    expect(smoothFactor(0.2, Number.NaN)).toBeGreaterThan(0);
+    // Un onglet remis au premier plan : borné, sinon la première image téléporte la vue.
+    expect(smoothFactor(0.2, 30)).toBeLessThan(1);
+  });
+});
+
+describe("recenterStep", () => {
+  const at: Vec3 = [0, 0, 0];
+
+  it("rapproche de la visée sans jamais la dépasser", () => {
+    let p: Vec3 = [100, 0, 0];
+    for (let i = 0; i < 300; i++) {
+      const step = recenterStep(p, at, 1 / 60, 1e-4);
+      if (!step) break;
+      p = [p[0] + step[0], p[1] + step[1], p[2] + step[2]];
+      expect(p[0]).toBeGreaterThanOrEqual(0);
+    }
+    expect(Math.hypot(p[0], p[1], p[2])).toBeLessThanOrEqual(1e-4);
+  });
+
+  it("avance à la même vitesse quelle que soit la cadence d'images", () => {
+    const slow = recenterStep([100, 0, 0], at, 1 / 30, 0)!;
+    const first = recenterStep([100, 0, 0], at, 1 / 60, 0)!;
+    const second = recenterStep([100 + first[0], 0, 0], at, 1 / 60, 0)!;
+    expect(first[0] + second[0]).toBeCloseTo(slow[0], 9);
+  });
+
+  it("se tait au repos", () => {
+    // Sans ce seuil la cible frémit indéfiniment, et la carte republie sa profondeur pour
+    // un mouvement que personne ne voit.
+    expect(recenterStep([0.5, 0, 0], at, 1 / 60, 1)).toBeNull();
+    expect(recenterStep(at, at, 1 / 60, 0)).toBeNull();
+    expect(recenterStep([Number.NaN, 0, 0], at, 1 / 60, 0)).toBeNull();
+  });
+});
+
+describe("nearestToCursor", () => {
+  // Un cadre de 800 × 400 : les coordonnées sont en PIXELS depuis son coin haut-gauche.
+  const point = (id: string, x: number, y: number, depth = 0) => ({
+    id,
+    at: [x, y] as const,
+    depth,
+  });
+
+  it("retient l'objet le plus proche du curseur", () => {
+    const points = [point("a", 100, 200), point("b", 700, 200)];
+    expect(nearestToCursor([690, 205], points, 40)?.id).toBe("b");
+    expect(nearestToCursor([115, 190], points, 40)?.id).toBe("a");
+  });
+
+  it("attrape un objet minuscule sans le toucher", () => {
+    // C'est toute la raison d'être de la fonction : un objet de trois pixels à dix-huit
+    // pixels du clic reste sélectionnable.
+    expect(nearestToCursor([400, 200], [point("x", 412, 208)], 18)?.id).toBe(
+      "x",
+    );
+  });
+
+  it("rend `null` au-delà du rayon — c'est le clic dans le vide", () => {
+    expect(nearestToCursor([400, 200], [point("x", 500, 300)], 18)).toBeNull();
+    expect(nearestToCursor([400, 200], [], 18)).toBeNull();
+    expect(nearestToCursor([400, 200], [point("x", 400, 200)], 0)).toBeNull();
+  });
+
+  it("ignore ce qui est derrière la caméra", () => {
+    // La projection rend des coordonnées d'écran parfaitement plausibles pour un point
+    // situé DERRIÈRE l'observateur. Seule la profondeur les départage.
+    const points = [
+      point("derriere", 400, 200, 1.2),
+      point("devant", 410, 205),
+    ];
+    expect(nearestToCursor([400, 200], points, 40)?.id).toBe("devant");
+  });
+});
+
+/** Élévation de la caméra au-dessus du plan galactique, en radians. */
+function elevationOf(pose: { position: Vec3; target: Vec3 }): number {
+  const dx = pose.position[0] - pose.target[0];
+  const dy = pose.position[1] - pose.target[1];
+  const dz = pose.position[2] - pose.target[2];
+  return Math.asin(dz / Math.hypot(dx, dy, dz));
+}
+
+function distanceOf(pose: { position: Vec3; target: Vec3 }): number {
+  return Math.hypot(
+    pose.position[0] - pose.target[0],
+    pose.position[1] - pose.target[1],
+    pose.position[2] - pose.target[2],
+  );
+}
+
+describe("orbitAround", () => {
+  // La pose standard de la carte : trois quarts au-dessus du plan galactique.
+  const pose = {
+    position: [0, -60, 80] as Vec3,
+    target: [0, 0, 0] as Vec3,
+  };
+  const pivot: Vec3 = [0, 0, 0];
+
+  it("un lacet ne change pas l'élévation au-dessus du plan", () => {
+    // C'EST la définition de « yaw et non roll », et c'est le défaut que ce chantier corrige :
+    // avec un axe haut en Y, un glisser horizontal faisait passer la caméra SOUS le disque au
+    // lieu d'en faire le tour.
+    const start = elevationOf(pose);
+    for (const yaw of [0.1, 0.7, 1.5, 3, -2.2]) {
+      expect(elevationOf(orbitAround(pose, pivot, yaw, 0))).toBeCloseTo(
+        start,
+        12,
+      );
+    }
+  });
+
+  it("laisse le pivot où il est, et conserve la distance de vue", () => {
+    // Le pivot immobile est ce qui fait la rotation à pivot décentré : l'image tourne autour
+    // de lui au lieu de le ramener au centre.
+    const off: Vec3 = [40, 10, -5];
+    const turned = orbitAround(pose, off, 0.6, 0.2);
+    expect(distanceOf(turned)).toBeCloseTo(distanceOf(pose), 9);
+    // Un point posé SUR le pivot n'aurait pas bougé : vérifié par une pose dégénérée.
+    const atPivot = orbitAround({ position: off, target: off }, off, 0.6, 0);
+    expect(atPivot.position).toEqual(off);
+  });
+
+  it("un tour complet revient au point de départ", () => {
+    const turned = orbitAround(pose, pivot, Math.PI * 2, 0);
+    expect(turned.position[0]).toBeCloseTo(pose.position[0], 9);
+    expect(turned.position[1]).toBeCloseTo(pose.position[1], 9);
+    expect(turned.position[2]).toBeCloseTo(pose.position[2], 9);
+  });
+
+  it("le tangage monte et descend, et s'arrête avant le pôle", () => {
+    expect(elevationOf(orbitAround(pose, pivot, 0, 0.2))).toBeGreaterThan(
+      elevationOf(pose),
+    );
+    expect(elevationOf(orbitAround(pose, pivot, 0, -0.2))).toBeLessThan(
+      elevationOf(pose),
+    );
+    // À la verticale exacte l'axe droit n'est plus défini et l'image basculerait d'un
+    // demi-tour pour un pixel de glisser. Le bornage est exact, pas approché.
+    const limit = (89 * Math.PI) / 180;
+    expect(elevationOf(orbitAround(pose, pivot, 0, 10))).toBeCloseTo(limit, 9);
+    expect(elevationOf(orbitAround(pose, pivot, 0, -10))).toBeCloseTo(
+      -limit,
+      9,
+    );
+  });
+
+  it("ne rend jamais de pose absurde", () => {
+    expect(orbitAround(pose, pivot, Number.NaN, Number.NaN)).toEqual(pose);
+    // Caméra confondue avec sa cible : pas de direction de vue, donc rien à faire tourner.
+    const nowhere = { position: [1, 1, 1] as Vec3, target: [1, 1, 1] as Vec3 };
+    expect(orbitAround(nowhere, pivot, 0, 0.3).position).toEqual([1, 1, 1]);
+  });
+});
+
+describe("zoomAbout", () => {
+  const pose = {
+    position: [0, -60, 80] as Vec3,
+    target: [0, 0, 0] as Vec3,
+  };
+
+  it("laisse le pivot où il est — c'est tout le zoom au curseur", () => {
+    const pivot: Vec3 = [20, -10, 5];
+    const zoomed = zoomAbout(pose, pivot, 0.5);
+    // Le pivot est le seul point invariant d'une homothétie : le point sous la souris reste
+    // sous la souris.
+    expect(
+      zoomAbout({ position: pivot, target: pivot }, pivot, 0.5).position,
+    ).toEqual(pivot);
+    expect(distanceOf(zoomed)).toBeCloseTo(distanceOf(pose) * 0.5, 9);
+  });
+
+  it("multiplie la distance de vue par le rapport, comme le dolly", () => {
+    // C'est ce qui permet aux bornes de palier et au calibrage de la molette de s'appliquer
+    // à l'identique dans les deux modes.
+    expect(distanceOf(zoomAbout(pose, [7, 7, 7], 2))).toBeCloseTo(
+      distanceOf(pose) * 2,
+      9,
+    );
+    expect(zoomAbout(pose, [7, 7, 7], 1)).toEqual(pose);
+  });
+
+  it("ne rend jamais de pose absurde", () => {
+    expect(zoomAbout(pose, [0, 0, 0], 0)).toEqual(pose);
+    expect(zoomAbout(pose, [0, 0, 0], -2)).toEqual(pose);
+    expect(zoomAbout(pose, [0, 0, 0], Number.NaN)).toEqual(pose);
+  });
+});
+
+describe("worldPerPixel", () => {
+  it("reproduit la formule qu'il remplace", () => {
+    // Les trois copies inline valaient `2*tan(fov/2)*distance/hauteur`.
+    const expected = (2 * Math.tan((50 / 2) * (Math.PI / 180)) * 400) / 700;
+    expect(worldPerPixel(400, 700, 50)).toBeCloseTo(expected, 12);
+  });
+
+  it("suit la distance et la hauteur du cadre", () => {
+    expect(worldPerPixel(800, 700, 50)).toBeCloseTo(
+      worldPerPixel(400, 700, 50) * 2,
+      12,
+    );
+    expect(worldPerPixel(400, 1400, 50)).toBeCloseTo(
+      worldPerPixel(400, 700, 50) / 2,
+      12,
+    );
+  });
+
+  it("ne rend jamais de facteur absurde", () => {
+    expect(worldPerPixel(0, 700, 50)).toBe(0);
+    expect(worldPerPixel(Number.NaN, 700, 50)).toBe(0);
+    expect(Number.isFinite(worldPerPixel(400, 0, 50))).toBe(true);
+    expect(Number.isFinite(worldPerPixel(400, 700, 0))).toBe(true);
   });
 });
 

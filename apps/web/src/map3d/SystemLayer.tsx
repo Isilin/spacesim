@@ -37,11 +37,46 @@ export const STAR_CORE = 13;
 export const STAR_CORONA = 26;
 
 /**
- * Rayon de rendu d'un corps. Sans rapport avec une échelle réelle, qui rendrait toute
- * planète invisible à côté de son étoile : ce sont des tailles de LECTURE, calées pour
- * qu'une lune reste distincte de sa planète et qu'une géante se repère d'un coup d'œil.
+ * Rayon de rendu d'un corps (chantier 37.14).
+ *
+ * Sans rapport avec une échelle réelle, qui rendrait toute planète invisible à côté de son
+ * étoile : ce sont des tailles de LECTURE. Mais elles étaient fausses d'un ordre de grandeur
+ * de trop, et cela se voyait — une lune faisait les deux tiers du diamètre de sa planète et
+ * la touchait presque, une planète rivalisait avec son soleil.
+ *
+ * Ce que les valeurs tiennent maintenant, les orbites étant ce qu'elles sont (70 à 290 pour
+ * une planète, 26 à 46 pour une lune, et ce sont des DONNÉES, pas des réglages de rendu — une
+ * galaxie matérialisée ne se régénère pas, ADR 0002) :
+ *
+ * | rapport | avant | après | réel |
+ * |---|---|---|---|
+ * | lune / son orbite | 1:5 | 1:14 | 1:220 |
+ * | planète / son orbite | 1:8 | 1:16 | 1:23000 |
+ * | lune / planète rocheuse | 0,56 | 0,40 | 0,27 (Lune/Terre) |
+ * | étoile / planète rocheuse | 1,4 | 2,9 | 109 |
+ * | orbite lunaire / rayon de la planète | 2,9 | 5,8 | 60 |
+ *
+ * On ne va pas au réel — une planète à l'échelle ferait un pixel sur mille — ni même aussi
+ * loin que possible : essayé à 3,2 pour une rocheuse, les planètes devenaient des points de
+ * six pixels qu'on ne pouvait plus viser à la souris. On va jusqu'où la hiérarchie se lit
+ * sans que la carte cesse d'être manipulable : l'étoile domine, la géante se repère d'un coup
+ * d'œil, la lune est nettement détachée de sa planète. Le seuil de nommage, lui, ne suit PAS
+ * cette réduction : voir `bodyLabelExtent`.
  */
 export function bodyRadiusOf(planet: Planet): number {
+  if (planet.kind === "moon") return 1.8;
+  return planet.type === "gas" ? 8 : 4.5;
+}
+
+/**
+ * Emprise servant au seuil d'ÉTIQUETTE, distincte du rayon de rendu ci-dessus.
+ *
+ * Un nom apparaît quand son objet dépasse une taille apparente (`labelOpacity`). Réduire les
+ * corps d'un facteur trois aurait donc fait disparaître les noms des planètes du palier
+ * système, où ils s'affichaient tout juste — une correction d'échelle n'a pas à coûter la
+ * lisibilité de la carte. Ces valeurs sont celles d'avant le chantier 37.14.
+ */
+export function bodyLabelExtent(planet: Planet): number {
   if (planet.kind === "moon") return 5;
   return planet.type === "gas" ? 14 : 9;
 }
@@ -99,14 +134,12 @@ function OrbitingBody({
   system,
   body,
   tickAt,
-  selected,
   onSelect,
   onOpen,
 }: {
   system: StarSystem;
   body: Planet;
   tickAt: () => number;
-  selected: boolean;
   onSelect: () => void;
   onOpen: () => void;
 }) {
@@ -126,7 +159,6 @@ function OrbitingBody({
           id={body.id}
           type={body.type}
           radius={bodyRadiusOf(body)}
-          selected={selected}
         />
         {hasRings(body) && (
           <PlanetRings body={body} radius={bodyRadiusOf(body)} />
@@ -155,7 +187,11 @@ function AsteroidBelt({ belt }: { belt: StarSystem["belts"][number] }) {
   const shapes = useMemo(
     () =>
       Array.from({ length: ASTEROID_SHAPES }, (_, k) =>
-        asteroidGeometry(`${belt.id}:shape${k}`, 1.6),
+        // Rayon de base réduit avec les corps (chantier 37.14) : à 1,6, et une fois les
+        // planètes ramenées à leur juste taille, le plus gros rocher d'une ceinture faisait
+        // la taille d'une planète tellurique. Le tirage d'échelle qui suit (0,8 à 3,0) le
+        // maintient désormais sous le rayon d'une lune.
+        asteroidGeometry(`${belt.id}:shape${k}`, 0.6),
       ),
     [belt.id],
   );
@@ -185,8 +221,8 @@ function AsteroidBelt({ belt }: { belt: StarSystem["belts"][number] }) {
       }
       mesh.instanceMatrix.needsUpdate = true;
     }
-    // biome-ignore lint/correctness/useExhaustiveDependencies: les trois références sont
-    // stables ; seul le contenu de la ceinture décide des matrices.
+    // Dépendances volontairement incomplètes : les trois références sont stables, seul le
+    // contenu de la ceinture décide des matrices.
   }, [belt, perShape]);
 
   return (
@@ -288,7 +324,6 @@ interface Props {
   outposts: MiningOutpost[];
   fleets: Fleet[];
   foreignFleets: ForeignFleet[];
-  selectedBodyId: string | null;
   onSelectBody: (planet: Planet) => void;
   onOpenBody: (planet: Planet) => void;
 }
@@ -312,7 +347,6 @@ export function SystemLayer({
   outposts,
   fleets,
   foreignFleets,
-  selectedBodyId,
   onSelectBody,
   onOpenBody,
 }: Props) {
@@ -370,7 +404,6 @@ export function SystemLayer({
           system={system}
           body={body}
           tickAt={tickAt}
-          selected={body.id === selectedBodyId}
           onSelect={() => onSelectBody(body)}
           onOpen={() => onOpenBody(body)}
         />

@@ -1,4 +1,9 @@
-import type { Galaxy, Planet, StarSystem, Universe } from "@spacesim/shared";
+import type {
+  Galaxy,
+  Planet,
+  StarSystem,
+  ClientUniverse,
+} from "@spacesim/shared";
 import { renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -32,7 +37,7 @@ const universe = {
     ]),
     galaxy("gal-1", []),
   ],
-} as unknown as Universe;
+} as unknown as ClientUniverse;
 
 function at(url: string) {
   const wrapper = ({ children }: { children: ReactNode }) => (

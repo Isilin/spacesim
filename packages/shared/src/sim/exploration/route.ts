@@ -4,7 +4,7 @@ import {
   HOSTILE_SYSTEM_PENALTY,
   JUMP_REFERENCE_LENGTH,
 } from "../../constants.js";
-import type { Galaxy, Universe } from "../../model/universe.js";
+import type { ClientUniverse, Galaxy, Universe } from "../../model/universe.js";
 import { distance3 } from "./geometry.js";
 
 /**
@@ -58,7 +58,7 @@ export function galaxyGraph(galaxy: Galaxy): Graph {
  * toute galaxie voisine inatteignable.
  */
 export function universeGraph(
-  universe: Universe,
+  universe: ClientUniverse,
   extraLinks: readonly [string, string][] = [],
 ): Graph {
   const byId = new Map(
@@ -272,7 +272,7 @@ export type TravelPlan =
  * le client calculer les itinéraires qu'il propose.
  */
 export function planTravel(
-  universe: Universe,
+  universe: ClientUniverse,
   fromSystemId: string,
   toSystemId: string,
   extraLinks: readonly [string, string][] = [],

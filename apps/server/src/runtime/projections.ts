@@ -5,7 +5,9 @@ import {
   hasBlueprintMarket,
   hasResourceMarket,
   MARKET_RESOURCES,
+  galaxyIndexOfId,
   redactUniverse,
+  type ClientUniverse,
   relationKey,
   sitesOfSystem,
   type ChatMessage,
@@ -53,12 +55,57 @@ function tradableStocksOf(
  * `Empire`, exactement comme le faisait `GameEngine` avant l'extraction.
  */
 
+/**
+ * Galaxies transmises EN DÉTAIL à cet empire (chantier 37.10) : celles où il a quelque
+ * chose à faire. Les autres partent en condensé — fiche, compte de systèmes, nuage.
+ *
+ * La règle suit celle du DÉPLACEMENT, et rien d'autre : une galaxie est détaillée si
+ * l'empire y a exploré ou colonisé, ou si son portail est actif. Hors de là, il ne peut ni
+ * y aller ni y agir ; la voir de loin lui suffit, et un joueur neuf reçoit une galaxie au
+ * lieu de tout l'univers.
+ *
+ * Elle ne demande aucun message supplémentaire du client — rien à faire circuler du genre
+ * « ouvre-moi cette galaxie ». Les flottes et les stations n'ont pas à être comptées : elles
+ * vivent par construction dans des systèmes explorés.
+ *
+ * **Pas de voisinage dans l'arbre des portails**, essayé puis écarté : cet arbre rattache
+ * chaque galaxie à la plus proche d'index inférieur, donc presque toutes à la galaxie mère.
+ * Détailler les voisines revenait à tout détailler pour les joueurs du berceau — c'est-à-dire
+ * exactement ceux qu'on cherchait à soulager.
+ */
+function detailedGalaxyIdsForEmpire(
+  runtime: GameRuntime,
+  empire: Empire,
+): Set<string> {
+  const held = new Set<number>();
+  for (const id of empire.explored) held.add(galaxyIndexOfId(id));
+  for (const colony of empire.colonyMap.values()) {
+    const systemId = runtime.planetsById.get(colony.planetId)?.systemId;
+    if (systemId) held.add(galaxyIndexOfId(systemId));
+  }
+  // Un empire tout neuf n'a encore rien exploré : sa galaxie de départ, au moins.
+  if (held.size === 0) held.add(0);
+
+  const detailed = new Set<string>();
+  for (const galaxy of runtime.universe.galaxies)
+    if (
+      held.has(galaxyIndexOfId(galaxy.id)) ||
+      runtime.gatewayMap.get(galaxy.id)?.active
+    )
+      detailed.add(galaxy.id);
+  return detailed;
+}
+
 /** Univers redacté au brouillard de l'empire (planètes masquées hors systèmes explorés). */
 export function clientUniverseForEmpire(
   runtime: GameRuntime,
   empire: Empire,
-): Universe {
-  return redactUniverse(runtime.universe, empire.explored);
+): ClientUniverse {
+  return redactUniverse(
+    runtime.universe,
+    empire.explored,
+    detailedGalaxyIdsForEmpire(runtime, empire),
+  );
 }
 
 /** Marchés des comptoirs situées dans les systèmes explorés par l'empire. */

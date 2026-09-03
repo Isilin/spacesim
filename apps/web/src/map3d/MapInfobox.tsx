@@ -1,5 +1,10 @@
 import { Html } from "@react-three/drei";
-import type { Galaxy, Planet, StarSystem } from "@spacesim/shared";
+import {
+  systemCountOf,
+  type Galaxy,
+  type Planet,
+  type StarSystem,
+} from "@spacesim/shared";
 import { Button, Popover } from "@spacesim/ui";
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
@@ -40,10 +45,10 @@ interface Props {
  * sélectionner une galaxie n'ouvrait rien du tout. L'information vient désormais se poser
  * là où l'on a cliqué.
  *
- * `Popover` est monté avec `autoFocus={false}` : il prend sinon le focus au montage, ce
- * qui le retire à la section qui porte les raccourcis de caméra — le joueur perdrait le
- * pilotage de sa vue en sélectionnant un objet. Le chemin clavier passe par la liste DOM
- * parallèle, qui garde le focus là où il était.
+ * `Popover` est monté avec `autoFocus={false}` : il prend sinon le focus au montage, et
+ * l'arrache à la liste DOM parallèle, seul chemin clavier vers les objets — sélectionner
+ * renverrait le joueur au clavier à l'endroit d'où il vient de partir. Le focus reste où
+ * il l'a mis.
  */
 export function MapInfobox({ target, portal, onOpen, onClose }: Props) {
   const { t } = useTranslation();
@@ -84,9 +89,12 @@ export function MapInfobox({ target, portal, onOpen, onClose }: Props) {
           {target.kind === "galaxy" && (
             <p className="small muted">
               {t("mapInfobox.galaxySystems", {
-                count: target.galaxy.systems.length,
+                count: systemCountOf(target.galaxy),
               })}
               {target.colonized ? ` · ${t("universeMap.colonized")}` : ""}
+              {target.galaxy.systems.length === 0
+                ? ` · ${t("universeMap.outOfReach")}`
+                : ""}
             </p>
           )}
           {target.kind === "system" && (

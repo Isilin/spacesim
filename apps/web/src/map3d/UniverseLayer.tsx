@@ -2,37 +2,55 @@ import {
   GALAXY_SPACING,
   UNIVERSE_CENTER_X,
   UNIVERSE_CENTER_Y,
-  galaxyMorphologyOf,
   type Galaxy,
   type Gateway,
-  type Universe,
+  type ClientUniverse,
 } from "@spacesim/shared";
 import { useMemo } from "react";
 import { AdditiveBlending } from "three";
-import { galaxyAppearance, seedOf } from "./appearance.js";
+import { seedOf } from "./appearance.js";
 import { focusOf, type Focus } from "./bounds.js";
-import type { Vec3 } from "./tiers.js";
+import { galaxyFocus, systemScenePosition } from "./GalaxyLayer.js";
+import { nestingScale, type Vec3 } from "./tiers.js";
 
 /** Rayon du disque d'une galaxie dans la scène. */
 export const GALAXY_DISC = 55;
 /**
- * Étoiles figurées par galaxie (chantier 31.23). Le compte DÉCROÎT avec la taille de
- * l'univers : à 160 étoiles fixes, les 200 galaxies d'un univers plein en dessineraient
- * 32 000 alors qu'aucune n'occupe plus de quelques pixels à cette distance. On borne le
- * total plutôt que le détail unitaire — une galaxie isolée reste dense, un amas reste
- * lisible, et le budget d'images du chantier 31.17 tient dans les deux cas.
+ * Étoiles figurées par galaxie (chantiers 31.23 puis 37.5). Le compte DÉCROÎT avec la
+ * taille de l'univers : on borne le total plutôt que le détail unitaire — une galaxie
+ * isolée reste dense, un amas reste lisible, et le budget d'images du chantier 31.17 tient
+ * dans les deux cas.
+ *
+ * Relevé de 6 000 à 60 000 au chantier 37 : le plafond datait d'un temps où ces points
+ * portaient `sizeAttenuation` et où une galaxie comptait quatorze systèmes. Ils sont
+ * désormais dimensionnés en pixels (chantier 36.7), donc bien moins coûteux, et une galaxie
+ * en compte trois à cinq cents — les rogner à 160 aurait sous-échantillonné la spirale
+ * qu'on vient précisément de rendre réelle. Le juge du plafond est le test de budget
+ * d'images, pas l'estime.
  */
-const STAR_BUDGET = 6000;
+const STAR_BUDGET = 60_000;
 /** Points d'une nébuleuse : larges et très transparents, quelques dizaines suffisent. */
 const NEBULA_POINTS = 40;
 const MIN_STARS = 40;
-const MAX_STARS = 160;
 
 function starsPerGalaxy(galaxyCount: number): number {
   return Math.max(
     MIN_STARS,
-    Math.min(MAX_STARS, Math.floor(STAR_BUDGET / Math.max(1, galaxyCount))),
+    Math.floor(STAR_BUDGET / Math.max(1, galaxyCount)),
   );
+}
+
+/**
+ * Échelle qui ramène le contenu d'une galaxie dans son disque, au palier univers.
+ *
+ * Une seule définition pour deux usages : `MapScene` la pose sur le groupe du palier
+ * galaxie, `GalaxyCloud` l'applique aux positions qu'il dessine. C'est ce partage qui fait
+ * que les points du nuage et les nœuds de systèmes occupent EXACTEMENT la même place à
+ * l'écran pendant le fondu — la correspondance entre les deux paliers n'est plus une
+ * ressemblance, c'est la même arithmétique.
+ */
+export function galaxyContentScale(galaxy: Galaxy): number {
+  return nestingScale(GALAXY_DISC, galaxyFocus(galaxy).radius);
 }
 
 /**
@@ -54,7 +72,7 @@ export function galaxyScenePosition(g: {
  * s'étalent sur plusieurs milliers. Déduire la distance de `GALAXY_SPACING` plaçait la
  * caméra très au-delà d'un petit amas, qui se réduisait alors à quelques pixels.
  */
-export function universeFocus(universe: Universe): Focus {
+export function universeFocus(universe: ClientUniverse): Focus {
   return focusOf(
     "universe",
     universe.galaxies.map(
@@ -66,66 +84,67 @@ export function universeFocus(universe: Universe): Focus {
 }
 
 /**
- * Nuage d'étoiles d'une galaxie (chantier 31.19) : une spirale à deux bras, dérivée de
- * l'identifiant de la galaxie. Aucun asset, aucune persistance — deux galaxies diffèrent
- * parce que leurs ids diffèrent, comme partout ailleurs dans la génération.
+ * Nuage d'étoiles d'une galaxie (chantiers 31.19 puis 37.5) : ses systèmes RÉELS, ramenés
+ * à l'échelle du disque.
+ *
+ * Il dessinait jusqu'ici sa propre spirale, dérivée de l'identifiant de la galaxie et sans
+ * aucun rapport avec les positions que le générateur avait posées. On zoomait sur une
+ * spirale de cent soixante étoiles pour atterrir sur dix points au hasard : le palier
+ * univers promettait une galaxie que le palier galaxie ne livrait pas.
+ *
+ * Depuis que le générateur pose les systèmes sur les bras (chantier 37.2), la promesse peut
+ * être tenue littéralement — c'est le même nuage de part et d'autre du fondu. Les galaxies
+ * matérialisées AVANT ce chantier, aux positions uniformes, restent cohérentes avec
+ * elles-mêmes pour la même raison : ce qui est peint est ce qui est là.
  */
 function GalaxyCloud({
-  id,
+  galaxy,
   color,
   stars,
-  morphology,
 }: {
-  id: string;
+  galaxy: Galaxy;
   color: string;
   stars: number;
-  morphology: string;
 }) {
   const positions = useMemo(() => {
-    const seed = seedOf(id);
-    const look = galaxyAppearance(morphology);
-    const out = new Float32Array(stars * 3);
-    for (let i = 0; i < stars; i++) {
-      const t = i / stars;
-      const jitter =
-        (seedOf(`${id}:${i}`) - 0.5) * GALAXY_DISC * look.scatter * t;
-
-      if (look.arms === 0) {
-        // Elliptique : aucun bras, un ellipsoïde dont la densité décroît vers le bord.
-        // Trois graines indépendantes, sinon le nuage se range sur une diagonale.
-        const r = GALAXY_DISC * (0.1 + t ** 0.6 * 0.9);
-        const theta = seedOf(`${id}:t${i}`) * Math.PI * 2;
-        const phi = Math.acos(2 * seedOf(`${id}:p${i}`) - 1);
-        out[i * 3] = Math.sin(phi) * Math.cos(theta) * r;
-        out[i * 3 + 1] = Math.sin(phi) * Math.sin(theta) * r * 0.78;
-        out[i * 3 + 2] = Math.cos(phi) * r * 0.5;
-        continue;
+    // Galaxie condensée (chantier 37.10) : le serveur n'a transmis qu'un nuage
+    // sous-échantillonné, dans les coordonnées de la galaxie. Il se projette exactement
+    // comme les vrais systèmes — c'est le même repère.
+    if (galaxy.systems.length === 0 && galaxy.cloud?.length) {
+      const scale = galaxyContentScale(galaxy);
+      const out = new Float32Array(galaxy.cloud.length);
+      for (let i = 0; i + 2 < galaxy.cloud.length; i += 3) {
+        const at = systemScenePosition({
+          x: galaxy.cloud[i]!,
+          y: galaxy.cloud[i + 1]!,
+          z: galaxy.cloud[i + 2]!,
+        });
+        out[i] = at[0] * scale;
+        out[i + 1] = at[1] * scale;
+        out[i + 2] = at[2] * scale;
       }
+      return out;
+    }
 
-      const arm = (i % look.arms) * ((Math.PI * 2) / look.arms);
-      const angle = t * look.winding + arm + seed * 6.283;
-      let radius = GALAXY_DISC * (0.15 + t * 0.85);
-      let x = Math.cos(angle) * radius + jitter;
-      let y = Math.sin(angle) * radius + jitter;
-
-      // Barre centrale : la part interne du bras est tirée sur une droite au lieu de
-      // s'enrouler. C'est ce qui distingue une spirale barrée d'une spirale simple.
-      if (look.bar > 0 && t < look.bar) {
-        const along = (t / look.bar) * 2 - 1;
-        const barAngle = seed * 6.283;
-        radius = GALAXY_DISC * look.bar * along;
-        x = Math.cos(barAngle) * radius + jitter * 0.4;
-        y = Math.sin(barAngle) * radius + jitter * 0.4;
-      }
-
-      out[i * 3] = x;
-      out[i * 3 + 1] = y;
-      // Le disque s'aplatit vers l'extérieur : bulbe épais au centre.
-      out[i * 3 + 2] =
-        (seedOf(`${id}:z${i}`) - 0.5) * GALAXY_DISC * 0.3 * (1 - t);
+    const scale = galaxyContentScale(galaxy);
+    const systems = galaxy.systems;
+    // Sous-échantillonnage régulier quand l'amas est trop peuplé pour le budget. Le pas
+    // est fractionnaire (`i × n / stars` arrondi) et non entier : un pas entier risquerait
+    // de tomber en phase avec l'alternance des bras du générateur et de n'en dessiner
+    // qu'un. À ce compte de galaxies, une spirale ne fait de toute façon que quelques
+    // pixels.
+    const count = Math.min(systems.length, stars);
+    const out = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      const system = systems[Math.floor(((i + 0.5) * systems.length) / count)];
+      if (!system) continue;
+      const at = systemScenePosition(system);
+      out[i * 3] = at[0] * scale;
+      out[i * 3 + 1] = at[1] * scale;
+      out[i * 3 + 2] = at[2] * scale;
     }
     return out;
-  }, [id, stars, morphology]);
+  }, [galaxy, stars]);
 
   return (
     <points>
@@ -189,7 +208,7 @@ function Nebula({ id, color }: { id: string; color: string }) {
 }
 
 interface Props {
-  universe: Universe;
+  universe: ClientUniverse;
   /**
    * Galaxies où le joueur a une colonie. Calculé par `MapScene` et non ici : depuis que
    * la couche et la liste DOM sont deux composants distincts, les deux en ont besoin, et
@@ -253,16 +272,6 @@ export function UniverseLayer({
             key={galaxy.id}
             position={[position[0], position[1], position[2]]}
           >
-            {/* Trait de rappel vers le plan : c'est lui qui rend le z lisible. */}
-            <line>
-              <bufferGeometry>
-                <bufferAttribute
-                  attach="attributes-position"
-                  args={[new Float32Array([0, 0, 0, 0, 0, -galaxy.z]), 3]}
-                />
-              </bufferGeometry>
-              <lineBasicMaterial color="#2a3a4a" />
-            </line>
             {/* Nébuleuse : une galaxie sur trois, tirée de son identifiant. Toutes en
                 porter noierait l'amas. */}
             {seedOf(`${galaxy.id}:neb`) > 0.66 && (
@@ -270,8 +279,7 @@ export function UniverseLayer({
             )}
             <GalaxyCloud
               stars={stars}
-              morphology={galaxyMorphologyOf(galaxy)}
-              id={galaxy.id}
+              galaxy={galaxy}
               color={
                 selected
                   ? "#9fdcff"
