@@ -115,6 +115,43 @@ interface Placement {
 
 type Placements = Partial<Record<TierName, Placement>>;
 
+/**
+ * Un objet que le joueur peut désigner au palier courant (chantier 41).
+ *
+ * Une seule description, dont dérivent les quatre usages : l'étiquette posée dans la scène,
+ * l'entrée de la liste DOM, le pool du clic tolérant et l'infobox. Elles vivaient dans quatre
+ * listes parallèles qui décrivaient le même ensemble, et divergeaient sans que rien ne le
+ * signale — le cœur galactique était nommé mais pas cliquable, une ceinture cliquable mais
+ * pas nommée.
+ */
+export interface Selectable {
+  id: string;
+  /** Nom court : l'étiquette de la scène et la première ligne de la liste. */
+  label: string;
+  /** Seconde ligne de la liste. */
+  detail?: string;
+  /** Où il est, à l'instant présent — un corps orbite. */
+  at: () => Vec3;
+  /** Emprise RENDUE : c'est elle que le cadre de sélection entoure. */
+  radius: number;
+  /**
+   * Emprise pour le seuil d'ÉTIQUETTE, volontairement distincte de la précédente : un nœud de
+   * système garde une taille d'écran plancher, et son nom doit suivre ce qu'on VOIT.
+   */
+  labelExtent: number;
+  /** Décalage vertical de l'étiquette, pour dégager un corps qui remplit l'écran. */
+  lift?: number;
+  /**
+   * Ce que l'infobox affiche. Une FONCTION : au palier galaxie il y a jusqu'à cinq cents
+   * candidats, et une seule cible est jamais construite.
+   */
+  target: () => MapTarget;
+  /** La fiche qu'ouvre le bouton de l'infobox, quand ce n'est pas l'objet lui-même. */
+  openId: string;
+  /** Le double-clic descend-il dedans, ou se contente-t-il d'y voler ? */
+  descendable: boolean;
+}
+
 function place(local: Focus, position: Vec3, scale: number): Placement {
   return { position, scale, local, scene: nestedFocus(local, position, scale) };
 }
@@ -707,144 +744,278 @@ export function MapScene({
     return (): Vec3 => under(s, bodyLocalPosition(system, body, tickAt()));
   }, [placements.system, system, body, tickAt]);
 
-  /**
-   * Ce que le système contient en plus de ses corps : comptoir, stations, avant-postes,
-   * ceintures, sites de scan (chantier 35.8).
-   *
-   * Construit ici et non dans la couche 3D parce que **les deux** en ont besoin : la scène
-   * pour les dessiner, la liste DOM pour les nommer. Aucun n etait nomme nulle part, et
-   * ceintures et sites n avaient meme pas de gestionnaire de clic.
-   */
-  const features = useMemo(() => {
-    const out: {
-      id: string;
-      name: string;
-      detail: string;
-      at: () => Vec3;
-      openId: string;
-    }[] = [];
+  /** Appartenances, utilisées par la couche 3D ET par la liste DOM. */
+  const colonizedGalaxyIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const g of universe.galaxies) {
+      if (
+        g.systems.some((s) =>
+          s.planets.some((p) => colonies.some((c) => c.planetId === p.id)),
+        )
+      )
+        ids.add(g.id);
+    }
+    return ids;
+  }, [universe, colonies]);
 
-    /**
-     * Cœur galactique (chantier 39) : le seul objet nommé du palier galaxie qui ne soit pas
-     * un système. Il entre ici et non par un septième type parce que `selection`,
-     * `pickFromList` et `openSelection` consultent déjà cette liste SANS regarder le palier —
-     * l'infobox, le vol de caméra et l'ouverture de fiche lui viennent donc sans une ligne.
-     *
-     * Le gate sur le palier n'est pas cosmétique : `placements.galaxy` existe aussi au palier
-     * univers, où la couche galaxie est montée en enfant, et le cœur apparaîtrait alors dans
-     * la liste des galaxies.
-     *
-     * `placements.galaxy.position` EST le centre de la galaxie, pas un point voisin : c'est
-     * `galaxyScenePosition`, ce que dit déjà le commentaire de `aim`.
-     */
-    if (tier === "galaxy" && galaxy && placements.galaxy) {
-      const at = placements.galaxy.position;
-      out.push({
-        id: `${galaxy.id}:core`,
-        name: t("mapInfobox.galacticCoreName", { galaxy: galaxy.name }),
-        detail: t("mapInfobox.galacticCore"),
-        at: () => at,
-        // Un trou noir n'a pas de fiche propre : c'est celle de sa galaxie qui la porte.
-        openId: galaxy.id,
-      });
+  const colonizedSystemIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const s of galaxy?.systems ?? []) {
+      if (s.planets.some((p) => colonies.some((c) => c.planetId === p.id)))
+        ids.add(s.id);
+    }
+    return ids;
+  }, [galaxy, colonies]);
+
+  const explored = useMemo(
+    () => new Set(exploredSystemIds),
+    [exploredSystemIds],
+  );
+
+  /** Monde courant, lu par référence par les effets qui ne doivent pas rejouer au tick. */
+
+  /**
+   * **Tout ce qui se sélectionne au palier courant** (chantier 41).
+   *
+   * Une seule liste, là où la carte en portait quatre qui décrivaient le même ensemble : les
+   * objets « en plus des corps », les étiquettes de la scène, les entrées de la liste DOM et
+   * le pool du clic tolérant. Elles divergeaient déjà — le cœur galactique était nommé mais
+   * pas cliquable, une ceinture cliquable mais pas nommée — et rien ne signalait l'oubli.
+   *
+   * Les positions sont des **fonctions** : un corps orbite, et un point figé au dernier tick
+   * désignerait une place que la planète a quittée. Les cibles d'infobox aussi : au palier
+   * galaxie il y a jusqu'à cinq cents candidats, et une seule est jamais affichée.
+   */
+  const selectables = useMemo((): Selectable[] => {
+    const out: Selectable[] = [];
+
+    if (tier === "universe") {
+      for (const g of universe.galaxies) {
+        const at = galaxyScenePosition(g);
+        const colonized = colonizedGalaxyIds.has(g.id);
+        out.push({
+          id: g.id,
+          label: g.name,
+          detail: colonized
+            ? t("universeMap.colonized")
+            : systemCountOf(g) === 0
+              ? t("universeMap.outOfReach")
+              : undefined,
+          at: () => at,
+          radius: GALAXY_DISC,
+          labelExtent: GALAXY_DISC,
+          target: () => ({ kind: "galaxy", galaxy: g, colonized }),
+          openId: g.id,
+          descendable: true,
+        });
+      }
+      return out;
     }
 
-    const post = system?.station;
-    if (!system || !placements.system) return out;
-    const parent = placements.system;
+    const parent = placements.galaxy;
+    if (tier === "galaxy" && galaxy && parent) {
+      /**
+       * Le cœur galactique (chantier 39), seul objet du palier qui ne soit pas un système, et
+       * posé EN TÊTE : il ne doit pas se perdre derrière quatre cents noms.
+       *
+       * `placements.galaxy.position` EST le centre de la galaxie, pas un point voisin : c'est
+       * `galaxyScenePosition`. Rien ne se trouve sous un trou noir, donc on n'y descend pas ;
+       * et il n'a pas de fiche propre, c'est celle de sa galaxie qui la porte.
+       */
+      const core = parent.position;
+      const coreName = t("mapInfobox.galacticCoreName", {
+        galaxy: galaxy.name,
+      });
+      const coreDetail = t("mapInfobox.galacticCore");
+      const coreDisc = galacticCoreDisc(systemCountOf(galaxy)) * parent.scale;
+      out.push({
+        id: `${galaxy.id}:core`,
+        label: coreName,
+        detail: coreDetail,
+        at: () => core,
+        radius: coreDisc,
+        labelExtent: coreDisc,
+        target: () => ({ kind: "feature", name: coreName, detail: coreDetail }),
+        openId: galaxy.id,
+        descendable: false,
+      });
+      for (const s of galaxy.systems) {
+        const at = under(parent, systemScenePosition(s));
+        out.push({
+          id: s.id,
+          label: s.name,
+          detail: colonizedSystemIds.has(s.id)
+            ? t("galaxyMap.colonized")
+            : explored.has(s.id)
+              ? t("galaxyMap.explored")
+              : t("galaxyMap.unexplored"),
+          at: () => at,
+          radius: SYSTEM_NODE * parent.scale,
+          // Emprise d'ÉTIQUETTE, volontairement distincte du rayon rendu : un nœud de
+          // système garde une taille d'écran plancher, et son nom doit suivre ce qu'on VOIT.
+          labelExtent: SYSTEM_LABEL_EXTENT * parent.scale,
+          target: () => ({
+            kind: "system",
+            system: s,
+            explored: explored.has(s.id),
+            colonized: colonizedSystemIds.has(s.id),
+            starClass: starClassOf(s),
+          }),
+          openId: s.id,
+          descendable: true,
+        });
+      }
+      return out;
+    }
+
+    const home = placements.system;
+    if (!system || !home) return out;
     const extent = systemExtent(system, systemSites);
 
-    if (post)
+    // Au palier corps, seuls le corps ancré et ses lunes sont à l'écran.
+    const bodies =
+      tier === "body" && body
+        ? [body, ...moonsOf(system, body)]
+        : system.planets;
+    for (const p of bodies)
       out.push({
-        id: post.id,
-        name: post.name,
-        detail: t("mapInfobox.tradingPost"),
-        at: () => under(parent, derivedOrbit(post.id, extent)),
-        openId: system.id,
+        id: p.id,
+        label: p.name,
+        detail:
+          p.kind === "moon"
+            ? t("systemView.moon")
+            : t("systemView.habitability", { value: p.habitability }),
+        at: () => under(home, bodyLocalPosition(system, p, tickAt())),
+        radius: bodyRadiusOf(p) * home.scale,
+        labelExtent: bodyLabelExtent(p) * home.scale,
+        lift: bodyRadiusOf(p) * home.scale,
+        target: () => ({
+          kind: "body",
+          body: p,
+          moons: moonsOf(system, p).length,
+        }),
+        openId: p.id,
+        descendable: true,
       });
 
+    /**
+     * Le manufacturé : comptoir, stations, avant-postes, ceintures, sites de scan.
+     *
+     * Rien ne se trouve « sous » eux, donc on n'y descend pas — le double-clic les ramène au
+     * centre. Et aucun n'a de fiche propre : c'est celle du système qui porte le marché, le
+     * scan et la revendication.
+     */
+    const feature = (
+      id: string,
+      name: string,
+      detail: string,
+      at: () => Vec3,
+    ): Selectable => ({
+      id,
+      label: name,
+      detail,
+      at,
+      radius: FEATURE_RADIUS * home.scale,
+      // Les objets manufacturés vont de 4 à 11 unités système selon leur nature : un rayon
+      // commun suffit à décider d'un seuil d'affichage, et évite de faire remonter une
+      // taille de rendu jusqu'ici.
+      labelExtent: FEATURE_RADIUS * home.scale,
+      target: () => ({ kind: "feature", name, detail }),
+      openId: system.id,
+      descendable: false,
+    });
+
+    const post = system.station;
+    if (post)
+      out.push(
+        feature(post.id, post.name, t("mapInfobox.tradingPost"), () =>
+          under(home, derivedOrbit(post.id, extent)),
+        ),
+      );
+
     const orbiting = (bodyId: string) => {
-      const body = system.planets.find((p) => p.id === bodyId);
-      if (!body) return null;
-      const offset = bodyRadiusOf(body) * 2.2;
+      const around = system.planets.find((p) => p.id === bodyId);
+      if (!around) return null;
+      const offset = bodyRadiusOf(around) * 2.2;
       return (): Vec3 => {
-        const [x, y, z] = bodyLocalPosition(system, body, tickAt());
-        return under(parent, [x + offset, y + offset * 0.35, z]);
+        const [x, y, z] = bodyLocalPosition(system, around, tickAt());
+        return under(home, [x + offset, y + offset * 0.35, z]);
       };
     };
 
     for (const station of stations.filter((x) => x.systemId === system.id)) {
       const at = orbiting(station.bodyId);
       if (at)
-        out.push({
-          id: station.id,
-          name: station.name,
-          detail: t("mapInfobox.station"),
-          at,
-          openId: system.id,
-        });
+        out.push(
+          feature(station.id, station.name, t("mapInfobox.station"), at),
+        );
     }
     for (const station of foreignStations.filter(
       (x) => x.systemId === system.id,
     )) {
       const at = orbiting(station.bodyId);
       if (at)
-        out.push({
-          id: station.id,
-          name: station.name,
-          detail: t("mapInfobox.foreignStation", { owner: station.ownerName }),
-          at,
-          openId: system.id,
-        });
+        out.push(
+          feature(
+            station.id,
+            station.name,
+            t("mapInfobox.foreignStation", { owner: station.ownerName }),
+            at,
+          ),
+        );
     }
     for (const belt of system.belts) {
       const mined = outposts.some((o) => o.beltId === belt.id);
       const angle = seedOf(`${belt.id}:label`) * Math.PI * 2;
-      const at = under(parent, [
+      const at = under(home, [
         Math.cos(angle) * belt.orbitRadius,
         Math.sin(angle) * belt.orbitRadius,
         0,
       ]);
-      out.push({
-        id: belt.id,
-        name: belt.name,
-        detail: mined
-          ? t("mapInfobox.beltMined")
-          : t("mapInfobox.belt", {
-              list:
-                Object.keys(belt.deposits)
-                  .map((r) => resourceLabel(r as ResourceId))
-                  .join(" · ") || t("bodyView.noDeposits"),
-            }),
-        at: () => at,
-        openId: system.id,
-      });
+      out.push(
+        feature(
+          belt.id,
+          belt.name,
+          mined
+            ? t("mapInfobox.beltMined")
+            : t("mapInfobox.belt", {
+                list:
+                  Object.keys(belt.deposits)
+                    .map((r) => resourceLabel(r as ResourceId))
+                    .join(" · ") || t("bodyView.noDeposits"),
+              }),
+          () => at,
+        ),
+      );
     }
     for (const site of systemSites) {
       const p = sitePosition(site);
-      const at = under(parent, [p.x, p.y, p.z]);
-      out.push({
-        id: site.id,
-        name: t(`systemPanel.siteKind.${site.kind}`),
-        detail: t("systemPanel.siteOrbit", {
-          radius: Math.round(site.orbitRadius),
-        }),
-        at: () => at,
-        openId: system.id,
-      });
+      const at = under(home, [p.x, p.y, p.z]);
+      out.push(
+        feature(
+          site.id,
+          t(`systemPanel.siteKind.${site.kind}`),
+          t("systemPanel.siteOrbit", { radius: Math.round(site.orbitRadius) }),
+          () => at,
+        ),
+      );
     }
     return out;
   }, [
     tier,
+    universe,
     galaxy,
-    placements.galaxy,
     system,
+    body,
     systemSites,
-    placements.system,
+    placements,
     stations,
     foreignStations,
     outposts,
     tickAt,
+    explored,
+    colonizedSystemIds,
+    colonizedGalaxyIds,
     t,
   ]);
 
@@ -872,123 +1043,48 @@ export function MapScene({
   }, [showsBody, system, body]);
 
   /**
-   * Objets à nommer sur la carte (chantier 36.3).
+   * Ce qu'on nomme dans la scène, dérivé des sélectionnables (chantiers 36.3 puis 41).
    *
    * **Le palier courant seulement.** Ceux de l'enfant seraient tous sous le seuil de taille
-   * apparente jusqu'au franchissement — mesuré : une planète dans un système qui remplit
-   * tout juste le cadre vaut 0,011, sous les 0,013 requis. Les monter d'avance coûterait
-   * des sprites que personne ne voit, et obligerait la résolution du clic à traiter deux
-   * paliers à la fois.
+   * apparente jusqu'au franchissement — mesuré : une planète dans un système qui remplit tout
+   * juste le cadre vaut 0,011, sous les 0,013 requis.
    */
   const labelItems = useMemo((): LabelItem[] => {
-    const out: LabelItem[] = [];
+    const named = (s: Selectable): LabelItem => ({
+      id: s.id,
+      text: s.label,
+      tier,
+      at: s.at,
+      radius: s.labelExtent,
+      lift: s.lift,
+    });
+    const centre = placements.galaxy?.position;
+    if (tier !== "galaxy" || !centre) return selectables.map(named);
 
-    if (tier === "universe") {
-      for (const g of universe.galaxies) {
-        const at = galaxyScenePosition(g);
-        out.push({
-          id: g.id,
-          text: g.name,
-          tier,
-          at: () => at,
-          radius: GALAXY_DISC,
-        });
-      }
-      return out;
-    }
-
-    if (tier === "galaxy" && galaxy && placements.galaxy) {
-      const parent = placements.galaxy;
-      // Les plus proches du centre de la galaxie d'abord, puis coupe au budget. Le seuil de
-      // taille apparente (`LABEL_MIN`) masque déjà l'immense majorité de ces noms, mais il
-      // ne les empêche pas d'être MONTÉS : à cinq cents systèmes, cela faisait cinq cents
-      // sprites et autant de textures rasterisées pour une poignée de noms lisibles.
-      const centered = galaxy.systems
-        .map((s) => ({ system: s, at: under(parent, systemScenePosition(s)) }))
-        .sort(
-          (a, b) =>
-            Math.hypot(
-              a.at[0] - parent.position[0],
-              a.at[1] - parent.position[1],
-              a.at[2] - parent.position[2],
-            ) -
-            Math.hypot(
-              b.at[0] - parent.position[0],
-              b.at[1] - parent.position[1],
-              b.at[2] - parent.position[2],
-            ),
-        )
-        .slice(0, LABEL_BUDGET);
-      for (const { system: s, at } of centered) {
-        out.push({
-          id: s.id,
-          text: s.name,
-          tier,
-          at: () => at,
-          radius: SYSTEM_LABEL_EXTENT * parent.scale,
-        });
-      }
-      // Le cœur, hors budget : il est seul, et son emprise est de deux ordres au-dessus de
-      // celle d'un système — il se nomme donc bien avant que le premier nom de système
-      // n'atteigne son seuil.
-      for (const f of features)
-        out.push({
-          id: f.id,
-          text: f.name,
-          tier,
-          at: f.at,
-          radius: galacticCoreDisc(systemCountOf(galaxy)) * parent.scale,
-        });
-      return out;
-    }
-
-    const parent = placements.system;
-    if (!system || !parent) return out;
-
-    // Au palier corps, seuls le corps ancré et ses lunes sont nommés : le reste du système
-    // est hors du cadre. Le palier corps ne change pas d'échelle, ses objets se situent
-    // dans les mêmes coordonnées qu'au palier système.
-    const bodies =
-      tier === "body" && body
-        ? [body, ...moonsOf(system, body)]
-        : system.planets;
-
-    for (const p of bodies) {
-      out.push({
-        id: p.id,
-        text: p.name,
-        tier,
-        at: () => under(parent, bodyLocalPosition(system, p, tickAt())),
-        radius: bodyLabelExtent(p) * parent.scale,
-        lift: bodyRadiusOf(p) * parent.scale,
-      });
-    }
-
-    if (tier === "system")
-      for (const f of features)
-        out.push({
-          id: f.id,
-          text: f.name,
-          tier,
-          at: f.at,
-          // Les objets manufacturés vont de 4 à 11 unités système selon leur nature : un
-          // rayon commun suffit à décider d'un seuil d'affichage, et évite de faire
-          // remonter une taille de rendu jusqu'ici.
-          radius: FEATURE_RADIUS * parent.scale,
-        });
-
-    return out;
-  }, [
-    tier,
-    universe,
-    galaxy,
-    system,
-    body,
-    placements.galaxy,
-    placements.system,
-    features,
-    tickAt,
-  ]);
+    // Les plus proches du centre de la galaxie d'abord, puis coupe au budget. Le seuil de
+    // taille apparente masque déjà l'immense majorité de ces noms, mais il ne les empêche pas
+    // d'être MONTÉS : à cinq cents systèmes, cela faisait cinq cents sprites et autant de
+    // textures rastérisées pour une poignée de noms lisibles.
+    //
+    // Le cœur reste HORS budget : il est seul, et son emprise est de deux ordres au-dessus de
+    // celle d'un système — il se nomme donc bien avant le premier nom de système.
+    const budgeted = selectables
+      .filter((s) => s.descendable)
+      .map((s) => {
+        const [x, y, z] = s.at();
+        return {
+          s,
+          away: Math.hypot(x - centre[0], y - centre[1], z - centre[2]),
+        };
+      })
+      .sort((a, b) => a.away - b.away)
+      .slice(0, LABEL_BUDGET)
+      .map(({ s }) => named(s));
+    return [
+      ...selectables.filter((s) => !s.descendable).map(named),
+      ...budgeted,
+    ];
+  }, [tier, selectables, placements.galaxy]);
 
   /**
    * Cadrage initial du canvas. Figé au montage, et surtout pas recalculé : `FitCamera` se
@@ -1094,84 +1190,8 @@ export function MapScene({
     // système visé et effaçait le corps dans lequel on venait de descendre.
   }, [jumpTo]);
 
-  /** Appartenances, utilisées par la couche 3D ET par la liste DOM. */
-  const colonizedGalaxyIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const g of universe.galaxies) {
-      if (
-        g.systems.some((s) =>
-          s.planets.some((p) => colonies.some((c) => c.planetId === p.id)),
-        )
-      )
-        ids.add(g.id);
-    }
-    return ids;
-  }, [universe, colonies]);
-
-  const colonizedSystemIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const s of galaxy?.systems ?? []) {
-      if (s.planets.some((p) => colonies.some((c) => c.planetId === p.id)))
-        ids.add(s.id);
-    }
-    return ids;
-  }, [galaxy, colonies]);
-
-  const explored = useMemo(
-    () => new Set(exploredSystemIds),
-    [exploredSystemIds],
-  );
-
-  /** Monde courant, lu par référence par les effets qui ne doivent pas rejouer au tick. */
   const world = useRef({ universe, sites, tick });
   world.current = { universe, sites, tick };
-
-  /**
-   * Tout ce qui se sélectionne au palier courant (chantier 40).
-   *
-   * Ce fut d'abord la liste des seuls candidats à l'ancrage — galaxies, systèmes, planètes,
-   * de quoi savoir dans quoi descendre. Elle sert maintenant à désigner, donc elle doit
-   * contenir **tout ce qu'on peut vouloir montrer du doigt** : les lunes, et tout le
-   * manufacturé du système, qui n'a aucun gestionnaire de clic dans la scène et n'était
-   * atteignable que par son étiquette ou par la liste DOM.
-   *
-   * La position est une **fonction** et non un point : un corps orbite, et un pool figé au
-   * dernier tick désignerait une place que la planète a quittée.
-   */
-  const selectables = useMemo(() => {
-    const out: { id: string; at: () => Vec3; radius: number }[] = [];
-    if (tier === "universe") {
-      for (const g of universe.galaxies) {
-        const at = galaxyScenePosition(g);
-        out.push({ id: g.id, at: () => at, radius: GALAXY_DISC });
-      }
-      return out;
-    }
-    const g = placements.galaxy;
-    if (tier === "galaxy" && g && galaxy) {
-      for (const s of galaxy.systems) {
-        const at = under(g, systemScenePosition(s));
-        out.push({ id: s.id, at: () => at, radius: SYSTEM_NODE * g.scale });
-      }
-      return out;
-    }
-    const s = placements.system;
-    if (!system || !s) return out;
-    // Au palier corps, seuls le corps ancé et ses lunes sont à l'écran.
-    const bodies =
-      tier === "body" && body
-        ? [body, ...moonsOf(system, body)]
-        : system.planets;
-    for (const p of bodies)
-      out.push({
-        id: p.id,
-        at: () => under(s, bodyLocalPosition(system, p, tickAt())),
-        radius: bodyRadiusOf(p) * s.scale,
-      });
-    for (const f of features)
-      out.push({ id: f.id, at: f.at, radius: FEATURE_RADIUS * s.scale });
-    return out;
-  }, [tier, universe, galaxy, system, body, placements, tickAt, features]);
 
   /**
    * Franchissement de palier, demandé par la caméra.
@@ -1285,49 +1305,28 @@ export function MapScene({
   }, []);
 
   /**
-   * Objet sélectionné : sa nature, et la position de scène où poser son infobox.
+   * L'objet que l'infobox décrit.
    *
-   * La position est une fonction et non une valeur : un corps orbite, et son infobox doit
-   * le suivre plutôt que rester où il était au moment du clic.
+   * Une recherche dans les sélectionnables, PLUS un repli — et c'est le seul endroit où la
+   * liste unique du chantier 41 ne suffit pas. Entrer dans un système le laisse sélectionné
+   * alors qu'il ne figure plus parmi les objets à l'écran : l'infobox doit continuer de le
+   * décrire, et son bouton de rester celui de sa fiche. La sélection déborde donc le palier
+   * courant d'un cran vers le haut, délibérément.
    */
   const selection = useMemo((): {
     target: MapTarget;
     at: () => Vec3;
   } | null => {
     if (!selectedId) return null;
-    const feature = features.find((f) => f.id === selectedId);
-    if (feature)
-      return {
-        target: {
-          kind: "feature" as const,
-          name: feature.name,
-          detail: feature.detail,
-        },
-        at: feature.at,
-      };
+    const here = selectables.find((s) => s.id === selectedId);
+    if (here) return { target: here.target(), at: here.at };
+
     const path = selectedPath;
-
-    if (path.bodyId === selectedId && system && placements.system) {
-      if (path.systemId !== system.id) return null;
-      const picked = system.planets.find((p) => p.id === selectedId);
-      if (!picked) return null;
-      const parent = placements.system;
-      return {
-        target: {
-          kind: "body",
-          body: picked,
-          moons: moonsOf(system, picked).length,
-        },
-        at: () => under(parent, bodyLocalPosition(system, picked, tickAt())),
-      };
-    }
-
     if (path.systemId === selectedId && galaxy && placements.galaxy) {
       if (path.galaxyId !== galaxy.id) return null;
       const picked = galaxy.systems.find((sys) => sys.id === selectedId);
       if (!picked) return null;
-      const parent = placements.galaxy;
-      const at = under(parent, systemScenePosition(picked));
+      const at = under(placements.galaxy, systemScenePosition(picked));
       return {
         target: {
           kind: "system",
@@ -1357,15 +1356,13 @@ export function MapScene({
   }, [
     selectedId,
     selectedPath,
+    selectables,
     universe,
     galaxy,
-    system,
-    placements,
-    tickAt,
+    placements.galaxy,
     explored,
     colonizedSystemIds,
     colonizedGalaxyIds,
-    features,
   ]);
 
   /**
@@ -1405,7 +1402,7 @@ export function MapScene({
     // Un comptoir ou une ceinture n a pas de fiche propre : c est celle de son systeme qui
     // porte le marche, le scan et la revendication.
     onOpenFiche(
-      features.find((f) => f.id === selectedId)?.openId ?? selectedId,
+      selectables.find((s) => s.id === selectedId)?.openId ?? selectedId,
     );
   };
 
@@ -1418,84 +1415,24 @@ export function MapScene({
           ? t("galaxyMap.ariaLabel", { name: galaxy.name })
           : t("universeMap.ariaLabel");
 
-  const bodyEntry = (b: Planet) => ({
-    id: b.id,
-    label: b.name,
-    detail:
-      b.kind === "moon"
-        ? t("systemView.moon")
-        : t("systemView.habitability", { value: b.habitability }),
-    selected: b.id === selectedId,
-  });
-
-  const entries =
-    tier === "body" && system && body
-      ? [body, ...moonsOf(system, body)].map(bodyEntry)
-      : tier === "system" && system
-        ? [
-            ...system.planets.map(bodyEntry),
-            ...features.map((f) => ({
-              id: f.id,
-              label: f.name,
-              detail: f.detail,
-              selected: f.id === selectedId,
-            })),
-          ]
-        : tier === "galaxy" && galaxy
-          ? [
-              ...features.map((f) => ({
-                id: f.id,
-                label: f.name,
-                detail: f.detail,
-                selected: f.id === selectedId,
-              })),
-              ...galaxy.systems.map((s) => ({
-                id: s.id,
-                label: s.name,
-                detail: colonizedSystemIds.has(s.id)
-                  ? t("galaxyMap.colonized")
-                  : explored.has(s.id)
-                    ? t("galaxyMap.explored")
-                    : t("galaxyMap.unexplored"),
-                selected: s.id === selectedId,
-              })),
-            ]
-          : universe.galaxies.map((g) => ({
-              id: g.id,
-              label: g.name,
-              detail: colonizedGalaxyIds.has(g.id)
-                ? t("universeMap.colonized")
-                : g.systems.length === 0
-                  ? t("universeMap.outOfReach")
-                  : undefined,
-              selected: g.id === selectedId,
-            }));
+  const entries = selectables.map((s) => ({
+    id: s.id,
+    label: s.label,
+    detail: s.detail,
+    selected: s.id === selectedId,
+  }));
 
   const pickFromList = (id: string, open: boolean) => {
-    const feature = features.find((f) => f.id === id);
-    if (feature) {
-      if (open) flyToFeature(feature.id, feature.at());
-      else onSelectId(id);
+    const picked = selectables.find((s) => s.id === id);
+    if (!picked) return;
+    if (!open) {
+      onSelectId(id);
       return;
     }
-    if (tier === "body" || tier === "system") {
-      const target = system?.planets.find((p) => p.id === id);
-      if (!target) return;
-      if (open) dive("system", target.id);
-      else onSelectBody(target);
-      return;
-    }
-    if (tier === "galaxy") {
-      const target = galaxy?.systems.find((s) => s.id === id);
-      if (!target) return;
-      if (open) dive("galaxy", target.id);
-      else onSelectSystem(target);
-      return;
-    }
-    const target = universe.galaxies.find((g) => g.id === id);
-    if (!target) return;
-    if (open) dive("universe", target.id);
-    else onSelectGalaxy(target);
+    // Descendre depuis le palier CORPS se fait dans le repère du système : la couche corps
+    // n'a pas d'enfant, et ses lunes vivent dans les coordonnées de leur système.
+    if (picked.descendable) dive(tier === "body" ? "system" : tier, id);
+    else flyToFeature(id, picked.at());
   };
 
   return (

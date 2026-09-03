@@ -80,12 +80,6 @@ function cornerTexture(): CanvasTexture | null {
   return cached;
 }
 
-/** Repart de zéro entre deux tests, comme `resetLabelTextures`. */
-export function resetCornerTexture(): void {
-  cached?.dispose();
-  cached = null;
-}
-
 interface Props {
   /** Où est l'objet sélectionné, à l'instant présent. `null` quand rien ne l'est. */
   at: (() => Vec3) | null;
