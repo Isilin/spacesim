@@ -382,25 +382,43 @@ test("les noms apparaissent sur les objets quand ils sont assez gros", async ({
     })
     .toBeGreaterThan(0);
 
-  // Un système peuplé : c'est là que le seuil se voit travailler. Vu de loin, seuls les
-  // plus gros corps sont nommés ; en s'approchant, les autres le deviennent à leur tour.
-  await page.getByRole("button", { name: "Ma capitale" }).click();
+  // Le palier GALAXIE, et pas le système : c'est là que le seuil se voit travailler.
+  //
+  // Le test mesurait auparavant dans le système capitale, et il a échoué une fois sur
+  // « Expected > 4, Received 4 ». La cause n'est pas un aléa de mesure mais un PLAFOND :
+  // `data-map-labels` compte des opacités, pas des objets dans le cadre, si bien qu'un
+  // système de quatre objets nommables affiche quatre noms dès qu'il est cadré — et aucun
+  // zoom ne peut faire grandir un compte déjà au maximum. Selon la seed, le test ne
+  // prouvait rien.
+  //
+  // Une galaxie en compte trois à cinq cents pour un budget de soixante : le plafond est
+  // hors d'atteinte, et le budget retient justement les plus proches du CENTRE, c'est-à-dire
+  // ceux vers lesquels le zoom libre converge. La croissance y est structurelle.
+  const list = page.getByRole("navigation", { name: /univers|universe/i });
+  await list
+    .getByRole("button")
+    .filter({ hasText: /colonis|coloniz/i })
+    .first()
+    .dblclick();
   await expect
-    .poll(() => host.getAttribute("data-map-tier"), { timeout: 15_000 })
-    .toBe("system");
-  await page.waitForTimeout(800);
+    .poll(() => host.getAttribute("data-map-tier"), { timeout: 20_000 })
+    .toBe("galaxy");
+  await page.waitForTimeout(1000);
   const far = Number(await host.getAttribute("data-map-labels"));
 
   const box = (await host.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  for (let i = 0; i < 4; i++) {
+  // Jusqu'à la borne du zoom libre — 0,15 fois la distance de cadrage du palier. Six crans
+  // n'y suffisaient pas : un cran vaut 15 % quand aucune bande n'est en vue, et le seuil de
+  // taille apparente ne se franchit qu'en fin de course.
+  for (let i = 0; i < 25; i++) {
     await page.mouse.wheel(0, -240);
-    await page.waitForTimeout(60);
+    await page.waitForTimeout(40);
   }
 
-  // Le seuil, et rien d'autre : le palier n'a pas changé, donc aucun objet n'a été monté
-  // ni démonté entre les deux mesures.
-  expect(await host.getAttribute("data-map-tier")).toBe("system");
+  // Le seuil, et rien d'autre : le palier n'a pas changé — descendre exigerait de viser un
+  // système — donc aucun objet n'a été monté ni démonté entre les deux mesures.
+  expect(await host.getAttribute("data-map-tier")).toBe("galaxy");
   await expect
     .poll(async () => Number(await host.getAttribute("data-map-labels")), {
       timeout: 10_000,

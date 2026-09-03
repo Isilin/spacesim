@@ -38,6 +38,9 @@ async function expectSizedCanvas(
 test("la carte 3D rend et tient un budget d'images à chaque niveau", async ({
   page,
 }) => {
+  // Trois paliers × trois fenêtres d'une seconde depuis le chantier 40.9 : la mesure seule
+  // prend une dizaine de secondes, et le défaut de trente n'y suffisait plus.
+  test.setTimeout(120_000);
   await registerFreshEmpire(page, {
     prefix: "map3d",
     empireName: "Cartographes E2E",
