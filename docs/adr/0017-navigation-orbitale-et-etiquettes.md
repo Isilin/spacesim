@@ -2,7 +2,11 @@
 
 ## Statut
 
-Accepté
+Accepté — **partiellement renversée** par l'ADR
+[0019](0019-la-selection-est-l-ancre.md), qui rend le panoramique (au bouton droit),
+supprime le délai de discrimination du clic simple, et retire à la caméra le soin de choisir
+ce qu'elle vise — « seul un vol déplace la cible » ne tient plus : cliquer, élire sous le
+curseur et glisser la déplacent aussi.
 
 ## Contexte
 

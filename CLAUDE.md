@@ -31,6 +31,14 @@ Design et roadmap : [docs/design.md](docs/design.md). Référence technique prof
   [ADR 0003](docs/adr/0003-persistance-write-behind.md).
 - **Logistique en deux stocks** (sol/orbite) — tout ce qui embarque passe par l'ascenseur
   orbital. Voir [ADR 0004](docs/adr/0004-logistique-deux-stocks-sol-orbite.md).
+- **Une galaxie compte 300 à 520 systèmes**, posés sur ses bras : la morphologie est une
+  ENTRÉE du générateur, et le nuage du palier univers rend les positions réelles. Tout ce qui
+  parcourt l'univers est donc sur un chemin chaud — un balayage linéaire non mémoïsé, un
+  `insert` non découpé ou un objet de scène par système ne passent plus. Voir
+  [ADR 0018](docs/adr/0018-morphologie-de-galaxie-structurante.md).
+- **La seed de partie ne quitte jamais le serveur** — le générateur est déterministe et vit
+  dans le paquet du navigateur. Le client reçoit un `ClientUniverse`, et les galaxies hors de
+  portée en condensé.
 - **Pas de conteneur DI** — composition explicite au boot (`composeEngine`). Voir
   [ADR 0001](docs/adr/0001-composition-explicite-sans-conteneur-di.md).
 - **Cette machine n'a pas Node/pnpm natif** — tout passe par Docker (backend WSL2), voir plus
