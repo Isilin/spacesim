@@ -1630,8 +1630,10 @@ exposés sur la section hôte — `data-map-fits` (recadrages appliqués) et `da
 (touches traitées) —, seuls points vérifiables de l'extérieur, et le test « la caméra reste au
 joueur ».
 *`data-map-keys` a disparu au chantier 38 avec le pilotage clavier de la caméra ; la famille,
-elle, s'est étoffée — `data-map-tier`, `data-map-depth`, `data-map-labels`, `data-map-aim`.* Ce qu'ils ne prouvent pas : que la caméra se déplace du bon nombre d'unités. Le
-cadrage lui-même, qui est du calcul pur, est couvert par `map3d/bounds.test.ts`.
+elle, s'est étoffée — `data-map-tier`, `data-map-depth`, `data-map-labels`, `data-map-aim`, et
+`data-map-elevation` au chantier 40.* Ce qu'ils ne prouvent pas : que la caméra se déplace du
+bon nombre d'unités. Le cadrage lui-même, qui est du calcul pur, est couvert par
+`map3d/bounds.test.ts`.
 
 ### Vérification du chantier
 
@@ -2495,15 +2497,34 @@ Trois gênes relevées à l'usage après le chantier 38, et une dette de lint. L
 structurantes sont dans l'ADR [0020](adr/0020-deux-modes-de-camera.md), qui **renverse deux
 points** de l'ADR 0019 : l'élection au curseur et le recentrage automatique.
 
-- **39.1** Le lint passe, pour la première fois.
-- **39.2** Le monde est Z-haut, la caméra aussi : `camera.up = (0,0,1)`.
-- **39.3** `orbitAround`, `zoomAbout`, `worldPerPixel` — la rotation à pivot décentré,
+- **40.1** Le lint passe, pour la première fois.
+- **40.2** Le monde est Z-haut, la caméra aussi : `camera.up = (0,0,1)`.
+- **40.3** `orbitAround`, `zoomAbout`, `worldPerPixel` — la rotation à pivot décentré,
   l'homothétie de zoom et la conversion pixels → scène, pures et testées comme le reste de
   `tiers.ts`.
-- **39.4** Deux modes : libre (zoom et rotation autour du centre du palier), ciblé (tout
+- **40.4** Deux modes : libre (zoom et rotation autour du centre du palier), ciblé (tout
   autour de la sélection).
-- **39.5** Le clic est exact d'abord, tolérant ensuite — dix-huit pixels.
-- **39.6** Quatre équerres en sprite, un seul repère pour tous les objets.
+- **40.5** Le clic est exact d'abord, tolérant ensuite — dix-huit pixels.
+- **40.6** Quatre équerres en sprite, un seul repère pour tous les objets.
+
+Et trois correctifs venus **après** que ce bilan a été écrit — le commit de bilan et d'ADR
+(`b95697c`) les précède, ce qui est devenu le motif récurrent du dépôt (déjà 35.11 puis 35.12) :
+
+- **40.8** L'aperçu 3D tourne autour de la verticale du monde. `ModelPreview` calculait déjà
+  son cadrage en Z-haut mais ne posait jamais `camera.up` : son `autoRotate` roulait le
+  vaisseau au lieu de le faire pivoter. Même incohérence que 40.2, restée sur le jumeau de la
+  carte — invisible parce que le cadrage initial est identique dans les deux conventions.
+- **40.9** La mesure d'images cesse de rougir au hasard : `framesPerSecond` prend trois
+  fenêtres et garde la **meilleure**, le seuil restant à 20. Ce n'est pas un adoucissement —
+  une régression coûte ses images dans les trois fenêtres, une seconde volée par un autre
+  processus n'en coûte que dans une. Le test des étiquettes change de palier au passage : il
+  mesurait dans un système de quatre objets nommables, c'est-à-dire contre un **plafond** que
+  `data-map-labels` atteint dès le cadrage, et selon la seed il ne prouvait rien.
+- **40.10** Une galaxie se clique sous tous les angles. Son volume de clic était un
+  `circleGeometry` posé dans le plan galactique : vu par la tranche, un trait. Régression
+  **causée** par la rotation libre de 40.4 et **masquée** par le clic tolérant de 40.5, qui
+  rattrapait à dix-huit pixels près pendant que le chemin exact restait cassé. Une sphère du
+  même rayon présente le même cercle sous tous les angles, sans coût par image.
 
 ### Pourquoi ça roulait
 
@@ -2587,3 +2608,71 @@ la mesure de moitié — il dispute le processeur au pilote OpenGL logiciel. Le 
 donné 27, 39 et un 19 qui a fait échouer le seuil de 20 une fois sur trois. Ce n'est pas une
 régression du chantier : la même configuration rejouée immédiatement rendait 32 tests verts. Mais
 c'est un rappel que le relevé ne vaut que si l'on éteint ce qui tourne à côté.
+
+*Corrigé depuis, en 40.9 : ce n'est plus une fatalité du relevé mais un défaut de la mesure.
+`framesPerSecond` prenait une seule fenêtre d'une seconde. Il en prend trois et garde la
+meilleure, ce qui laisse le seuil à 20 tout en cessant de compter les secondes volées par un
+autre processus. Relevé après coup, conteneur `app` arrêté : univers 61, galaxie 28-33,
+système 55-60 — le palier galaxie est réellement le plus chargé, ce n'était pas seulement de la
+contention.*
+
+## Chantier 41 — Une seule liste de sélectionnables (04/09/2026)
+
+Pas de gêne rapportée cette fois, et aucune ADR : ce chantier ne décide rien, il solde une dette
+que le chantier 40 avait aggravée. `MapScene` portait **quatre listes parallèles** décrivant le
+même ensemble — `features` pour ce qu'un système contient en plus de ses corps, `labelItems`
+pour les noms posés dans la scène, `selectables` pour le pool du clic tolérant, `entries` pour
+la liste DOM. Le chantier 40 en avait ajouté une au lieu d'en retirer trois.
+
+### Elles avaient déjà divergé, et rien ne le signalait
+
+Le **cœur galactique** du chantier 39 était nommé mais absent du pool de clic ; une **ceinture**
+était cliquable mais nommée par un autre chemin. Aucun test ne pouvait attraper ça : chaque
+liste est correcte prise seule, c'est leur désaccord qui est le défaut. Et chaque nouvel objet
+de la carte demandait de penser à quatre endroits — le prix se payait à chaque chantier suivant,
+pas à celui-ci.
+
+Une seule interface `Selectable` désormais (`MapScene.tsx:127`) : identité, nom, détail,
+position vive (`at()` — un corps orbite), emprise rendue, emprise d'étiquette, cible d'infobox,
+fiche à ouvrir, et si l'on peut descendre dedans. Les quatre usages en dérivent.
+
+Deux détails que la fusion a dû préserver, et qui expliquent pourquoi l'interface a neuf champs
+plutôt que cinq :
+
+- l'emprise d'**étiquette** reste distincte de l'emprise **rendue**, parce qu'un nœud de système
+  garde une taille d'écran plancher et que son nom doit suivre ce qu'on VOIT ;
+- la cible d'infobox est une **fonction**, parce qu'au palier galaxie il y a jusqu'à cinq cents
+  candidats pour une seule boîte affichée — les construire toutes serait payer cinq cents fois
+  ce qu'on montre une fois.
+
+### La prémisse du plan était fausse sur un point
+
+`selection` n'était **pas** un sous-ensemble des autres listes. Elle décrit aussi l'objet du
+palier où l'on EST : entrer dans un système le laisse sélectionné alors qu'il ne figure plus
+parmi les objets à l'écran, et l'infobox doit continuer de le décrire. Ce n'est donc pas une
+cinquième liste mais une recherche avec un repli, et le repli est commenté comme tel.
+
+`pickFromList` perd son branchement par palier — un booléen `descendable` dit si le double-clic
+descend ou se contente de voler. Et `resetCornerTexture`, export sans aucun appelant laissé par
+le chantier 40, disparaît : personne ne l'aurait vu, aucun outil du dépôt ne détecte un export
+mort (`biome.json` n'active que le groupe `a11y`).
+
+### Vérification
+
+**Aucun test n'a été réécrit** — c'était le critère : une consolidation qui change un
+comportement n'est pas une consolidation. 206 tests unitaires et 33 de bout en bout au vert du
+premier coup.
+
+## Chantier 42 — Pincement tactile (tenté, abandonné, 04/09/2026)
+
+À consigner parce que rien d'autre ne le consigne. Huit minutes après le commit du chantier 41,
+un test `map3d.spec.ts` nommé « au doigt, le pincement zoome la carte (chantier 42) » a été
+écrit, exécuté et a **échoué** ; ni le test ni le code correspondant n'ont été committés. La
+seule trace était une trace Playwright de 7,8 Mo dans `apps/web/test-results/` (répertoire
+gitignoré) et un `.last-run.json` en `"status": "failed"` — l'exécution e2e suivante l'a
+écrasée, d'où cette section.
+
+Rien n'est perdu — il n'y avait rien à perdre — mais la carte n'a **aucun** support tactile, et
+c'est désormais écrit quelque part. À rouvrir ou à enterrer explicitement : le `useGesture` de
+`TierCamera.tsx:252` ne câble aujourd'hui que `onWheel` et `onDrag`, et la bibliothèque
+retenue au chantier 38 pour la molette expose `onPinch` au même endroit.
