@@ -2702,6 +2702,9 @@ Aucune ADR : ce chantier ne décide rien, il répare. Sur le patron du chantier 
   calculs devenue inutile s'en vont avec.
 - **43.5** Les mesures serveur que le chantier 37 avait périmées sont rejouées. Le bench de
   rattrapage mesurait un serveur qui n'existe pas ; `MAX_GALAXIES`, lui, tient.
+- **43.6** `nearestTradingPost` est mémoïsé. Le pilote économique PNJ pesait 99,7 % du coût
+  d'un tick ; le rattrapage de vingt-quatre heures au boot passe de dix minutes à quatre
+  secondes.
 
 ### Deux tables muettes bloquaient TOUTE la persistance
 
@@ -2825,18 +2828,53 @@ Un facteur **deux cent dix**. Et les 34 ms recoupent les 41 ms/tick que
 conséquence — même motif que le `[persister] flush échoué` de 43.1 : l'information était
 produite, personne ne la lisait.
 
-**Ce que ça dit, et que ce chantier ne corrige pas.** Un redémarrage après vingt-quatre
-heures d'arrêt bloque le boot une dizaine de minutes, `catchUp()` étant appelé depuis
-`boot.ts` avant `buildApp` et ne cédant jamais la main. `MAX_CATCHUP_TICKS` borne le
-rattrapage en **nombre de ticks** — une unité qui était juste quand un tick coûtait une
-fraction de milliseconde et qui ne l'est plus. C'est exactement le défaut d'unité de
-l'`OVERSHOOT` du 43.2, à un autre étage.
+**Ce que ça disait.** Un redémarrage après vingt-quatre heures d'arrêt bloquait le boot une
+dizaine de minutes, `catchUp()` étant appelé depuis `boot.ts` avant `buildApp` et ne cédant
+jamais la main. `MAX_CATCHUP_TICKS` borne le rattrapage en **nombre de ticks** — une unité
+qui était juste quand un tick coûtait une fraction de milliseconde. C'est exactement le
+défaut d'unité de l'`OVERSHOOT` du 43.2, à un autre étage.
 
-Le corriger n'est pas un correctif mais une décision, et elle est de jeu autant que de
-technique : borner le rattrapage en TEMPS revient à décider qu'au-delà d'un certain seuil,
-le temps hors-ligne d'un joueur cesse de produire. Servir pendant le rattrapage revient à
-décider qu'un joueur peut agir sur un monde en retard sur lui-même. Les deux demandent une
-ADR ; aucune ne se prend en passant.
+Trois sorties se présentaient, et deux d'entre elles étaient des décisions de jeu déguisées
+en correctifs : borner le rattrapage en TEMPS revient à décider qu'au-delà d'un seuil le
+temps hors-ligne d'un joueur cesse de produire ; servir pendant le rattrapage revient à
+décider qu'il peut agir sur un monde en retard sur lui-même. La troisième — s'attaquer au
+coût du tick — ne coûte rien au joueur. C'est celle qui a été prise, et elle a dissous la
+question : le rattrapage tombe à **quatre secondes**, il n'y a plus d'arbitrage à rendre.
+
+### Un seul appel pesait 99,7 % du tick
+
+Profilé phase par phase sur une heure simulée, sonde temporaire dans `TickRunner.runOne` :
+
+| phase | avant | après |
+|---|---|---|
+| `market.npcTick` | **70 522 ms (99,7 %)** | 464 ms |
+| `market.economyTick` | 59 ms | 68 ms |
+| `exploration.ensureFrontier` | 42 ms | 48 ms |
+| tout le reste réuni | ~99 ms | ~106 ms |
+| **720 ticks** | **70 722 ms** | **686 ms** |
+
+Tout était dans `nearestTradingPost`. Il lance un plus-court-chemin **par comptoir** de la
+galaxie, sur un graphe reconstruit à chaque appel — et `this.portalLinks` étant un GETTER,
+il se recalculait lui aussi à chaque tour de boucle. Une galaxie comptait sept à quatorze
+systèmes avant le chantier 37 ; elle en compte trois à cinq cents. Le code n'a pas changé :
+son entrée a été multipliée par trente-six et rien ne l'a signalé.
+
+C'est le troisième défaut de ce chantier dont le signal était **imprimé sans être lu** :
+`market-service.test.ts` affichait « 901 tick(s) en 37020,8ms » à chaque exécution.
+
+La réponse ne dépend que de la topologie — systèmes, arêtes, position des comptoirs,
+liaisons de portail actives — et rien de tout cela ne bouge d'un tick à l'autre. Elle est
+donc mémoïsée, avec une clé qui **contient** ces trois choses plutôt que de dépendre d'un
+point d'invalidation qu'on oublierait : une galaxie neuve change le compte de galaxies et
+celui des comptoirs, un portail qui s'ouvre change la signature des liaisons. Un cache
+qu'on invalide à la main est un cache qu'on invalide mal ; le pire qu'un défaut de clé
+puisse produire ici est un recalcul.
+
+Verrou : un budget de temps dans `market-service.test.ts`, neuf cents ticks et trois PNJ
+sous trente secondes. C'est un **plancher d'implémentation** et non une mesure de la
+machine — même esprit que le budget d'images de `map3d.spec.ts`, et il ne doit jamais être
+relevé pour faire passer un test. Mesuré à 0,7 s, il laisse quarante fois la marge et
+attrape quand même un retour à l'état d'avant.
 
 ### `MAX_GALAXIES` tient
 
@@ -2867,10 +2905,11 @@ projections. L'ADR 0018 demandait le second ; ceci est le premier, refait.
 | suite e2e complète | 33 passés, 3,5 min | **34 passés**, 3,9 et 4,6 min sur deux passes |
 | `pnpm lint` | `a11y` + `noDebugger` | **+ `correctness`**, moins `useExhaustiveDependencies` |
 | lignes de code mort retirées | — | 39 |
-| `catchUp()` 24 h, PNJ compris | non mesuré (2,9 s à vide) | **591-745 s** |
+| `catchUp()` 24 h, PNJ compris | non mesuré (2,9 s à vide) | 591-745 s → **4,0-4,7 s** |
+| coût d'un tick, PNJ compris | ~34 ms | **~0,95 ms** |
 | tas par galaxie | ~1,59 Mo (synthétique) | 1,46 Mo mesuré |
 | conteneur `app` pendant le relevé | **en marche** | arrêté |
-| tests unitaires (7 paquets) | — | **976 passés**, 90 fichiers (`apps/server` 340) |
+| tests unitaires (7 paquets) | — | **977 passés**, 90 fichiers (`apps/server` 341) |
 
 Les relevés du chantier 40 avaient été pris conteneur `app` **en marche**, ce que ce
 document identifie depuis le chantier 35 comme faussant la mesure de moitié. Ceux-ci sont
