@@ -170,3 +170,92 @@ describe("Persister.flush", () => {
     expect((await readObjective("obj-7"))?.reward).toBe(7);
   });
 });
+
+/**
+ * Régression du chantier 32.19, trouvée en rejouant la suite e2e : `corpRelations`
+ * et `standings` étaient écrites par `CorporationRepository` sans figurer dans le registre
+ * de clés. Le coût n'était pas local — voir le test suivant.
+ */
+describe("Persister — tables du chantier 32 (corporations)", () => {
+  const corporationRow = (id: string) => ({
+    id,
+    gameId: "g1",
+    name: `Corp ${id}`,
+    tag: id.toUpperCase(),
+    founderEmpireId: "e1",
+    treasury: 0,
+    createdAt: 1,
+  });
+
+  it("une relation de corporation atteint la base", async () => {
+    const writeSet = new WriteSet();
+    const persister = new Persister(writeSet, silentLogger);
+
+    writeSet.upsert("corporations", "c-a", corporationRow("c-a"));
+    writeSet.upsert("corporations", "c-b", corporationRow("c-b"));
+    writeSet.upsert("corpRelations", ["c-a", "c-b"], {
+      corpA: "c-a",
+      corpB: "c-b",
+      gameId: "g1",
+      state: "war",
+      since: 42,
+    });
+    await persister.flush();
+
+    expect(persister.lastFlushError).toBeNull();
+    const rows = await db.select().from(schema.corpRelations);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.state).toBe("war");
+  });
+
+  it("un standing atteint la base", async () => {
+    const writeSet = new WriteSet();
+    const persister = new Persister(writeSet, silentLogger);
+
+    writeSet.upsert("corporations", "c-a", corporationRow("c-a"));
+    writeSet.upsert("standings", ["c-a", "e-9"], {
+      corporationId: "c-a",
+      targetId: "e-9",
+      gameId: "g1",
+      value: -5,
+      setAt: 7,
+    });
+    await persister.flush();
+
+    expect(persister.lastFlushError).toBeNull();
+    const rows = await db.select().from(schema.standings);
+    expect(rows[0]?.value).toBe(-5);
+  });
+
+  /**
+   * Le vrai coût d'une table non enregistrée, et la raison pour laquelle le défaut est
+   * resté invisible : `tableFor` lève, la transaction ENTIÈRE fait rollback, et
+   * `runFlush` remet toutes les entrées drainées en attente — y compris celle qui lève.
+   * Le flush suivant rejoue le même lot et échoue pareil. Rien n'atteint plus jamais
+   * Postgres, la RAM continue de faire autorité (ADR 0003), et cela ne se voit qu'au
+   * redémarrage.
+   *
+   * Le cast est le sujet du test : `WriteSet` type désormais ses noms de table sur
+   * `PersistedTable`, donc ce lot n'existe plus qu'en le forçant.
+   */
+  it("une table non enregistrée bloque TOUT le flush, et pas seulement sa ligne", async () => {
+    const writeSet = new WriteSet();
+    const persister = new Persister(writeSet, silentLogger);
+
+    writeSet.upsert("objectives", "obj-ok", objectiveRow("obj-ok"));
+    writeSet.upsert(
+      "accounts" as unknown as Parameters<WriteSet["upsert"]>[0],
+      "a-1",
+      { id: "a-1" },
+    );
+
+    await persister.flush();
+    expect(persister.lastFlushError).toContain("table inconnue");
+    expect(await readObjective("obj-ok")).toBeUndefined();
+
+    // Et le lot revient tel quel : un second flush ne débloque rien.
+    await persister.flush();
+    expect(persister.lastFlushError).toContain("table inconnue");
+    expect(await readObjective("obj-ok")).toBeUndefined();
+  });
+});
