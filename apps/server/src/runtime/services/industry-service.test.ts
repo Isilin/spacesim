@@ -77,10 +77,6 @@ describe("GameEngine — conception de vaisseaux (chantier 13)", () => {
     chassisId: "light_freighter",
     modules: ["cargo_pod", "cargo_pod", "ion_thruster"],
   };
-  const FLEET_BP = {
-    chassisId: "scout_frame",
-    modules: ["laser_pulse", "armor_plating", "ion_thruster", "cargo_pod"],
-  };
   /** Comptoir de la galaxie d'origine, rendu visible de l'empire (même recette que le test logistique). */
   const reachableTradingPost = (
     engine: GameEngine,

@@ -12,7 +12,6 @@ import {
 } from "@spacesim/shared";
 import { eq } from "drizzle-orm";
 import { db, schema, withTransaction } from "../db/index.js";
-import type { WriteSet } from "./persistence/write-set.js";
 
 /**
  * Persistance de l'univers matérialisé (chantier 18). Ces fonctions sont le SEUL

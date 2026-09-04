@@ -4,7 +4,7 @@ import {
   HOSTILE_SYSTEM_PENALTY,
   JUMP_REFERENCE_LENGTH,
 } from "../../constants.js";
-import type { ClientUniverse, Galaxy, Universe } from "../../model/universe.js";
+import type { ClientUniverse, Galaxy } from "../../model/universe.js";
 import { distance3 } from "./geometry.js";
 
 /**

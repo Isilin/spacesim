@@ -10,7 +10,6 @@ import {
   type Mission,
   type Route,
   type Station,
-  type TechId,
   type Transfer,
 } from "@spacesim/shared";
 

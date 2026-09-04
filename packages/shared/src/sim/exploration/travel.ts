@@ -5,7 +5,6 @@ import type {
   ClientUniverse,
   Galaxy,
   StarSystem,
-  Universe,
 } from "../../model/universe.js";
 import { findGalaxyOfSystem } from "../../universe.js";
 import { bodyPositionAt, distance3 } from "./geometry.js";

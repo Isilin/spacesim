@@ -32,7 +32,6 @@ import {
   type Station,
   type TradingPostMarket,
   type Territory,
-  type Universe,
 } from "@spacesim/shared";
 import type { EmpireSnapshot } from "@spacesim/protocol";
 import type { Empire } from "../empire.js";

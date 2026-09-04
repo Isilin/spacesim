@@ -264,7 +264,7 @@ export function TierCamera({
 
   useGesture(
     {
-      onWheel: ({ event, delta: [, deltaY] }) => {
+      onWheel: ({ delta: [, deltaY] }) => {
         if (deltaY === 0) return;
         const now = performance.now();
         const run = streak.current;

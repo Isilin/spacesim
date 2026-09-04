@@ -44,25 +44,6 @@ describe("GameEngine — stations orbitales (chantier 24)", () => {
     );
   }
 
-  /** Généralisation d'`unlockOrbitalEngineering` à n'importe quelle tech — chaîne de
-   *  prérequis plus profonde (`orbital_commerce`), plus de relances autorisées.
-   *  `devGrant` cible l'empire par défaut (le premier créé) : n'appeler que sur lui. */
-  function unlockTech(
-    engine: GameEngine,
-    empire: ReturnType<typeof empireFor>,
-    techId: string,
-  ): void {
-    engine.devGrant({ science: 200_000 });
-    expect(engine.industry.queueResearch(empire, techId)).toBeNull();
-    for (let i = 0; i < 40; i++) {
-      if (empire.researched.includes(techId)) return;
-      advanceTicks(engine, 400);
-    }
-    throw new Error(
-      `${techId} non débloquée après 40 relances de fast-forward`,
-    );
-  }
-
   /** Un corps non colonisé, dans un système déjà exploré (galaxie d'origine). */
   function uncolonizedBody(
     engine: GameEngine,

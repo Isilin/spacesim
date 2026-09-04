@@ -21,7 +21,6 @@ import {
   type ShipId,
   type Station,
   type StationMarketAccess,
-  type StationZone,
   type ClientUniverse,
   type ZoneTypeId,
 } from "@spacesim/shared";
@@ -227,7 +226,6 @@ export function StationsView({ effects, universe, portalLinks }: Props) {
           routes={routes}
           universe={universe}
           portalLinks={portalLinks}
-          now={now}
           send={send}
         />
 
@@ -314,7 +312,6 @@ interface TransferProps {
   routes: Route[];
   universe: ClientUniverse;
   portalLinks: [string, string][];
-  now: number;
   send: (msg: ClientMessage) => void;
 }
 
@@ -337,7 +334,6 @@ function StationTransferForm({
   routes,
   universe,
   portalLinks,
-  now,
   send,
 }: TransferProps) {
   const { t } = useTranslation();

@@ -897,7 +897,6 @@ test("cliquer à côté d'un objet le sélectionne quand même", async ({
 
   await page.getByRole("link", { name: "Carte" }).click();
   await openMapObjects(page);
-  const host = page.locator(".map-canvas");
   expect(await settledTier(page)).toBe("universe");
 
   const list = page.getByRole("navigation", { name: /univers|universe/i });

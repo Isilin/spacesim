@@ -20,7 +20,6 @@ import {
   type PirateLair,
   type ResourceId,
   type StoredBattle,
-  type TechId,
   type ClientUniverse,
   type WarshipId,
 } from "@spacesim/shared";

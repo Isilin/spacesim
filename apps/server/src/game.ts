@@ -65,7 +65,6 @@ import {
 } from "./runtime/universe-store.js";
 import {
   clientUniverseForEmpire,
-  objectivesForEmpire,
   snapshotForEmpire as projectSnapshotForEmpire,
 } from "./runtime/projections.js";
 

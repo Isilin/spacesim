@@ -3,7 +3,6 @@ import {
   computeEffects,
   gatewayLinks,
   type Colony,
-  type Contract,
   type EmpireEffects,
   type Fleet,
   type ForeignFleet,
@@ -11,7 +10,6 @@ import {
   type GameState,
   type MiningOutpost,
   type Gateway,
-  type Mission,
   type Station,
   type SystemSite,
   type TechId,
@@ -91,12 +89,10 @@ interface MapPageProps {
   foreignStations: ForeignStation[];
   outposts: MiningOutpost[];
   foreignFleets: ForeignFleet[];
-  missions: Mission[];
   exploredSystemIds: string[];
   /** Sites révélés par les scans (chantier 31.11), rendus dans la vue système. */
   sites: SystemSite[];
   gateways: Gateway[];
-  contracts: Contract[];
   territories: Territory[];
   fleets: Fleet[];
   effects: EmpireEffects;
@@ -121,11 +117,9 @@ function MapPage({
   foreignStations,
   outposts,
   foreignFleets,
-  missions,
   exploredSystemIds,
   sites,
   gateways,
-  contracts,
   territories,
   fleets,
   effects,
@@ -243,17 +237,6 @@ function MapPage({
         .find((g) => g.id === index.get(shownSystemId)?.galaxyId)
         ?.systems.find((s) => s.id === shownSystemId) ?? null)
     : null;
-
-  const openPath = open ? index.get(open) : undefined;
-  const openSystem = openPath?.systemId
-    ? (universe.galaxies
-        .find((g) => g.id === openPath.galaxyId)
-        ?.systems.find((s) => s.id === openPath.systemId) ?? null)
-    : null;
-  const openBody =
-    openPath?.bodyId && openSystem
-      ? (openSystem.planets.find((p) => p.id === openPath.bodyId) ?? null)
-      : null;
 
   return (
     <main className="content">
@@ -637,11 +620,9 @@ export function App({ auth }: Props) {
               foreignStations={foreignStations}
               outposts={outposts}
               foreignFleets={foreignFleets}
-              missions={missions}
               exploredSystemIds={exploredSystemIds}
               sites={sites}
               gateways={gateways}
-              contracts={contracts}
               territories={territories}
               fleets={fleets}
               effects={effects}

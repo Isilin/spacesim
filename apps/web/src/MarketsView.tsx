@@ -26,7 +26,6 @@ import { resourceLabel } from "./labels.js";
 interface Props {
   universe: ClientUniverse;
   markets: TradingPostMarket[];
-  colonies: Colony[];
   /** Colonie de référence pour les distances et les marges. */
   activeColony: Colony | null;
   exploredSystemIds: string[];
@@ -60,7 +59,6 @@ interface MarketVenue {
 export function MarketsView({
   universe,
   markets,
-  colonies,
   activeColony,
   exploredSystemIds,
   portalLinks,
