@@ -2697,6 +2697,9 @@ Aucune ADR : ce chantier ne décide rien, il répare. Sur le patron du chantier 
   bande. « Ma capitale » atteint de nouveau le palier système.
 - **43.3** Traçabilité soldée : bilans des chantiers 41 et 42, `architecture.md` remis
   d'aplomb sur quatre points, sous-points du chantier 40 renumérotés.
+- **43.4** Le groupe `correctness` de biome s'allume, moins la seule règle qui portait la
+  dette. Onze imports morts, un helper de test défini deux fois, et toute une chaîne de
+  calculs devenue inutile s'en vont avec.
 
 ### Deux tables muettes bloquaient TOUTE la persistance
 
@@ -2761,13 +2764,49 @@ devenue deux pour cent trop courte sans qu'une seule ligne bouge autour d'elle. 
 lint, ni relecture ne pouvaient le signaler : ce qui avait changé était à trois fichiers de
 là.
 
+### Ce que ce chantier apprend sur le lint
+
+L'ADR 0020 avait écarté le groupe `correctness` comme « un chantier sur tout le dépôt », et
+`CLAUDE.md` promet un durcissement « zone par zone assainie ». La mesure a démenti le
+découpage : sur **31 diagnostics, les 31 étaient la même règle**,
+`useExhaustiveDependencies`, sur sept fichiers. Les trente et quelques autres règles du
+groupe passaient déjà sans une correction. Le bon axe de découpe était donc la **règle**, pas
+la zone — et on ne pouvait le savoir qu'en allumant pour voir.
+
+Trois de ces règles ne sont **pas dans le jeu recommandé** et sont précisément celles qui
+manquaient : `noUnusedVariables`, `noUnusedImports`, `noUnusedPrivateClassMembers`. Sans
+elles, rien dans ce dépôt ne détectait un symbole mort. Vérifié en posant une violation
+exprès plutôt qu'en faisant confiance à la configuration : `noUnreachable` mordait,
+`noUnusedVariables` non — c'est ce test qui a montré qu'il fallait les nommer une par une.
+
+Ce que le filet a trouvé du premier coup tient en une phrase : **du code mort qu'aucune
+relecture n'aurait vu, parce qu'il est réparti**. Onze imports orphelins dans six fichiers.
+`unlockTech` défini deux fois dans `station-service.test.ts`, une fois par bloc `describe` —
+la copie du chantier 24 est morte depuis que celle du chantier 25 existe, et les deux sont
+identiques au caractère près. Et la chaîne `openPath → openSystem → openBody` de `MapPage`,
+vestige de l'époque où la fiche résolvait son objet elle-même : trois calculs qui s'évaporent
+**en cascade** dès qu'on retire le dernier, chacun ne devenant visible qu'après la mort du
+précédent. C'est la forme que prend le code mort dans un dépôt tenu : jamais un bloc, toujours
+un fil.
+
+Ce qui reste éteint, et pourquoi : `useExhaustiveDependencies`. Ses 31 diagnostics ne sont pas
+tous des défauts — la moitié sont l'idiome « je dépends de `home.height`, pas de `home` »,
+délibéré et porteur, qui évite de réallouer des tampons GPU à chaque tick. Les corriger
+demande un jugement par site dans une boucle de rendu 3D, où un tableau de dépendances repris
+de travers se voit à l'écran et pas dans un test. C'est son propre chantier. En attendant, les
+quatre `eslint-disable react-hooks/exhaustive-deps` du dépôt restent **inertes** — il n'y a
+pas d'ESLint ici, et la règle biome équivalente ne tourne pas. Ils documentent une intention,
+ils ne garantissent rien, et il vaut mieux l'écrire que de les laisser rassurer.
+
 ### Relevés
 
 | | chantier 40 | chantier 43 |
 |---|---|---|
 | img/s univers · galaxie · système | 58-61 · 27-39 · 55-60 | 57 · 33 · 55 |
 | img/s en transition univers→galaxie | 56-59 à z = 0,62-0,68 | 62 à z = 0,64 |
-| suite e2e complète | 33 passés, 3,5 min | **34 passés, 4,6 min** |
+| suite e2e complète | 33 passés, 3,5 min | **34 passés**, 3,9 et 4,6 min sur deux passes |
+| `pnpm lint` | `a11y` + `noDebugger` | **+ `correctness`**, moins `useExhaustiveDependencies` |
+| lignes de code mort retirées | — | 39 |
 | conteneur `app` pendant le relevé | **en marche** | arrêté |
 | tests unitaires (7 paquets) | — | **976 passés**, 90 fichiers (`apps/server` 340) |
 
