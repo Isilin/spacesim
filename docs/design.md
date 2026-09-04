@@ -2700,6 +2700,8 @@ Aucune ADR : ce chantier ne décide rien, il répare. Sur le patron du chantier 
 - **43.4** Le groupe `correctness` de biome s'allume, moins la seule règle qui portait la
   dette. Onze imports morts, un helper de test défini deux fois, et toute une chaîne de
   calculs devenue inutile s'en vont avec.
+- **43.5** Les mesures serveur que le chantier 37 avait périmées sont rejouées. Le bench de
+  rattrapage mesurait un serveur qui n'existe pas ; `MAX_GALAXIES`, lui, tient.
 
 ### Deux tables muettes bloquaient TOUTE la persistance
 
@@ -2798,6 +2800,64 @@ quatre `eslint-disable react-hooks/exhaustive-deps` du dépôt restent **inertes
 pas d'ESLint ici, et la règle biome équivalente ne tourne pas. Ils documentent une intention,
 ils ne garantissent rien, et il vaut mieux l'écrire que de les laisser rassurer.
 
+### Le bench de rattrapage mesurait un serveur qui n'existe pas
+
+Le chantier 27.6 avait posé un bench sur le seul risque de boot identifié : `catchUp()`,
+boucle **synchrone** qui rejoue jusqu'à `MAX_CATCHUP_TICKS` ticks avant que le serveur
+n'écoute. Il n'avait pas été rejoué depuis le chantier 37, qui a multiplié les systèmes
+par trente-six. Rejoué tel quel : **2,9 s** pour 24 h simulées. Rassurant, et sans rapport
+avec quoi que ce soit.
+
+Le bench partait d'un `loadOrBootstrap()` nu — un empire, aucun PNJ, aucune économie qui
+tourne. Or `apps/server/src/index.ts` appelle `ensureNpcPopulation()` à chaque démarrage, et
+sur un serveur qui tourne depuis un moment les PNJ sont en base bien avant le rattrapage. La
+configuration mesurée n'était celle d'aucun serveur.
+
+Même montage, PNJ compris, cinq passes :
+
+| | 17 280 ticks (24 h simulées) | par tick |
+|---|---|---|
+| univers nu | 2 856 ms | 0,17 ms |
+| population PNJ, comme au boot | 591, 598, 603, 608, 745 s | **~34 ms** |
+
+Un facteur **deux cent dix**. Et les 34 ms recoupent les 41 ms/tick que
+`market-service.test.ts` imprimait déjà à chaque exécution, sans que personne en tire la
+conséquence — même motif que le `[persister] flush échoué` de 43.1 : l'information était
+produite, personne ne la lisait.
+
+**Ce que ça dit, et que ce chantier ne corrige pas.** Un redémarrage après vingt-quatre
+heures d'arrêt bloque le boot une dizaine de minutes, `catchUp()` étant appelé depuis
+`boot.ts` avant `buildApp` et ne cédant jamais la main. `MAX_CATCHUP_TICKS` borne le
+rattrapage en **nombre de ticks** — une unité qui était juste quand un tick coûtait une
+fraction de milliseconde et qui ne l'est plus. C'est exactement le défaut d'unité de
+l'`OVERSHOOT` du 43.2, à un autre étage.
+
+Le corriger n'est pas un correctif mais une décision, et elle est de jeu autant que de
+technique : borner le rattrapage en TEMPS revient à décider qu'au-delà d'un certain seuil,
+le temps hors-ligne d'un joueur cesse de produire. Servir pendant le rattrapage revient à
+décider qu'un joueur peut agir sur un monde en retard sur lui-même. Les deux demandent une
+ADR ; aucune ne se prend en passant.
+
+### `MAX_GALAXIES` tient
+
+L'ADR 0018 posait 200 galaxies sur une mesure de tas qu'elle qualifiait elle-même de
+synthétique, en demandant de la refaire. Refaite avec le générateur d'aujourd'hui, sur vingt
+galaxies — 8 137 systèmes, 56 656 corps :
+
+| | ADR 0018 | mesuré au chantier 43 |
+|---|---|---|
+| tas par galaxie | ~1,59 Mo | **1,46 Mo** |
+| univers plein (200) | ~318 Mo | **291 Mo** |
+| `generateGalaxyAt` | 31 ms | 31,3 ms |
+
+Le chiffre tenait. Rien à recaler, et c'est le genre de résultat qu'il faut écrire aussi :
+une vérification qui confirme coûte le même temps qu'une qui infirme, et sans elle on ne
+sait pas laquelle des deux on avait.
+
+Reste ce que cette mesure n'est toujours pas : un serveur réel en charge. Elle pèse ce que
+le générateur produit, pas ce qu'un processus tient avec ses joueurs, ses sockets et ses
+projections. L'ADR 0018 demandait le second ; ceci est le premier, refait.
+
 ### Relevés
 
 | | chantier 40 | chantier 43 |
@@ -2807,6 +2867,8 @@ ils ne garantissent rien, et il vaut mieux l'écrire que de les laisser rassurer
 | suite e2e complète | 33 passés, 3,5 min | **34 passés**, 3,9 et 4,6 min sur deux passes |
 | `pnpm lint` | `a11y` + `noDebugger` | **+ `correctness`**, moins `useExhaustiveDependencies` |
 | lignes de code mort retirées | — | 39 |
+| `catchUp()` 24 h, PNJ compris | non mesuré (2,9 s à vide) | **591-745 s** |
+| tas par galaxie | ~1,59 Mo (synthétique) | 1,46 Mo mesuré |
 | conteneur `app` pendant le relevé | **en marche** | arrêté |
 | tests unitaires (7 paquets) | — | **976 passés**, 90 fichiers (`apps/server` 340) |
 
