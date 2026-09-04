@@ -2705,6 +2705,8 @@ Aucune ADR : ce chantier ne décide rien, il répare. Sur le patron du chantier 
 - **43.6** `nearestTradingPost` est mémoïsé. Le pilote économique PNJ pesait 99,7 % du coût
   d'un tick ; le rattrapage de vingt-quatre heures au boot passe de dix minutes à quatre
   secondes.
+- **43.7** `packages/ui` gagne une pile de test et dix-huit tests sur ses trois composants
+  porteurs de logique. Il n'avait pas de script `test` : il était sauté sans bruit.
 
 ### Deux tables muettes bloquaient TOUTE la persistance
 
@@ -2802,6 +2804,70 @@ de travers se voit à l'écran et pas dans un test. C'est son propre chantier. E
 quatre `eslint-disable react-hooks/exhaustive-deps` du dépôt restent **inertes** — il n'y a
 pas d'ESLint ici, et la règle biome équivalente ne tourne pas. Ils documentent une intention,
 ils ne garantissent rien, et il vaut mieux l'écrire que de les laisser rassurer.
+
+### `advanceTicks(n)` n'avance pas n ticks
+
+Consigné sans correctif, parce que la trouvaille vaut plus que l'occasion de la réparer.
+
+`objective-service.test.ts` a échoué deux fois pendant ce chantier — « expected 252,55 to be
+greater than or equal to 452,45 » — puis a passé cinq fois isolé et une fois en suite
+complète. Un test qui échoue une fois sur trois ne prouve rien, et celui-ci prouvait quelque
+chose de faux : que le harnais avance un nombre de ticks connu.
+
+Il ne l'avance pas, et cela se lit dans la source plutôt que dans les échecs.
+`advanceTicks(engine, n)` appelle `devFastForward(n * 5)`, qui recule `lastTickAt` du delta
+demandé puis rejoue :
+
+```
+const missed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);
+```
+
+Le nombre rejoué est donc `n` **plus tout le temps réel écoulé depuis le bootstrap**, divisé
+par cinq secondes. Sous la contention des workers, un test lent gagne des ticks qu'il n'a pas
+demandés — et chaque tick de plus consomme de l'entretien de colonie, d'où des crédits qui
+manquent à l'arrivée.
+
+Ce n'est pas propre à ce test : une trentaine de fichiers passent par `advanceTicks`, et le
+harnais de charge par le même endpoint. Le corriger demande de décider ce que
+`devFastForward` promet — un nombre de ticks, ou un rattrapage réaliste — sachant que le
+bench de 43.5 s'appuie précisément sur la seconde lecture. C'est son propre chantier.
+
+Deux constats qui valent pour la suite : la seed d'univers est tirée au hasard à chaque
+`bootstrapNewUniverse()` (`randomUUID().slice(0, 8)`), donc chaque test tourne sur un monde
+différent ; et un test dont l'assertion dépend de l'économie d'une colonie hérite de cette
+variabilité sans le dire.
+
+### Un paquet sans script `test` ne manque à personne
+
+`packages/ui` avait dix-neuf composants et zéro test. Le fait marquant n'est pas l'absence
+elle-même mais **ce qui la rendait invisible** : le paquet n'avait pas de script `test`, donc
+`pnpm -r test` le sautait sans un mot. Un fichier de test qui échoue se voit ; un paquet
+entier qui n'est jamais appelé ne se voit pas. C'est la même famille que le
+`[persister] flush échoué` de 43.1 et que les `901 tick(s) en 37020,8ms` de 43.6 — un dépôt
+peut être discipliné sur ce qu'il regarde et complètement aveugle sur ce qu'il ne regarde pas.
+
+Les trois composants couverts sont ceux qui portent de la logique, et ce ne sont pas les
+mêmes que ceux qui portent du style : `Modal`, `Popover`, `ZoomableSvg`. Ce sont aussi les
+trois seuls porteurs de suppressions `biome-ignore` a11y, et ce n'est pas une coïncidence —
+chacune justifie de ne PAS prendre l'élément natif. Le prix de ce choix est que le piège à
+focus, Échap, la restauration du focus et le pilotage clavier sont écrits à la main. Depuis
+le chantier 27.21, et jamais vérifiés.
+
+Deux points que l'écriture des tests a appris :
+
+- **La restauration du focus ne se teste pas dans le sens naïf.** `Modal` lit
+  `document.activeElement` une fois, dans son effet de montage. Un test qui ouvre le
+  dialogue puis focalise le déclencheur vérifie la restauration vers `body` et passe pour
+  de mauvaises raisons. Il faut un harnais qui focalise AVANT l'ouverture, c'est-à-dire qui
+  reproduit le geste réel.
+- **`Modal.Header` prend une prop `title` et ignore ses enfants.** Le composant a raison,
+  c'est le premier test qui avait tort — mais rien dans le dépôt ne l'aurait dit, et un
+  appelant qui se trompe obtient un dialogue sans nom accessible, silencieusement.
+
+Ce qui reste hors couverture, et pourquoi : les gestes souris de `ZoomableSvg`. jsdom ne
+fournit aucune géométrie, `getBoundingClientRect` rend des zéros, et le composant refuse
+alors de deviner un point du monde — comportement correct qui rend le geste intestable hors
+navigateur. C'est la frontière naturelle entre ces tests et la suite Playwright.
 
 ### Le bench de rattrapage mesurait un serveur qui n'existe pas
 
@@ -2909,7 +2975,7 @@ projections. L'ADR 0018 demandait le second ; ceci est le premier, refait.
 | coût d'un tick, PNJ compris | ~34 ms | **~0,95 ms** |
 | tas par galaxie | ~1,59 Mo (synthétique) | 1,46 Mo mesuré |
 | conteneur `app` pendant le relevé | **en marche** | arrêté |
-| tests unitaires (7 paquets) | — | **977 passés**, 90 fichiers (`apps/server` 341) |
+| tests unitaires (7 paquets) | — | **995 passés**, 93 fichiers (`packages/ui` : 0 → 18) |
 
 Les relevés du chantier 40 avaient été pris conteneur `app` **en marche**, ce que ce
 document identifie depuis le chantier 35 comme faussant la mesure de moitié. Ceux-ci sont
