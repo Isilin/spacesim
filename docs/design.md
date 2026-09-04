@@ -2663,6 +2663,10 @@ mort (`biome.json` n'active que le groupe `a11y`).
 comportement n'est pas une consolidation. 206 tests unitaires et 33 de bout en bout au vert du
 premier coup.
 
+*Démenti au chantier 43 : les 33 de bout en bout n'étaient pas au vert. « cliquer le nom d'un
+objet le sélectionne » échouait déjà, et échouait aussi au chantier 40.10 — le chantier 41 n'en
+est donc pas la cause, mais il ne l'a pas vu non plus. La suite n'avait pas été rejouée.*
+
 ## Chantier 42 — Pincement tactile (tenté, abandonné, 04/09/2026)
 
 À consigner parce que rien d'autre ne le consigne. Huit minutes après le commit du chantier 41,
@@ -2676,3 +2680,99 @@ Rien n'est perdu — il n'y avait rien à perdre — mais la carte n'a **aucun**
 c'est désormais écrit quelque part. À rouvrir ou à enterrer explicitement : le `useGesture` de
 `TierCamera.tsx:252` ne câble aujourd'hui que `onWheel` et `onDrag`, et la bibliothèque
 retenue au chantier 38 pour la molette expose `onPinch` au même endroit.
+
+## Chantier 43 — Deux défauts que rien ne signalait (04/09/2026)
+
+Ouvert comme un tour d'horizon — « il y a a priori des choses à revoir, des régressions et
+des travaux en attente » — et c'est le tour lui-même qui a trouvé les deux défauts. Aucun
+n'était visible dans le code : le dépôt n'a **aucun** `TODO`, aucun test désactivé, aucun
+`@ts-ignore`, et cinq `any` tous justifiés en commentaire. Ils étaient dans ce que personne
+ne regardait.
+
+Aucune ADR : ce chantier ne décide rien, il répare. Sur le patron du chantier 39.
+
+- **43.1** `corpRelations` et `standings` rejoignent le registre de clés du `Persister`, qui
+  déménage dans `persistence/tables.ts` ; `WriteSet` type ses noms de table dessus.
+- **43.2** Le plancher de dolly s'exprime depuis le cadrage de l'enfant, plus en largeurs de
+  bande. « Ma capitale » atteint de nouveau le palier système.
+- **43.3** Traçabilité soldée : bilans des chantiers 41 et 42, `architecture.md` remis
+  d'aplomb sur quatre points, sous-points du chantier 40 renumérotés.
+
+### Deux tables muettes bloquaient TOUTE la persistance
+
+`corpRelations` et `standings` (chantier 32.19) étaient écrites par `CorporationRepository`
+via le `WriteSet` sans figurer dans `PRIMARY_KEYS`. Le coût n'était pas local à ces deux
+tables, et c'est tout le sujet : `tableFor` lève, la transaction **entière** fait rollback,
+et `runFlush` remet en attente tout le lot qu'il vient de drainer — y compris l'entrée qui
+lève. Le flush suivant rejoue le même lot et échoue pareil.
+
+À partir de la première relation entre corporations, **plus rien n'atteignait Postgres** :
+ni une colonie, ni un tick, ni un empire. La RAM faisant autorité ([ADR
+0003](adr/0003-persistance-write-behind.md)), le jeu tournait juste et l'écran ne mentait
+pas. Sur un serveur dont l'invariant est de ne jamais se réinitialiser, la perte ne se
+serait vue qu'au redémarrage suivant.
+
+Le correctif du jour tient en deux lignes ; le verrou est ailleurs. `WriteSet.upsert`
+acceptait `table: string`, si bien que rien ne reliait les repositories au registre. Il
+prend maintenant `PersistedTable`, c'est-à-dire les clés du registre : une table écrite
+sans être enregistrée **ne compile plus**.
+
+### « Ma capitale » atteignait le palier système, puis en était renvoyé
+
+Le vol publiait son palier d'arrivée puis retombait à la galaxie à l'image suivante, caméra
+immobile. `controls.minDistance` valait quatre **largeurs de bande** sous la frontière — et
+une bande n'a pas de largeur fixe. Depuis le chantier 37 le cadrage d'une galaxie suit `√n`
+sur 300 à 520 systèmes, la bande univers→galaxie s'est élargie devant la bande
+galaxie→système, et un saut qui traverse **deux** bandes en demande désormais 4,08.
+
+`OrbitControls.update()` clampait le vol à `1147,5 × 0,1175⁴ = 0,21875` quand il visait
+`0,1756`. Deux pour cent trop court, juste **au-dessus** de la frontière, et
+`ascending = distance > parentFrame * 1.02` y voyait une caméra sortie de son palier.
+
+Le plancher se rapporte maintenant au cadrage de l'**enfant**, donc ne dépend plus du
+rapport entre deux paliers. C'est le symétrique de `maxDistance`, déjà à `parentFrame * 1e4`
+dès qu'un palier existe au-dessus : dès qu'un voisin existe, la borne cesse de décider et
+c'est le franchissement qui fait la limite.
+
+### Ce que ce chantier apprend sur la vérification
+
+**Un test qui attend un état transitoire n'en prouve pas la tenue.** Tous les tests visant
+la capitale s'arrêtaient à `.poll(...).toBe("system")` — une assertion que satisfait **une
+seule fenêtre de mesure**, y compris quand la carte retombe aussitôt et n'en repart plus.
+Le palier était atteint pendant environ quatre cents millisecondes. Le nouveau test regarde
+donc APRÈS que tout s'est posé, et vérifie la profondeur en plus du palier : `tierAt` lit la
+partie entière, un palier système tenu vaut au moins 2.
+
+Corollaire : `map-zoom.spec.ts:261` échouait **trois fois sur trois** depuis ce défaut, et
+échouait déjà au chantier 40.10. Il balayait autour d'un corps qu'il n'avait jamais atteint.
+Le chantier 41 annonçait « 33 de bout en bout au vert » ; il ne l'était pas. Personne
+n'avait rejoué la suite depuis.
+
+**Les logs du serveur ne sont assertés par personne.** `[persister] flush échoué` était
+imprimé à chaque exécution e2e, sous les yeux, pendant que la suite passait au vert. Aucun
+test unitaire ne pouvait l'attraper : ils vérifient tous le snapshot en mémoire, jamais la
+base. C'est la leçon du chantier 35 sous une autre forme — ce qui n'est pas observé n'existe
+pas pour la vérification — mais déplacée d'un cran : ici l'information était produite, et
+c'est de la LIRE que personne ne s'était chargé.
+
+**Une constante exprimée dans la mauvaise unité vieillit sans prévenir.** `OVERSHOOT` était
+en largeurs de bande. Le chantier 37 a changé la largeur des bandes, et la constante est
+devenue deux pour cent trop courte sans qu'une seule ligne bouge autour d'elle. Ni test, ni
+lint, ni relecture ne pouvaient le signaler : ce qui avait changé était à trois fichiers de
+là.
+
+### Relevés
+
+| | chantier 40 | chantier 43 |
+|---|---|---|
+| img/s univers · galaxie · système | 58-61 · 27-39 · 55-60 | 57 · 33 · 55 |
+| img/s en transition univers→galaxie | 56-59 à z = 0,62-0,68 | 62 à z = 0,64 |
+| suite e2e complète | 33 passés, 3,5 min | **34 passés, 4,6 min** |
+| conteneur `app` pendant le relevé | **en marche** | arrêté |
+| tests unitaires (7 paquets) | — | **976 passés**, 90 fichiers (`apps/server` 340) |
+
+Les relevés du chantier 40 avaient été pris conteneur `app` **en marche**, ce que ce
+document identifie depuis le chantier 35 comme faussant la mesure de moitié. Ceux-ci sont
+pris `app` arrêté, et c'est pourquoi la fourchette du palier galaxie s'est resserrée plutôt
+qu'améliorée : elle n'est plus bruitée. La suite est plus longue d'une minute — elle a un
+test de plus, et le vol vers la capitale ne combat plus une borne de dolly.
