@@ -6,7 +6,6 @@ import type { Focus } from "./bounds.js";
 import { fitDistance } from "./MapCanvas.js";
 import {
   clipPlanesFor,
-  distanceForProgress,
   dollyEase,
   orbitAround,
   recenterStep,
@@ -32,13 +31,27 @@ interface ControlsHandle {
 }
 
 /**
- * Marge de dépassement tolérée sous la frontière d'un palier, en largeurs de bande.
+ * Plancher de dolly sous la frontière d'un palier, en fraction du cadrage de l'ENFANT.
  *
  * Le franchissement se déclenche dès la progression 1 : la caméra ne peut donc jamais
- * s'attarder au-delà. Cette marge n'existe que pour laisser passer un saut qui traverse
+ * s'attarder au-delà. Ce plancher n'existe que pour laisser passer un saut qui traverse
  * plusieurs bandes en une image, avant que la cascade de franchissements ne le rattrape.
+ *
+ * Il valait quatre LARGEURS DE BANDE, et c'était le défaut : une bande n'a pas de largeur
+ * fixe. Depuis le chantier 37 le cadrage d'une galaxie suit `√n` sur 300 à 520 systèmes,
+ * si bien que la bande univers→galaxie s'est élargie devant la bande galaxie→système.
+ * « Ma capitale » vise un système depuis l'univers, donc traverse DEUX bandes : il lui
+ * fallait 4,08 largeurs et il n'en avait que 4. `OrbitControls.update()` clampait le vol
+ * à 0,2188 quand il visait 0,1756 — deux pour cent trop court. La caméra atterrissait
+ * juste au-dessus de la frontière, `ascending` la voyait au-delà du cadrage de son palier
+ * et la renvoyait à la galaxie. Le palier système clignotait une fenêtre, puis disparaissait.
+ *
+ * Rapporté au cadrage de l'enfant, le plancher ne dépend plus du rapport entre deux
+ * paliers — symétrique de `maxDistance`, qui est déjà `parentFrame * 1e4` dès qu'il existe
+ * un palier au-dessus : quand un voisin existe, la borne cesse de décider et c'est le
+ * franchissement qui fait la limite.
  */
-const OVERSHOOT = 4;
+const FLOOR_BELOW_CHILD = 1e-4;
 
 /**
  * Repos du recentrage, en fraction de la distance de vue.
@@ -348,7 +361,7 @@ export function TierCamera({
     // palier avant que la cascade n'ait eu le temps d'aboutir.
     controls.minDistance =
       childFrame > 0
-        ? distanceForProgress(parentFrame, childFrame, OVERSHOOT)
+        ? childFrame * FLOOR_BELOW_CHILD
         : // Rien à viser : on ne plonge pas dans le vide, la descente s'arrête ici.
           parentFrame * 0.15;
     controls.maxDistance =

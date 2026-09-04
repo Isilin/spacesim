@@ -986,3 +986,48 @@ test("l'objet sélectionné reste au centre quand on tourne autour", async ({
 
   expect(during).toBeLessThan(15);
 });
+
+test("« Ma capitale » atteint le palier système et y RESTE", async ({
+  page,
+}) => {
+  // Ce que ce test attrape, et qu'aucun autre n'attrapait : un saut multi-bandes peut
+  // publier son palier d'arrivée puis en être renvoyé à l'image suivante. Tous les tests
+  // qui visent la capitale s'arrêtaient à `.poll(...).toBe("system")` — une assertion que
+  // satisfait une seule fenêtre de mesure, y compris quand la carte retombe aussitôt à la
+  // galaxie et n'en repart plus. Il faut donc regarder APRÈS que tout s'est posé.
+  //
+  // Le défaut était que `minDistance` valait quatre largeurs de bande. « Ma capitale »
+  // traverse DEUX bandes depuis l'univers, et depuis le chantier 37 il lui en faut 4,08 :
+  // `OrbitControls.update()` clampait le vol deux pour cent trop court, juste au-dessus de
+  // la frontière, et `ascending` le renvoyait d'où il venait.
+  await registerFreshEmpire(page, {
+    prefix: "mapcapital",
+    empireName: "Capitale E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
+  const host = page.locator(".map-canvas");
+  expect(await settledTier(page)).toBe("universe");
+
+  await page.getByRole("button", { name: "Ma capitale" }).click();
+  await expect
+    .poll(() => host.getAttribute("data-map-tier"), { timeout: 20_000 })
+    .toBe("system");
+
+  // Le vol dure 620 ms et la caméra s'amortit ensuite : deux secondes couvrent largement
+  // le retour élastique qui, lui, ramenait au palier parent.
+  await page.waitForTimeout(2000);
+  expect(await host.getAttribute("data-map-tier")).toBe("system");
+
+  // Et la profondeur doit le confirmer : `tierAt` lit la partie ENTIÈRE, donc un palier
+  // système tenu vaut au moins 2. Sans cette ligne, un palier publié par le saut mais
+  // démenti par la caméra passerait encore.
+  const depth = Number(await host.getAttribute("data-map-depth"));
+  expect(depth).toBeGreaterThanOrEqual(2);
+
+  // La liste DOM décrit bien un système, pas la galaxie qui le contient.
+  await expect(
+    page.getByRole("navigation", { name: /système|system/i }),
+  ).toBeVisible();
+});
