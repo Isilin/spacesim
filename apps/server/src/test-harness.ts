@@ -88,6 +88,11 @@ export const summaries = (engine: GameEngine) =>
 export const empireFor = (engine: GameEngine, accountId: string) =>
   engine.createEmpireForAccount(accountId, accountId)!;
 
-/** Nombre de ticks avancés par `devFastForward` : delta multiple exact de TICK_MS (5s). */
+/**
+ * Avance la simulation d'EXACTEMENT `ticks` ticks.
+ *
+ * Le JSDoc affirmait déjà cette exactitude avant le chantier 44, et elle était fausse :
+ * `devFastForward` rejouait aussi le temps réel écoulé. Elle est vraie depuis.
+ */
 export const advanceTicks = (engine: GameEngine, ticks: number) =>
   engine.devFastForward(ticks * 5);

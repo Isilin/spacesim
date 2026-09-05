@@ -1,3 +1,4 @@
+import { TICK_MS } from "@spacesim/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import { GameEngine } from "../game.js";
 import {
@@ -26,15 +27,18 @@ describe("GameEngine — harnais & socle (Sprint 0)", () => {
   });
 
   it("le tick est déterministe : N ticks avancent l'horloge d'exactement N", async () => {
+    // Ce test portait une amorce `advanceTicks(engine, 1)` et un commentaire qui décrivait
+    // le défaut au mot près : `devFastForward` rattrapait AUSSI le temps réel, donc un tick
+    // de 5 s tombé entre le boot et la mesure s'ajoutait aux dix demandés. Le contrat était
+    // dans le nom du test, le défaut dans le code, et le contournement entre les deux.
+    //
+    // Le chantier 44 a rendu ce rattrapage au `Scheduler`, à qui il appartient. L'amorce
+    // disparaît donc, et l'attente ci-dessous fait l'inverse de ce qu'elle faisait : elle
+    // FABRIQUE la dérive que le test ne doit plus voir. Sans le correctif, elle vaut deux
+    // ticks parasites et l'assertion échoue à coup sûr.
     const engine = await GameEngine.loadOrBootstrap();
-    // Draine d'abord le temps RÉEL écoulé depuis le boot. `devFastForward` recule
-    // `lastTickAt` du décalage demandé puis rattrape TOUS les ticks dus — y compris ceux
-    // du temps réel. Matérialiser l'univers d'une partie de test dure quelques secondes
-    // depuis le chantier 37 : un tick de 5 s peut donc tomber entre le boot et cet appel,
-    // et s'ajouter aux dix qu'on demande. Ce qui se vérifie ici est l'exactitude du
-    // décalage, pas l'immobilité de l'horloge murale.
-    advanceTicks(engine, 1);
     const t0 = engine.game.tick;
+    await new Promise((r) => setTimeout(r, TICK_MS + 1000));
     advanceTicks(engine, 10);
     expect(engine.game.tick).toBe(t0 + 10);
   });

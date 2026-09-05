@@ -460,10 +460,42 @@ export class GameEngine {
   /**
    * Outil de dev uniquement : avance le temps simulé de N secondes.
    * Décale tous les timestamps absolus (timers réels) vers le passé puis rejoue les ticks.
+   *
+   * **Exactement `delta / TICK_MS` ticks, et pas un de plus** (chantier 44). Cette méthode
+   * lisait `Date.now()` pour décider combien rejouer :
+   *
+   * ```ts
+   * const missed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);
+   * ```
+   *
+   * Elle rejouait donc le décalage demandé PLUS le temps réel écoulé depuis le dernier tick,
+   * par tranches de cinq secondes. Deux conséquences, et la seconde est la vraie :
+   *
+   * 1. En test, un fichier lent gagnait des ticks qu'il n'avait pas demandés — d'où un
+   *    `objective-service.test.ts` rouge une fois sur trois sous la contention des workers.
+   * 2. Surtout : les huit `shiftTime` ci-dessous reculent les échéances de `delta`
+   *    millisecondes, tandis que le rejeu avançait d'autre chose. Les deux quantités
+   *    décrivent la même avance de temps simulé et ne coïncidaient pas. Rejouer exactement
+   *    `delta / TICK_MS` les réaligne — c'est une correction, pas un confort de test.
+   *
+   * Le temps RÉEL n'est pas perdu pour autant : le rattraper est le travail du `Scheduler`
+   * (`runtime/scheduler.ts`), qui calcule la même expression toutes les cinq secondes sur un
+   * serveur vivant. Il n'avait pas à être fait ici en double. En test il n'y a personne pour
+   * le faire, et c'est correct : `engine.start()` n'existe que dans `index.ts`, donc aucun
+   * temps réel n'y est légitime.
+   *
+   * `lastTickAt` revient exactement à sa valeur d'entrée — reculé de `delta`, puis avancé
+   * d'autant par `TickRunner.run()`.
    */
   devFastForward(seconds: number): void {
-    const delta = Math.max(0, Math.floor(seconds)) * 1000;
-    if (delta <= 0) return;
+    // Quantifié en ticks ENTIERS avant tout décalage : c'est ce qui garantit l'alignement.
+    // Décaler de 3 s puis rejouer zéro tick rendrait le désaccord que ce chantier supprime,
+    // et `advance(0.6)` corromprait `clock.tick` avec une fraction.
+    const requested = Math.max(0, Math.floor(seconds)) * 1000;
+    const asked = Math.floor(requested / TICK_MS);
+    const ticks = Math.min(asked, MAX_CATCHUP_TICKS);
+    if (ticks <= 0) return;
+    const delta = ticks * TICK_MS;
 
     this.clock.lastTickAt -= delta;
     // Chaque service décale les timers de son propre domaine (chantier 19.8).
@@ -477,9 +509,14 @@ export class GameEngine {
     this.station.shiftTime(this.defaultEmpire, delta);
     this.persistResearch(this.defaultEmpire);
 
-    const missed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);
-    if (missed > 0) this.advance(Math.min(missed, MAX_CATCHUP_TICKS));
-    this.logger.info(`[game] fast-forward de ${seconds}s (${missed} ticks)`);
+    this.advance(ticks);
+    // Le plafond borne désormais une DEMANDE et non un rattrapage : il faut le dire quand il
+    // mord, sans quoi `/dev/fastforward` répondrait `{ ok: true }` en n'avançant que la
+    // moitié de ce qu'on lui a demandé.
+    const capped = ticks < asked ? ` (demandé ${asked}, plafonné)` : "";
+    this.logger.info(
+      `[game] fast-forward de ${seconds}s (${ticks} ticks)${capped}`,
+    );
   }
 
   /**

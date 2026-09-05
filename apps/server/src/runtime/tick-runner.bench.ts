@@ -6,11 +6,13 @@ import { GameEngine } from "../game.js";
 /**
  * Mesure le risque réel identifié en 27.6 : le rattrapage synchrone au boot
  * (`GameEngine.catchUp()`, appelé une fois depuis `runtime/boot.ts`), pas le régime
- * stationnaire (couvert par 27.7). `devFastForward` décale `lastTickAt` d'un delta FIXE
- * puis rejoue les ticks manqués (bornés à `MAX_CATCHUP_TICKS`) — comme il ramène l'horloge
- * à ~maintenant après coup (le rattrapage avance `lastTickAt` du même nombre de ticks
- * qu'il vient de rejouer), chaque appel redéclenche indépendamment un rattrapage complet :
- * pas besoin de reset manuel entre itérations.
+ * stationnaire (couvert par 27.7). `devFastForward` recule `lastTickAt` d'un delta FIXE puis
+ * rejoue exactement ce delta en ticks (chantier 44), si bien que `lastTickAt` revient à sa
+ * valeur d'entrée : chaque itération rejoue les mêmes 17 280 ticks, sans reset manuel.
+ *
+ * L'entête disait auparavant que l'horloge revenait « à ~maintenant » parce que le rattrapage
+ * consommait aussi le temps réel. Le chiffre ne change pas — le plafond `MAX_CATCHUP_TICKS`
+ * écrêtait déjà cette dérive ici — mais la raison, si.
  *
  * **La population PNJ fait partie du montage depuis le chantier 43.5, et c'est le sujet.**
  * Ce bench partait d'un `loadOrBootstrap()` nu : un empire, aucun PNJ, aucune économie qui

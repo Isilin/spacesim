@@ -2807,37 +2807,33 @@ quatre `eslint-disable react-hooks/exhaustive-deps` du dépôt restent **inertes
 pas d'ESLint ici, et la règle biome équivalente ne tourne pas. Ils documentent une intention,
 ils ne garantissent rien, et il vaut mieux l'écrire que de les laisser rassurer.
 
-### `advanceTicks(n)` n'avance pas n ticks
+### `advanceTicks(n)` n'avançait pas n ticks
 
-Consigné sans correctif, parce que la trouvaille vaut plus que l'occasion de la réparer.
+Trouvé ici, corrigé au chantier 44 — la section reste, parce que la façon dont le défaut s'est
+présenté vaut d'être gardée.
 
 `objective-service.test.ts` a échoué deux fois pendant ce chantier — « expected 252,55 to be
 greater than or equal to 452,45 » — puis a passé cinq fois isolé et une fois en suite
 complète. Un test qui échoue une fois sur trois ne prouve rien, et celui-ci prouvait quelque
 chose de faux : que le harnais avance un nombre de ticks connu.
 
-Il ne l'avance pas, et cela se lit dans la source plutôt que dans les échecs.
-`advanceTicks(engine, n)` appelle `devFastForward(n * 5)`, qui recule `lastTickAt` du delta
-demandé puis rejoue :
+Il ne l'avançait pas, et cela se lisait dans la source plutôt que dans les échecs.
+`advanceTicks(engine, n)` appelle `devFastForward(n * 5)`, qui reculait `lastTickAt` du delta
+demandé puis rejouait :
 
 ```
 const missed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);
 ```
 
-Le nombre rejoué est donc `n` **plus tout le temps réel écoulé depuis le bootstrap**, divisé
-par cinq secondes. Sous la contention des workers, un test lent gagne des ticks qu'il n'a pas
-demandés — et chaque tick de plus consomme de l'entretien de colonie, d'où des crédits qui
-manquent à l'arrivée.
-
-Ce n'est pas propre à ce test : une trentaine de fichiers passent par `advanceTicks`, et le
-harnais de charge par le même endpoint. Le corriger demande de décider ce que
-`devFastForward` promet — un nombre de ticks, ou un rattrapage réaliste — sachant que le
-bench de 43.5 s'appuie précisément sur la seconde lecture. C'est son propre chantier.
+Le nombre rejoué valait donc `n` **plus le temps réel écoulé depuis le tick précédent**, par
+tranches de cinq secondes. Sous la contention des workers, un test lent gagnait des ticks
+qu'il n'avait pas demandés — et chaque tick de plus consomme de l'entretien de colonie, d'où
+des crédits qui manquent à l'arrivée.
 
 Deux constats qui valent pour la suite : la seed d'univers est tirée au hasard à chaque
 `bootstrapNewUniverse()` (`randomUUID().slice(0, 8)`), donc chaque test tourne sur un monde
 différent ; et un test dont l'assertion dépend de l'économie d'une colonie hérite de cette
-variabilité sans le dire.
+variabilité sans le dire. Le chantier 44 n'a corrigé que la première moitié.
 
 ### Découper un god file quand le modèle vient d'être unifié
 
@@ -3018,3 +3014,74 @@ document identifie depuis le chantier 35 comme faussant la mesure de moitié. Ce
 pris `app` arrêté, et c'est pourquoi la fourchette du palier galaxie s'est resserrée plutôt
 qu'améliorée : elle n'est plus bruitée. La suite est plus longue d'une minute — elle a un
 test de plus, et le vol vers la capitale ne combat plus une borne de dolly.
+
+## Chantier 44 — `devFastForward` rend le temps réel à l'ordonnanceur (05/09/2026)
+
+Le chantier 43 avait consigné `advanceTicks(n)` sans le corriger, et posé la question comme un
+arbitrage : « un nombre de ticks, ou un rattrapage réaliste ? ». **Il n'y en avait pas.** La
+lecture du code montre une responsabilité en double, pas une formule à choisir.
+
+Aucune ADR : ce chantier ne décide rien, il rend à chacun son travail.
+
+### Le défaut n'était pas l'instabilité, c'était un désaccord d'unités
+
+`devFastForward` décale tous les timers de **`delta` millisecondes** — huit `shiftTime`, de
+`industry-service.ts` à `station-service.ts` — puis rejouait **`delta / TICK_MS` plus la
+dérive** ticks. Les deux quantités décrivent la même avance de temps simulé et ne coïncidaient
+pas. Le monde avançait de `delta` sur ses échéances et d'autre chose sur ses ticks.
+
+L'instabilité des tests n'était que le symptôme visible. Rejouer exactement `delta / TICK_MS`
+réaligne les deux : c'est une correction de simulation, pas un confort de test.
+
+### La dérive appartenait à l'ordonnanceur
+
+`scheduler.ts` calcule exactement la même expression, toutes les cinq secondes :
+
+```ts
+const missed = Math.floor((Date.now() - this.host.lastTickAt()) / TICK_MS);
+if (missed > 0) this.host.advance(missed);
+```
+
+`devFastForward` la réimplémentait dans un outil dont le contrat — route `/dev/fastforward` —
+est « avance N secondes de temps simulé ». La ligne
+`floor((Date.now() - lastTickAt) / TICK_MS)` était écrite **trois fois** dans le dépôt ; il en
+reste deux, et les deux restantes sont de vrais rattrapages : le `Scheduler` sur un serveur
+vivant, `catchUp()` au boot.
+
+Sur un serveur, rien n'est perdu : `lastTickAt` revient à sa valeur d'entrée et l'ordonnanceur
+consomme la dérive à sa prochaine salve. En test il n'y a personne pour le faire, et c'est
+correct — `engine.start()` n'existe que dans `index.ts`, donc aucun temps réel n'y est
+légitime.
+
+Détail qui a failli passer : le rejeu est quantifié en ticks **entiers avant** tout décalage.
+Arrondir le rejeu sans arrondir le décalage aurait recréé le désaccord qu'on venait de
+supprimer, et `advance(0,6)` aurait corrompu `clock.tick` avec une fraction. Le plafond
+`MAX_CATCHUP_TICKS` change de sens au passage : il ne borne plus un rattrapage mais une
+demande, et le journal le dit désormais quand il mord.
+
+### Le contrat était écrit trois fois, faux les trois fois
+
+- le JSDoc d'`advanceTicks` (`test-harness.ts`) : « delta multiple exact de TICK_MS » ;
+- le nom du test `boot.test.ts` : « le tick est déterministe : N ticks avancent l'horloge
+  d'exactement N » ;
+- la route `/dev/fastforward`, qui renvoie le `tick` atteint.
+
+Et ce même test **contournait** le défaut : une amorce `advanceTicks(engine, 1)` pour drainer
+la dérive, précédée d'un commentaire qui le décrivait au mot près. Quelqu'un l'a rencontré,
+compris, écrit — et contourné dans le test qui énonce le contrat que le code ne tenait pas. Le
+contournement était en plus incomplet : il ne drainait que la dérive accumulée avant l'amorce.
+
+### Vérification
+
+L'amorce disparaît, et l'attente qui la remplace fait l'inverse : elle **fabrique** la dérive.
+Six secondes entre le relevé de `t0` et l'appel mesuré, là où aucun test n'en attendait.
+
+Exécuté contre l'ancien code, ce test rend « **expected 11 to be 10** » — le tick parasite
+prédit, ni plus ni moins. Contre le nouveau, il passe. C'est la seule forme de preuve qui vaut
+pour un défaut intermittent : le rendre certain.
+
+Le risque du correctif était ailleurs — un test qui passait GRÂCE aux ticks surnuméraires.
+Quatre sites le méritaient : l'assertion cassée d'`objective-service.test.ts`, l'égalité
+stricte de `contract-service.test.ts` sur les vivres livrés, sa marge de cinquante crédits, et
+le budget de temps du 43.6, que des ticks surnuméraires ne pouvaient qu'allonger. Tous
+passent.
