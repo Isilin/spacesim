@@ -1,11 +1,11 @@
-import type { Colony, EmpireEvent, Universe } from "@spacesim/shared";
+import type { Colony, EmpireEvent, ClientUniverse } from "@spacesim/shared";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InboxView } from "./InboxView.js";
 import { useGameStore } from "./state/game-store.js";
 
-const universe = { galaxies: [] } as unknown as Universe;
+const universe = { galaxies: [] } as unknown as ClientUniverse;
 
 function event(over: Partial<EmpireEvent>): EmpireEvent {
   return {

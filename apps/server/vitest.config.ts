@@ -12,5 +12,12 @@ export default defineConfig({
       NODE_ENV: "test",
     },
     setupFiles: ["./src/test-setup.ts"],
+    // Un bootstrap de test grave l'univers complet dans PGlite : quatre galaxies, soit
+    // ~5 900 systèmes et ~24 000 corps depuis le chantier 37 (contre ~40 et ~290 avant).
+    // Le défaut de 5 s tenait pour l'ancien volume ; sous la contention des workers, le
+    // nouveau le dépasse par intermittence — et un test qui échoue une fois sur trois ne
+    // prouve plus rien.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 });

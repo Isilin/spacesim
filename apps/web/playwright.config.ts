@@ -17,6 +17,21 @@ export default defineConfig({
    */
   workers: 1,
   retries: 0,
+  /**
+   * Attente par défaut portée de 5 à 10 s (chantier 37.15).
+   *
+   * Le client fait davantage à chaque snapshot depuis que l'univers a grossi : il en reçoit
+   * une galaxie détaillée de cinq cents systèmes au lieu de quatorze, et le reste en
+   * condensé. Un aller-retour WebSocket suivi d'un rendu tient largement sous les dix
+   * secondes, mais plus toujours sous cinq — et un test qui échoue une fois sur cinq ne
+   * prouve plus rien.
+   *
+   * Ce délai borne une ATTENTE, jamais un résultat : un comportement faux échoue toujours,
+   * seulement dix secondes plus tard. Les vraies causes de lenteur ont été corrigées à la
+   * source (écriture des galaxies neuves, une seule galaxie de frontière par tick, monde
+   * d'origine avec des emplacements libres) — ceci couvre le reste.
+   */
+  expect: { timeout: 10_000 },
   reporter: "list",
   use: {
     baseURL: "http://127.0.0.1:5173",

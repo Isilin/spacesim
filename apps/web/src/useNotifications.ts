@@ -7,7 +7,7 @@ import {
   type Mission,
   type TechId,
   type Transfer,
-  type Universe,
+  type ClientUniverse,
 } from "@spacesim/shared";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -26,7 +26,7 @@ interface Snapshot {
   transfers: Transfer[];
   missions: Mission[];
   exploredSystemIds: string[];
-  universe: Universe | null;
+  universe: ClientUniverse | null;
   battleCount: number;
 }
 

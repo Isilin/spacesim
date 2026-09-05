@@ -17,17 +17,32 @@ import { selectActiveColony } from "./state/selectors.js";
 
 interface Props {
   now: number;
+  /**
+   * Restreint l'affichage à une galaxie (chantier 35.6). Un portail appartient à une
+   * galaxie ; le trouver dans sa fiche vaut mieux que de le chercher dans une liste de
+   * tous les portails de l'univers.
+   */
+  galaxyId?: string;
 }
 
 const GATEWAY_RESOURCES = Object.keys(GATEWAY_COST) as ResourceId[];
 
-export function GatewaysPanel({ now }: Props) {
+export function GatewaysPanel({ now, galaxyId }: Props) {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const activeColony = useGameStore(
     selectActiveColony(searchParams.get("colony")),
   );
-  const { gateways, universe, routes, game, send } = useGameStore();
+  const {
+    gateways: allGateways,
+    universe,
+    routes,
+    game,
+    send,
+  } = useGameStore();
+  const gateways = galaxyId
+    ? allGateways.filter((g) => g.galaxyId === galaxyId)
+    : allGateways;
   const [amounts, setAmounts] = useState<
     Record<string, Partial<Record<ResourceId, string>>>
   >({});
@@ -38,6 +53,8 @@ export function GatewaysPanel({ now }: Props) {
     : 0;
 
   if (!universe) return null;
+  // Une galaxie sans portail n'a pas de panneau vide à montrer.
+  if (galaxyId && gateways.length === 0) return null;
 
   return (
     <Panel title={t("gatewaysPanel.title")}>

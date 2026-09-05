@@ -2,60 +2,15 @@ import { and, eq } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import { schema, withTransaction } from "../../db/index.js";
 import { consoleLogger, type Logger } from "../logger.js";
+import { PRIMARY_KEYS, type PersistedTable } from "./tables.js";
 import type { DrainedDelete, DrainedUpsert, WriteSet } from "./write-set.js";
 
-type SchemaKey = keyof typeof schema;
-
-/**
- * Colonnes de clé (naturelle ou primaire) par table, dans l'ORDRE attendu des valeurs
- * `pk` du `WriteSet`. Sert à construire le `WHERE` du flush (update-ou-insert) — pas
- * besoin d'index UNIQUE déclaré en base (ex. `relations` n'en a pas) puisqu'on ne
- * s'appuie pas sur `ON CONFLICT`, voir `applyUpsert`.
- */
-const PRIMARY_KEYS: Partial<Record<SchemaKey, readonly string[]>> = {
-  games: ["id"],
-  colonies: ["id"],
-  stations: ["id"],
-  relations: ["empireA", "empireB"],
-  relationProposals: ["id"],
-  objectives: ["id"],
-  empireEvents: ["id"],
-  corporations: ["id"],
-  corporationMembers: ["empireId"],
-  corporationInvites: ["id"],
-  marketOrders: ["id"],
-  stationHoldings: ["stationId", "empireId"],
-  chatMessages: ["id"],
-  mails: ["id"],
-  worldEvents: ["id"],
-  factionStates: ["factionId"],
-  blueprints: ["id"],
-  transfers: ["id"],
-  missions: ["id"],
-  routes: ["id"],
-  outposts: ["id"],
-  tradingPostStates: ["tradingPostId"],
-  gateways: ["galaxyId"],
-  claims: ["systemId"],
-  fleets: ["id"],
-  pirateLairs: ["id"],
-  battles: ["id"],
-  players: ["id"],
-  contracts: ["id"],
-  universeGalaxies: ["id"],
-  universeSystems: ["id"],
-  universeBodies: ["id"],
-  universeBelts: ["id"],
-  universeTradingPosts: ["id"],
-  universeLinks: ["aSystemId", "bSystemId"],
-};
-
-function tableFor(name: string): {
+function tableFor(name: PersistedTable): {
   table: PgTable;
   pkNames: readonly string[];
 } {
-  const pkNames = PRIMARY_KEYS[name as SchemaKey];
-  const table = schema[name as SchemaKey] as PgTable | undefined;
+  const pkNames = PRIMARY_KEYS[name];
+  const table = schema[name] as PgTable | undefined;
   if (!table || !pkNames) {
     throw new Error(`Persister: table inconnue ou sans clé déclarée "${name}"`);
   }
@@ -123,9 +78,15 @@ export class Persister {
 
   private tail: Promise<void> = Promise.resolve();
 
+  /**
+   * @param barrier Écritures à laisser finir AVANT d'ouvrir la transaction de flush.
+   * Sert aux galaxies neuves, écrites hors `WriteSet` (voir `GameRuntime.universeWrite`) :
+   * les lignes stagées ensuite les référencent par clé étrangère.
+   */
   constructor(
     private readonly writeSet: WriteSet,
     private readonly logger: Logger = consoleLogger,
+    private readonly barrier: () => Promise<void> = () => Promise.resolve(),
   ) {}
 
   flush(): Promise<void> {
@@ -135,6 +96,9 @@ export class Persister {
 
   private async runFlush(): Promise<void> {
     if (this.writeSet.isEmpty()) return;
+    // Une écriture d'univers en échec ne doit pas emporter le flush : elle a déjà été
+    // journalisée là où elle a été lancée, et la RAM fait autorité (ADR 0003).
+    await this.barrier().catch(() => undefined);
     const { upserts, deletes } = this.writeSet.drain();
     try {
       await withTransaction(async (tx) => {

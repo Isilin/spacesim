@@ -37,7 +37,6 @@ import {
   transferDurationMs,
   type BalanceConstants,
   type Colony,
-  type Contract,
   type ConvoyStat,
   type Gateway,
   type LiftRule,

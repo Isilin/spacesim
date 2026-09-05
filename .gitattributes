@@ -1,3 +1,14 @@
 # Scripts exécutés dans des conteneurs Linux (bind-mount depuis l'hôte Windows,
 # voir docker-compose.yml) : un shebang en CRLF casse l'interpréteur.
 *.sh text eol=lf
+
+# Le reste du dépôt en LF, pour la même raison prise à l'envers : `docs/design.md` était en
+# CRLF mixte, et le premier commit qui l'a touché depuis Linux a produit un diff de 4 729
+# lignes dont 356 réelles. Sans règle, rien ne normalisait un `.md` ni un `.ts`.
+*.md text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.css text eol=lf

@@ -40,14 +40,14 @@ import type {
   Territory,
   TradingPostMarket,
   Transfer,
-  Universe,
+  ClientUniverse,
   WorldEvent,
 } from "@spacesim/shared";
 import { create } from "zustand";
 
 export interface GameStoreState {
   playerId: string | null;
-  universe: Universe | null;
+  universe: ClientUniverse | null;
   game: GameState | null;
   colonies: Colony[];
   transfers: Transfer[];

@@ -313,7 +313,42 @@ export class MarketService {
   // ─────────────────────────── Économie PNJ (chantier 14) ───────────────────────────
 
   /** Comptoir le plus proche dans la MÊME galaxie (un PNJ ne commerce pas à l'échelle de l'univers). */
+  /**
+   * Comptoir le plus proche d'un système, mémoïsé (chantier 43.6).
+   *
+   * Le calcul est cher et il l'est devenu sans prévenir : il lance un plus-court-chemin
+   * PAR COMPTOIR de la galaxie, sur un graphe reconstruit à chaque appel. Une galaxie en
+   * comptait sept à quatorze systèmes avant le chantier 37, elle en compte trois à cinq
+   * cents — et `this.portalLinks` étant un GETTER, il se recalculait lui aussi à chaque
+   * tour de boucle. Profilé au chantier 43 : `npcTick` pesait 99,7 % du coût d'un tick,
+   * et l'essentiel venait d'ici.
+   *
+   * La réponse ne dépend que de la topologie : les systèmes d'une galaxie, ses arêtes,
+   * la position des comptoirs et les liaisons de portail actives. Rien de tout cela ne
+   * bouge d'un tick à l'autre — seule une galaxie matérialisée ou un portail qui s'ouvre
+   * peut la changer.
+   *
+   * La clé de cache CONTIENT donc ces trois choses plutôt que de dépendre d'un point
+   * d'invalidation qu'on oublierait : une galaxie neuve change le compte de galaxies ET
+   * celui des comptoirs, un portail qui s'ouvre change la signature des liaisons. Un cache
+   * qu'on invalide à la main est un cache qu'on invalide mal ; celui-ci se périme tout
+   * seul, et le pire qu'un défaut de clé puisse produire est un recalcul.
+   */
+  private nearestCache = new Map<string, TradingPost | null>();
+  private nearestCacheKey = "";
+
   private nearestTradingPost(systemId: string): TradingPost | null {
+    const links = this.portalLinks;
+    const key = `${this.runtime.universe.galaxies.length}|${this.runtime.tradingPostsById.size}|${links.map(([a, b]) => `${a}>${b}`).join(",")}`;
+    if (key !== this.nearestCacheKey) {
+      this.nearestCacheKey = key;
+      this.nearestCache.clear();
+    }
+    // `has` et non `get` : `null` est une réponse mémorisable — un système sans aucun
+    // comptoir joignable dans sa galaxie n'en aura pas davantage au tick suivant.
+    if (this.nearestCache.has(systemId))
+      return this.nearestCache.get(systemId) ?? null;
+
     const galaxyIndex = this.runtime.galaxyIndexOfSystem.get(systemId);
     let best: TradingPost | null = null;
     let bestJumps = Infinity;
@@ -326,12 +361,13 @@ export class MarketService {
         this.runtime.universe,
         systemId,
         comptoir.systemId,
-        this.portalLinks,
+        links,
       );
       if (jumps < 0 || jumps >= bestJumps) continue;
       bestJumps = jumps;
       best = comptoir;
     }
+    this.nearestCache.set(systemId, best);
     return best;
   }
 

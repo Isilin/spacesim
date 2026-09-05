@@ -1,4 +1,5 @@
 import {
+  type ClientUniverse,
   FACTION_MOOD_DURATION_MS,
   FRONTIER_GALAXIES,
   generateGalaxyAt,
@@ -64,7 +65,6 @@ import {
 } from "./runtime/universe-store.js";
 import {
   clientUniverseForEmpire,
-  objectivesForEmpire,
   snapshotForEmpire as projectSnapshotForEmpire,
 } from "./runtime/projections.js";
 
@@ -208,7 +208,11 @@ export class GameEngine {
       info: (message) => this.logger.info(message),
       warn: (message) => this.logger.warn(message),
     };
-    this.persister = new Persister(this.runtime.writeSet, logger);
+    this.persister = new Persister(
+      this.runtime.writeSet,
+      logger,
+      () => this.runtime.universeWrite,
+    );
     const composed = composeEngine(
       this.runtime,
       logger,
@@ -626,7 +630,7 @@ export class GameEngine {
   }
 
   /** Univers redacté au brouillard d'un empire — payload initial du message `hello`. */
-  clientUniverseForEmpire(empire: Empire): Universe {
+  clientUniverseForEmpire(empire: Empire): ClientUniverse {
     return clientUniverseForEmpire(this.runtime, empire);
   }
 

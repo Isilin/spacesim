@@ -1,13 +1,17 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
-import { useTranslation } from "react-i18next";
 import type { PerspectiveCamera, Vector3 } from "three";
 import type { Focus } from "./bounds.js";
-import { CameraKeys } from "./CameraKeys.js";
 
-/** Champ vertical de la caméra, en degrés. */
-const FOV = 50;
+/**
+ * Champ vertical de la caméra, en degrés.
+ *
+ * Exporté : tout ce qui garde une taille à l'ÉCRAN en dépend — le nœud d'un système, une
+ * étiquette, le cadre de sélection. La valeur était recopiée dans chacun, avec un commentaire
+ * « doit suivre `MapCanvas` » pour tout garde-fou.
+ */
+export const FOV = 50;
 
 /** Part de l'image laissée libre autour du contenu. */
 const MARGIN = 1.12;
@@ -56,7 +60,12 @@ export function fitDistance(focus: Focus, aspect: number): number {
     -VIEW_DIRECTION[1],
     -VIEW_DIRECTION[2],
   ]);
-  const right = normalize(cross(forward, [0, 1, 0]));
+  // Référence Z-HAUT, comme tout le monde de la carte : le plan galactique est XY et
+  // l'épaisseur est en Z (`MAP_DEPTH`). Ce fut longtemps `[0, 1, 0]`, le défaut de three.js,
+  // et le résultat était fortuitement identique — la direction de vue est dans le plan YZ,
+  // qui contient les deux axes. Faux en principe, et incohérent avec le même calcul dans
+  // `ModelPreview`, déjà en Z-haut.
+  const right = normalize(cross(forward, [0, 0, 1]));
   const up = cross(right, forward);
 
   const tanY = Math.tan(((FOV / 2) * Math.PI) / 180);
@@ -122,6 +131,11 @@ function FitCamera({
   const applied = useRef("");
   const handled = useRef(false);
   const fits = useRef(0);
+  /**
+   * Dernière position que ce composant a lui-même posée. Sert à reconnaître qu'un autre
+   * l'a déplacée depuis (chantier 35.2).
+   */
+  const placed = useRef<[number, number, number] | null>(null);
 
   // La caméra appartient au joueur dès qu'il y touche. Le cadrage automatique ne vaut
   // que tant qu'il n'a rien fait : R3F mesure son canvas en plusieurs temps, et un
@@ -137,7 +151,29 @@ function FitCamera({
 
   useEffect(() => {
     const isNewScene = applied.current !== signature;
-    if (!isNewScene && handled.current) return;
+    /**
+     * La caméra n'appartient plus au cadrage automatique dès que **quiconque** l'a
+     * déplacée, pas seulement le joueur à la souris (chantier 35.2).
+     *
+     * L'événement `start` d'`OrbitControls` ne dit rien d'un déplacement programmatique :
+     * un saut de palier posait la caméra sur une galaxie, puis la mesure suivante de R3F
+     * — qui en fait plusieurs — rejouait ce cadrage et ramenait la vue à l'amas. La
+     * descente ne se produisait jamais, et rien ne le signalait.
+     */
+    const moved =
+      placed.current !== null &&
+      // Tolérance relative au cadrage, pas égalité stricte : `OrbitControls` recompose la
+      // position par un aller-retour en coordonnées sphériques à chaque image, ce qui la
+      // fait bouger de quelques 10⁻¹⁰ même immobile. Sur l'égalité, la caméra aurait été
+      // déclarée « déplacée » dès la première image et le recadrage tardif — celui qui
+      // corrige le rapport d'image mesuré par R3F — n'aurait plus jamais eu lieu.
+      Math.hypot(
+        camera.position.x - placed.current[0],
+        camera.position.y - placed.current[1],
+        camera.position.z - placed.current[2],
+      ) >
+        radius * 1e-3;
+    if (!isNewScene && (handled.current || moved)) return;
     applied.current = signature;
     if (isNewScene) handled.current = false;
 
@@ -147,9 +183,13 @@ function FitCamera({
       half: [hx, hy, hz],
       radius,
     };
+    // Réaffirmé ici et pas seulement à la création : R3F n'applique les props `camera` qu'une
+    // fois, et un `up` perdu ne se voit pas — l'image est simplement roulée.
+    camera.up.set(0, 0, 1);
     const aspect = size.width / Math.max(1, size.height);
     const [x, y, z] = cameraPositionFor(target, aspect);
     camera.position.set(x, y, z);
+    placed.current = [x, y, z];
     camera.far = fitDistance(target, aspect) * 12;
     camera.updateProjectionMatrix();
     controls?.target.set(cx, cy, cz);
@@ -191,11 +231,29 @@ interface Props {
    */
   focus: Focus;
   /**
-   * Registre visuel (chantier 31.18). `schematic` aux niveaux univers et galaxie —
-   * c'est une carte de commandement ; `lit` au niveau système, où l'étoile éclaire
-   * réellement la scène.
+   * Hôte du canvas, quand l'appelant a besoin d'y écrire lui-même (chantier 35.2).
+   *
+   * `TierCamera` publie la profondeur de zoom sur cette section, et il vit **dans** le
+   * canvas : le contexte React ne traverse pas la frontière du réconciliateur de R3F, il
+   * faut donc que la référence descende par les props. Absente, `MapCanvas` garde la
+   * sienne et rien ne change.
    */
-  register?: "schematic" | "lit";
+  hostRef?: RefObject<HTMLElement | null>;
+  /**
+   * Clic dans le vide (chantier 35.5). API de R3F prévue pour exactement cela : elle ne se
+   * déclenche que si le rayon n'a rencontré aucun objet de la scène, ce qu'aucun
+   * gestionnaire posé sur le DOM ne saurait distinguer.
+   */
+  onPointerMissed?: (event: MouseEvent) => void;
+  /**
+   * Surcouche DOM au-dessus du canvas (chantier 35.5), hors du conteneur de R3F.
+   *
+   * Ce conteneur porte `aria-hidden` — WebGL n'expose aucune structure. Une infobox
+   * portalisée dedans par drei héritait donc de cet attribut : invisible aux lecteurs
+   * d'écran, et introuvable par son rôle. La surcouche est le seul endroit du canvas où du
+   * DOM annoncé peut vivre.
+   */
+  overlayRef?: RefObject<HTMLDivElement | null>;
   children: ReactNode;
 }
 
@@ -211,72 +269,86 @@ interface Props {
 export function MapCanvas({
   ariaLabel,
   focus,
-  register = "schematic",
+  hostRef: providedRef,
+  onPointerMissed,
+  overlayRef,
   children,
 }: Props) {
-  const { t } = useTranslation();
   // Cadrage provisoire : `FitCamera` le refait dès que R3F a mesuré le canvas.
   const distance = fitDistance(focus, 1);
   /**
    * La `<section>` elle-même, et non `gl.domElement.parentElement` : R3F intercale ses
-   * propres div entre la section et le canvas. Viser le parent immédiat posait donc
-   * l'écouteur clavier sur un descendant de l'élément focusé — où un `keydown` ne
-   * remonte jamais.
+   * propres div entre la section et le canvas. C'est elle qui porte les écouteurs de
+   * `TierCamera` — molette et glisser — et les attributs `data-map-*` sur lesquels les
+   * tests de bout en bout observent une scène qui, sans eux, ne laisse aucune trace.
    */
-  const hostRef = useRef<HTMLElement>(null);
+  const ownRef = useRef<HTMLElement>(null);
+  const hostRef = providedRef ?? ownRef;
   return (
-    // `tabIndex` : la section doit pouvoir recevoir le focus pour que les raccourcis
-    // clavier de la caméra s'appliquent. Le canvas, lui, reste hors du parcours.
-    // `role="application"` : la section capte les touches pour piloter la caméra, donc
-    // le lecteur d'écran doit lui laisser le clavier plutôt que d'appliquer ses propres
-    // raccourcis. Même geste qu'au chantier 27.24 sur `ZoomableSvg` devenu interactif.
-    <section
-      ref={hostRef}
-      className="map-canvas"
-      role="application"
-      aria-label={ariaLabel}
-      aria-describedby="map-canvas-keys"
-      // biome-ignore lint/a11y/noNoninteractiveTabindex: `section` n'est pas nativement interactive, mais le `role="application"` ci-dessus en fait un widget clavier à part entière (déplacement/zoom de caméra) — le tabIndex est l'affordance requise. Même geste que sur `ZoomableSvg` au chantier 27.24.
-      tabIndex={0}
-    >
-      <p id="map-canvas-keys" className="visually-hidden">
-        {t("mapCanvas.keyboardHint")}
-      </p>
+    // Ni `role="application"` ni `tabIndex` depuis le chantier 38 : la caméra ne se pilote
+    // plus qu'à la souris. Un rôle qui confisque le clavier sans plus rien en faire nuit au
+    // lecteur d'écran, qui se voit refuser ses propres raccourcis en échange de rien.
+    // Nommée, la section reste un repère de navigation, et `MapList` reste le chemin
+    // clavier et lecteur d'écran vers les objets.
+    <section ref={hostRef} className="map-canvas" aria-label={ariaLabel}>
       <Canvas
         aria-hidden="true"
         camera={{
           position: cameraPositionFor(focus, 1),
           fov: FOV,
           far: distance * 12,
+          // Le monde de la carte est Z-HAUT : le plan galactique est XY, l'épaisseur est en
+          // Z. `lookAt` construit son orientation à partir de `up` ; laissé au défaut de
+          // three.js, il roulait l'image dès qu'on tournait la vue — le glisser horizontal
+          // faisait passer la caméra SOUS le disque au lieu d'en faire le tour.
+          up: [0, 0, 1] as [number, number, number],
         }}
         // Le fond vient du thème, pas d'une couleur codée ici.
         gl={{ antialias: true, alpha: true }}
+        onPointerMissed={onPointerMissed}
       >
-        {register === "lit" ? (
-          <>
-            {/* L'étoile est au centre du système : une lumière ponctuelle à l'origine
-                suffit à donner leur relief aux corps. */}
-            <pointLight position={[0, 0, 0]} intensity={3} decay={0.4} />
-            <ambientLight intensity={0.15} />
-          </>
-        ) : (
-          // Registre schématique : éclairage plat, la lisibilité prime sur le relief.
-          <ambientLight intensity={1} />
-        )}
         {children}
         {/* Après `OrbitControls` : le cadrage a besoin des contrôles pour poser la
             cible, et `makeDefault` ne les publie qu'une fois montés. */}
         <OrbitControls
           makeDefault
+          // Le panoramique revient au chantier 38, sur son bouton par défaut : le DROIT.
+          // `mouseButtons` n'est donc pas touché — `{ LEFT: ROTATE, MIDDLE: DOLLY,
+          // RIGHT: PAN }`, où `MIDDLE` est de toute façon inerte puisque le zoom est repris
+          // plus bas. C'est le chemin que la bibliothèque teste elle-même, et le bouton droit
+          // n'a qu'un défaut de navigateur à neutraliser, le menu contextuel, dont
+          // `OrbitControls` se charge déjà. Le bouton du milieu, lui, aurait déclenché le
+          // défilement automatique de Chrome sous Windows — un curseur collant qui détourne
+          // tout mouvement suivant, à supprimer par un `preventDefault` qu'aucun test
+          // n'atteint.
+          //
+          // Le retirer était la réponse de l'ADR 0017 à un vrai défaut : on perdait de vue
+          // l'objet sur lequel on zoomait. Ce n'était pas le panoramique, c'était qu'aucune
+          // cible n'était tenue. Depuis le chantier 38 la sélection l'est, et le ressort de
+          // `TierCamera` ramène la vue dessus : glisser devient une façon de VISER, puisque
+          // ce qu'on trouve au relâchement devient la nouvelle sélection.
           enablePan
+          // Le zoom est repris à la main par `TierCamera` : `OrbitControls` amortit la
+          // rotation mais applique le dolly d'un bloc, et son pas fixe demandait ~35 crans
+          // par palier. Le nôtre est amorti et calibré sur la bande à traverser. Il lui reste
+          // la rotation et le panoramique, tous deux amortis par ses soins.
+          // La rotation est reprise à la main (chantier 40) : `OrbitControls` appelle
+          // `lookAt(target)` à chaque image, donc sa cible est toujours au centre de l'écran
+          // et il ne sait pas pivoter autour d'un point décentré. Or on veut tourner autour
+          // de ce qu'on a cliqué, sans recadrer l'image. Il ne lui reste que le panoramique.
+          enableRotate={false}
+          enableZoom={false}
           enableDamping
           dampingFactor={0.15}
-          maxDistance={distance * 6}
-          minDistance={distance * 0.02}
+          // Bornes de dolly volontairement absentes (chantier 35.3) : `TierCamera` les
+          // recalcule à chaque image sur le palier courant. Les poser ici, sur le cadrage
+          // du montage, les faisait réapparaître à chaque rendu React et ramener la caméra
+          // au palier de départ — au palier corps, la borne héritée de l'univers valait
+          // près de cent fois la distance de vue.
         />
         <FitCamera focus={focus} host={hostRef} />
-        <CameraKeys focus={focus} host={hostRef} />
       </Canvas>
+      {overlayRef && <div ref={overlayRef} className="map-overlay" />}
     </section>
   );
 }

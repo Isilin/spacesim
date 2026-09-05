@@ -3,7 +3,7 @@ import {
   type Colony,
   type GameState,
   type StarSystem,
-  type Universe,
+  type ClientUniverse,
 } from "@spacesim/shared";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -23,7 +23,7 @@ const system = {
   belts: [],
   station: undefined,
 } as unknown as StarSystem;
-const universe = { galaxies: [] } as unknown as Universe;
+const universe = { galaxies: [] } as unknown as ClientUniverse;
 const game = {
   claimedSystemIds: [],
   influence: 0,

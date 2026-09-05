@@ -5,7 +5,7 @@ import {
   type ObjectiveKind,
   type RelationState,
   type TechId,
-  type Universe,
+  type ClientUniverse,
 } from "@spacesim/shared";
 import { Badge, Button, EmptyState, ListRow, Panel } from "@spacesim/ui";
 import { useTranslation } from "react-i18next";
@@ -44,7 +44,10 @@ const LOOK: Record<
   corp_relation_changed: { icon: "⚑", tone: "neutral" },
 };
 
-function systemName(universe: Universe | null, systemId?: string): string {
+function systemName(
+  universe: ClientUniverse | null,
+  systemId?: string,
+): string {
   if (!universe || !systemId) return "";
   return allSystems(universe).find((s) => s.id === systemId)?.name ?? systemId;
 }

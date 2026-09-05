@@ -14,7 +14,7 @@ Workspaces pnpm, TypeScript partout :
   (`universe.ts`), simulation pure et déterministe. Zéro dépendance runtime.
 - **`packages/protocol`** — contrats HTTP/WS, schémas Zod, `admin.ts` (rôles/permissions).
   Dépend de `shared` ; jamais l'inverse.
-- **`packages/ui`** — design system HUD (18 composants, CSS Modules), agnostique de
+- **`packages/ui`** — design system HUD (19 composants, CSS Modules), agnostique de
   `game-store`/`protocol`/du routeur. Direction visuelle itérée via **DesignSync** (projet
   claude.ai/design) : l'utilisateur y ajuste des cartes seed, les composants sont ensuite
   tirés (`list_files`/`get_file`) et implémentés en camelCase CSS Modules — le seed reste la
@@ -25,7 +25,7 @@ Workspaces pnpm, TypeScript partout :
 - **`apps/web`** — client joueur, React + Vite + React Router, port 5173. État poussé par
   WebSocket centralisé dans un store Zustand (`state/game-store.ts`), navigation par URL
   (6 onglets plats + carte en routes imbriquées `/map/galaxy/:id/system/:id/body/:id`,
-  résolues par `hooks/useMapLevel.ts`). Une feature qui n'a qu'un seul consommateur d'une
+  résolues par `hooks/useMapView.ts`). Une feature qui n'a qu'un seul consommateur d'une
   valeur la reçoit en prop depuis son parent ; une dérivation dupliquée (colonie active,
   système exploré…) passe par un sélecteur (`state/selectors.ts`,
   `useGameStore(selectXxx(...))`) plutôt qu'une chaîne de props.
@@ -34,7 +34,7 @@ Workspaces pnpm, TypeScript partout :
 
 ## Services applicatifs (`apps/server/src/runtime/`)
 
-`composeEngine()` (`runtime/composition.ts`, ~260 lignes) câble **12 services** + le
+`composeEngine()` (`runtime/composition.ts`, ~335 lignes) câble **16 services** + le
 `TickRunner`, une fois au boot. Cycles de dépendances cassés par des fermetures paresseuses sur
 des `let` non encore affectées — voir [ADR 0001](adr/0001-composition-explicite-sans-conteneur-di.md).
 
@@ -50,6 +50,10 @@ des `let` non encore affectées — voir [ADR 0001](adr/0001-composition-explici
 | `DiplomacyService` | Relations inter-empires, guerre |
 | `ObjectiveService` | Objectifs/quêtes |
 | `StationService` | Stations orbitales (voir détail ci-dessous) |
+| `InboxService` | Journal d'événements d'empire, digest de reconnexion |
+| `CorporationService` | Corporations, membres, rôles, coffre partagé, standings |
+| `CommunicationService` | Canaux de discussion dérivés, courrier, silence |
+| `OrderBookService` | Carnet d'ordres et avoirs déposés en station |
 | `BootstrapService` | Amorçage d'univers/d'empire |
 | `DevService` | Endpoints `/dev/*` (hors production) |
 
@@ -177,8 +181,9 @@ conteneur `app` n'ayant pas `pg_dump`). Restauration via `pg_restore --clean --i
 
 ## Environnement Docker
 
-Le CLI docker n'est pas toujours sur le PATH de l'hôte — sur cette machine il vit sous
-`C:\Users\casa2\AppData\Local\Programs\DockerDesktop\resources\bin\docker.exe`.
+Le CLI docker n'est pas toujours sur le PATH de l'hôte. Sur cette machine il y est, et le
+binaire vit sous `C:\Program Files\Docker\Docker\resources\bin\docker.exe` — l'ancien chemin
+sous `AppData\Local\Programs\DockerDesktop\` n'existe plus.
 
 `docker compose up app` sert Postgres + serveur (3001) + web (5173) + admin (5174) — les trois
 ports client sont exposés et documentés en tête de `docker-compose.yml`. `Dockerfile` = toolchain

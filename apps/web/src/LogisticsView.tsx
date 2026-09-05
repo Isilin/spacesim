@@ -106,7 +106,6 @@ export function LogisticsView({ effects, portalLinks, now }: Props) {
         <MarketsView
           universe={universe}
           markets={markets}
-          colonies={colonies}
           activeColony={colony}
           exploredSystemIds={exploredSystemIds}
           portalLinks={portalLinks}

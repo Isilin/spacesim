@@ -135,6 +135,22 @@ export class GameRuntime {
   readonly writeSet = new WriteSet();
 
   /**
+   * Chaîne des écritures d'univers en cours (chantier 37.15).
+   *
+   * Une galaxie neuve, c'est ~3 400 lignes ; `ensureFrontier` en ouvre jusqu'à trois d'un
+   * coup, dans le tick. Passées par le `WriteSet`, le `Persister` les écrivait **une par
+   * une** — un UPDATE de sonde puis un INSERT chacune, soit vingt mille allers-retours
+   * mesurés à **21,5 s** pendant lesquels le serveur répondait mal. Elles passent désormais
+   * par `appendGalaxies`, transactionnel et découpé en lots.
+   *
+   * Le `Persister` ATTEND cette chaîne avant chaque flush : `initMarkets`/`initGateways`
+   * stagent, dans la foulée, des lignes dont les clés étrangères pointent vers ces
+   * tables-là. Sans la barrière, le flush pourrait les écrire avant que les galaxies ne
+   * soient commitées.
+   */
+  universeWrite: Promise<void> = Promise.resolve();
+
+  /**
    * L'univers est fourni par l'appelant (chantier 18) : chargé depuis les tables
    * `universe_*` au boot, jamais régénéré ici — la DB fait autorité.
    */

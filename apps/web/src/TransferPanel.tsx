@@ -18,7 +18,7 @@ import {
   type Territory,
   type Transfer,
   type TravelRoute,
-  type Universe,
+  type ClientUniverse,
 } from "@spacesim/shared";
 import { useState } from "react";
 import { Button, NumberInput, Panel, Select } from "@spacesim/ui";
@@ -30,7 +30,7 @@ interface Props {
   colony: Colony;
   colonies: Colony[];
   transfers: Transfer[];
-  universe: Universe;
+  universe: ClientUniverse;
   /** Multiplicateur de vitesse des convois (tech logistique). */
   transferSpeedMult: number;
   routes: Route[];

@@ -2,7 +2,6 @@ import {
   CHASSIS,
   MODULES,
   type ChassisKind,
-  type ModuleId,
   type ModuleRole,
   type SlotType,
 } from "@spacesim/shared";

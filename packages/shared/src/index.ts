@@ -7,8 +7,10 @@ export {
   type AsteroidBelt,
   type TradingPost,
   type StarSystem,
+  systemCountOf,
   type Galaxy,
   type Gateway,
+  type ClientUniverse,
   type Universe,
 } from "./model/universe.js";
 export {
@@ -115,6 +117,7 @@ export {
   INITIAL_GALAXIES,
   FRONTIER_GALAXIES,
   MAX_EMPIRES_PER_GALAXY,
+  STARTER_CLUSTER_RADIUS,
   MAX_GALAXIES,
   SYSTEM_VIEW_SIZE,
   BASE_STORAGE,
@@ -483,6 +486,20 @@ export {
   type SiteKind,
   type SystemSite,
 } from "./sim/exploration/sites.js";
+export {
+  GALAXY_MORPHOLOGIES,
+  STAR_CLASSES,
+  galacticCoreDisc,
+  galacticCoreHorizon,
+  galaxyAppearance,
+  galaxyMorphology,
+  galaxyMorphologyOf,
+  isDarkStar,
+  starClassOf,
+  type GalaxyAppearance,
+  type GalaxyMorphology,
+  type StarClass,
+} from "./sim/exploration/stars.js";
 export {
   galaxyGraph,
   universeGraph,

@@ -17,7 +17,7 @@ import {
   type Objective,
   type PirateLair,
   type RelationProposal,
-  type Universe,
+  type ClientUniverse,
   type WorldEvent,
 } from "@spacesim/shared";
 import { Button, Panel, ProgressBar } from "@spacesim/ui";
@@ -36,7 +36,7 @@ import {
 interface Props {
   game: GameState;
   colonies: Colony[];
-  universe: Universe;
+  universe: ClientUniverse;
   exploredSystemIds: string[];
   leaderboard: LeaderboardEntry[];
   factionStates: FactionState[];
@@ -54,7 +54,7 @@ interface Props {
 /** Détail affiché sous le libellé d'un objectif (chantier 17.4). */
 function objectiveDetail(
   o: Objective,
-  universe: Universe,
+  universe: ClientUniverse,
   colonyCount: number,
 ): string {
   switch (o.kind) {
@@ -79,7 +79,7 @@ function objectiveDetail(
 }
 
 /** Lieu touché par un événement de monde (galaxie ou faction, selon le genre). */
-function worldEventLocation(e: WorldEvent, universe: Universe): string {
+function worldEventLocation(e: WorldEvent, universe: ClientUniverse): string {
   if (e.galaxyId)
     return (
       universe.galaxies.find((g) => g.id === e.galaxyId)?.name ?? e.galaxyId

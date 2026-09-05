@@ -21,8 +21,8 @@ test("un fait de simulation remonte au journal, puis se marque lu", async ({
   // l'événement viserait un autre empire.
   await page.getByRole("link", { name: "Carte" }).click();
   await page.getByRole("button", { name: "Ma capitale" }).click();
-  await expect(page).toHaveURL(/\/map\/galaxy\/[^/]+\/system\/[^/]+/);
-  const systemId = page.url().match(/\/system\/([^/?]+)/)![1];
+  await expect(page).toHaveURL(/\/map\?.*at=/);
+  const systemId = new URL(page.url()).searchParams.get("at")!;
 
   await page.request.post("/dev/spawnpirate", { data: { systemId } });
 

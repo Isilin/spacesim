@@ -19,7 +19,7 @@ import {
   type Route,
   type TradingPostMarket,
   type TradingPost,
-  type Universe,
+  type ClientUniverse,
 } from "@spacesim/shared";
 import { useState } from "react";
 import {
@@ -41,7 +41,7 @@ interface Props {
   market: TradingPostMarket | undefined;
   activeColony: Colony | null;
   missions: Mission[];
-  universe: Universe;
+  universe: ClientUniverse;
   transferSpeedMult: number;
   factionRep: Record<string, number>;
   routes: Route[];

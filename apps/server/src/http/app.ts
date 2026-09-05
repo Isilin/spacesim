@@ -42,6 +42,17 @@ export async function buildApp(
       },
     },
   });
+  // Compression des trames : ESSAYÉE PUIS RETIRÉE (chantier 37.8).
+  //
+  // `ws` laisse `perMessageDeflate` désactivé par défaut, et le snapshot d'univers est du
+  // JSON très répétitif : la mesure (`universe.payload.test.ts`) donne un facteur quatre.
+  // Mais comprimer 270 Ko par joueur et par poussée coûte assez de latence pour qu'un
+  // aller-retour WS dépasse cinq secondes — mesuré deux fois en A/B sur les specs à deux
+  // sessions (`communication`, `corporation`), qui passent sans et échouent avec.
+  //
+  // Le bon levier n'est pas de comprimer un envoi trop gros, c'est de ne pas l'envoyer :
+  // l'univers part en entier à chaque `hello` et à chaque changement d'exploration, sans
+  // aucune pagination. À rouvrir si la mesure change, avec le même A/B pour juge.
   await app.register(websocket);
   await app.register(cors, { origin: config.corsOrigin });
   // Global généreux (config, défaut 100/min) ; `/auth/*` a sa propre limite plus stricte,

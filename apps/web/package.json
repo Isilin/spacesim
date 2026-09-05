@@ -16,6 +16,7 @@
     "@spacesim/ui": "workspace:*",
     "@react-three/drei": "catalog:",
     "@react-three/fiber": "catalog:",
+    "@use-gesture/react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-i18next": "^17.0.11",

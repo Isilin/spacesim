@@ -1428,6 +1428,12 @@ planètes plus lunes et 0-2 ceintures par système — soit ~2 000 systèmes et 
 univers plein, mais seulement ~200 objets dans la vue univers, ~10 dans une vue galaxie et ~6
 dans une vue système. Le sujet de ce chantier est le design, pas le GPU.
 
+> **Périmé au chantier 37** ([ADR 0018](adr/0018-morphologie-de-galaxie-structurante.md)) : une
+> galaxie compte désormais 300-520 systèmes, soit ~80 000 systèmes et ~560 000 corps à univers
+> plein, et ~500 objets dans une vue galaxie. « Le sujet est le design, pas le GPU » a cessé
+> d'être vrai : l'instanciation, le budget d'étiquettes et le condensé de charge utile sont
+> devenus des conditions de la forme voulue, pas des optimisations.
+
 ### Vague A — Modèle et génération
 
 - **31.1** — `z` sur `Galaxy` et `StarSystem` ; `inclination` et `ascendingNode` sur `Planet` et
@@ -1622,8 +1628,12 @@ inobservables depuis le DOM : une caméra 3D n'y laisse aucune trace, et l'e2e d
 passait au vert sur une carte à moitié vide et impossible à manipuler. D'où deux compteurs
 exposés sur la section hôte — `data-map-fits` (recadrages appliqués) et `data-map-keys`
 (touches traitées) —, seuls points vérifiables de l'extérieur, et le test « la caméra reste au
-joueur ». Ce qu'ils ne prouvent pas : que la caméra se déplace du bon nombre d'unités. Le
-cadrage lui-même, qui est du calcul pur, est couvert par `map3d/bounds.test.ts`.
+joueur ».
+*`data-map-keys` a disparu au chantier 38 avec le pilotage clavier de la caméra ; la famille,
+elle, s'est étoffée — `data-map-tier`, `data-map-depth`, `data-map-labels`, `data-map-aim`, et
+`data-map-elevation` au chantier 40.* Ce qu'ils ne prouvent pas : que la caméra se déplace du
+bon nombre d'unités. Le cadrage lui-même, qui est du calcul pur, est couvert par
+`map3d/bounds.test.ts`.
 
 ### Vérification du chantier
 
@@ -2063,3 +2073,948 @@ débris.
 Dette soldée : `ShipHullDiagram` gardait une copie locale de `isHeavyTier` et un
 `MAX_TONNAGE` écrit en dur qui masquaient `shipScale.ts`, module créé au chantier 33
 précisément pour éviter cette divergence.
+
+## Chantier 35 — Carte à zoom continu (livré)
+
+La carte avait quatre niveaux qui s'excluaient : changer de niveau démontait un canvas pour
+en monter un autre, et la caméra claquait d'un cadrage à l'autre. Le niveau corps était le
+seul à n'être pas de la 3D — un schéma SVG figé de 320 px où les lunes ne tournaient jamais,
+alors que la simulation les fait orbiter depuis le chantier 31. Sélectionner une galaxie
+n'ouvrait rien du tout, et ceintures comme sites de scan n'avaient aucun gestionnaire de clic.
+
+Décisions structurantes : ADR [0015](adr/0015-carte-a-zoom-continu.md) pour la traversée
+continue, ADR [0016](adr/0016-classes-d-etoiles-derivees.md) pour les classes d'étoiles.
+Ce chantier **renverse** deux décisions écrites plus haut dans ce document : « LOD par niveau
+de carte » (chantier 31) et « double-clic réservé à l'ouverture des sous-cartes » (polish
+carte du 24/07/2026).
+
+### Partie A — la traversée (35.1 à 35.7)
+
+- **35.1** `map3d/tiers.ts` : arithmétique pure de la profondeur — progression dans une bande,
+  seuils de fondu, conversion de pose entre repères, plans de coupe, élection d'ancre. Aucun
+  import de `three`, aucun composant, aucun état.
+- **35.2** `MapScene` et `TierCamera` : univers ↔ galaxie en continu. `UniverseScene` et
+  `GalaxyScene` deviennent des couches sans canvas ni liste.
+- **35.3** Paliers système et corps intégrés, `BodyLayer` écrit, les quatre routes de carte
+  réduites à `/map`, `useMapLevel` remplacé par `useMapView`.
+- **35.4** `FadingGroup` : les couches s'effacent et réapparaissent avec la profondeur, par
+  mutation directe des matériaux. Les deux shaders de corps gagnent un `uOpacity`.
+- **35.5** `MapInfobox` posée sur l'objet, `onPointerMissed` pour la refermer, `autoFocus`
+  optionnel sur `Popover`.
+- **35.6** `MapSheet` en modale, `GalaxyFiche` — qui n'existait pas —, vol de caméra animé au
+  double-clic, schéma SVG de `BodyView` supprimé.
+- **35.7** Relevé de référence du budget d'images, transition comprise.
+
+### Partie B — le peuplement (35.8 à 35.11)
+
+- **35.8** Comptoirs, stations siennes et étrangères, avant-postes et flottes posés sur la
+  carte. `StationModel` et `ShipModel` existaient depuis le chantier 31.21 mais ne servaient
+  qu'aux aperçus : ce que le joueur construisait n'apparaissait pas là où il l'avait
+  construit.
+- **35.9** `sim/exploration/stars.ts` : classes d'étoiles et morphologies de galaxie dérivées
+  de l'identifiant, conditionnées par le contenu du système.
+- **35.10** Habillage : classes d'étoiles, trou noir avec disque d'accrétion, rochers déformés
+  et teintés par leur gisement, anneaux de géantes gazeuses, formes de sites par nature,
+  morphologies de galaxie, nébuleuses.
+- **35.11** ADR, documentation, remesure.
+- **35.12** Contrôle visuel final, et les trois défauts qu'il a trouvés — voir plus bas.
+
+### Budget d'images
+
+Relevé sur cette machine, en WebGL logiciel (`map3d.spec.ts` et `map-zoom.spec.ts`) :
+
+| | avant chantier 35 | après |
+|---|---|---|
+| univers au repos | 61 | 59-62 |
+| système au repos | 53 | 37-48 |
+| transition univers→galaxie | non mesuré | 54-61 |
+
+Le palier système paie le peuplement du chantier 35.8 et l'habillage du 35.10 — il dessine
+désormais ce que le jeu contient. Le seuil du test (20 img/s) reste largement tenu. La mesure
+est bruitée en rendu logiciel : les fourchettes valent mieux que les valeurs isolées.
+
+### Ce qui a été coupé
+
+Les **comètes** figuraient au plan comme optionnelles, « à couper en premier si le budget
+d'images serre ». Il serre : le palier système a déjà perdu un cinquième de son budget. Une
+orbite très excentrique avec sa queue en points, ajoutée par système, se paierait exactement
+là où il reste le moins de marge.
+
+La **lentille gravitationnelle** du trou noir a été écartée pour une raison technique et non
+budgétaire : voir l'ADR 0016.
+
+### Ce que ce chantier a appris sur la vérification
+
+Six défauts de synchronisation n'ont été trouvés qu'en instrumentant, et aucun n'aurait
+échoué à un test unitaire : l'URL qui se relisait elle-même et faisait descendre la carte
+toute seule au chargement ; l'effet de saut qui rejouait toutes les cinq secondes parce qu'il
+dépendait du tick ; les bornes de dolly d'`OrbitControls` réappliquées à chaque rendu React ;
+l'élection d'ancre qui écrasait un saut en cours ; le palier publié par un effet quand la
+profondeur l'était par la boucle d'images ; `FitCamera` qui ne rendait la caméra au joueur que
+sur un glissement à la souris, jamais sur un déplacement programmatique.
+
+Cinq d'entre eux ne se manifestaient qu'**à l'intermittence**, et l'un uniquement sous une
+suite de tests complète — il fallait assez de galaxies pour que celle qu'on survole ne soit
+pas celle qu'on vise. La leçon du chantier 31.24 se confirme : sur une carte 3D, ce qui n'est
+pas publié dans le DOM n'existe pas pour la vérification.
+
+### Et ce que l'instrumentation ne pouvait pas trouver (35.12)
+
+Trois défauts de plus sont sortis du **contrôle visuel** final, qu'aucun des vingt-deux tests
+de bout en bout n'attrapait — parce qu'ils visaient tous soigneusement un coin vide du canvas
+pour éviter d'ouvrir quelque chose par mégarde.
+
+- **L'infobox avalait la molette.** Elle est ancrée sur l'objet qu'on vient de sélectionner,
+  c'est-à-dire sur celui vers lequel on va zoomer : opaque aux événements, elle rendait la
+  carte insensible au zoom là précisément où le joueur regardait. Un correctif antérieur
+  la décalait de 16 px en croyant traiter le problème ; il ne traitait que le cas où le
+  curseur tombait pile sur l'ancre.
+- **Échap ne la fermait pas.** `Popover` lie sa touche à son propre nœud, et l'infobox est
+  montée sans prendre le focus — le lui donner retirerait au joueur les raccourcis de caméra.
+  La touche n'atteignait donc rien, et le clavier ne pouvait pas refermer ce qu'il venait
+  d'ouvrir depuis la liste.
+- **Une géante gazeuse perdait ses anneaux au palier corps.** `PlanetRings` vivait dans
+  `SystemLayer` ; le palier corps dessinait le même corps sans eux, au moment exact où l'on
+  s'approche assez pour les regarder. Le prédicat et le composant vivent désormais dans
+  `PlanetRings.tsx`, pour que deux paliers ne puissent plus en donner deux versions.
+
+Les deux premiers sont couverts depuis par un test qui pose le curseur **sur** l'infobox,
+seul endroit d'où ils sont visibles.
+
+Deux constats sans correctif, qui sont des décisions plutôt que des défauts :
+
+- **Un système inexploré n'a aucun corps connu**, donc aucune entrée de liste et aucun palier
+  corps atteignable. Sa classe d'étoile est la plus banale, par le même brouillard — voir
+  l'ADR [0016](adr/0016-classes-d-etoiles-derivees.md). La variété du ciel est donc une
+  récompense d'exploration, pas un décor offert au premier regard.
+- **Sélectionner ne déplace pas la cible de la caméra.** Le plan le prévoyait ; le geste
+  demandé était « simplement sélectionner ouvre l'infobox », et faire paner la vue à chaque
+  clic le contredirait. On vise à la molette, qui suit le curseur, ou au double-clic, qui
+  vole.
+
+Le budget d'images se mesure **conteneur `app` de dev arrêté** : laissé debout, il dispute
+le processeur au pilote OpenGL logiciel et fait tomber la mesure du palier système de 42 à
+moins de 20. Le seuil du test n'était pas en cause.
+
+## Chantier 36 — Navigation orbitale, étiquettes et ciel (01/09/2026)
+
+Six gênes relevées à l'usage après le chantier 35, toutes rapportées manette en main. Les
+décisions structurantes sont dans l'ADR
+[0017](adr/0017-navigation-orbitale-et-etiquettes.md), qui **renverse deux points** de l'ADR
+0015 : le zoom-au-curseur et le double-clic qui ouvrait une fiche.
+
+- **36.1** `tiers.ts` : `zoomStep`, `dollyEase`, `labelOpacity` — l'arithmétique du zoom
+  amorti et du seuil d'apparition des noms, pure et testée comme le reste du module.
+- **36.2** La caméra tourne autour de ce qu'elle regarde : panoramique et zoom-au-curseur
+  retirés, dolly repris à la main, amorti, calibré sur la bande à traverser.
+- **36.3** Les noms se posent sur les objets, en sprites cliquables.
+- **36.4** La liste DOM devient un panneau dépliable en surimpression, l'état retenu.
+- **36.5** Le double-clic vole et rien d'autre ; le clic simple attend de savoir si un second
+  suit ; la sélection remonte au parent quand on quitte un palier.
+- **36.6** Le nœud d'un système garde sa taille à l'écran, puis rejoint celle de l'étoile.
+- **36.7** Les galaxies perdent leur disque peint : leurs étoiles se mêlent d'elles-mêmes.
+
+### Ce que la navigation gagne, et ce qu'elle coûte
+
+Neuf crans de molette pour descendre d'un palier, contre une trentaine. La traversée
+complète du test de bout en bout passe de 28,6 s à 8,8 s.
+
+Le prix est **la visée** : la cible de caméra n'étant plus déplaçable à la souris, atteindre
+un objet qui n'est pas au centre demande un double-clic. La molette ne fait plus que la
+profondeur, le glisser que l'orbite.
+
+### Ce que ce chantier a appris sur la mesure
+
+Le palier système semblait tomber de 42 à 21 img/s. Ni la boucle par image ni le rendu n'y
+étaient pour quelque chose : c'était la **rastérisation des vingt noms au montage de la
+couche**, un pic qui tombait exactement dans la fenêtre de mesure. Les textures se créent
+désormais à la première apparition de l'étiquette.
+
+Et le test lui-même mesurait le montage en croyant mesurer le repos. Sans pause de
+stabilisation, la même configuration rendait 17 ou 60 images selon l'humeur de la machine —
+trois runs consécutifs suffisaient à obtenir les deux. Une mesure qui varie du simple au
+triple ne dit rien, et on a failli optimiser à l'aveugle contre elle.
+
+| | avant chantier 36 | après |
+|---|---|---|
+| univers au repos | 59-62 | 51-61 |
+| système au repos | 37-48 | 37-55 |
+
+Toujours **conteneur `app` arrêté** : relancé sans qu'on y prenne garde par un
+`docker compose run` sans `--no-deps`, il a faussé la moitié des relevés de ce chantier.
+
+## Chantier 37 — Des galaxies spirales, denses, qui tiennent leur promesse
+
+**Question de départ** : combien de systèmes dans une galaxie de Stellaris ou d'Endless
+Space ? Repères — Stellaris 200 à 1000 étoiles (Tiny → Huge), Endless Space 2 ~25 à ~180. Une
+galaxie SpaceSim en comptait **7 à 14** : de quoi peupler une région, pas de quoi dessiner une
+galaxie. Le palier univers en peignait cent soixante, en spirale, et la descente démentait la
+promesse.
+
+Décision et raisons : [ADR 0018](adr/0018-morphologie-de-galaxie-structurante.md). La
+morphologie devient une **entrée** du générateur ; le nuage du palier univers devient le rendu
+des **positions réelles**, à la même échelle. Une galaxie compte 300-520 systèmes sur un disque
+de rayon `√n`, densité constante.
+
+### Ce que la mesure a démenti
+
+Trois hypothèses du plan sont tombées à l'épreuve du relevé. Elles valent d'être écrites : ce
+sont elles qui ont coûté le plus de temps.
+
+1. **« Une spirale suffit. »** Non : tous les systèmes sur les bras, c'est un graphe en file
+   indienne — diamètre **276 sauts** sur 520 systèmes. Un bras est une onde de densité, pas un
+   ruban dans le vide ; 40 % d'inter-bras ramènent le diamètre à 59 et rendent le réseau
+   praticable.
+2. **« Il faudra diviser les constantes par saut. »** Non : un trajet ORDINAIRE ne s'allonge
+   pas, parce que les empires démarrent groupés. Seule la traversée complète coûte plus cher —
+   ce qu'une galaxie plus vaste doit signifier. Diviser aurait rendu la logistique de proximité
+   quasi gratuite. Verrou : `travel.calibration.test.ts`.
+3. **« Comprimer les trames rattrapera la charge utile. »** Non : `perMessageDeflate` rend un
+   facteur quatre sur ces données, mais comprimer 270 Ko par joueur et par poussée coûte assez
+   de latence pour faire échouer un aller-retour WebSocket. Retiré. Le bon levier était de ne
+   pas envoyer — d'où le condensé des galaxies hors de portée.
+
+### Ce que le changement a fait tomber
+
+Trente-six fois plus de systèmes rend visible tout ce qui était linéaire et gratuit :
+
+- `generatePositions` : rejet sans plafond, saturé vers 45 systèmes — le générateur se serait
+  **figé sans message**.
+- `generateLinks` : O(n² log n), exécuté DANS le tick par `growUniverse`.
+- `appendGalaxies` : une requête par table, au-delà des 65 535 paramètres de Postgres —
+  `RangeError: Invalid array length` depuis le parseur du protocole, pas une erreur lisible.
+- `pickHomePlanet` : promettait des voisins « dès les premières heures » en triant 3 600
+  planètes par habitabilité. À 4 400 unités d'étalement, les empires atterrissaient à cinquante
+  sauts. La promesse était devenue fausse sans que rien ne le signale.
+- `MapSheet` reconstruisait l'index de l'univers **à chaque rendu** : 300 insertions hier,
+  13 000 aujourd'hui.
+- `travel.calibration.test.ts` parcourait toutes les paires : 403 s de collecte et un
+  `Math.min(...)` qui débordait la pile d'appels.
+- Rendu : un `<mesh>` par système et un par arête, un nœud de 480 triangles, un raycast
+  rayon-triangles sur cinq cents instances, une étiquette montée par système. Le palier galaxie
+  tombait à **10 images par seconde**.
+
+### Relevés
+
+| | avant | après |
+|---|---|---|
+| systèmes par galaxie | 7-14 | 300-520 |
+| arête moyenne | 194,6 | 197,6 |
+| diamètre d'une galaxie (sauts, médiane) | 7 | 59 |
+| `hello` brouillardé, 4 galaxies | 6 Ko | 227 Ko → **73 Ko** (condensé) |
+| tas par galaxie | ~0,04 Mo | 1,59 Mo |
+| `generateGalaxyAt` | 0,5 ms | 31 ms |
+| `growUniverse(3)` dans le tick | — | 121 ms |
+| img/s univers · galaxie · système | 61 · non mesuré · 55 | 61 · 39 · 53 |
+
+Le palier **galaxie** n'était pas mesuré : c'est précisément celui que ce chantier a chargé.
+Il l'est désormais (`map3d.spec.ts`).
+
+## Chantier 38 — La sélection est l'ancre (03/09/2026)
+
+Une gêne, rapportée manette en main après le chantier 37 : **« le centrage laisse à désirer,
+ballotage de droite à gauche ou de haut en bas avant de réussir à centrer la cible »**. Les
+décisions structurantes sont dans l'ADR [0019](adr/0019-la-selection-est-l-ancre.md), qui
+**renverse trois points** de l'ADR 0017 : le panoramique retiré, le délai de 250 ms assumé
+comme un prix, et « seul un vol déplace la cible ».
+
+- **38.1** Plus aucun pilotage clavier de la caméra : `CameraKeys` supprimé, et avec lui
+  `role="application"`, le `tabIndex` et l'indice clavier de la section hôte.
+- **38.2** `smoothFactor`, `recenterStep`, `nearestOnScreen` dans `tiers.ts` — l'arithmétique
+  du ressort et de l'élection au curseur, pure et testée comme le reste du module.
+- **38.3** La sélection est l'ancre : `slotIdFor` et `pathFor` remplacent l'élection par image ;
+  le clic simple ne diffère plus ; le recentrage suit la sélection en temps réel.
+- **38.4** Le panoramique revient, au bouton droit, avec retour élastique.
+- **38.5** Les événements souris passent à `@use-gesture/react`.
+
+### Ce que le ballotage était
+
+Pas un réglage à ajuster : une boucle de rétroaction fermée. `TierCamera` élisait sa cible à
+chaque image — le candidat le plus proche du centre du cadre, sans hystérésis — puis tirait le
+cadre vers cette cible. Le second déplaçait le point depuis lequel le premier mesurait. Deux
+objets à peu près équidistants suffisaient à faire basculer l'élection, ce qui inversait la
+traction. Et chaque bascule changeait aussi le cadrage de l'enfant, donc la progression, donc
+les bornes de dolly : la vue glissait **et** le zoom hoquetait.
+
+Trois aggravations : au palier univers, l'élection mesurait vers l'origine d'une galaxie et le
+recentrage tirait vers le centre de la boîte de ses systèmes ; le recentrage ne s'appliquait
+qu'en descente active, donc par rafales ; et sa constante était une fraction **par image**,
+deux fois et demie plus rapide en 144 Hz — le défaut que `dollyEase` avait déjà corrigé.
+
+Sous les quatre, une seule cause : trois autorités se disputaient `controls.target`, et aucune
+ne savait ce que le joueur voulait. Le chantier 36 avait retiré le panoramique pour que la
+cible cesse de dériver ; il l'avait rendue **automatique**, c'est-à-dire décidée par le zoom.
+
+### Ce que la navigation gagne, et ce qu'elle coûte
+
+La visée, que le chantier 36 avait facturée comme son prix, est rendue — par trois gestes
+plutôt qu'un : cliquer, élire sous le curseur au premier cran de molette, glisser et relâcher.
+Le clic simple ne coûte plus un quart de seconde.
+
+Le prix, cette fois : **le premier cran de molette ouvre une infobox**, puisqu'il sélectionne ;
+et le double-clic en laisse une ouverte sur la cible de son vol. C'est le contraire d'un défaut
+— la boîte décrit ce vers quoi on va et le suit — mais c'est un changement de contrat, et le
+test de bout en bout qui affirmait l'inverse a été réécrit pour l'affirmer.
+
+### Ce que ce chantier a appris sur la vérification
+
+**Le ballotage n'a aucune trace dans le DOM.** Une cible de caméra n'y laisse rien, et l'image
+d'arrivée est la même dans les deux cas — seul le chemin diffère. D'où `data-map-aim`,
+quatrième compteur posé sur la section hôte, et le test « la visée ne change pas en zoomant ».
+Sans lui, la régression est invisible et le test passe au vert sur une carte qui ballotte.
+
+**Deux défauts n'ont été trouvés que par la suite e2e**, et tous deux viennent de ce que
+`cross` écrit désormais l'ascendance, ce qu'il ne faisait pas avant :
+
+- un vol matérialise sa **destination entière**, parce que `tier` décrit encore l'origine
+  pendant qu'il dure. Sans cela `childFocus` tombait à `null`, la borne de dolly rappelait la
+  caméra vers le palier de départ pendant que le vol l'emmenait, et « Ma capitale »
+  n'atteignait plus le système ;
+- un vol ne **franchit plus** de palier en chemin. Il en traverse, mais il pose lui-même son
+  palier d'arrivée. Un franchissement parasite au palier univers remettait `systemId` à zéro,
+  et la carte atterrissait au palier système sans système — deux fois sur trois.
+
+Le second ne se voyait qu'à l'exécution du fichier entier, jamais en isolant le test : c'est
+l'enchaînement double-clic puis « Ma capitale » qui le déclenchait.
+
+**Corriger le premier a divisé par trois la durée du fichier** — 5,7 min à 1,8 min. Le dolly
+qui combattait le vol coûtait, en temps de test, plus cher que tout le reste du chantier.
+
+### Ce que ce chantier a appris sur les bibliothèques
+
+Trois candidates étaient déjà dans l'arbre, en transitives de drei. Deux ont été écartées après
+lecture de leur source, pas par principe :
+
+- **`maath/easing`** — `damp` est un ressort à **vitesse retenue**. Les deux grandeurs lissées
+  ici sont déplacées à chaque image par d'autres mécanismes (vol, franchissement, suivi
+  d'orbite) : il lirait ces déplacements comme un mouvement qu'il a produit. Il fallait un
+  filtre, pas un ressort.
+- **`camera-controls`** — remplacerait `OrbitControls`, le dolly, `CameraJump` et `FitCamera`,
+  mais son pas de dolly est un scalaire, sans équivalent au calibrage par bande.
+- **`@use-gesture/react`** — retenue. Elle ramène la molette en pixels quel que soit son
+  `deltaMode` : Firefox compte en **lignes**, la valeur brute y vaut trois au lieu de cent, et
+  notre `wheelWeight` la lisait comme un micro-défilement de pavé tactile — six fois trop lent,
+  sans que rien ne le dise.
+
+### Relevés
+
+| | avant chantier 38 | après |
+|---|---|---|
+| img/s univers · galaxie · système | 61 · 39 · 53 | 60 · **31** · 59 |
+| img/s en transition univers→galaxie | non mesuré | 29 à z = 0,59 |
+| crans pour descendre d'un palier | 9 | 9 |
+| `map-zoom.spec.ts`, fichier entier | 5,7 min | 1,8 min |
+| tests de `map-zoom.spec.ts` | 13 | 16 |
+| suite e2e complète | — | 31 passés, 3,1 min |
+| compteurs sur la section hôte | 4 (`fits`, `keys`, `tier`/`depth`, `labels`) | 4 (`fits`, `tier`/`depth`, `labels`, `aim`) |
+
+Le palier **galaxie** perd huit images par seconde, et c'était prévu : on l'atteint par une
+descente, qui sélectionne désormais, donc la mesure se fait avec un `<Html>` de drei à
+l'écran — il repositionne son nœud DOM à chaque image. Le seuil du test est à 20 : la marge
+tient, et le levier, si elle cède un jour, est le rythme de mise à jour de l'infobox, pas la
+conception. Le palier système, lui, gagne six images — le recentrage ne tourne plus en
+rafales et le dolly ne combat plus les vols. Relevés sur pilote OpenGL logiciel, **conteneur
+`app` arrêté**, et à prendre pour ce qu'ils sont : un échantillon par palier, sur une mesure
+dont le chantier 36 a montré la variance.
+
+## Chantier 39 — Le cœur des galaxies (03/09/2026)
+
+Le jeu connaissait les trous noirs, mais seulement comme **classe d'étoile d'un système**
+(chantier 35.10). Une galaxie, elle, n'avait rien en son centre — le palier galaxie montrait un
+champ de nœuds, un graphe d'arêtes et une grille, et son origine était vide.
+
+Or depuis le chantier 37 cette origine a un sens précis : les systèmes ne sont plus tirés dans
+un pavé, ils sont **posés autour du centre**, et les morphologies non barrées laissent un vide
+de ~8 % du rayon au milieu. Ce vide est le bulbe, et il manquait son occupant.
+
+### La taille suit le NOMBRE de systèmes, pas le rayon du disque
+
+La relation M–σ lie la masse d'un trou noir central à celle de son bulbe, donc au nombre
+d'étoiles ; le rayon de Schwarzschild suit la masse. Le disque de la galaxie, lui, suit `√n`
+(`GALAXY_RADIUS_PER_ROOT_SYSTEM`). Le cœur occupe donc une part **croissante** de sa galaxie
+quand celle-ci grossit — et c'est le point. Calé sur le rayon, il aurait rendu la même image
+partout : la dépendance demandée ne se serait vue nulle part, une galaxie n'étant jamais vue à
+côté d'une autre à ce palier.
+
+| systèmes | rayon de galaxie | vide central (0,08·R) | disque du cœur | horizon |
+|---|---|---|---|---|
+| 300 | 1680 | 134 | 75 | 12,8 |
+| 400 | 1940 | 155 | 100 | 17,0 |
+| 520 | 2212 | 177 | 130 | 22,1 |
+
+Le disque reste **sous le vide central** sur toute la plage : c'est ce qui l'empêche de cesser
+d'être un bulbe pour devenir une nappe posée sur les systèmes internes. Verrou :
+`stars.test.ts`, qui alertera si la plage de tailles d'une galaxie change.
+
+### Rien de persisté, aucun ADR
+
+Le cœur est **dérivé du seul `systemCountOf`**, sur le patron de `starClassOf`
+([ADR 0016](adr/0016-classes-d-etoiles-derivees.md)) : pas de bump de `GENERATOR_VERSION`, pas
+de fixture à régénérer, pas de colonne. Ce chantier applique la décision, il n'en prend pas de
+nouvelle.
+
+Corollaire : `systemCount` traverse déjà le brouillard (`digestGalaxy`), donc une galaxie hors
+de portée montre son cœur pendant que ses systèmes restent redactés.
+
+### Ce que le mécanisme existant a donné gratuitement
+
+`selection`, `pickFromList` et `openSelection` consultaient déjà la liste des `features`
+**sans regarder le palier** — seuls `features` lui-même, `labelItems` et `entries` y étaient
+verrouillés. Faire entrer le cœur par cette liste lui a donc donné l'infobox, le vol de caméra
+et l'ouverture de fiche sans une ligne, là où un septième type de cible aurait demandé six
+points de branchement. Il se comporte à tout point comme un comptoir ou une ceinture : nommé,
+sélectionnable, listé au clavier, **sans ancre URL** — aucun `feature` n'en a jamais eu.
+
+Nommé « <Galaxie> A* », d'après Sagittarius A*.
+
+### Deux corrections tombées en chemin
+
+- `BlackHole` portait une `<pointLight>` en dur. Au palier galaxie elle n'éclaire rien — les
+  nœuds sont en `meshBasicMaterial` — et occuperait un emplacement pour rien. Devenue `light`.
+- Le disque d'accrétion et le liseré de la sphère de photons **captaient le clic**. Ils sont
+  transparents et `depthWrite={false}` : on voit au travers, et ce qu'on voit doit rester
+  cliquable. Seul l'horizon, opaque, est désormais une cible.
+
+### Relevés
+
+Mesurés sur `map3d.spec.ts`, quatre passes alternées sur la même machine — le palier galaxie
+est le seul chargé par ce chantier.
+
+| img/s palier galaxie | sans le cœur | avec |
+|---|---|---|
+| passes | 35 · 33 | 28 · 30 · 33 |
+
+**Le 39 relevé au chantier 37 est périmé** : la référence d'aujourd'hui est ~34, le chantier 38
+ayant retouché la caméra sans re-relever. Le cœur coûte donc ~3 img/s, soit une dizaine de
+pour cent, et les distributions se recouvrent (33 des deux côtés). Le coût vient du shader
+d'accrétion — deux octaves de bruit procédural sur 1 536 triangles, à chaque image, sous rendu
+logiciel. Assumé : c'est un objet, pas une décoration de fond, et le seuil du test (20) reste
+loin.
+
+## Chantier 40 — Deux modes de caméra, et une sélection fiable (03/09/2026)
+
+Trois gênes relevées à l'usage après le chantier 38, et une dette de lint. Les décisions
+structurantes sont dans l'ADR [0020](adr/0020-deux-modes-de-camera.md), qui **renverse deux
+points** de l'ADR 0019 : l'élection au curseur et le recentrage automatique.
+
+- **40.1** Le lint passe, pour la première fois.
+- **40.2** Le monde est Z-haut, la caméra aussi : `camera.up = (0,0,1)`.
+- **40.3** `orbitAround`, `zoomAbout`, `worldPerPixel` — la rotation à pivot décentré,
+  l'homothétie de zoom et la conversion pixels → scène, pures et testées comme le reste de
+  `tiers.ts`.
+- **40.4** Deux modes : libre (zoom et rotation autour du centre du palier), ciblé (tout
+  autour de la sélection).
+- **40.5** Le clic est exact d'abord, tolérant ensuite — dix-huit pixels.
+- **40.6** Quatre équerres en sprite, un seul repère pour tous les objets.
+
+Et trois correctifs venus **après** que ce bilan a été écrit — le commit de bilan et d'ADR
+(`b95697c`) les précède, ce qui est devenu le motif récurrent du dépôt (déjà 35.11 puis 35.12) :
+
+- **40.8** L'aperçu 3D tourne autour de la verticale du monde. `ModelPreview` calculait déjà
+  son cadrage en Z-haut mais ne posait jamais `camera.up` : son `autoRotate` roulait le
+  vaisseau au lieu de le faire pivoter. Même incohérence que 40.2, restée sur le jumeau de la
+  carte — invisible parce que le cadrage initial est identique dans les deux conventions.
+- **40.9** La mesure d'images cesse de rougir au hasard : `framesPerSecond` prend trois
+  fenêtres et garde la **meilleure**, le seuil restant à 20. Ce n'est pas un adoucissement —
+  une régression coûte ses images dans les trois fenêtres, une seconde volée par un autre
+  processus n'en coûte que dans une. Le test des étiquettes change de palier au passage : il
+  mesurait dans un système de quatre objets nommables, c'est-à-dire contre un **plafond** que
+  `data-map-labels` atteint dès le cadrage, et selon la seed il ne prouvait rien.
+- **40.10** Une galaxie se clique sous tous les angles. Son volume de clic était un
+  `circleGeometry` posé dans le plan galactique : vu par la tranche, un trait. Régression
+  **causée** par la rotation libre de 40.4 et **masquée** par le clic tolérant de 40.5, qui
+  rattrapait à dix-huit pixels près pendant que le chemin exact restait cassé. Une sphère du
+  même rayon présente le même cercle sous tous les angles, sans coût par image.
+
+### Pourquoi ça roulait
+
+Le monde de la carte est Z-haut de bout en bout — plan galactique XY, épaisseur `MAP_DEPTH` en
+Z, orbites en `cos → x, sin → y`, `gridHelper` portés à π/2 pour compenser le Y-haut natif de
+three.js. Mais `camera.up` valait le défaut, `(0,1,0)`, **nulle part surchargé**. Un glisser
+horizontal faisait tourner l'azimut autour de Y : la composante Z passait de `+0,8·d` à
+`−0,8·d`, la caméra plongeait sous le disque.
+
+Ce défaut a vécu quatre chantiers de carte 3D sans être vu, parce que le cadrage initial le
+masquait : la direction de vue est dans le plan YZ, qui contient Y comme Z, si bien que le
+calcul de cadrage donne le même repère dans les deux conventions. Il ne se voyait qu'en
+tournant.
+
+### Ce que la navigation gagne, et ce qu'elle coûte
+
+La carte ne désigne plus rien à la place du joueur. En contrepartie, **descendre d'un palier
+demande de viser** : sans sélection, le zoom roule dans le palier courant et se borne à sa
+frontière. Quatre tests de bout en bout qui descendaient à la molette depuis le centre du canvas
+ont gagné un clic — c'est la mesure exacte de ce que le changement coûte.
+
+Et tout devient sélectionnable : le pool du clic tolérant contient tout ce qui est à l'écran au
+palier courant, y compris ce qui n'a **aucune géométrie cliquable** — comptoir, stations,
+avant-postes, flottes, ceintures, sites. Ils n'étaient atteignables que par leur étiquette ou
+par la liste DOM.
+
+### Ce que ce chantier apprend sur le lint
+
+`pnpm lint` échouait depuis longtemps, et **pas pour une raison de code**. `biome.json` n'active
+que le groupe `a11y` : `correctness` est éteint, donc `useExhaustiveDependencies` ne tourne
+jamais et trois `biome-ignore` étaient morts par construction. La seule vraie erreur était
+ailleurs — dans `MapLabels`, la directive était suivie de deux lignes de commentaire, si bien
+qu'elle ne s'attachait pas au `<sprite>` qu'elle devait couvrir. Biome n'attache une suppression
+qu'à la ligne qui la suit immédiatement ; les six suppressions jumelles du dépôt fonctionnaient
+parce que leur élément était collé au commentaire.
+
+### Ce que ce chantier apprend sur la vérification
+
+**Un roulis ne laisse aucune trace dans le DOM**, et l'image d'arrivée est la même qu'avec un
+lacet — seul le chemin diffère. D'où `data-map-elevation`, l'angle de la vue au-dessus du plan
+galactique, cinquième témoin posé sur la section hôte. Le test qui compte s'énonce en une
+phrase : *un glisser horizontal ne doit pas le changer, un glisser vertical doit le changer.*
+
+Et la même proposition se vérifie **sans WebGL**, parce que la rotation est une fonction pure :
+`orbitAround` conserve l'élévation sous un lacet quelconque. Le test unitaire énonce la décision
+elle-même.
+
+**Une tolérance de clic rétrécit la surface qu'on peut appeler « le vide »**, et cela a mordu
+deux fois. Le premier test de picking cliquait « loin » par un simple décalage de 260 px : il
+passait seul et échouait dans la suite complète, où l'univers compte plus de galaxies et où le
+point tombait à moins de dix-huit pixels de l'une d'elles. Et le test de l'étiquette définissait
+« quitter le corps » par « plus aucune infobox » : entre un corps et son nom, on tombe désormais
+sur une lune. Il suit maintenant le NOM affiché, ce qui énonce d'ailleurs mieux son intention —
+le nom du corps REVIENT après qu'on l'a quitté, et cela ne peut être que l'étiquette.
+
+**Un sprite met sa texture à l'échelle, donc son trait aussi.** Le cadre de sélection était
+d'abord un sprite unique portant les quatre équerres : à pleine taille, son trait de 7 pixels de
+texture en faisait une quinzaine à l'écran. Il faut **quatre** sprites, une équerre chacun, de
+taille écran constante : seul leur écartement suit l'objet.
+
+### Relevés
+
+| | chantier 38 | chantier 40 |
+|---|---|---|
+| img/s univers · galaxie · système | 60 · 31 · 59 | 58-61 · **27-39** · 55-60 |
+| img/s en transition univers→galaxie | 29 à z = 0,59 | **56-59** à z = 0,62-0,68 |
+| crans pour descendre d'un palier | 9 | 9 |
+| suite e2e complète | 31 passés, 3,1 min | 33 passés, 3,5 min |
+| tests de `map-zoom.spec.ts` | 16 | 18 |
+| `pnpm lint` | 1 erreur, 4 avertissements | **passe** |
+| témoins sur la section hôte | `fits`, `tier`/`depth`, `labels`, `aim` | + `elevation` |
+
+Un seul chiffre est vraiment attribuable : la **transition**, qui double. Elle était mesurée au
+chantier 38 avec une infobox ouverte — le premier cran de molette élisait, donc sélectionnait,
+donc posait un `<Html>` de drei qui repositionne son nœud DOM à chaque image. L'élection
+supprimée, la mesure retrouve ses conditions d'avant.
+
+Le reste est **dans le bruit**, et il faut le dire : les trois relevés de ce chantier ont été
+pris **conteneur `app` en marche**, ce que le chantier 36 avait pourtant identifié comme faussant
+la mesure de moitié — il dispute le processeur au pilote OpenGL logiciel. Le palier galaxie a
+donné 27, 39 et un 19 qui a fait échouer le seuil de 20 une fois sur trois. Ce n'est pas une
+régression du chantier : la même configuration rejouée immédiatement rendait 32 tests verts. Mais
+c'est un rappel que le relevé ne vaut que si l'on éteint ce qui tourne à côté.
+
+*Corrigé depuis, en 40.9 : ce n'est plus une fatalité du relevé mais un défaut de la mesure.
+`framesPerSecond` prenait une seule fenêtre d'une seconde. Il en prend trois et garde la
+meilleure, ce qui laisse le seuil à 20 tout en cessant de compter les secondes volées par un
+autre processus. Relevé après coup, conteneur `app` arrêté : univers 61, galaxie 28-33,
+système 55-60 — le palier galaxie est réellement le plus chargé, ce n'était pas seulement de la
+contention.*
+
+## Chantier 41 — Une seule liste de sélectionnables (04/09/2026)
+
+Pas de gêne rapportée cette fois, et aucune ADR : ce chantier ne décide rien, il solde une dette
+que le chantier 40 avait aggravée. `MapScene` portait **quatre listes parallèles** décrivant le
+même ensemble — `features` pour ce qu'un système contient en plus de ses corps, `labelItems`
+pour les noms posés dans la scène, `selectables` pour le pool du clic tolérant, `entries` pour
+la liste DOM. Le chantier 40 en avait ajouté une au lieu d'en retirer trois.
+
+### Elles avaient déjà divergé, et rien ne le signalait
+
+Le **cœur galactique** du chantier 39 était nommé mais absent du pool de clic ; une **ceinture**
+était cliquable mais nommée par un autre chemin. Aucun test ne pouvait attraper ça : chaque
+liste est correcte prise seule, c'est leur désaccord qui est le défaut. Et chaque nouvel objet
+de la carte demandait de penser à quatre endroits — le prix se payait à chaque chantier suivant,
+pas à celui-ci.
+
+Une seule interface `Selectable` désormais (`MapScene.tsx:127`) : identité, nom, détail,
+position vive (`at()` — un corps orbite), emprise rendue, emprise d'étiquette, cible d'infobox,
+fiche à ouvrir, et si l'on peut descendre dedans. Les quatre usages en dérivent.
+
+Deux détails que la fusion a dû préserver, et qui expliquent pourquoi l'interface a neuf champs
+plutôt que cinq :
+
+- l'emprise d'**étiquette** reste distincte de l'emprise **rendue**, parce qu'un nœud de système
+  garde une taille d'écran plancher et que son nom doit suivre ce qu'on VOIT ;
+- la cible d'infobox est une **fonction**, parce qu'au palier galaxie il y a jusqu'à cinq cents
+  candidats pour une seule boîte affichée — les construire toutes serait payer cinq cents fois
+  ce qu'on montre une fois.
+
+### La prémisse du plan était fausse sur un point
+
+`selection` n'était **pas** un sous-ensemble des autres listes. Elle décrit aussi l'objet du
+palier où l'on EST : entrer dans un système le laisse sélectionné alors qu'il ne figure plus
+parmi les objets à l'écran, et l'infobox doit continuer de le décrire. Ce n'est donc pas une
+cinquième liste mais une recherche avec un repli, et le repli est commenté comme tel.
+
+`pickFromList` perd son branchement par palier — un booléen `descendable` dit si le double-clic
+descend ou se contente de voler. Et `resetCornerTexture`, export sans aucun appelant laissé par
+le chantier 40, disparaît : personne ne l'aurait vu, aucun outil du dépôt ne détecte un export
+mort (`biome.json` n'active que le groupe `a11y`).
+
+### Vérification
+
+**Aucun test n'a été réécrit** — c'était le critère : une consolidation qui change un
+comportement n'est pas une consolidation. 206 tests unitaires et 33 de bout en bout au vert du
+premier coup.
+
+*Démenti au chantier 43 : les 33 de bout en bout n'étaient pas au vert. « cliquer le nom d'un
+objet le sélectionne » échouait déjà, et échouait aussi au chantier 40.10 — le chantier 41 n'en
+est donc pas la cause, mais il ne l'a pas vu non plus. La suite n'avait pas été rejouée.*
+
+## Chantier 42 — Pincement tactile (tenté, abandonné, 04/09/2026)
+
+À consigner parce que rien d'autre ne le consigne. Huit minutes après le commit du chantier 41,
+un test `map3d.spec.ts` nommé « au doigt, le pincement zoome la carte (chantier 42) » a été
+écrit, exécuté et a **échoué** ; ni le test ni le code correspondant n'ont été committés. La
+seule trace était une trace Playwright de 7,8 Mo dans `apps/web/test-results/` (répertoire
+gitignoré) et un `.last-run.json` en `"status": "failed"` — l'exécution e2e suivante l'a
+écrasée, d'où cette section.
+
+Rien n'est perdu — il n'y avait rien à perdre — mais la carte n'a **aucun** support tactile, et
+c'est désormais écrit quelque part. À rouvrir ou à enterrer explicitement : le `useGesture` de
+`TierCamera.tsx:252` ne câble aujourd'hui que `onWheel` et `onDrag`, et la bibliothèque
+retenue au chantier 38 pour la molette expose `onPinch` au même endroit.
+
+## Chantier 43 — Deux défauts que rien ne signalait (04/09/2026)
+
+Ouvert comme un tour d'horizon — « il y a a priori des choses à revoir, des régressions et
+des travaux en attente » — et c'est le tour lui-même qui a trouvé les deux défauts. Aucun
+n'était visible dans le code : le dépôt n'a **aucun** `TODO`, aucun test désactivé, aucun
+`@ts-ignore`, et cinq `any` tous justifiés en commentaire. Ils étaient dans ce que personne
+ne regardait.
+
+Aucune ADR : ce chantier ne décide rien, il répare. Sur le patron du chantier 39.
+
+- **43.1** `corpRelations` et `standings` rejoignent le registre de clés du `Persister`, qui
+  déménage dans `persistence/tables.ts` ; `WriteSet` type ses noms de table dessus.
+- **43.2** Le plancher de dolly s'exprime depuis le cadrage de l'enfant, plus en largeurs de
+  bande. « Ma capitale » atteint de nouveau le palier système.
+- **43.3** Traçabilité soldée : bilans des chantiers 41 et 42, `architecture.md` remis
+  d'aplomb sur quatre points, sous-points du chantier 40 renumérotés.
+- **43.4** Le groupe `correctness` de biome s'allume, moins la seule règle qui portait la
+  dette. Onze imports morts, un helper de test défini deux fois, et toute une chaîne de
+  calculs devenue inutile s'en vont avec.
+- **43.5** Les mesures serveur que le chantier 37 avait périmées sont rejouées. Le bench de
+  rattrapage mesurait un serveur qui n'existe pas ; `MAX_GALAXIES`, lui, tient.
+- **43.6** `nearestTradingPost` est mémoïsé. Le pilote économique PNJ pesait 99,7 % du coût
+  d'un tick ; le rattrapage de vingt-quatre heures au boot passe de dix minutes à quatre
+  secondes.
+- **43.7** `packages/ui` gagne une pile de test et dix-huit tests sur ses trois composants
+  porteurs de logique. Il n'avait pas de script `test` : il était sauté sans bruit.
+- **43.8** `MapScene.tsx` passe de 1624 à 1165 lignes : l'arithmétique d'ancrage devient
+  `anchors.ts`, les pièces de scène sans rendu deviennent `SceneRig.tsx`.
+
+### Deux tables muettes bloquaient TOUTE la persistance
+
+`corpRelations` et `standings` (chantier 32.19) étaient écrites par `CorporationRepository`
+via le `WriteSet` sans figurer dans `PRIMARY_KEYS`. Le coût n'était pas local à ces deux
+tables, et c'est tout le sujet : `tableFor` lève, la transaction **entière** fait rollback,
+et `runFlush` remet en attente tout le lot qu'il vient de drainer — y compris l'entrée qui
+lève. Le flush suivant rejoue le même lot et échoue pareil.
+
+À partir de la première relation entre corporations, **plus rien n'atteignait Postgres** :
+ni une colonie, ni un tick, ni un empire. La RAM faisant autorité ([ADR
+0003](adr/0003-persistance-write-behind.md)), le jeu tournait juste et l'écran ne mentait
+pas. Sur un serveur dont l'invariant est de ne jamais se réinitialiser, la perte ne se
+serait vue qu'au redémarrage suivant.
+
+Le correctif du jour tient en deux lignes ; le verrou est ailleurs. `WriteSet.upsert`
+acceptait `table: string`, si bien que rien ne reliait les repositories au registre. Il
+prend maintenant `PersistedTable`, c'est-à-dire les clés du registre : une table écrite
+sans être enregistrée **ne compile plus**.
+
+### « Ma capitale » atteignait le palier système, puis en était renvoyé
+
+Le vol publiait son palier d'arrivée puis retombait à la galaxie à l'image suivante, caméra
+immobile. `controls.minDistance` valait quatre **largeurs de bande** sous la frontière — et
+une bande n'a pas de largeur fixe. Depuis le chantier 37 le cadrage d'une galaxie suit `√n`
+sur 300 à 520 systèmes, la bande univers→galaxie s'est élargie devant la bande
+galaxie→système, et un saut qui traverse **deux** bandes en demande désormais 4,08.
+
+`OrbitControls.update()` clampait le vol à `1147,5 × 0,1175⁴ = 0,21875` quand il visait
+`0,1756`. Deux pour cent trop court, juste **au-dessus** de la frontière, et
+`ascending = distance > parentFrame * 1.02` y voyait une caméra sortie de son palier.
+
+Le plancher se rapporte maintenant au cadrage de l'**enfant**, donc ne dépend plus du
+rapport entre deux paliers. C'est le symétrique de `maxDistance`, déjà à `parentFrame * 1e4`
+dès qu'un palier existe au-dessus : dès qu'un voisin existe, la borne cesse de décider et
+c'est le franchissement qui fait la limite.
+
+### Ce que ce chantier apprend sur la vérification
+
+**Un test qui attend un état transitoire n'en prouve pas la tenue.** Tous les tests visant
+la capitale s'arrêtaient à `.poll(...).toBe("system")` — une assertion que satisfait **une
+seule fenêtre de mesure**, y compris quand la carte retombe aussitôt et n'en repart plus.
+Le palier était atteint pendant environ quatre cents millisecondes. Le nouveau test regarde
+donc APRÈS que tout s'est posé, et vérifie la profondeur en plus du palier : `tierAt` lit la
+partie entière, un palier système tenu vaut au moins 2.
+
+Corollaire : `map-zoom.spec.ts:261` échouait **trois fois sur trois** depuis ce défaut, et
+échouait déjà au chantier 40.10. Il balayait autour d'un corps qu'il n'avait jamais atteint.
+Le chantier 41 annonçait « 33 de bout en bout au vert » ; il ne l'était pas. Personne
+n'avait rejoué la suite depuis.
+
+**Les logs du serveur ne sont assertés par personne.** `[persister] flush échoué` était
+imprimé à chaque exécution e2e, sous les yeux, pendant que la suite passait au vert. Aucun
+test unitaire ne pouvait l'attraper : ils vérifient tous le snapshot en mémoire, jamais la
+base. C'est la leçon du chantier 35 sous une autre forme — ce qui n'est pas observé n'existe
+pas pour la vérification — mais déplacée d'un cran : ici l'information était produite, et
+c'est de la LIRE que personne ne s'était chargé.
+
+**Une constante exprimée dans la mauvaise unité vieillit sans prévenir.** `OVERSHOOT` était
+en largeurs de bande. Le chantier 37 a changé la largeur des bandes, et la constante est
+devenue deux pour cent trop courte sans qu'une seule ligne bouge autour d'elle. Ni test, ni
+lint, ni relecture ne pouvaient le signaler : ce qui avait changé était à trois fichiers de
+là.
+
+### Ce que ce chantier apprend sur le lint
+
+L'ADR 0020 avait écarté le groupe `correctness` comme « un chantier sur tout le dépôt », et
+`CLAUDE.md` promet un durcissement « zone par zone assainie ». La mesure a démenti le
+découpage : sur **31 diagnostics, les 31 étaient la même règle**,
+`useExhaustiveDependencies`, sur sept fichiers. Les trente et quelques autres règles du
+groupe passaient déjà sans une correction. Le bon axe de découpe était donc la **règle**, pas
+la zone — et on ne pouvait le savoir qu'en allumant pour voir.
+
+Trois de ces règles ne sont **pas dans le jeu recommandé** et sont précisément celles qui
+manquaient : `noUnusedVariables`, `noUnusedImports`, `noUnusedPrivateClassMembers`. Sans
+elles, rien dans ce dépôt ne détectait un symbole mort. Vérifié en posant une violation
+exprès plutôt qu'en faisant confiance à la configuration : `noUnreachable` mordait,
+`noUnusedVariables` non — c'est ce test qui a montré qu'il fallait les nommer une par une.
+
+Ce que le filet a trouvé du premier coup tient en une phrase : **du code mort qu'aucune
+relecture n'aurait vu, parce qu'il est réparti**. Onze imports orphelins dans six fichiers.
+`unlockTech` défini deux fois dans `station-service.test.ts`, une fois par bloc `describe` —
+la copie du chantier 24 est morte depuis que celle du chantier 25 existe, et les deux sont
+identiques au caractère près. Et la chaîne `openPath → openSystem → openBody` de `MapPage`,
+vestige de l'époque où la fiche résolvait son objet elle-même : trois calculs qui s'évaporent
+**en cascade** dès qu'on retire le dernier, chacun ne devenant visible qu'après la mort du
+précédent. C'est la forme que prend le code mort dans un dépôt tenu : jamais un bloc, toujours
+un fil.
+
+Ce qui reste éteint, et pourquoi : `useExhaustiveDependencies`. Ses 31 diagnostics ne sont pas
+tous des défauts — la moitié sont l'idiome « je dépends de `home.height`, pas de `home` »,
+délibéré et porteur, qui évite de réallouer des tampons GPU à chaque tick. Les corriger
+demande un jugement par site dans une boucle de rendu 3D, où un tableau de dépendances repris
+de travers se voit à l'écran et pas dans un test. C'est son propre chantier. En attendant, les
+quatre `eslint-disable react-hooks/exhaustive-deps` du dépôt restent **inertes** — il n'y a
+pas d'ESLint ici, et la règle biome équivalente ne tourne pas. Ils documentent une intention,
+ils ne garantissent rien, et il vaut mieux l'écrire que de les laisser rassurer.
+
+### `advanceTicks(n)` n'avance pas n ticks
+
+Consigné sans correctif, parce que la trouvaille vaut plus que l'occasion de la réparer.
+
+`objective-service.test.ts` a échoué deux fois pendant ce chantier — « expected 252,55 to be
+greater than or equal to 452,45 » — puis a passé cinq fois isolé et une fois en suite
+complète. Un test qui échoue une fois sur trois ne prouve rien, et celui-ci prouvait quelque
+chose de faux : que le harnais avance un nombre de ticks connu.
+
+Il ne l'avance pas, et cela se lit dans la source plutôt que dans les échecs.
+`advanceTicks(engine, n)` appelle `devFastForward(n * 5)`, qui recule `lastTickAt` du delta
+demandé puis rejoue :
+
+```
+const missed = Math.floor((Date.now() - this.clock.lastTickAt) / TICK_MS);
+```
+
+Le nombre rejoué est donc `n` **plus tout le temps réel écoulé depuis le bootstrap**, divisé
+par cinq secondes. Sous la contention des workers, un test lent gagne des ticks qu'il n'a pas
+demandés — et chaque tick de plus consomme de l'entretien de colonie, d'où des crédits qui
+manquent à l'arrivée.
+
+Ce n'est pas propre à ce test : une trentaine de fichiers passent par `advanceTicks`, et le
+harnais de charge par le même endpoint. Le corriger demande de décider ce que
+`devFastForward` promet — un nombre de ticks, ou un rattrapage réaliste — sachant que le
+bench de 43.5 s'appuie précisément sur la seconde lecture. C'est son propre chantier.
+
+Deux constats qui valent pour la suite : la seed d'univers est tirée au hasard à chaque
+`bootstrapNewUniverse()` (`randomUUID().slice(0, 8)`), donc chaque test tourne sur un monde
+différent ; et un test dont l'assertion dépend de l'économie d'une colonie hérite de cette
+variabilité sans le dire.
+
+### Découper un god file quand le modèle vient d'être unifié
+
+`MapScene.tsx` faisait 1624 lignes — le profil de `game.ts` avant le chantier 19, qui en
+faisait 1453. La fenêtre était propre pour une autre raison que la taille : le chantier 41
+venait de fondre quatre listes parallèles en une seule `Selectable`, donc le modèle à
+extraire existait enfin sous une forme unique.
+
+Deux coutures, et aucune des deux n'est thématique :
+
+- **`anchors.ts`** — l'arithmétique d'ancrage : où se trouve chaque palier, ce que la caméra
+  vise, ce que le joueur peut désigner. Ce qui la définit est qu'elle est **pure** : ni
+  React, ni three.js, ni état. C'est ce qui la rend vérifiable sans WebGL, comme `tiers.ts`
+  et `bounds.ts` avant elle. Le dépôt le savait déjà sans l'avoir dit :
+  `MapScene.test.ts` importait `pathFor` et `slotIdFor` depuis le composant, ce qui signale
+  une couture sans la trancher. Le fichier de test devient `anchors.test.ts` et son import
+  cesse de traverser un composant pour atteindre des fonctions pures.
+- **`SceneRig.tsx`** — les pièces de scène **sans rendu visible** : le groupe qui suit un
+  corps en orbite, l'éclairage qui suit la profondeur, le vol de caméra, la publication de
+  la profondeur dans l'URL. Ce qui les réunit n'est pas un thème mais une place — chacune
+  écrit sur la caméra, sur une lumière ou sur l'URL depuis la boucle d'images, jamais dans
+  l'arbre. Les garder dans le composant qui les monte mélangeait deux niveaux de lecture.
+
+**Le filet posé au 43.4 a payé dans l'heure.** L'extraction laisse derrière elle des imports
+que plus rien n'utilise, et `noUnusedImports` en a signalé huit du premier coup — dont un que
+mon propre comptage avait cru utilisé, `place`, parce que le mot apparaît aussi en français
+dans les commentaires du fichier. Un décompte à la main se trompe là où le compilateur ne se
+trompe pas ; c'est exactement pour ce genre de tâche que la règle valait d'être allumée.
+
+Ce que ce découpage ne fait pas : réduire `MapScene` à une taille confortable. Il reste
+1165 lignes, et le composant lui-même — état de sélection, visée, franchissement, listes
+dérivées — n'a pas de couture évidente. Le déclarer découpé serait faux ; ce qui a été sorti
+est ce qui pouvait l'être sans inventer une frontière.
+
+### Un paquet sans script `test` ne manque à personne
+
+`packages/ui` avait dix-neuf composants et zéro test. Le fait marquant n'est pas l'absence
+elle-même mais **ce qui la rendait invisible** : le paquet n'avait pas de script `test`, donc
+`pnpm -r test` le sautait sans un mot. Un fichier de test qui échoue se voit ; un paquet
+entier qui n'est jamais appelé ne se voit pas. C'est la même famille que le
+`[persister] flush échoué` de 43.1 et que les `901 tick(s) en 37020,8ms` de 43.6 — un dépôt
+peut être discipliné sur ce qu'il regarde et complètement aveugle sur ce qu'il ne regarde pas.
+
+Les trois composants couverts sont ceux qui portent de la logique, et ce ne sont pas les
+mêmes que ceux qui portent du style : `Modal`, `Popover`, `ZoomableSvg`. Ce sont aussi les
+trois seuls porteurs de suppressions `biome-ignore` a11y, et ce n'est pas une coïncidence —
+chacune justifie de ne PAS prendre l'élément natif. Le prix de ce choix est que le piège à
+focus, Échap, la restauration du focus et le pilotage clavier sont écrits à la main. Depuis
+le chantier 27.21, et jamais vérifiés.
+
+Deux points que l'écriture des tests a appris :
+
+- **La restauration du focus ne se teste pas dans le sens naïf.** `Modal` lit
+  `document.activeElement` une fois, dans son effet de montage. Un test qui ouvre le
+  dialogue puis focalise le déclencheur vérifie la restauration vers `body` et passe pour
+  de mauvaises raisons. Il faut un harnais qui focalise AVANT l'ouverture, c'est-à-dire qui
+  reproduit le geste réel.
+- **`Modal.Header` prend une prop `title` et ignore ses enfants.** Le composant a raison,
+  c'est le premier test qui avait tort — mais rien dans le dépôt ne l'aurait dit, et un
+  appelant qui se trompe obtient un dialogue sans nom accessible, silencieusement.
+
+Ce qui reste hors couverture, et pourquoi : les gestes souris de `ZoomableSvg`. jsdom ne
+fournit aucune géométrie, `getBoundingClientRect` rend des zéros, et le composant refuse
+alors de deviner un point du monde — comportement correct qui rend le geste intestable hors
+navigateur. C'est la frontière naturelle entre ces tests et la suite Playwright.
+
+### Le bench de rattrapage mesurait un serveur qui n'existe pas
+
+Le chantier 27.6 avait posé un bench sur le seul risque de boot identifié : `catchUp()`,
+boucle **synchrone** qui rejoue jusqu'à `MAX_CATCHUP_TICKS` ticks avant que le serveur
+n'écoute. Il n'avait pas été rejoué depuis le chantier 37, qui a multiplié les systèmes
+par trente-six. Rejoué tel quel : **2,9 s** pour 24 h simulées. Rassurant, et sans rapport
+avec quoi que ce soit.
+
+Le bench partait d'un `loadOrBootstrap()` nu — un empire, aucun PNJ, aucune économie qui
+tourne. Or `apps/server/src/index.ts` appelle `ensureNpcPopulation()` à chaque démarrage, et
+sur un serveur qui tourne depuis un moment les PNJ sont en base bien avant le rattrapage. La
+configuration mesurée n'était celle d'aucun serveur.
+
+Même montage, PNJ compris, cinq passes :
+
+| | 17 280 ticks (24 h simulées) | par tick |
+|---|---|---|
+| univers nu | 2 856 ms | 0,17 ms |
+| population PNJ, comme au boot | 591, 598, 603, 608, 745 s | **~34 ms** |
+
+Un facteur **deux cent dix**. Et les 34 ms recoupent les 41 ms/tick que
+`market-service.test.ts` imprimait déjà à chaque exécution, sans que personne en tire la
+conséquence — même motif que le `[persister] flush échoué` de 43.1 : l'information était
+produite, personne ne la lisait.
+
+**Ce que ça disait.** Un redémarrage après vingt-quatre heures d'arrêt bloquait le boot une
+dizaine de minutes, `catchUp()` étant appelé depuis `boot.ts` avant `buildApp` et ne cédant
+jamais la main. `MAX_CATCHUP_TICKS` borne le rattrapage en **nombre de ticks** — une unité
+qui était juste quand un tick coûtait une fraction de milliseconde. C'est exactement le
+défaut d'unité de l'`OVERSHOOT` du 43.2, à un autre étage.
+
+Trois sorties se présentaient, et deux d'entre elles étaient des décisions de jeu déguisées
+en correctifs : borner le rattrapage en TEMPS revient à décider qu'au-delà d'un seuil le
+temps hors-ligne d'un joueur cesse de produire ; servir pendant le rattrapage revient à
+décider qu'il peut agir sur un monde en retard sur lui-même. La troisième — s'attaquer au
+coût du tick — ne coûte rien au joueur. C'est celle qui a été prise, et elle a dissous la
+question : le rattrapage tombe à **quatre secondes**, il n'y a plus d'arbitrage à rendre.
+
+### Un seul appel pesait 99,7 % du tick
+
+Profilé phase par phase sur une heure simulée, sonde temporaire dans `TickRunner.runOne` :
+
+| phase | avant | après |
+|---|---|---|
+| `market.npcTick` | **70 522 ms (99,7 %)** | 464 ms |
+| `market.economyTick` | 59 ms | 68 ms |
+| `exploration.ensureFrontier` | 42 ms | 48 ms |
+| tout le reste réuni | ~99 ms | ~106 ms |
+| **720 ticks** | **70 722 ms** | **686 ms** |
+
+Tout était dans `nearestTradingPost`. Il lance un plus-court-chemin **par comptoir** de la
+galaxie, sur un graphe reconstruit à chaque appel — et `this.portalLinks` étant un GETTER,
+il se recalculait lui aussi à chaque tour de boucle. Une galaxie comptait sept à quatorze
+systèmes avant le chantier 37 ; elle en compte trois à cinq cents. Le code n'a pas changé :
+son entrée a été multipliée par trente-six et rien ne l'a signalé.
+
+C'est le troisième défaut de ce chantier dont le signal était **imprimé sans être lu** :
+`market-service.test.ts` affichait « 901 tick(s) en 37020,8ms » à chaque exécution.
+
+La réponse ne dépend que de la topologie — systèmes, arêtes, position des comptoirs,
+liaisons de portail actives — et rien de tout cela ne bouge d'un tick à l'autre. Elle est
+donc mémoïsée, avec une clé qui **contient** ces trois choses plutôt que de dépendre d'un
+point d'invalidation qu'on oublierait : une galaxie neuve change le compte de galaxies et
+celui des comptoirs, un portail qui s'ouvre change la signature des liaisons. Un cache
+qu'on invalide à la main est un cache qu'on invalide mal ; le pire qu'un défaut de clé
+puisse produire ici est un recalcul.
+
+Verrou : un budget de temps dans `market-service.test.ts`, neuf cents ticks et trois PNJ
+sous trente secondes. C'est un **plancher d'implémentation** et non une mesure de la
+machine — même esprit que le budget d'images de `map3d.spec.ts`, et il ne doit jamais être
+relevé pour faire passer un test. Mesuré à 0,7 s, il laisse quarante fois la marge et
+attrape quand même un retour à l'état d'avant.
+
+### `MAX_GALAXIES` tient
+
+L'ADR 0018 posait 200 galaxies sur une mesure de tas qu'elle qualifiait elle-même de
+synthétique, en demandant de la refaire. Refaite avec le générateur d'aujourd'hui, sur vingt
+galaxies — 8 137 systèmes, 56 656 corps :
+
+| | ADR 0018 | mesuré au chantier 43 |
+|---|---|---|
+| tas par galaxie | ~1,59 Mo | **1,46 Mo** |
+| univers plein (200) | ~318 Mo | **291 Mo** |
+| `generateGalaxyAt` | 31 ms | 31,3 ms |
+
+Le chiffre tenait. Rien à recaler, et c'est le genre de résultat qu'il faut écrire aussi :
+une vérification qui confirme coûte le même temps qu'une qui infirme, et sans elle on ne
+sait pas laquelle des deux on avait.
+
+Reste ce que cette mesure n'est toujours pas : un serveur réel en charge. Elle pèse ce que
+le générateur produit, pas ce qu'un processus tient avec ses joueurs, ses sockets et ses
+projections. L'ADR 0018 demandait le second ; ceci est le premier, refait.
+
+### Relevés
+
+| | chantier 40 | chantier 43 |
+|---|---|---|
+| img/s univers · galaxie · système | 58-61 · 27-39 · 55-60 | 57 · 33 · 55 |
+| img/s en transition univers→galaxie | 56-59 à z = 0,62-0,68 | 62 à z = 0,64 |
+| suite e2e complète | 33 passés, 3,5 min | **34 passés**, 3,9 et 4,6 min sur deux passes |
+| `pnpm lint` | `a11y` + `noDebugger` | **+ `correctness`**, moins `useExhaustiveDependencies` |
+| lignes de code mort retirées | — | 39 |
+| `MapScene.tsx` | 1624 lignes | **1165** (+ `anchors.ts` 285, `SceneRig.tsx` 235) |
+| `catchUp()` 24 h, PNJ compris | non mesuré (2,9 s à vide) | 591-745 s → **4,0-4,7 s** |
+| coût d'un tick, PNJ compris | ~34 ms | **~0,95 ms** |
+| tas par galaxie | ~1,59 Mo (synthétique) | 1,46 Mo mesuré |
+| conteneur `app` pendant le relevé | **en marche** | arrêté |
+| tests unitaires (7 paquets) | — | **995 passés**, 93 fichiers (`packages/ui` : 0 → 18) |
+
+Les relevés du chantier 40 avaient été pris conteneur `app` **en marche**, ce que ce
+document identifie depuis le chantier 35 comme faussant la mesure de moitié. Ceux-ci sont
+pris `app` arrêté, et c'est pourquoi la fourchette du palier galaxie s'est resserrée plutôt
+qu'améliorée : elle n'est plus bruitée. La suite est plus longue d'une minute — elle a un
+test de plus, et le vol vers la capitale ne combat plus une borne de dolly.

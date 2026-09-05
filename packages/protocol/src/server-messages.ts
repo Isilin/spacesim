@@ -35,7 +35,7 @@ import type {
   Territory,
   TradingPostMarket,
   Transfer,
-  Universe,
+  ClientUniverse,
   WorldEvent,
 } from "@spacesim/shared";
 
@@ -130,7 +130,7 @@ export interface EmpireSnapshot {
   /** Événements de monde actifs (chantier 17), non brouillardés. */
   worldEvents: WorldEvent[];
   /** Présent quand l'exploration ou l'univers a changé depuis le dernier message. */
-  universe?: Universe;
+  universe?: ClientUniverse;
 }
 
 /** Messages WebSocket serveur → client. L'univers envoyé est expurgé du non-exploré. */
@@ -139,7 +139,7 @@ export type ServerMessage =
       type: "hello";
       /** Identité de l'empire piloté par cette connexion (jeton à persister côté client). */
       playerId: string;
-      universe: Universe;
+      universe: ClientUniverse;
     } & EmpireSnapshot)
   | ({ type: "tick" } & EmpireSnapshot)
   | { type: "actionError"; message: string };
