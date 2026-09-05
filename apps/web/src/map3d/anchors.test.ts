@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pathFor, slotIdFor, type AnchorPath } from "./MapScene.js";
+import { pathFor, slotIdFor, type AnchorPath } from "./anchors.js";
 
 /**
  * L'invariant du chantier 38 — « la sélection est l'ancre » — tient dans ces deux fonctions,

@@ -1,7 +1,7 @@
 import type { ClientUniverse } from "@spacesim/shared";
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import type { AnchorPath } from "../map3d/MapScene.js";
+import type { AnchorPath } from "../map3d/anchors.js";
 import { buildUniverseIndex } from "../state/selectors.js";
 
 export interface MapView {

@@ -2707,6 +2707,8 @@ Aucune ADR : ce chantier ne décide rien, il répare. Sur le patron du chantier 
   secondes.
 - **43.7** `packages/ui` gagne une pile de test et dix-huit tests sur ses trois composants
   porteurs de logique. Il n'avait pas de script `test` : il était sauté sans bruit.
+- **43.8** `MapScene.tsx` passe de 1624 à 1165 lignes : l'arithmétique d'ancrage devient
+  `anchors.ts`, les pièces de scène sans rendu deviennent `SceneRig.tsx`.
 
 ### Deux tables muettes bloquaient TOUTE la persistance
 
@@ -2836,6 +2838,39 @@ Deux constats qui valent pour la suite : la seed d'univers est tirée au hasard 
 `bootstrapNewUniverse()` (`randomUUID().slice(0, 8)`), donc chaque test tourne sur un monde
 différent ; et un test dont l'assertion dépend de l'économie d'une colonie hérite de cette
 variabilité sans le dire.
+
+### Découper un god file quand le modèle vient d'être unifié
+
+`MapScene.tsx` faisait 1624 lignes — le profil de `game.ts` avant le chantier 19, qui en
+faisait 1453. La fenêtre était propre pour une autre raison que la taille : le chantier 41
+venait de fondre quatre listes parallèles en une seule `Selectable`, donc le modèle à
+extraire existait enfin sous une forme unique.
+
+Deux coutures, et aucune des deux n'est thématique :
+
+- **`anchors.ts`** — l'arithmétique d'ancrage : où se trouve chaque palier, ce que la caméra
+  vise, ce que le joueur peut désigner. Ce qui la définit est qu'elle est **pure** : ni
+  React, ni three.js, ni état. C'est ce qui la rend vérifiable sans WebGL, comme `tiers.ts`
+  et `bounds.ts` avant elle. Le dépôt le savait déjà sans l'avoir dit :
+  `MapScene.test.ts` importait `pathFor` et `slotIdFor` depuis le composant, ce qui signale
+  une couture sans la trancher. Le fichier de test devient `anchors.test.ts` et son import
+  cesse de traverser un composant pour atteindre des fonctions pures.
+- **`SceneRig.tsx`** — les pièces de scène **sans rendu visible** : le groupe qui suit un
+  corps en orbite, l'éclairage qui suit la profondeur, le vol de caméra, la publication de
+  la profondeur dans l'URL. Ce qui les réunit n'est pas un thème mais une place — chacune
+  écrit sur la caméra, sur une lumière ou sur l'URL depuis la boucle d'images, jamais dans
+  l'arbre. Les garder dans le composant qui les monte mélangeait deux niveaux de lecture.
+
+**Le filet posé au 43.4 a payé dans l'heure.** L'extraction laisse derrière elle des imports
+que plus rien n'utilise, et `noUnusedImports` en a signalé huit du premier coup — dont un que
+mon propre comptage avait cru utilisé, `place`, parce que le mot apparaît aussi en français
+dans les commentaires du fichier. Un décompte à la main se trompe là où le compilateur ne se
+trompe pas ; c'est exactement pour ce genre de tâche que la règle valait d'être allumée.
+
+Ce que ce découpage ne fait pas : réduire `MapScene` à une taille confortable. Il reste
+1165 lignes, et le composant lui-même — état de sélection, visée, franchissement, listes
+dérivées — n'a pas de couture évidente. Le déclarer découpé serait faux ; ce qui a été sorti
+est ce qui pouvait l'être sans inventer une frontière.
 
 ### Un paquet sans script `test` ne manque à personne
 
@@ -2971,6 +3006,7 @@ projections. L'ADR 0018 demandait le second ; ceci est le premier, refait.
 | suite e2e complète | 33 passés, 3,5 min | **34 passés**, 3,9 et 4,6 min sur deux passes |
 | `pnpm lint` | `a11y` + `noDebugger` | **+ `correctness`**, moins `useExhaustiveDependencies` |
 | lignes de code mort retirées | — | 39 |
+| `MapScene.tsx` | 1624 lignes | **1165** (+ `anchors.ts` 285, `SceneRig.tsx` 235) |
 | `catchUp()` 24 h, PNJ compris | non mesuré (2,9 s à vide) | 591-745 s → **4,0-4,7 s** |
 | coût d'un tick, PNJ compris | ~34 ms | **~0,95 ms** |
 | tas par galaxie | ~1,59 Mo (synthétique) | 1,46 Mo mesuré |
