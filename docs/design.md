@@ -3085,3 +3085,31 @@ Quatre sites le méritaient : l'assertion cassée d'`objective-service.test.ts`,
 stricte de `contract-service.test.ts` sur les vivres livrés, sa marge de cinquante crédits, et
 le budget de temps du 43.6, que des ticks surnuméraires ne pouvaient qu'allonger. Tous
 passent.
+
+### Une partie neuve naissait au tick 1 sur une machine lente
+
+Trouvé par la CI, et seulement par elle : cette machine ne franchissait pas le seuil.
+
+`boot.test.ts` affirme depuis le Sprint 0 qu'une partie neuve est au tick 0. La CI rendait
+« expected 1 to be +0 ». `bootstrapNewUniverse` pose `lastTickAt: Date.now()` **avant**
+`generateUniverse` et `appendGalaxies` — quatre galaxies, ~5 900 systèmes et ~24 000 corps
+depuis le chantier 37. Sur une machine lente cette matérialisation dépasse cinq secondes, et
+le `catchUp()` de fin de boot voyait un tick à rattraper.
+
+Un univers créé il y a trois secondes n'a pourtant **aucun temps hors-ligne** : le seul temps
+écoulé est celui de sa propre naissance. `bootEngine` recevait déjà le drapeau `isNew` ; le
+rattrapage s'y range désormais derrière.
+
+L'horloge, elle, ne bouge pas : sur un serveur vivant le `Scheduler` verra ce temps réel à sa
+première salve et l'avancera, ce qui est honnête. En test il n'y a pas de `Scheduler`, donc
+une partie neuve reste au tick 0.
+
+C'est le même défaut que celui du 44 — du temps réel qui entre là où on demandait du temps
+simulé — mais dans l'autre rattrapage, et découvert par l'autre bout : une machine plus lente
+que celle du développeur. `TICK_MS = 5000` est un seuil, pas une pente : on est d'un côté ou
+de l'autre, et rien ne prévient qu'on en est près.
+
+**Vérification.** Le symptôme n'est pas reproductible ici — il demande une matérialisation qui
+dépasse cinq secondes. Ce qui est vérifiable, et vérifié, est le risque du garde : un test
+recule l'horloge en base d'une heure, recharge, et exige que le rattrapage rende ses
+720 ticks. La CI tranche pour le reste.

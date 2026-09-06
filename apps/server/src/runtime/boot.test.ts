@@ -1,5 +1,6 @@
 import { TICK_MS } from "@spacesim/shared";
 import { beforeEach, describe, expect, it } from "vitest";
+import { db, schema } from "../db/index.js";
 import { GameEngine } from "../game.js";
 import {
   resetDb,
@@ -24,6 +25,26 @@ describe("GameEngine — harnais & socle (Sprint 0)", () => {
     expect([...engine.defaultEmpireForDev.explored]).toEqual([
       empires[0]!.exploredSystemIds[0],
     ]);
+  });
+
+  it("une partie RECHARGÉE rattrape le temps hors-ligne", async () => {
+    // Le garde du chantier 44 ne fait sauter `catchUp()` que sur une partie NEUVE. Ce test
+    // tient l'autre moitié : sur une partie qui a une histoire, le rattrapage doit rester
+    // intact — c'est le seul risque réel d'un garde d'une ligne.
+    //
+    // Une partie neuve naît au tick 0 même si sa matérialisation a duré : c'est ce que le
+    // premier test de ce fichier affirme, et ce que la CI démentait avant le correctif —
+    // `bootstrapNewUniverse` pose `lastTickAt` AVANT de générer quatre galaxies, et sur une
+    // machine lente cette génération franchit un tick.
+    const fresh = await GameEngine.loadOrBootstrap();
+    expect(fresh.game.tick).toBe(0);
+
+    // Serveur arrêté une heure : l'horloge en base recule, le rechargement doit la rattraper.
+    const stoppedFor = 3600_000;
+    await db.update(schema.games).set({ lastTickAt: Date.now() - stoppedFor });
+
+    const reloaded = await GameEngine.load();
+    expect(reloaded.game.tick).toBe(stoppedFor / TICK_MS);
   });
 
   it("le tick est déterministe : N ticks avancent l'horloge d'exactement N", async () => {
