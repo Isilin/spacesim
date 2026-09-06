@@ -20,7 +20,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-i18next": "^17.0.11",
-    "react-router-dom": "^6.28.0",
+    "react-router-dom": "^7.18.2",
     "three": "catalog:",
     "zustand": "^5.0.0"
   },
