@@ -146,6 +146,15 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     // libre, ce qui en ferait le même empire que l'accepteur au lieu d'un tiers.
     const issuer = engine.empireById(engine.devSpawnEmpire("Émetteur")!)!;
     const issuerColony = homeColony(engine, issuer);
+    // L'orbite de l'ÉMETTEUR est vidée en continu : la colonie mère monte du minerai par
+    // défaut, et `deliverToOrbit` ÉCRÊTE à la capacité orbitale libre. Le convoi arrivant
+    // d'autant plus tard que la route est longue, l'orbite pouvait être pleine à son
+    // arrivée et n'accepter qu'une partie de la cargaison — cinq unités sur dix, mesuré.
+    // Ce test porte sur la livraison, pas sur la saturation d'un dock.
+    engine.logistics.setLiftRule(issuer, issuerColony.id, "ore", {
+      keepGround: 100_000,
+      direction: "down",
+    });
 
     // Nourriture, pas minerai : le minerai a une consigne d'ascension par défaut (colonie
     // mère) qui ferait dériver l'orbite toute seule sur la longue avance de temps ci-dessous.

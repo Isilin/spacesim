@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { registerFreshEmpire } from "./helpers.js";
+import { framesPerSecond, registerFreshEmpire } from "./helpers.js";
 
 /**
  * Aperçu 3D d'un objet manufacturé (chantier 33.7).
@@ -7,23 +7,6 @@ import { registerFreshEmpire } from "./helpers.js";
  * Spec à part de `map3d.spec.ts`, qui est cadré sur la carte. L'aperçu n'avait AUCUNE
  * garde alors qu'il tourne en continu (`OrbitControls autoRotate`).
  */
-
-/** Images produites en une seconde — même instrument que le budget de la carte. */
-async function framesPerSecond(page: import("@playwright/test").Page) {
-  return page.evaluate(
-    () =>
-      new Promise<number>((resolve) => {
-        let frames = 0;
-        const start = performance.now();
-        const tick = () => {
-          frames++;
-          if (performance.now() - start >= 1000) resolve(frames);
-          else requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-      }),
-  );
-}
 
 test("l'aperçu 3D rend un vaisseau, sans erreur de console", async ({
   page,

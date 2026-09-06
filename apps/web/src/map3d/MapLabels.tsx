@@ -1,0 +1,286 @@
+import { useFrame } from "@react-three/fiber";
+import { useRef, type RefObject } from "react";
+import { CanvasTexture, LinearFilter, type Sprite } from "three";
+import { layerOpacity } from "./FadingGroup.js";
+import { FOV } from "./MapCanvas.js";
+import { themeColor } from "./theme.js";
+import {
+  labelOpacity,
+  worldPerPixel,
+  type TierName,
+  type Vec3,
+} from "./tiers.js";
+
+/**
+ * Étiquettes posées sur les objets de la carte (chantier 36.3).
+ *
+ * Les noms vivaient dans une liste latérale : lire la carte demandait un aller-retour
+ * permanent entre le canvas et une colonne de 210 px. Ils se posent désormais sur les
+ * objets eux-mêmes, et n'apparaissent que quand l'objet est assez gros pour qu'un nom ait
+ * un sens à côté de lui.
+ *
+ * ## Pourquoi des sprites et non le `<Html>` de drei
+ *
+ * Les étiquettes doivent être **cliquables**. Un élément DOM cliquable est opaque aux
+ * événements, molette comprise — c'est exactement le défaut corrigé au chantier 35.12 sur
+ * l'infobox, où une seule boîte suffisait à rendre la carte insensible au zoom là où le
+ * joueur regardait. Multiplié par des dizaines d'étiquettes posées sur les objets qu'on
+ * vise, il rendrait la carte impraticable.
+ *
+ * Un sprite se clique par le raycast de R3F et laisse la molette au canvas, puisqu'il EST
+ * le canvas. Il évite en prime le repositionnement DOM que drei fait à chaque image pour
+ * chaque `<Html>`.
+ *
+ * ## Une seule boucle, à la racine de la scène
+ *
+ * Un `useFrame` par étiquette ferait deux cents rappels par image au palier univers d'un
+ * univers plein. Ce composant tient un seul rappel et écrit directement sur les sprites,
+ * même doctrine que `TierCamera` et `OrbitingBody` : ce qui se calcule par image ne
+ * traverse pas React.
+ *
+ * Il vit **hors des couches**, en coordonnées de scène, et porte lui-même le fondu de
+ * palier : `FadingGroup` mémorise l'opacité d'origine de chaque matériau au premier
+ * passage, ce qui entrerait en conflit avec une opacité déjà pilotée par image. Une seule
+ * autorité par sprite.
+ */
+
+export interface LabelItem {
+  id: string;
+  text: string;
+  /** Palier auquel l'objet appartient — décide du fondu quand deux paliers coexistent. */
+  tier: TierName;
+  /** Position en coordonnées de SCÈNE, relue à chaque image : les corps orbitent. */
+  at: () => Vec3;
+  /** Rayon de l'objet nommé, en unités de scène — décide du seuil d'apparition. */
+  radius: number;
+  /**
+   * De combien poser le nom AU-DESSUS de l'objet, en unités de scène. Par défaut `radius`.
+   *
+   * Distinct de lui depuis le chantier 37.14 : le seuil d'apparition se règle sur une
+   * emprise de lecture, le dégagement sur ce qui est réellement DESSINÉ. Les deux ont
+   * divergé quand les corps ont été ramenés à leur juste taille — le nom, calé sur
+   * l'ancienne emprise, se posait alors hors du cadre du palier corps, qui suit le rayon
+   * rendu.
+   */
+  lift?: number;
+}
+
+/**
+ * Hauteur du texte à l'écran, en pixels. Constante : c'est tout l'intérêt du sprite.
+ *
+ * `TEXTURE_HEIGHT` suit, pour garder trois fois cette hauteur en pixels de texture : c'est
+ * ce suréchantillonnage qui tient le texte net sur le fond noir de la carte.
+ */
+const PIXEL_HEIGHT = 21;
+
+/**
+ * Hauteur de la texture, en pixels de texture. Plus haute que l'affichage : un texte
+ * crénelé se lit mal sur le fond noir de la carte.
+ */
+const TEXTURE_HEIGHT = 64;
+
+/** Opacité en deçà de laquelle le sprite est retiré du rendu — et donc du raycast. */
+const INVISIBLE = 0.02;
+
+/**
+ * Cache de textures, par texte.
+ *
+ * Rastériser un nom coûte un canvas 2D et un transfert GPU. Deux objets homonymes — ce que
+ * le générateur produit à foison — partagent la même texture, et un nom déjà vu n'est
+ * jamais rastérisé deux fois. Le cache est de module : il survit au démontage d'une couche,
+ * qui arrive à chaque franchissement de palier.
+ */
+const textures = new Map<string, CanvasTexture>();
+
+/**
+ * Texture d'un texte, mémoïsée.
+ *
+ * Rend une texture même quand le canvas 2D n'est pas disponible — c'est le cas sous jsdom,
+ * où `getContext` rend `null`. Le rendu y est vide, mais rien ne lève : un test de carte
+ * ne doit pas échouer parce qu'une étiquette n'a pas pu se dessiner.
+ */
+export function labelTexture(text: string): CanvasTexture {
+  const cached = textures.get(text);
+  if (cached) return cached;
+
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  const font = `600 ${Math.round(TEXTURE_HEIGHT * 0.62)}px "JetBrains Mono", ui-monospace, monospace`;
+
+  if (context) {
+    context.font = font;
+    const width = Math.max(8, Math.ceil(context.measureText(text).width) + 16);
+    canvas.width = width;
+    canvas.height = TEXTURE_HEIGHT;
+    // Redimensionner un canvas réinitialise son contexte : la police doit être reposée.
+    context.font = font;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    // Contour sombre avant le texte : la carte n'a pas de fond uniforme, un nom clair sur
+    // une étoile claire serait illisible.
+    context.lineWidth = 4;
+    context.strokeStyle = "rgba(2, 6, 12, 0.9)";
+    context.strokeText(text, width / 2, TEXTURE_HEIGHT / 2);
+    context.fillStyle = themeColor("--text", "#dbe7f3");
+    context.fillText(text, width / 2, TEXTURE_HEIGHT / 2);
+  } else {
+    canvas.width = 8;
+    canvas.height = TEXTURE_HEIGHT;
+  }
+
+  const texture = new CanvasTexture(canvas);
+  // Pas de mipmaps : une étiquette est toujours vue de face et à taille fixe, les générer
+  // coûterait de la mémoire pour un niveau qui ne sert jamais.
+  texture.generateMipmaps = false;
+  texture.minFilter = LinearFilter;
+  texture.magFilter = LinearFilter;
+  textures.set(text, texture);
+  return texture;
+}
+
+/** Vide le cache — pour les tests, qui vérifient justement qu'il mémoïse. */
+export function resetLabelTextures(): void {
+  for (const texture of textures.values()) texture.dispose();
+  textures.clear();
+}
+
+interface Props {
+  items: readonly LabelItem[];
+  /** Profondeur continue, écrite par `TierCamera` à chaque image. */
+  depthRef: RefObject<number>;
+  onSelect: (id: string) => void;
+  onOpen: (id: string) => void;
+  /** Compte d'étiquettes lisibles, publié dans le DOM — seule trace observable. */
+  onVisibleCount: (count: number) => void;
+}
+
+export function MapLabels({
+  items,
+  depthRef,
+  onSelect,
+  onOpen,
+  onVisibleCount,
+}: Props) {
+  const sprites = useRef<(Sprite | null)[]>([]);
+  const published = useRef(-1);
+  /**
+   * Rapport largeur/hauteur de chaque texture, rempli à la rastérisation.
+   *
+   * Zéro tant que l'étiquette n'a jamais été lisible : la texture n'existe pas encore.
+   */
+  const ratios = useRef<number[]>([]);
+
+  useFrame(({ camera, size }) => {
+    // Axe « haut de l'écran », lu de la matrice caméra plutôt que de `camera.up` : le
+    // second est la verticale du MONDE (Z depuis le chantier 40), le premier celle de
+    // l'IMAGE. Décaler l'étiquette selon la verticale du monde la ferait glisser de côté
+    // dès qu'on incline la vue.
+    const cam = camera.matrixWorld.elements;
+    const upX = cam[4]!;
+    const upY = cam[5]!;
+    const upZ = cam[6]!;
+
+    // Opacité de couche calculée UNE fois : tous les items appartiennent au palier
+    // courant, et `tierBlend` alloue un objet à chaque appel. Vingt appels par image,
+    // c'est mille deux cents objets par seconde pour une valeur commune.
+    const layer =
+      items.length > 0 ? layerOpacity(items[0]!.tier, depthRef.current) : 0;
+    if (layer <= INVISIBLE) {
+      for (const sprite of sprites.current) if (sprite) sprite.visible = false;
+      if (published.current !== 0) {
+        published.current = 0;
+        onVisibleCount(0);
+      }
+      return;
+    }
+    let visible = 0;
+
+    for (let i = 0; i < items.length; i++) {
+      const sprite = sprites.current[i];
+      const item = items[i];
+      if (!sprite || !item) continue;
+
+      const [x, y, z] = item.at();
+      const distance = Math.hypot(
+        camera.position.x - x,
+        camera.position.y - y,
+        camera.position.z - z,
+      );
+      if (distance <= 0) {
+        sprite.visible = false;
+        continue;
+      }
+
+      const opacity = labelOpacity(item.radius / distance) * layer;
+      // Un sprite invisible sort aussi du raycast : c'est three.js qui l'ignore, et c'est
+      // ce qui empêche une étiquette effacée de rester cliquable.
+      sprite.visible = opacity > INVISIBLE;
+      if (!sprite.visible) continue;
+      visible++;
+
+      const material = sprite.material as {
+        opacity: number;
+        map: CanvasTexture | null;
+        needsUpdate: boolean;
+      };
+      // Rastérisation à la PREMIÈRE apparition, et pas au montage de la couche (chantier
+      // 36.7). Dessiner vingt noms dans un canvas 2D puis les téléverser coûtait un pic
+      // qui tombait exactement au moment où l'on arrive dans un système — la moitié du
+      // budget d'images de la première seconde, pour des étiquettes dont deux seulement
+      // se voyaient. Le cache de module fait que remonter la même couche est gratuit.
+      if (!material.map) {
+        const texture = labelTexture(item.text);
+        const image = texture.image as { width: number; height: number };
+        ratios.current[i] = image.width / Math.max(1, image.height);
+        material.map = texture;
+        material.needsUpdate = true;
+      }
+      material.opacity = opacity;
+
+      // Taille écran constante : la hauteur en unités de scène suit la distance.
+      const height = worldPerPixel(distance, size.height, FOV) * PIXEL_HEIGHT;
+      sprite.scale.set(height * (ratios.current[i] ?? 4), height, 1);
+
+      // Posée au-dessus de l'objet, d'un rayon et demi plus la demi-hauteur du texte —
+      // assez pour dégager un corps qui remplit déjà l'écran, sans décrocher l'étiquette
+      // de ce qu'elle nomme.
+      const lift = (item.lift ?? item.radius) * 1.5 + height / 2;
+      sprite.position.set(x + upX * lift, y + upY * lift, z + upZ * lift);
+    }
+
+    if (visible !== published.current) {
+      published.current = visible;
+      onVisibleCount(visible);
+    }
+  });
+
+  return (
+    <>
+      {items.map((item, index) => (
+        // Un sprite est un objet de scène three.js, ni focusable ni clavier : le chemin
+        // accessible est la liste DOM parallèle (chantier 31.16), qui porte les mêmes
+        // actions. La directive ci-dessous doit rester la DERNIÈRE ligne avant l'élément —
+        // biome n'attache une suppression qu'à la ligne qui la suit immédiatement, et deux
+        // lignes de commentaire s'étaient glissées entre les deux (chantier 40).
+        // biome-ignore lint/a11y/useKeyWithClickEvents: voir ci-dessus.
+        <sprite
+          key={item.id}
+          ref={(node) => {
+            sprites.current[index] = node;
+          }}
+          visible={false}
+          onClick={() => onSelect(item.id)}
+          onDoubleClick={() => onOpen(item.id)}
+        >
+          <spriteMaterial
+            transparent
+            // Une étiquette se lit par-dessus ce qu'elle nomme : écrire dans le tampon de
+            // profondeur la ferait découper par le corps qu'elle surplombe.
+            depthWrite={false}
+            depthTest={false}
+          />
+        </sprite>
+      ))}
+    </>
+  );
+}

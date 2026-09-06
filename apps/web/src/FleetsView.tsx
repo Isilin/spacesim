@@ -20,8 +20,7 @@ import {
   type PirateLair,
   type ResourceId,
   type StoredBattle,
-  type TechId,
-  type Universe,
+  type ClientUniverse,
   type WarshipId,
 } from "@spacesim/shared";
 import { useMemo, useState } from "react";
@@ -40,7 +39,7 @@ interface Props {
   blueprints: Blueprint[];
   foreignFleets: ForeignFleet[];
   foreignColonies: ForeignColony[];
-  universe: Universe;
+  universe: ClientUniverse;
   researched: readonly string[];
   now: number;
   send: (msg: ClientMessage) => void;

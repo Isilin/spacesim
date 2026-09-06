@@ -24,6 +24,13 @@
     "enabled": true,
     "rules": {
       "recommended": false,
+      "correctness": {
+        "recommended": true,
+        "useExhaustiveDependencies": "off",
+        "noUnusedVariables": "error",
+        "noUnusedImports": "error",
+        "noUnusedPrivateClassMembers": "error"
+      },
       "a11y": {
         "recommended": true
       },

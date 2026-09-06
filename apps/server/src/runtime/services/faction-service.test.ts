@@ -37,9 +37,25 @@ describe("GameEngine — humeurs de faction (chantier 15)", () => {
     engine: GameEngine,
     empire: ReturnType<typeof empireFor>,
   ) => {
-    const comptoir = engine.universe.galaxies[0]!.systems.find(
-      (s) => s.station,
-    )?.station;
+    // Le PLUS PROCHE de la colonie mère, et non le premier venu. `find` suffisait quand la
+    // galaxie d'origine comptait quatorze systèmes : n'importe lequel était voisin. À cinq
+    // cents, le premier par index est à cinquante sauts, et les frais de convoi dépassent
+    // tout ce que le test peut raisonnablement provisionner — ce que « reachable » a
+    // toujours voulu dire, il faut désormais l'écrire.
+    const systems = engine.universe.galaxies[0]!.systems;
+    const homePlanetIds = new Set(
+      [...empire.colonyMap.values()].map((c) => c.planetId),
+    );
+    const home =
+      systems.find((s) => s.planets.some((p) => homePlanetIds.has(p.id))) ??
+      systems[0]!;
+    const comptoir = systems
+      .filter((s) => s.station)
+      .sort(
+        (a, b) =>
+          Math.hypot(a.x - home.x, a.y - home.y, a.z - home.z) -
+          Math.hypot(b.x - home.x, b.y - home.y, b.z - home.z),
+      )[0]?.station;
     if (!comptoir)
       throw new Error("la galaxie d'origine a toujours au moins un comptoir");
     engine.devArmFleet(empire, comptoir.systemId, {});

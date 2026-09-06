@@ -4,7 +4,7 @@ import {
   type Galaxy,
   type Relation,
   type Territory,
-  type Universe,
+  type ClientUniverse,
 } from "@spacesim/shared";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -66,7 +66,7 @@ function galaxy(): Galaxy {
   };
 }
 
-const universe: Universe = { seed: "t", galaxies: [galaxy()] };
+const universe: ClientUniverse = { galaxies: [galaxy()] };
 
 function colony(id: string, planetId: string): Colony {
   return {

@@ -1,17 +1,20 @@
-import type { Colony, Universe } from "@spacesim/shared";
+import type { Colony, ClientUniverse } from "@spacesim/shared";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@spacesim/ui";
 
-/** Cible de navigation : ce que la recherche et les raccourcis savent ouvrir. */
-export type NavTarget =
-  | { kind: "universe" }
-  | { kind: "galaxy"; galaxyId: string }
-  | { kind: "system"; galaxyId: string; systemId: string };
+/**
+ * Cible de navigation : ce que la recherche et les raccourcis savent viser.
+ *
+ * Un simple identifiant depuis le chantier 35.3 — la carte n'a plus de niveaux, viser une
+ * galaxie et viser un système sont le même geste, et l'index de l'univers retrouve seul le
+ * chemin complet de ce qu'on lui nomme.
+ */
+export type NavTarget = { kind: "universe" } | { kind: "at"; id: string };
 
 interface Props {
-  universe: Universe;
+  universe: ClientUniverse;
   colonies: Colony[];
   exploredSystemIds: string[];
   /** Systèmes où le joueur a une flotte (raccourci « mes flottes »). */
@@ -59,7 +62,7 @@ export function MapNav({
         key: `g:${galaxy.id}`,
         label: galaxy.name,
         hint: t("mapNav.galaxy"),
-        target: { kind: "galaxy", galaxyId: galaxy.id },
+        target: { kind: "at", id: galaxy.id },
       });
       for (const system of galaxy.systems) {
         const colony = system.planets
@@ -76,7 +79,7 @@ export function MapNav({
                 galaxy: galaxy.name,
               })
             : t("mapNav.systemHint", { galaxy: galaxy.name }),
-          target: { kind: "system", galaxyId: galaxy.id, systemId: system.id },
+          target: { kind: "at", id: system.id },
         });
       }
     }
@@ -95,27 +98,24 @@ export function MapNav({
     onGo(target);
   };
 
-  /** Premier système où le joueur possède une colonie (hors capitale déjà proposée). */
+  /** Systèmes où le joueur possède une colonie (la capitale d'abord si elle en est). */
   const colonySystems = useMemo(() => {
     const byPlanet = new Map(
       universe.galaxies.flatMap((g) =>
-        g.systems.flatMap((s) =>
-          s.planets.map((p) => [p.id, { galaxy: g.id, system: s.id }] as const),
-        ),
+        g.systems.flatMap((s) => s.planets.map((p) => [p.id, s.id] as const)),
       ),
     );
     return colonies
       .map((c) => byPlanet.get(c.planetId))
-      .filter((v): v is { galaxy: string; system: string } => v !== undefined);
+      .filter((v): v is string => v !== undefined);
   }, [universe, colonies]);
 
   const homeTarget =
-    colonySystems.find((s) => s.system === homeSystemId) ?? colonySystems[0];
-  const fleetTarget = universe.galaxies.flatMap((g) =>
-    g.systems
-      .filter((s) => fleetSystemIds.includes(s.id))
-      .map((s) => ({ galaxy: g.id, system: s.id })),
-  )[0];
+    colonySystems.find((id) => id === homeSystemId) ?? colonySystems[0];
+  const fleetTarget = universe.galaxies
+    .flatMap((g) => g.systems)
+    .filter((s) => fleetSystemIds.includes(s.id))
+    .map((s) => s.id)[0];
 
   return (
     <div className="map-nav">
@@ -169,28 +169,14 @@ export function MapNav({
       <div className="map-shortcuts">
         <Button
           disabled={!homeTarget}
-          onClick={() =>
-            homeTarget &&
-            go({
-              kind: "system",
-              galaxyId: homeTarget.galaxy,
-              systemId: homeTarget.system,
-            })
-          }
+          onClick={() => homeTarget && go({ kind: "at", id: homeTarget })}
         >
           {t("mapNav.myCapital")}
         </Button>
         <Button
           disabled={!fleetTarget}
           title={fleetTarget ? "" : t("mapNav.noActiveFleet")}
-          onClick={() =>
-            fleetTarget &&
-            go({
-              kind: "system",
-              galaxyId: fleetTarget.galaxy,
-              systemId: fleetTarget.system,
-            })
-          }
+          onClick={() => fleetTarget && go({ kind: "at", id: fleetTarget })}
         >
           {t("mapNav.myFleets")}
         </Button>

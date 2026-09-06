@@ -32,6 +32,7 @@ const FRAGMENT = /* glsl */ `
   uniform float uRelief;
   uniform float uSeed;
   uniform float uBands;
+  uniform float uOpacity;
   varying vec3 vPos;
   varying vec3 vNormal;
 
@@ -61,7 +62,7 @@ const FRAGMENT = /* glsl */ `
     vec3 base = mix(uColor, uAccent, clamp(banded * uRelief * 1.6, 0.0, 1.0));
     // Éclairage diffus simple : l'étoile est à l'origine de la scène.
     float light = clamp(dot(vNormal, normalize(vec3(0.4, 0.4, 1.0))), 0.15, 1.0);
-    gl_FragColor = vec4(base * light, 1.0);
+    gl_FragColor = vec4(base * light, uOpacity);
   }
 `;
 
@@ -69,12 +70,10 @@ export function ProceduralBody({
   id,
   type,
   radius,
-  selected,
 }: {
   id: string;
   type: string;
   radius: number;
-  selected: boolean;
 }) {
   const look = bodyAppearance(type);
   const segments = radius < 4 ? 12 : radius < 8 ? 20 : 32;
@@ -85,6 +84,9 @@ export function ProceduralBody({
       uRelief: { value: look.relief },
       uSeed: { value: seedOf(id) },
       uBands: { value: type === "gas" ? 1 : 0 },
+      // Piloté par `FadingGroup` (chantier 35.4) : un `material.opacity` ne veut rien
+      // dire pour un shader dont le fragment écrit lui-même son alpha.
+      uOpacity: { value: 1 },
     }),
     [look.color, look.accent, look.relief, id, type],
   );
@@ -100,21 +102,9 @@ export function ProceduralBody({
           vertexShader={VERTEX}
           fragmentShader={FRAGMENT}
           uniforms={uniforms}
+          transparent
         />
       </mesh>
-      {/* Halo de sélection : un anneau autour du corps, jamais une teinte appliquée à
-          la surface — celle-ci porte déjà l'information du type. */}
-      {selected && (
-        <mesh>
-          <sphereGeometry args={[radius * 1.35, segments, segments]} />
-          <meshBasicMaterial
-            color="#4fc1ff"
-            wireframe
-            transparent
-            opacity={0.5}
-          />
-        </mesh>
-      )}
     </>
   );
 }

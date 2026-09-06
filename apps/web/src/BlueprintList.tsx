@@ -51,7 +51,6 @@ export function BlueprintList({
     <ul className="building-list">
       {blueprints.map((bp) => {
         const stats = resolveBlueprint(bp);
-        const chassis = CHASSIS[bp.chassisId as keyof typeof CHASSIS];
         const chassisName =
           chassisLabel(bp.chassisId as ChassisId)?.name ?? bp.chassisId;
         const isColony = stats.domain === "colony";

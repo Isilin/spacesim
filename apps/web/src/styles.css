@@ -1641,6 +1641,8 @@
   width: 100%;
   height: 100%;
   min-height: 420px;
+  /* Repère du panneau d'objets, posé hors du flux par-dessus la carte (chantier 36.4). */
+  position: relative;
 }
 
 /* Fond PLAT, volontairement : la vignette radiale d'origine était peinte derrière un
@@ -1649,6 +1651,7 @@
    selon l'angle, et son centre (#0d1420, plus clair que `--bg`) effaçait la grille par
    manque de contraste. Un repère de profondeur doit vivre DANS la scène, pas derrière. */
 .map-canvas {
+  position: relative;
   flex: 1;
   min-width: 0;
   min-height: 420px;
@@ -1658,13 +1661,111 @@
   overflow: hidden;
 }
 
+/* Surcouche des infobox (chantier 35.5). Elle vit DEHORS du conteneur de R3F, qui porte
+   `aria-hidden` : y laisser l'infobox la rendait invisible aux lecteurs d'écran, et donc
+   introuvable par son rôle. `pointer-events: none` laisse passer les clics vers le canvas ;
+   l'infobox elle-même les reprend. */
+.map-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 /* Liste DOM parallèle au canvas (chantier 31.16) : seul chemin accessible vers les
    objets de la scène, et le plus rapide pour trouver un nom dans une vue dense. */
+/* Rangée de statistiques d'une fiche (chantier 35.6). */
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-bottom: 10px;
+}
+
+/* Infobox de carte (chantier 35.5). Le cadre vient du `Popover` du design system ; il
+   n'y a ici qu'à régler l'espacement et à borner la largeur, l'infobox étant posée par
+   drei au-dessus du canvas et n'ayant aucun conteneur qui la contraigne. */
+.map-infobox {
+  display: grid;
+  gap: 8px;
+  min-width: 150px;
+  max-width: 240px;
+}
+.map-infobox h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.map-infobox p {
+  margin: 0;
+}
+/* L'infobox laisse passer la molette (chantier 35.12) : elle est posée sur l'objet qu'on
+   vient de sélectionner, donc sur celui vers lequel on va zoomer. Opaque aux événements,
+   elle rendait la carte insensible au zoom là précisément où le joueur regardait. Seul son
+   bouton reprend la main — le reste n'est que du texte. */
+.map-infobox button {
+  pointer-events: auto;
+}
+
+/* Panneau d'objets dépliable (chantier 36.4). Hors du flux : depuis que les noms se
+   posent sur les objets, une colonne de 210 px prise en permanence sur la carte ne se
+   justifie plus. Hors du flux le met AUSSI hors du chemin de la molette — l'écouteur de
+   zoom vit sur la section du canvas, dont ce panneau n'est pas un descendant. */
+.map-objects {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  /* `min-height: 0` sur une colonne flex : sans lui la liste refuse de défiler et
+     déborde du panneau. */
+  min-height: 0;
+  max-height: calc(100% - 16px);
+}
+
+.map-objects-toggle {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.map-objects-toggle:hover,
+.map-objects-toggle[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 .map-list {
   width: 210px;
-  flex: 0 0 auto;
   overflow-y: auto;
-  max-height: 100%;
+  min-height: 0;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+}
+
+/* Filtre du panneau d'objets (chantier 37) : collant en tête, car la liste défile
+   maintenant sur des centaines d'entrées. */
+.map-list-filter {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
 }
 
 .map-list ul {
@@ -1715,8 +1816,7 @@
   }
 
   .map-list {
-    width: 100%;
-    max-height: 180px;
+    max-height: 40vh;
   }
 }
 
@@ -1732,11 +1832,6 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
-}
-
-.map-canvas:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
 }
 
 /* Aperçu 3D d'un objet manufacturé (chantiers 31.20-31.21). Hauteur explicite, même

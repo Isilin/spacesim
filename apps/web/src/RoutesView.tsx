@@ -14,7 +14,7 @@ import {
   type Route,
   type RouteRule,
   type ShipId,
-  type Universe,
+  type ClientUniverse,
 } from "@spacesim/shared";
 import { useState } from "react";
 import { Badge, Button, NumberInput, Panel, Select } from "@spacesim/ui";
@@ -25,7 +25,7 @@ import { resourceLabel, shipLabel } from "./labels.js";
 interface Props {
   routes: Route[];
   colonies: Colony[];
-  universe: Universe;
+  universe: ClientUniverse;
   exploredSystemIds: string[];
   outposts: MiningOutpost[];
   now: number;

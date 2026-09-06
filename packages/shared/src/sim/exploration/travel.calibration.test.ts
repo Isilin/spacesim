@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Galaxy } from "../../model/universe.js";
+import { createRng } from "../../rng.js";
 import { generateUniverse } from "../../universe.js";
 import { travelCostInUniverse } from "./travel.js";
 
@@ -45,23 +46,64 @@ function hopCount(galaxy: Galaxy, from: string, to: string): number {
   return -1;
 }
 
+/**
+ * Paires tirées par galaxie. Toutes les paires étaient parcourues jusqu'au chantier 37 :
+ * viable à 14 systèmes (91 paires), plus du tout à 520 (135 000 paires, un BFS chacune —
+ * mesuré à 403 s de collecte, et un `Math.min(...ratios)` qui débordait la pile d'appels).
+ * Un tirage déterministe de ce volume mesure exactement la même moyenne.
+ */
+const PAIRS_PER_GALAXY = 400;
+
 function samplePairs(): { hops: number; cost: number }[] {
   const universe = generateUniverse("mesure-31-7", 4);
+  const rng = createRng("mesure-31-7:paires");
   const pairs: { hops: number; cost: number }[] = [];
   for (const galaxy of universe.galaxies) {
     const ids = galaxy.systems.map((s) => s.id);
-    for (let i = 0; i < ids.length; i++) {
-      for (let j = i + 1; j < ids.length; j++) {
-        const hops = hopCount(galaxy, ids[i]!, ids[j]!);
-        const cost = travelCostInUniverse(universe, ids[i]!, ids[j]!);
-        if (hops > 0 && cost > 0) pairs.push({ hops, cost });
-      }
+    for (let k = 0; k < PAIRS_PER_GALAXY; k++) {
+      const i = Math.floor(rng() * ids.length);
+      const j = Math.floor(rng() * ids.length);
+      if (i === j) continue;
+      const hops = hopCount(galaxy, ids[i]!, ids[j]!);
+      const cost = travelCostInUniverse(universe, ids[i]!, ids[j]!);
+      if (hops > 0 && cost > 0) pairs.push({ hops, cost });
     }
   }
   return pairs;
 }
 
+/**
+ * Excentricité du graphe depuis un sommet arbitraire — minorant du diamètre, exact à un
+ * facteur deux près. Le vrai diamètre demande un BFS par système : cinq cents BFS sur cinq
+ * cents sommets par galaxie, pour une grandeur dont seul l'ordre nous intéresse.
+ */
+function approximateDiameter(galaxy: Galaxy): number {
+  const adjacency = new Map<string, string[]>();
+  for (const [a, b] of galaxy.links) {
+    adjacency.set(a, [...(adjacency.get(a) ?? []), b]);
+    adjacency.set(b, [...(adjacency.get(b) ?? []), a]);
+  }
+  const start = galaxy.systems[0]!.id;
+  const seen = new Set([start]);
+  let frontier = [start];
+  let depth = 0;
+  while (frontier.length > 0) {
+    const next: string[] = [];
+    for (const id of frontier)
+      for (const neighbor of adjacency.get(id) ?? [])
+        if (!seen.has(neighbor)) {
+          seen.add(neighbor);
+          next.push(neighbor);
+        }
+    if (next.length > 0) depth++;
+    frontier = next;
+  }
+  return depth;
+}
+
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+const min = (xs: number[]) => xs.reduce((a, b) => Math.min(a, b));
+const max = (xs: number[]) => xs.reduce((a, b) => Math.max(a, b));
 
 describe("calibration du coût de trajet (chantier 31.7)", () => {
   const pairs = samplePairs();
@@ -79,10 +121,39 @@ describe("calibration du coût de trajet (chantier 31.7)", () => {
   });
 
   it("la géométrie pèse réellement sur les trajets pris un à un", () => {
-    const ratios = pairs.map((p) => p.cost / p.hops);
+    // Sur les trajets COURTS seulement. Un trajet de cinquante sauts moyenne ses arêtes :
+    // son rapport coût/sauts tend vers 1 quelle que soit la géométrie, et c'est bien ce
+    // qu'on veut. Ce que ce test protège, c'est que deux trajets de même longueur en sauts
+    // ne coûtent pas la même chose — ce qui ne s'observe que là où la moyenne n'a pas encore
+    // effacé le relief.
+    const ratios = pairs.filter((p) => p.hops <= 6).map((p) => p.cost / p.hops);
     // Relevé : 0,45 à 1,83 — un trajet direct coûte moitié moins qu'un trajet étiré.
-    expect(Math.min(...ratios)).toBeLessThan(0.7);
-    expect(Math.max(...ratios)).toBeGreaterThan(1.4);
+    expect(min(ratios)).toBeLessThan(0.7);
+    expect(max(ratios)).toBeGreaterThan(1.4);
+  });
+
+  it("traverser une galaxie reste de l'ordre de la dizaine de sauts", () => {
+    // Relevé au chantier 37, sur les quatre galaxies de l'univers de mesure : diamètre
+    // médian 59 sauts, contre 7 quand une galaxie comptait quatorze systèmes.
+    //
+    // Ce test existe parce que la conclusion a surpris. On avait prévu de diviser les
+    // constantes PAR SAUT (`TRANSFER_MS_PER_JUMP` et les siennes) par ce rapport, pour
+    // qu'une traversée garde sa durée. La mesure a dit le contraire : un trajet ORDINAIRE
+    // ne s'allonge pas, parce que les empires démarrent groupés
+    // (`STARTER_CLUSTER_RADIUS`) et que leurs voisins restent à quelques sauts. Seule la
+    // traversée complète coûte plus cher — ce qui est exactement ce qu'une galaxie plus
+    // vaste doit signifier. Diviser aurait rendu la logistique de proximité quasi
+    // gratuite, et vidé de son sens la couche orbitale de l'ADR 0004.
+    //
+    // Ce qu'on protège ici : que le diamètre ne dérive pas d'un ordre de grandeur de plus,
+    // ce qui ferait d'un convoi intra-galactique une affaire de plusieurs heures.
+    const diameters = generateUniverse("mesure-31-7", 4).galaxies.map((g) =>
+      approximateDiameter(g),
+    );
+    for (const d of diameters) {
+      expect(d).toBeGreaterThan(5);
+      expect(d).toBeLessThan(140);
+    }
   });
 
   it("reste une minorité de trajets à plus de ±50 % du barème de sauts", () => {

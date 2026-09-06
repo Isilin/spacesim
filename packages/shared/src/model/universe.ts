@@ -109,6 +109,26 @@ export interface Galaxy {
    * sort du générateur pur (le calcul positionnel sert alors de repli).
    */
   parentIndex?: number | null;
+  /**
+   * Nombre de systèmes de la galaxie, y compris quand `systems` est vide (chantier 37.10).
+   *
+   * Le serveur ne transmet le détail des systèmes que des galaxies où le joueur a quelque
+   * chose à faire ; les autres arrivent en condensé. Ce compte reste vrai des deux côtés —
+   * c'est lui qu'affichent les fiches, jamais `systems.length`. Absent sur une galaxie
+   * complète, où il vaut par définition `systems.length` : voir `systemCountOf`.
+   */
+  systemCount?: number;
+  /**
+   * Positions de systèmes aplaties (`x, y, z, x, y, z, …`), sous-échantillonnées, de quoi
+   * dessiner le nuage du palier univers d'une galaxie transmise en condensé — et rien de
+   * plus. Absent sur une galaxie complète, dont les vraies positions font foi.
+   */
+  cloud?: number[];
+}
+
+/** Nombre de systèmes d'une galaxie, complète ou condensée. */
+export function systemCountOf(galaxy: Galaxy): number {
+  return galaxy.systemCount ?? galaxy.systems.length;
 }
 
 /** Méga-projet de portail vers une galaxie lointaine (contributions par convois). */
@@ -126,3 +146,13 @@ export interface Universe {
   seed: string;
   galaxies: Galaxy[];
 }
+
+/**
+ * L'univers tel qu'il part au client (chantier 37.10) : **sans la seed**.
+ *
+ * Le générateur est déterministe et vit dans le paquet du navigateur. Transmettre la seed
+ * revenait à transmettre la clé de tout ce que le brouillard prétend cacher — planètes et
+ * gisements des systèmes inexplorés compris. Le client n'en a jamais rien fait ; ce type
+ * rend l'omission vérifiable par le compilateur plutôt que par la discipline.
+ */
+export type ClientUniverse = Omit<Universe, "seed">;

@@ -24,7 +24,7 @@ import type { GameRuntime } from "../game-runtime.js";
 import type { Logger } from "../logger.js";
 import { ClaimRepository } from "../repositories/claim-repository.js";
 import { PlayerRepository } from "../repositories/player-repository.js";
-import { stageGalaxies, withParentIndexes } from "../universe-store.js";
+import { appendGalaxies, withParentIndexes } from "../universe-store.js";
 
 /**
  * Exploration et territoire : sondes, colonisation, revendications de systèmes et
@@ -326,17 +326,27 @@ export class ExplorationService {
     });
     this.runtime.clock.galaxyCount = this.runtime.universe.galaxies.length;
     this.runtime.reindexUniverse();
-    // Staging synchrone dans le WriteSet (chantier 20.3) — `growUniverse` tourne dans
-    // le chemin de tick, qui ne peut pas `await` une requête Postgres. `games.galaxyCount`
-    // (déjà mis à jour en RAM ci-dessus) est porté par `TickRunner.saveTick`, pas ici.
-    // AVANT `initMarkets`/`initGateways` : ceux-ci stagent des lignes qui référencent
-    // (FK réelles, chantier 20.3) les tables `universe_*` d'ici — le `Persister` applique
-    // le flush dans l'ordre de staging au sein d'une même transaction.
-    stageGalaxies(
-      this.runtime.writeSet,
-      this.runtime.clock.id,
-      this.runtime.universe.galaxies.slice(from),
-    );
+    // Écriture LANCÉE mais pas attendue (chantier 37.15) : `growUniverse` tourne dans le
+    // chemin de tick, qui ne peut pas `await` une requête Postgres — et il n'en a pas
+    // besoin, la RAM faisant autorité (ADR 0003). Elle passe par `appendGalaxies`,
+    // transactionnel et découpé en lots, et non plus ligne à ligne par le `WriteSet` : à
+    // trois galaxies de ~3 400 lignes, ce dernier chemin bloquait le serveur 21,5 s.
+    //
+    // La chaîne sert de barrière au `Persister` : `initMarkets`/`initGateways`, appelés
+    // juste après, stagent des lignes dont les clés étrangères pointent vers ces galaxies.
+    const galaxies = this.runtime.universe.galaxies.slice(from);
+    const total = this.runtime.clock.galaxyCount;
+    const gameId = this.runtime.clock.id;
+    this.runtime.universeWrite = this.runtime.universeWrite
+      .catch(() => undefined)
+      .then(() => appendGalaxies(gameId, galaxies, total))
+      .catch((err: unknown) => {
+        // Perdre cette écriture ne perd pas les galaxies (elles vivent en RAM), mais elles
+        // ne survivraient pas à un redémarrage : c'est à dire haut et fort.
+        this.logger.warn(
+          `[game] écriture des galaxies neuves échouée : ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
     // Les galaxies neuves arrivent avec leurs comptoirs et leur chantier de portail.
     this.initMarkets();
     this.initGateways();
@@ -350,9 +360,19 @@ export class ExplorationService {
     this.notify();
   }
 
-  /** Maintient la frontière glissante : toujours des galaxies vierges devant les joueurs. */
+  /**
+   * Maintient la frontière glissante : toujours des galaxies vierges devant les joueurs.
+   *
+   * UNE galaxie par appel, donc par tick (chantier 37.15). Il en ouvrait jusqu'à trois d'un
+   * coup, ce qui concentrait dans un seul tick la génération, la réindexation de tout
+   * l'univers, l'initialisation des marchés et des portails, et une transaction de ~10 000
+   * lignes — de quoi retarder les ticks suivants au point qu'un client attende plus de dix
+   * secondes sa mise à jour. La frontière se remplit maintenant en trois ticks (quinze
+   * secondes), ce qui ne se voit nulle part : c'est une réserve DEVANT les joueurs, pas
+   * quelque chose qu'on leur fait attendre.
+   */
   ensureFrontier(): void {
-    this.growUniverse(galaxiesToAdd(this.galaxyOccupancy()));
+    this.growUniverse(Math.min(galaxiesToAdd(this.galaxyOccupancy()), 1));
   }
 
   /** Action joueur : revendiquer un système (colonie sur place requise). */

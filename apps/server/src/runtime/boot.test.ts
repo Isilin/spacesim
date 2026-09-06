@@ -1,4 +1,6 @@
+import { TICK_MS } from "@spacesim/shared";
 import { beforeEach, describe, expect, it } from "vitest";
+import { db, schema } from "../db/index.js";
 import { GameEngine } from "../game.js";
 import {
   resetDb,
@@ -25,9 +27,39 @@ describe("GameEngine — harnais & socle (Sprint 0)", () => {
     ]);
   });
 
+  it("une partie RECHARGÉE rattrape le temps hors-ligne", async () => {
+    // Le garde du chantier 44 ne fait sauter `catchUp()` que sur une partie NEUVE. Ce test
+    // tient l'autre moitié : sur une partie qui a une histoire, le rattrapage doit rester
+    // intact — c'est le seul risque réel d'un garde d'une ligne.
+    //
+    // Une partie neuve naît au tick 0 même si sa matérialisation a duré : c'est ce que le
+    // premier test de ce fichier affirme, et ce que la CI démentait avant le correctif —
+    // `bootstrapNewUniverse` pose `lastTickAt` AVANT de générer quatre galaxies, et sur une
+    // machine lente cette génération franchit un tick.
+    const fresh = await GameEngine.loadOrBootstrap();
+    expect(fresh.game.tick).toBe(0);
+
+    // Serveur arrêté une heure : l'horloge en base recule, le rechargement doit la rattraper.
+    const stoppedFor = 3600_000;
+    await db.update(schema.games).set({ lastTickAt: Date.now() - stoppedFor });
+
+    const reloaded = await GameEngine.load();
+    expect(reloaded.game.tick).toBe(stoppedFor / TICK_MS);
+  });
+
   it("le tick est déterministe : N ticks avancent l'horloge d'exactement N", async () => {
+    // Ce test portait une amorce `advanceTicks(engine, 1)` et un commentaire qui décrivait
+    // le défaut au mot près : `devFastForward` rattrapait AUSSI le temps réel, donc un tick
+    // de 5 s tombé entre le boot et la mesure s'ajoutait aux dix demandés. Le contrat était
+    // dans le nom du test, le défaut dans le code, et le contournement entre les deux.
+    //
+    // Le chantier 44 a rendu ce rattrapage au `Scheduler`, à qui il appartient. L'amorce
+    // disparaît donc, et l'attente ci-dessous fait l'inverse de ce qu'elle faisait : elle
+    // FABRIQUE la dérive que le test ne doit plus voir. Sans le correctif, elle vaut deux
+    // ticks parasites et l'assertion échoue à coup sûr.
     const engine = await GameEngine.loadOrBootstrap();
     const t0 = engine.game.tick;
+    await new Promise((r) => setTimeout(r, TICK_MS + 1000));
     advanceTicks(engine, 10);
     expect(engine.game.tick).toBe(t0 + 10);
   });
@@ -309,12 +341,24 @@ describe("GameEngine — chargement multi-empire (Phase A)", () => {
     e1.devSpawnEmpire("Colonia");
     e1.devFastForward(50); // 10 ticks : l'influence de chaque empire progresse
     const before = summaries(e1);
+    // Flush ATTENDU avant de simuler un reboot, comme le fait déjà le test de rechargement
+    // ci-dessus : l'écriture est en arrière-plan (ADR 0003), et relire la base sans
+    // l'attendre revient à courir contre elle. La course se perdait d'autant plus souvent
+    // que l'univers a grossi.
+    await e1.flush();
 
     const e2 = await GameEngine.loadOrBootstrap();
     const after = summaries(e2);
     for (const b of before) {
       const a = after.find((e) => e.id === b.id)!;
-      expect(a.influence).toBeCloseTo(b.influence, 5);
+      // Influence JAMAIS PERDUE, et non pas rigoureusement égale : `runtime/boot.ts`
+      // rejoue le temps hors-ligne au chargement (`catchUp`). Si l'écriture puis le
+      // rechargement franchissent une seconde de tick — ce qui arrive depuis que
+      // matérialiser un univers de test prend des secondes —, `e2` a un tick d'avance et
+      // une influence légèrement supérieure. Comparer à l'égalité stricte revenait à
+      // comparer deux instants différents. Ce que ce test doit attraper, c'est un état
+      // remis à zéro ou routé au mauvais empire : `>=` le voit aussi bien.
+      expect(a.influence).toBeGreaterThanOrEqual(b.influence);
       expect(a.exploredCount).toBe(b.exploredCount);
     }
   });

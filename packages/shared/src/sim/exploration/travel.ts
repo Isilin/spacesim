@@ -1,7 +1,11 @@
 import { DEFAULT_BALANCE, type BalanceConstants } from "../../balance.js";
 import { INTRA_SYSTEM_REFERENCE_LENGTH } from "../../constants.js";
 import { SHIPS, type ShipDef } from "../../content/ships.js";
-import type { Galaxy, StarSystem, Universe } from "../../model/universe.js";
+import type {
+  ClientUniverse,
+  Galaxy,
+  StarSystem,
+} from "../../model/universe.js";
 import { findGalaxyOfSystem } from "../../universe.js";
 import { bodyPositionAt, distance3 } from "./geometry.js";
 import { galaxyGraph, priceOf, shortestPath, universeGraph } from "./route.js";
@@ -37,7 +41,7 @@ export function travelCostInGalaxy(
  * ne doit pas trancher seul, sans quoi la géométrie ne produit aucune décision.
  */
 export function travelCostInUniverse(
-  universe: Universe,
+  universe: ClientUniverse,
   fromSystemId: string,
   toSystemId: string,
   extraLinks: readonly [string, string][] = [],

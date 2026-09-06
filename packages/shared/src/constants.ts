@@ -4,15 +4,48 @@ export const TICK_MS = 5000;
 /** Catch-up hors-ligne borné : au-delà, le temps est perdu (évite de rejouer des semaines). */
 export const MAX_CATCHUP_TICKS = (24 * 3600 * 1000) / TICK_MS;
 
-/** Dimensions de la carte galaxie (viewBox SVG) — espace de coordonnées interne à une galaxie. */
+/**
+ * Origine du repère interne d'une galaxie.
+ *
+ * C'était une **borne** jusqu'au chantier 37 : les systèmes se tiraient par rejet dans le
+ * pavé `MAP_WIDTH × MAP_HEIGHT`. Ils se posent maintenant sur un disque dont le rayon suit
+ * le nombre de systèmes (`GALAXY_RADIUS_PER_ROOT_SYSTEM`), et qui déborde largement ces
+ * valeurs. Il n'en reste que le **centre** : une galaxie s'organise autour de
+ * (`MAP_WIDTH / 2`, `MAP_HEIGHT / 2`), ce qui garde intact le recentrage du client
+ * (`systemScenePosition`) et les coordonnées des galaxies déjà matérialisées.
+ */
 export const MAP_WIDTH = 1000;
 export const MAP_HEIGHT = 700;
 /**
  * Épaisseur de la couche de systèmes dans une galaxie (chantier 31.2). Volontairement
- * très inférieure à `MAP_WIDTH`/`MAP_HEIGHT` : une galaxie est un disque, pas un cube.
- * Les systèmes sont centrés sur `z = 0`, le plan galactique.
+ * très inférieure au rayon du disque : une galaxie est un disque, pas un cube. Les systèmes
+ * sont centrés sur `z = 0`, le plan galactique, et le bulbe central est plus épais que le
+ * bord (chantier 37.2).
  */
 export const MAP_DEPTH = 200;
+
+/**
+ * Rayon du disque d'une galaxie, par racine de son nombre de systèmes (chantier 37.2) :
+ * `R = GALAXY_RADIUS_PER_ROOT_SYSTEM × √n`.
+ *
+ * La racine est ce qui tient la **densité surfacique constante** quand une galaxie passe de
+ * 14 à 400 systèmes. C'est l'invariant qui sauve `JUMP_REFERENCE_LENGTH` : à densité
+ * constante, la longueur d'arête moyenne ne bouge pas, donc une arête vaut toujours ≈ 1
+ * équivalent-saut et les constantes de `balance.ts` gardent leur sens. Un disque de rayon
+ * fixe aurait densifié la galaxie et divisé le prix d'un saut par six en silence.
+ *
+ * Calée par mesure, pas par calcul : `travel.calibration.test.ts` est le juge, avec pour
+ * cible la longueur d'arête moyenne relevée avant le chantier (194,6).
+ */
+export const GALAXY_RADIUS_PER_ROOT_SYSTEM = 97;
+
+/**
+ * Distance minimale entre deux systèmes d'une même galaxie. Indépendante du nombre de
+ * systèmes : à densité constante, `R / √n` vaut `GALAXY_RADIUS_PER_ROOT_SYSTEM` quel que
+ * soit `n`. Ce n'est pas un critère de rejet mais une distance de **relaxation** — les
+ * positions se posent d'abord sur les bras, puis se repoussent (chantier 37.2).
+ */
+export const MIN_SYSTEM_DISTANCE = 70;
 
 /**
  * Carte univers (chantier 9) : les galaxies sont posées sur une spirale d'angle d'or
@@ -66,7 +99,30 @@ export const INITIAL_GALAXIES = 4;
 export const FRONTIER_GALAXIES = 3;
 /** Empires accueillis par galaxie de départ avant d'en ouvrir une autre. */
 export const MAX_EMPIRES_PER_GALAXY = 4;
-/** Garde-fou : au-delà, on cesse d'étendre l'univers (mémoire du serveur). */
+/**
+ * Rayon dans lequel un nouvel empire s'installe autour de ceux déjà présents dans sa galaxie
+ * de départ (chantier 37). Environ quatre arêtes de saut : assez près pour que le commerce,
+ * les frontières et le PvP existent dès les premières heures — ce que `pickHomePlanet`
+ * promet — sans coller deux empires dans le même système.
+ */
+export const STARTER_CLUSTER_RADIUS = 800;
+/**
+ * Garde-fou : au-delà, on cesse d'étendre l'univers (mémoire du serveur).
+ *
+ * **Remesuré au chantier 37**, la galaxie étant passée de ~11 systèmes à ~400. Relevé sur
+ * quarante galaxies générées : **1,59 Mo de tas par galaxie** (16 238 systèmes, 112 682
+ * corps), soit ~320 Mo à ce plafond pour la seule géométrie de l'univers — contre ~9 Mo
+ * avant. La RAM fait autorité pour la simulation (ADR 0003), ces objets vivent donc en
+ * permanence.
+ *
+ * La valeur est MAINTENUE : 320 Mo tiennent dans le budget d'un serveur de jeu dédié, et
+ * ce plafond gouverne aussi la population maximale (≈ 790 empires à
+ * `MAX_EMPIRES_PER_GALAXY`) — l'abaisser fermerait la porte à des joueurs pour économiser
+ * une mémoire qu'on a. À rouvrir sur mesure du tas RÉEL en production, jamais sur
+ * impression.
+ *
+ * Verrou : `universe.payload.test.ts` pour la charge réseau, qui est l'autre dimension.
+ */
 export const MAX_GALAXIES = 200;
 
 /** Dimension de la vue système (viewBox SVG carré, étoile au centre). */

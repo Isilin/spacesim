@@ -140,6 +140,9 @@ function FitPreview({
         }
     distance = Math.max(sphere.radius * 0.6, distance * MARGIN);
 
+    // Réaffirmé ici comme dans `FitCamera` : R3F n'applique les props `camera` qu'à la
+    // création, et un `up` perdu ne se voit pas — l'image est simplement roulée.
+    camera.up.set(0, 0, 1);
     camera.position.set(
       sphere.center.x + (VIEW[0] / norm) * distance,
       sphere.center.y + (VIEW[1] / norm) * distance,
@@ -200,7 +203,12 @@ export function ModelPreview({
       <p className="visually-hidden">{t("modelPreview.hint")}</p>
       <Canvas
         aria-hidden="true"
-        camera={{ fov: FOV, position: [4, -3, 2] }}
+        // Z-HAUT, comme la carte et comme le cadrage calculé plus bas : `lookAt` construit
+        // son orientation à partir de `up`, et l'`autoRotate` d'`OrbitControls` tourne autour
+        // de lui. Laissé au défaut de three.js, l'aperçu tournait autour de Y alors que son
+        // cadrage était calculé en Z — la même incohérence que la carte a corrigée au
+        // chantier 40, restée sur son jumeau.
+        camera={{ fov: FOV, position: [4, -3, 2], up: [0, 0, 1] }}
         gl={{ antialias: true, alpha: true }}
         // Le rendu holographique est un empilement de translucides : c'est la seule vue
         // limitée par le remplissage. Plafonner la densité de pixels y coûte deux fois

@@ -61,7 +61,19 @@ export async function bootEngine(
   engine.diplomacy.initFactionStates();
   // L'univers doit toujours offrir de la place devant les joueurs (chantier 9).
   engine.exploration.ensureFrontier();
-  engine.catchUp();
+  // Rattrapage du temps hors-ligne — pour une partie qui a une histoire, et elle seule
+  // (chantier 44). Un univers créé il y a trois secondes n'a rien à rattraper : le seul
+  // temps écoulé est celui de sa propre matérialisation, et depuis le chantier 37 elle
+  // dure assez longtemps pour franchir un tick de cinq secondes sur une machine lente.
+  // `bootstrapNewUniverse` pose `lastTickAt` AVANT de générer quatre galaxies et d'écrire
+  // ~5 900 systèmes ; la CI franchissait le seuil là où cette machine ne le franchissait
+  // pas, et une partie neuve naissait au tick 1.
+  //
+  // L'horloge, elle, reste où elle est : sur un serveur vivant le `Scheduler` verra ce
+  // temps réel à sa première salve et l'avancera, ce qui est honnête. En test il n'y a pas
+  // de `Scheduler`, donc une partie neuve reste au tick 0 — ce que son test affirme depuis
+  // le Sprint 0.
+  if (!isNew) engine.catchUp();
   // Un boot frais (colonie mère, marchés/portails idempotents, plans de départ) doit
   // laisser la DB cohérente avec la mémoire AVANT de servir la moindre commande —
   // `catchUp()` ne flushe que s'il a rejoué des ticks (chantier 20.2).

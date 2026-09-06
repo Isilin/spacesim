@@ -112,3 +112,29 @@ describe("GameEngine — pilote économique PNJ (chantier 14)", () => {
     ).toHaveLength(0);
   });
 });
+
+describe("GameEngine — budget de temps du pilote PNJ (chantier 43.6)", () => {
+  it("neuf cents ticks avec trois PNJ tiennent dans le budget", async () => {
+    // Ce que ce test attrape, et qu'aucun autre n'attrapait : `npcTick` pesait 99,7 % du
+    // coût d'un tick, et personne ne le savait. Le chiffre était pourtant imprimé à chaque
+    // exécution de ce fichier — « 901 tick(s) en 37020,8ms » — sans que rien ne le lise.
+    //
+    // La cause : `nearestTradingPost` lançait un plus-court-chemin PAR COMPTOIR de la
+    // galaxie, sur un graphe reconstruit à chaque appel, pour une réponse qui ne change
+    // qu'à la matérialisation d'une galaxie. Une galaxie comptait sept à quatorze systèmes
+    // avant le chantier 37 ; elle en compte trois à cinq cents.
+    //
+    // Le seuil est un PLANCHER D'IMPLÉMENTATION, pas une mesure de la machine : même
+    // esprit que le budget d'images de `map3d.spec.ts`. Mesuré à ~0,7 s après mémoïsation,
+    // 70 s avant. Trente secondes laissent quarante fois la marge et attrapent quand même
+    // un retour à l'état d'avant. Il ne doit jamais être relevé pour faire passer un test.
+    const engine = await GameEngine.loadOrBootstrap();
+    engine.ensureNpcPopulation(3);
+
+    const startedAt = performance.now();
+    advanceTicks(engine, 900);
+    const elapsed = performance.now() - startedAt;
+
+    expect(elapsed).toBeLessThan(30_000);
+  });
+});

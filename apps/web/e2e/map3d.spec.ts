@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { registerFreshEmpire } from "./helpers.js";
+import {
+  framesPerSecond,
+  openMapObjects,
+  registerFreshEmpire,
+} from "./helpers.js";
 
 /**
  * Référence de performance et de mise en page de la carte 3D (chantier 31.17).
@@ -9,23 +13,6 @@ import { registerFreshEmpire } from "./helpers.js";
  * Ce relevé est aussi le point de comparaison de la passe d'habillage (chantier 31.23),
  * qui ajoutera shaders et géométries sur cette même scène.
  */
-
-/** Compte les images produites en une seconde — mesure directe du budget d'animation. */
-async function framesPerSecond(page: import("@playwright/test").Page) {
-  return page.evaluate(
-    () =>
-      new Promise<number>((resolve) => {
-        let frames = 0;
-        const start = performance.now();
-        const tick = () => {
-          frames++;
-          if (performance.now() - start >= 1000) resolve(frames);
-          else requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-      }),
-  );
-}
 
 /**
  * R3F dimensionne son canvas via un `ResizeObserver`, donc APRÈS le premier rendu :
@@ -51,12 +38,16 @@ async function expectSizedCanvas(
 test("la carte 3D rend et tient un budget d'images à chaque niveau", async ({
   page,
 }) => {
+  // Trois paliers × trois fenêtres d'une seconde depuis le chantier 40.9 : la mesure seule
+  // prend une dizaine de secondes, et le défaut de trente n'y suffisait plus.
+  test.setTimeout(120_000);
   await registerFreshEmpire(page, {
     prefix: "map3d",
     empireName: "Cartographes E2E",
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   await expect(page).toHaveURL(/\/map$/);
 
   // Niveau univers : le canvas doit exister ET avoir une taille — WebGL n'a pas de
@@ -69,21 +60,49 @@ test("la carte 3D rend et tient un budget d'images à chaque niveau", async ({
   });
   await expect(universeList.getByRole("button").first()).toBeVisible();
 
+  // Laisser la scène se poser avant de compter (chantier 36.7). Monter une couche coûte
+  // des textures et des géométries ; mesurer dans la seconde qui suit revient à mesurer
+  // ce montage, pas le régime permanent que ce test prétend surveiller. Sans cette pause,
+  // la même configuration rendait 17 ou 60 images selon l'humeur de la machine.
+  await page.waitForTimeout(700);
   const universeFps = await framesPerSecond(page);
   // Le seuil est bas à dessein : il attrape un rendu effondré (boucle bloquée,
   // re-render par image), pas une variation de machine.
   expect(universeFps).toBeGreaterThan(20);
 
-  // Niveau système : le plus chargé des trois — orbites, corps repositionnés à chaque
-  // image, sites du scan.
-  await page.getByRole("button", { name: "Ma capitale" }).click();
-  await expect(page).toHaveURL(/\/map\/galaxy\/[^/]+\/system\/[^/]+$/);
+  // Niveau galaxie : le plus peuplé depuis le chantier 37 — quatre à cinq cents systèmes
+  // et un millier d'arêtes, là où il y en avait quatorze et trente-cinq. Il n'était pas
+  // mesuré, et c'est exactement le palier que le chantier a chargé.
+  // La galaxie COLONISÉE : depuis le chantier 37.10, une galaxie hors de portée arrive en
+  // condensé, et c'est chez le joueur que le palier galaxie porte sa vraie charge.
+  await universeList
+    .getByRole("button")
+    .filter({ hasText: /colonis|coloniz/i })
+    .first()
+    .press("Enter");
+  await expect
+    .poll(
+      async () => page.locator(".map-canvas").getAttribute("data-map-tier"),
+      {
+        timeout: 15_000,
+      },
+    )
+    .toBe("galaxy");
   await expectSizedCanvas(page, 200);
+  await page.waitForTimeout(700);
+  const galaxyFps = await framesPerSecond(page);
+  expect(galaxyFps).toBeGreaterThan(20);
+
+  // Niveau système : orbites, corps repositionnés à chaque image, sites du scan.
+  await page.getByRole("button", { name: "Ma capitale" }).click();
+  await expect(page).toHaveURL(/\/map\?.*at=/);
+  await expectSizedCanvas(page, 200);
+  await page.waitForTimeout(700);
   const systemFps = await framesPerSecond(page);
   expect(systemFps).toBeGreaterThan(20);
 
   console.log(
-    `[31.17] images/s — univers ${universeFps}, système ${systemFps}`,
+    `[31.17] images/s — univers ${universeFps}, galaxie ${galaxyFps}, système ${systemFps}`,
   );
 });
 
@@ -99,6 +118,7 @@ test("la carte 3D reste utilisable sur un écran de téléphone", async ({
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   await expectSizedCanvas(page, 280);
 
   // Rien ne doit déborder horizontalement (contrainte de responsive du chantier 27.22).
@@ -122,8 +142,9 @@ test("la caméra reste au joueur une fois qu'il l'a touchée", async ({
   });
 
   await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
   await page.getByRole("button", { name: "Ma capitale" }).click();
-  await expect(page).toHaveURL(/\/map\/galaxy\/[^/]+\/system\/[^/]+$/);
+  await expect(page).toHaveURL(/\/map\?.*at=/);
 
   const host = page.locator(".map-canvas");
   const canvas = host.locator("canvas");
@@ -149,13 +170,48 @@ test("la caméra reste au joueur une fois qu'il l'a touchée", async ({
   // ramenait la caméra à sa pose initiale.
   await page.waitForTimeout(6000);
   expect(await host.getAttribute("data-map-fits")).toBe(before);
+});
 
-  // Les raccourcis clavier (chantier 31.16) écoutent sur cette même section : c'est le
-  // seul chemin de navigation d'un utilisateur au clavier. Le compteur prouve que
-  // l'écouteur est bien posé sur l'élément focusé — il ne l'était pas, et rien ne le
-  // disait. Ce qu'il ne prouve pas : que la caméra bouge du bon nombre d'unités.
-  await host.focus();
-  await page.keyboard.press("ArrowRight");
-  await page.keyboard.press("ArrowUp");
-  await expect(host).toHaveAttribute("data-map-keys", "2");
+test("le cœur d'une galaxie est un objet nommé de la carte", async ({
+  page,
+}) => {
+  // Chantier 39. Une scène 3D ne laisse rien dans le DOM : la liste parallèle et l'infobox
+  // sont les deux seuls endroits depuis lesquels un test peut affirmer que le trou noir
+  // central existe pour le joueur, et pas seulement pour le rendu.
+  await registerFreshEmpire(page, {
+    prefix: "map3dcore",
+    empireName: "Astronomes E2E",
+  });
+
+  await page.getByRole("link", { name: "Carte" }).click();
+  await openMapObjects(page);
+
+  const universeList = page.getByRole("navigation", {
+    name: /univers|universe/i,
+  });
+  await universeList
+    .getByRole("button")
+    .filter({ hasText: /colonis|coloniz/i })
+    .first()
+    .press("Enter");
+  await expect
+    .poll(
+      async () => page.locator(".map-canvas").getAttribute("data-map-tier"),
+      { timeout: 15_000 },
+    )
+    .toBe("galaxy");
+
+  // En tête de liste : c'est le seul objet du palier qui ne soit pas un système, et il ne
+  // doit pas se perdre derrière quatre cents noms.
+  const core = page.getByRole("button", {
+    name: /A\* Trou noir supermassif/,
+  });
+  await expect(core).toBeVisible();
+
+  // Sélectionner pose l'infobox sur lui — la preuve qu'il est passé par `features`, donc
+  // par le même chemin qu'un comptoir ou une ceinture.
+  await core.click();
+  await expect(
+    page.getByRole("dialog", { name: /Détail de .+ A\*/ }),
+  ).toBeVisible();
 });

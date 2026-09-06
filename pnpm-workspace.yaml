@@ -15,3 +15,7 @@ catalog:
   "@types/three": ^0.171.0
   "@react-three/fiber": ^9.0.0
   "@react-three/drei": ^10.0.0
+  # Gestes souris/pavé tactile de la carte (chantier 38). Normalise l'amplitude de la
+  # molette entre périphériques et porte le `passive: false` que la carte exige : c'est la
+  # seule couche du pilotage caméra qu'aucun test unitaire n'atteint.
+  "@use-gesture/react": ^10.3.1

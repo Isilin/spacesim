@@ -12,7 +12,6 @@ import {
 } from "@spacesim/shared";
 import { eq } from "drizzle-orm";
 import { db, schema, withTransaction } from "../db/index.js";
-import type { WriteSet } from "./persistence/write-set.js";
 
 /**
  * Persistance de l'univers matérialisé (chantier 18). Ces fonctions sont le SEUL
@@ -36,6 +35,32 @@ export function withParentIndexes(universe: Universe): Universe {
         : { ...g, parentIndex: computeGalaxyParentIndex(universe, i) },
     ),
   };
+}
+
+/**
+ * Lignes par requête d'insertion (chantier 37).
+ *
+ * Une galaxie s'insérait en une requête par table. À 14 systèmes, cela faisait quelques
+ * centaines de lignes ; à 520, plus de trois mille corps, et le protocole Postgres n'encode
+ * qu'un nombre de paramètres sur seize bits — la requête ne remonte pas une erreur lisible
+ * mais un `RangeError: Invalid array length` depuis le parseur du protocole.
+ *
+ * Cinq cents lignes tiennent très en deçà de la limite pour la table la plus large
+ * (`universe_bodies`, quatorze colonnes) sans multiplier les allers-retours. Le lot reste
+ * dans la MÊME transaction : une galaxie s'écrit toujours en entier ou pas du tout.
+ */
+const INSERT_CHUNK = 500;
+
+/** Insère `rows` par lots, dans la transaction courante. */
+// `any` assumé : table et transaction dynamiques, comme dans `persister.ts`.
+async function insertChunked(
+  tx: any,
+  table: unknown,
+  rows: readonly unknown[],
+): Promise<void> {
+  for (let i = 0; i < rows.length; i += INSERT_CHUNK) {
+    await tx.insert(table).values(rows.slice(i, i + INSERT_CHUNK));
+  }
 }
 
 /** Lignes à écrire pour une galaxie (partagées entre les deux chemins d'écriture ci-dessous). */
@@ -127,10 +152,11 @@ function galaxyRows(galaxy: Galaxy, gameId: string, now: number) {
  * réécrite). Les `Galaxy` passées doivent porter `parentIndex` (voir
  * `withParentIndexes`) — l'arbre inter-galactique se fige ici.
  *
- * Chemin BOOT SEULEMENT (`GameEngine.load()`/`bootstrapNewUniverse()`) : appelé
- * avant que `GameRuntime`/`WriteSet` n'existent, donc écriture DIRECTE — voir
- * `stageGalaxies` pour le chemin tick (`growUniverse`), qui lui passe par le
- * `WriteSet` pour rester synchrone.
+ * SEUL chemin d'écriture des galaxies depuis le chantier 37.15, boot comme extension en
+ * cours de partie. Il existait un jumeau, `stageGalaxies`, qui passait par le `WriteSet`
+ * pour rester synchrone dans le tick : le `Persister` écrivant ligne à ligne, une
+ * extension de frontière y coûtait 21,5 s de serveur bloqué. `growUniverse` lance
+ * désormais cette transaction sans l'attendre et la publie comme barrière de flush.
  */
 export async function appendGalaxies(
   gameId: string,
@@ -149,54 +175,17 @@ export async function appendGalaxies(
 
       const rows = galaxyRows(galaxy, gameId, now);
       await tx.insert(schema.universeGalaxies).values(rows.galaxy);
-      await tx.insert(schema.universeSystems).values(rows.systems);
-      if (rows.bodies.length > 0)
-        await tx.insert(schema.universeBodies).values(rows.bodies);
-      if (rows.belts.length > 0)
-        await tx.insert(schema.universeBelts).values(rows.belts);
-      if (rows.comptoirs.length > 0)
-        await tx.insert(schema.universeTradingPosts).values(rows.comptoirs);
-      if (rows.links.length > 0)
-        await tx.insert(schema.universeLinks).values(rows.links);
+      await insertChunked(tx, schema.universeSystems, rows.systems);
+      await insertChunked(tx, schema.universeBodies, rows.bodies);
+      await insertChunked(tx, schema.universeBelts, rows.belts);
+      await insertChunked(tx, schema.universeTradingPosts, rows.comptoirs);
+      await insertChunked(tx, schema.universeLinks, rows.links);
     }
     await tx
       .update(schema.games)
       .set({ galaxyCount })
       .where(eq(schema.games.id, gameId));
   });
-}
-
-/**
- * Équivalent tick-path de `appendGalaxies` : stage les galaxies neuves dans le
- * `WriteSet` au lieu d'une transaction directe — `growUniverse()` (appelé depuis
- * `TickRunner.run()`, synchrone) ne peut pas `await` une requête Postgres. Ne touche
- * PAS `games.galaxyCount` : `TickRunner.run()` le persiste déjà à chaque lot via
- * `GameRepository.saveTick`, qui s'exécute après `ensureFrontier()` dans le même tick.
- * Pas de vérification d'existence : le seul appelant (`growUniverse`) ne passe jamais
- * que des galaxies au-delà de ce que la RAM (chargée depuis la DB au boot) connaît déjà
- * — un doublon serait de toute façon un upsert inoffensif (contenu déterministe par seed).
- */
-export function stageGalaxies(
-  writeSet: WriteSet,
-  gameId: string,
-  galaxies: readonly Galaxy[],
-): void {
-  const now = Date.now();
-  for (const galaxy of galaxies) {
-    const rows = galaxyRows(galaxy, gameId, now);
-    writeSet.upsert("universeGalaxies", rows.galaxy.id, rows.galaxy);
-    for (const system of rows.systems)
-      writeSet.upsert("universeSystems", system.id, system);
-    for (const body of rows.bodies)
-      writeSet.upsert("universeBodies", body.id, body);
-    for (const belt of rows.belts)
-      writeSet.upsert("universeBelts", belt.id, belt);
-    for (const comptoir of rows.comptoirs)
-      writeSet.upsert("universeTradingPosts", comptoir.id, comptoir);
-    for (const link of rows.links) {
-      writeSet.upsert("universeLinks", [link.aSystemId, link.bSystemId], link);
-    }
-  }
 }
 
 /** Nombre de galaxies matérialisées pour cet univers. */
