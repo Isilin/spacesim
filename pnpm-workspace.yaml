@@ -6,12 +6,12 @@ catalog:
   react: ^19.0.0
   react-dom: ^19.0.0
   "@types/react": ^19.0.0
-  "@types/react-dom": ^19.0.0
+  "@types/react-dom": ^19.2.5
   typescript: ^7.0.0
-  zod: ^4.0.0
+  zod: ^4.5.4
   # Rendu 3D de la carte (chantier 31.12). Catalogués ensemble : three, son binding
   # React et drei doivent monter de version de concert, un décalage casse le rendu.
-  three: ^0.171.0
+  three: ^0.185.1
   "@types/three": ^0.171.0
   "@react-three/fiber": ^9.0.0
   "@react-three/drei": ^10.0.0

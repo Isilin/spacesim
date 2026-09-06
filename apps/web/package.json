@@ -19,17 +19,17 @@
     "@use-gesture/react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-i18next": "^17.0.11",
+    "react-i18next": "^17.0.13",
     "react-router-dom": "^6.28.0",
     "three": "catalog:",
-    "zustand": "^5.0.0"
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
-    "@playwright/test": "1.49.0",
+    "@playwright/test": "1.62.1",
     "@types/three": "catalog:",
     "@testing-library/jest-dom": "^6.6.0",
-    "@testing-library/react": "^16.0.0",
-    "@testing-library/user-event": "^14.5.0",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "^4.3.0",
