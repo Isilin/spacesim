@@ -4,6 +4,10 @@ export {
   type PlanetClass,
   PLANET_VARIANTS,
   type PlanetVariant,
+  MOON_CLASSES,
+  type MoonClass,
+  MOON_VARIANTS,
+  type MoonVariant,
   type Deposits,
   type Planet,
   type AsteroidBelt,
@@ -297,6 +301,7 @@ export {
   PLANET_CLASS_DEFS,
   planetClass,
   planetClassesForZone,
+  type BodyStructureDef,
   type PlanetClassDef,
   type StaticPlanetClassDef,
 } from "./content/astro/planet-classes.js";
@@ -304,9 +309,29 @@ export {
   PLANET_VARIANT_DEFS,
   planetVariant,
   variantsFor,
+  type BodyEnvironmentDef,
   type PlanetVariantDef,
   type StaticPlanetVariantDef,
 } from "./content/astro/planet-variants.js";
+export {
+  MOON_CLASS_DEFS,
+  moonClass,
+  moonClassesForParent,
+  type MoonClassDef,
+  type StaticMoonClassDef,
+} from "./content/astro/moon-classes.js";
+export {
+  MOON_VARIANT_DEFS,
+  moonVariant,
+  moonVariantsFor,
+  type MoonVariantDef,
+  type StaticMoonVariantDef,
+} from "./content/astro/moon-variants.js";
+export {
+  bodyEnvironment,
+  bodyStructure,
+  type BodyRef,
+} from "./content/astro/body-defs.js";
 export {
   STAR_CLASS_IDS,
   STAR_CLASSES,

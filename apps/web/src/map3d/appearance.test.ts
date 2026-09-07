@@ -20,15 +20,20 @@ describe("repli générique du registre d'apparence", () => {
 
   it("rend un corps neutre pour une classe ou une variante inconnue", () => {
     // Deux axes depuis le chantier 45.3, donc deux replis à vérifier : une classe inconnue
-    // ne doit pas coûter la couleur, ni une variante inconnue le relief.
+    // ne doit pas coûter la couleur, ni une variante inconnue le relief. Et deux familles
+    // depuis la taxonomie de lunes : `kind` choisit la table, un id de lune posé sur une
+    // planète doit retomber sur le repli plutôt que de lire la mauvaise.
     for (const value of unknown) {
-      for (const look of [
-        bodyAppearance(value, "temperate"),
-        bodyAppearance("rocky", value),
-        bodyAppearance(value, value),
-      ]) {
-        expect(look.color).toMatch(/^#/);
-        expect(look.relief).toBeGreaterThan(0);
+      for (const kind of ["planet", "moon"] as const) {
+        for (const look of [
+          bodyAppearance({ kind, classId: value, variantId: "temperate" }),
+          bodyAppearance({ kind, classId: "rocky", variantId: value }),
+          bodyAppearance({ kind, classId: value, variantId: value }),
+          bodyAppearance({ kind, classId: "regular", variantId: "tidal" }),
+        ]) {
+          expect(look.color).toMatch(/^#/);
+          expect(look.relief).toBeGreaterThan(0);
+        }
       }
     }
   });

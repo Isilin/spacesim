@@ -32,6 +32,20 @@ export const contentFr = {
     irradiated: "Irradiée",
     chthonian: "Chthonienne",
   },
+  moonClass: {
+    regular: "Régulière",
+    irregular: "Capturée",
+    icy: "De glace",
+    major: "Majeure",
+  },
+  moonVariant: {
+    tidal: "Chauffée par marées",
+    subglacial: "À océan sous-glaciaire",
+    thick_air: "À atmosphère dense",
+    airless: "Nue",
+    belted: "Sous ceinture de radiations",
+    shepherd: "Bergère d'anneau",
+  },
   factionMood: {
     neutral: "Calme",
     boom: "Essor — achats bonifiés",
@@ -650,6 +664,20 @@ export const contentEn: typeof contentFr = {
     barren: "Barren",
     irradiated: "Irradiated",
     chthonian: "Chthonian",
+  },
+  moonClass: {
+    regular: "Regular",
+    irregular: "Captured",
+    icy: "Icy",
+    major: "Major",
+  },
+  moonVariant: {
+    tidal: "Tidally heated",
+    subglacial: "Subglacial ocean",
+    thick_air: "Thick atmosphere",
+    airless: "Airless",
+    belted: "Radiation-belted",
+    shepherd: "Ring shepherd",
   },
   factionMood: {
     neutral: "Calm",

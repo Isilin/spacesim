@@ -1,4 +1,5 @@
 import type {
+  BodyRef,
   BuildingId,
   ChassisId,
   CombatDirective,
@@ -84,13 +85,20 @@ export function worldEventLabel(kind: WorldEventKind): {
  * Deux fonctions et non une chaîne composée : la fiche veut « Rocheuse tempérée », la liste
  * du système veut « Tempérée » seul, et l'infobox veut la classe. Composer ici aurait forcé
  * les trois à découper.
+ *
+ * Le corps entier plutôt que ses identifiants : une lune se nomme dans ses propres
+ * catalogues, et « regular » n'a pas de traduction du côté planétaire.
  */
-export function planetClassLabel(classId: string): string {
-  return t(`planetClass.${classId}`);
+export function bodyClassLabel(body: BodyRef): string {
+  return t(
+    `${body.kind === "moon" ? "moonClass" : "planetClass"}.${body.classId}`,
+  );
 }
 
-export function planetVariantLabel(variantId: string): string {
-  return t(`planetVariant.${variantId}`);
+export function bodyVariantLabel(body: BodyRef): string {
+  return t(
+    `${body.kind === "moon" ? "moonVariant" : "planetVariant"}.${body.variantId}`,
+  );
 }
 
 export function resourceLabel(resource: ResourceId): string {

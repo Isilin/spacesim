@@ -1,5 +1,5 @@
 import {
-  planetClass,
+  bodyStructure,
   STARTER_CLUSTER_RADIUS,
   computeEffects,
   emptyOrbital,
@@ -269,7 +269,7 @@ export class BootstrapService {
       .flatMap((s) => s.planets)
       .filter(
         (p) =>
-          planetClass(p.classId).colonizable &&
+          bodyStructure(p).colonizable &&
           !occupiedPlanets.has(p.id) &&
           p.slots >= buildable,
       )

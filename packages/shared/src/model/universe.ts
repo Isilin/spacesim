@@ -62,6 +62,38 @@ export const PLANET_VARIANTS = [
 
 export type PlanetVariant = (typeof PLANET_VARIANTS)[number];
 
+/**
+ * Une lune n'est pas une petite planète (chantier 45.3).
+ *
+ * Elle porte les deux mêmes axes, mais tirés de TABLES DISTINCTES : ce qui décide de ce
+ * qu'est une lune n'est pas sa zone thermique, c'est sa planète. Io est volcanique à cinq
+ * unités astronomiques du Soleil, là où toute planète serait gelée — parce que Jupiter la
+ * pétrit. Europe garde un océan liquide sous sa glace pour la même raison, et Titan tient
+ * une atmosphère plus épaisse que la nôtre avec quatre fois moins de vitesse de libération,
+ * parce qu'il fait assez froid pour que rien ne s'échappe.
+ *
+ * Réutiliser les axes planétaires aurait donc produit des lunes gelées et stériles partout,
+ * en perdant exactement les objets qui rendent un cortège intéressant à explorer.
+ *
+ * Les EFFETS, eux, gardent la forme des définitions planétaires : la chaîne physique est la
+ * même pour tout ce qui a une masse et une orbite. Ce sont les entrées de génération qui
+ * diffèrent — la moitié que l'ADR 0021 gèle et que le CMS ne touchera jamais.
+ */
+export const MOON_CLASSES = ["regular", "irregular", "icy", "major"] as const;
+
+export type MoonClass = (typeof MOON_CLASSES)[number];
+
+export const MOON_VARIANTS = [
+  "tidal",
+  "subglacial",
+  "thick_air",
+  "airless",
+  "belted",
+  "shepherd",
+] as const;
+
+export type MoonVariant = (typeof MOON_VARIANTS)[number];
+
 /** Modificateurs de rendement par ressource extraite sur place (1 = base). */
 export type Deposits = Partial<Record<ResourceId, number>>;
 
@@ -73,9 +105,13 @@ export interface Planet {
   kind: "planet" | "moon";
   /** Pour les lunes : la planète orbitée. */
   parentPlanetId?: string;
-  /** Axe structurel : de quoi le corps est fait (`content/astro/planet-classes.ts`). */
+  /**
+   * Axe structurel : de quoi le corps est fait. Lu dans `planet-classes.ts` pour une planète,
+   * dans `moon-classes.ts` pour une lune — c'est `kind` qui dit dans laquelle, et
+   * `bodyStructure()` qui tranche une fois pour tous les appelants.
+   */
   classId: string;
-  /** Axe environnemental : ce qu'il fait de sa position (`content/astro/planet-variants.ts`). */
+  /** Axe environnemental : ce qu'il fait de sa position. Même dédoublement que `classId`. */
   variantId: string;
   /**
    * Étoile hôte (chantier 45.2) — le corps central autour duquel ce corps tourne.

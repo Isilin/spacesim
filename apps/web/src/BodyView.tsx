@@ -20,8 +20,8 @@ import { useTranslation } from "react-i18next";
 import { BodyActions } from "./BodyActions.js";
 import {
   buildingLabel,
-  planetClassLabel,
-  planetVariantLabel,
+  bodyClassLabel,
+  bodyVariantLabel,
   resourceLabel,
 } from "./labels.js";
 import { useGameStore } from "./state/game-store.js";
@@ -78,9 +78,7 @@ export function BodyView({ system, body, effects, now }: Props) {
           <h2>{body.name}</h2>
           <p className="muted">
             {body.kind === "moon" ? t("bodyView.moon") : t("bodyView.planet")}{" "}
-            {`${planetClassLabel(body.classId)} ${planetVariantLabel(
-              body.variantId,
-            )}`.toLowerCase()}
+            {`${bodyClassLabel(body)} ${bodyVariantLabel(body)}`.toLowerCase()}
             {parent
               ? t("bodyView.orbitingParent", { parent: parent.name })
               : t("bodyView.orbitingSystem", { system: system.name })}

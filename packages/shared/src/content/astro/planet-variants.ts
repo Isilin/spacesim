@@ -20,13 +20,16 @@ import type {
  * ne pouvait pas exprimer, et il vit dans `physics.ts`.
  */
 
-export interface PlanetVariantDef {
+/**
+ * Ce qu'un ENVIRONNEMENT porte, planète ou lune — le pendant de `BodyStructureDef`.
+ *
+ * Même partage que pour les structures : la chaîne physique lit ces champs sans savoir de
+ * quelle famille ils viennent, et seules les entrées de génération distinguent une variante
+ * planétaire (tirée par zone thermique) d'une variante lunaire (tirée par la planète parente).
+ */
+export interface BodyEnvironmentDef {
   id: string;
 
-  // ── Entrées de génération — jamais éditables ──
-
-  /** Affinité par zone thermique. Croisée avec les variantes que la classe admet. */
-  zoneWeights: Record<OrbitZone, number>;
   /** Tendance des gisements : [ressource, probabilité, min, max]. */
   depositTendencies: readonly (readonly [
     "ore" | "energy" | "food",
@@ -59,6 +62,13 @@ export interface PlanetVariantDef {
   /** Teinte de surface. C'est la variante qui donne sa couleur à un monde, pas sa taille. */
   color: string;
   accent: string;
+}
+
+export interface PlanetVariantDef extends BodyEnvironmentDef {
+  // ── Entrées de génération — jamais éditables ──
+
+  /** Affinité par zone thermique. Croisée avec les variantes que la classe admet. */
+  zoneWeights: Record<OrbitZone, number>;
 }
 
 export interface StaticPlanetVariantDef extends PlanetVariantDef {

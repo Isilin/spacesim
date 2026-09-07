@@ -103,12 +103,7 @@ function OrbitingMoon({
           focusable ni clavier — le chemin accessible est la liste DOM parallèle
           (chantier 31.16). */}
       <group onClick={onSelect} onDoubleClick={onOpen}>
-        <ProceduralBody
-          id={moon.id}
-          classId={moon.classId}
-          variantId={moon.variantId}
-          radius={bodyRadiusOf(moon)}
-        />
+        <ProceduralBody id={moon.id} body={moon} radius={bodyRadiusOf(moon)} />
       </group>
     </group>
   );
@@ -176,12 +171,7 @@ export function BodyLayer({
             grillage de sélection — dimensionné pour le repérer de loin dans un système —
             le recouvrait entièrement. Les lunes gardent le leur, elles restent à choisir
             parmi d'autres. */}
-        <ProceduralBody
-          id={body.id}
-          classId={body.classId}
-          variantId={body.variantId}
-          radius={radius}
-        />
+        <ProceduralBody id={body.id} body={body} radius={radius} />
         {/* Les mêmes anneaux qu'au palier système (chantier 35.12) : la géante les portait
             de loin et les perdait de près, au moment exact où l'on s'approchait pour les
             regarder. */}

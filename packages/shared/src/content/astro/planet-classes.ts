@@ -19,20 +19,20 @@ import type { OrbitZone, PlanetClass } from "../../model/universe.js";
  * ce qu'aucun calcul ne peut déduire.
  */
 
-export interface PlanetClassDef {
+/**
+ * Ce qu'une STRUCTURE porte, planète ou lune.
+ *
+ * La moitié « effets et habillage » de l'ADR 0021, et elle ne dépend pas de la famille : la
+ * chaîne physique traite de la même façon tout ce qui a une masse et une orbite. Seules les
+ * entrées de génération diffèrent — une planète se tire par zone thermique, une lune par sa
+ * planète — et elles vivent dans les interfaces qui étendent celle-ci.
+ */
+export interface BodyStructureDef {
   id: string;
 
-  // ── Entrées de génération — jamais éditables ──
-
-  /** Affinité par zone thermique. Un poids nul interdit la classe dans cette zone. */
-  zoneWeights: Record<OrbitZone, number>;
-  /** Idem comme LUNE. Une lune n'est jamais une géante : elle serait la planète. */
-  moonZoneWeights: Record<OrbitZone, number>;
   /** Variantes que cette structure admet, pondérées. La matrice vit ici, en un seul endroit. */
   variants: readonly (readonly [string, number])[];
   slotRange: readonly [number, number];
-  /** Lunes possibles. Une géante en garde un cortège, une naine presque jamais. */
-  moonRange: readonly [number, number];
 
   // ── Physique — lue par la chaîne ──
 
@@ -66,6 +66,15 @@ export interface PlanetClassDef {
   roughness: number;
 }
 
+export interface PlanetClassDef extends BodyStructureDef {
+  // ── Entrées de génération — jamais éditables ──
+
+  /** Affinité par zone thermique. Un poids nul interdit la classe dans cette zone. */
+  zoneWeights: Record<OrbitZone, number>;
+  /** Lunes possibles. Une géante en garde un cortège, une naine presque jamais. */
+  moonRange: readonly [number, number];
+}
+
 export interface StaticPlanetClassDef extends PlanetClassDef {
   id: PlanetClass;
 }
@@ -75,7 +84,6 @@ export const PLANET_CLASS_DEFS: Record<PlanetClass, StaticPlanetClassDef> = {
   rocky: {
     id: "rocky",
     zoneWeights: { inner: 5, habitable: 6, outer: 3, frozen: 2 },
-    moonZoneWeights: { inner: 2, habitable: 3, outer: 2, frozen: 1 },
     variants: [
       ["temperate", 5],
       ["oceanic", 4],
@@ -105,7 +113,6 @@ export const PLANET_CLASS_DEFS: Record<PlanetClass, StaticPlanetClassDef> = {
   super_earth: {
     id: "super_earth",
     zoneWeights: { inner: 2, habitable: 3, outer: 2, frozen: 1 },
-    moonZoneWeights: { inner: 0, habitable: 0, outer: 0, frozen: 0 },
     variants: [
       ["temperate", 4],
       ["oceanic", 4],
@@ -134,7 +141,6 @@ export const PLANET_CLASS_DEFS: Record<PlanetClass, StaticPlanetClassDef> = {
   dwarf: {
     id: "dwarf",
     zoneWeights: { inner: 2, habitable: 1, outer: 3, frozen: 4 },
-    moonZoneWeights: { inner: 4, habitable: 3, outer: 5, frozen: 6 },
     variants: [
       ["arid", 2],
       ["volcanic", 2],
@@ -159,7 +165,6 @@ export const PLANET_CLASS_DEFS: Record<PlanetClass, StaticPlanetClassDef> = {
   ice_giant: {
     id: "ice_giant",
     zoneWeights: { inner: 0, habitable: 0, outer: 3, frozen: 4 },
-    moonZoneWeights: { inner: 0, habitable: 0, outer: 0, frozen: 0 },
     variants: [
       ["frozen", 6],
       ["toxic", 2],
@@ -182,7 +187,6 @@ export const PLANET_CLASS_DEFS: Record<PlanetClass, StaticPlanetClassDef> = {
   gas_giant: {
     id: "gas_giant",
     zoneWeights: { inner: 1, habitable: 1, outer: 4, frozen: 5 },
-    moonZoneWeights: { inner: 0, habitable: 0, outer: 0, frozen: 0 },
     variants: [
       ["frozen", 5],
       ["toxic", 3],
@@ -218,15 +222,8 @@ export function planetClass(id: string): PlanetClassDef {
  */
 export function planetClassesForZone(
   zone: OrbitZone,
-  asMoon = false,
 ): readonly (readonly [PlanetClass, number])[] {
   return Object.values(PLANET_CLASS_DEFS)
-    .map(
-      (def) =>
-        [
-          def.id,
-          asMoon ? def.moonZoneWeights[zone] : def.zoneWeights[zone],
-        ] as const,
-    )
+    .map((def) => [def.id, def.zoneWeights[zone]] as const)
     .filter(([, weight]) => weight > 0);
 }

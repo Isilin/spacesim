@@ -16,7 +16,7 @@ import { Button, Panel } from "@spacesim/ui";
 import { useTranslation } from "react-i18next";
 import { BodyActions, COLONY_SHIP_COST_TEXT } from "./BodyActions.js";
 import { formatDuration } from "./format.js";
-import { planetVariantLabel, resourceLabel } from "./labels.js";
+import { bodyVariantLabel, resourceLabel } from "./labels.js";
 import { StationMarketPanel } from "./StationMarketPanel.js";
 import { TradingPostPanel } from "./TradingPostPanel.js";
 import { useGameStore } from "./state/game-store.js";
@@ -140,7 +140,7 @@ export function SystemPanel({
           </strong>
           <span className="muted">
             {p.kind === "moon" ? t("systemPanel.moon") : ""}
-            {planetVariantLabel(p.variantId)}
+            {bodyVariantLabel(p)}
           </span>
         </div>
         <div className="planet-stats">

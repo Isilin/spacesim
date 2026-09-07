@@ -23,7 +23,17 @@ import {
   planetClass,
   planetClassesForZone,
 } from "./content/astro/planet-classes.js";
-import { planetVariant, variantsFor } from "./content/astro/planet-variants.js";
+import { variantsFor } from "./content/astro/planet-variants.js";
+import {
+  type BodyRef,
+  bodyEnvironment,
+  bodyStructure,
+} from "./content/astro/body-defs.js";
+import {
+  moonClass,
+  moonClassesForParent,
+} from "./content/astro/moon-classes.js";
+import { moonVariantsFor } from "./content/astro/moon-variants.js";
 import {
   STAR_COMPANION_WEIGHTS,
   STAR_PRIMARY_WEIGHTS,
@@ -74,7 +84,7 @@ import type {
  * bumper cette version vont ensemble, dans le même commit. Les galaxies déjà
  * matérialisées en DB gardent la version qui les a produites et ne changent jamais.
  */
-export const GENERATOR_VERSION = 9;
+export const GENERATOR_VERSION = 10;
 
 /** Part des systèmes accueillant un comptoir commercial PNJ. */
 const TRADING_POST_PROBABILITY = 0.35;
@@ -307,9 +317,9 @@ function generateStars(
 }
 
 /** Les gisements suivent l'ENVIRONNEMENT : c'est lui qui dit ce que la surface expose. */
-function generateDeposits(rng: Rng, variantId: string, bonus = 1): Deposits {
+function generateDeposits(rng: Rng, ref: BodyRef, bonus = 1): Deposits {
   const deposits: Deposits = {};
-  for (const [resource, prob, min, max] of planetVariant(variantId)
+  for (const [resource, prob, min, max] of bodyEnvironment(ref)
     .depositTendencies) {
     if (rng() < prob) {
       deposits[resource] =
@@ -320,23 +330,35 @@ function generateDeposits(rng: Rng, variantId: string, bonus = 1): Deposits {
 }
 
 /**
- * Tire une classe puis une variante pour une zone donnée.
+ * Tire une classe puis une variante de PLANÈTE pour une zone donnée.
  *
  * L'ordre importe : la structure d'abord — c'est elle qui décide de ce que le corps peut
  * retenir — puis l'environnement parmi ceux que cette structure admet, pondéré par la zone.
  * L'inverse aurait permis une géante gazeuse océanique.
  */
-function pickBodyType(
-  rng: Rng,
-  zone: OrbitZone,
-  asMoon: boolean,
-): { classId: string; variantId: string } {
-  const classes = planetClassesForZone(zone, asMoon);
+function pickPlanetType(rng: Rng, zone: OrbitZone): BodyRef {
+  const classes = planetClassesForZone(zone);
   const classId = classes.length > 0 ? pickWeighted(rng, classes) : "rocky";
   const variants = variantsFor(planetClass(classId).variants, zone);
   const variantId =
     variants.length > 0 ? pickWeighted(rng, variants) : "barren";
-  return { classId, variantId };
+  return { kind: "planet", classId, variantId };
+}
+
+/**
+ * Même tirage pour une LUNE, conditionné par sa planète et non par sa zone.
+ *
+ * C'est toute la différence entre les deux familles : une lune de géante est volcanique ou
+ * porte un océan sous sa glace parce que sa planète la pétrit, quelle que soit la distance à
+ * l'étoile. Tirer une lune dans les tables planétaires rendait tout cortège externe gelé.
+ */
+function pickMoonType(rng: Rng, parentClassId: string): BodyRef {
+  const classes = moonClassesForParent(parentClassId);
+  const classId = classes.length > 0 ? pickWeighted(rng, classes) : "regular";
+  const variants = moonVariantsFor(moonClass(classId).variants, parentClassId);
+  const variantId =
+    variants.length > 0 ? pickWeighted(rng, variants) : "airless";
+  return { kind: "moon", classId, variantId };
 }
 
 /**
@@ -353,16 +375,16 @@ function pickBodyType(
  */
 function bodyHabitability(
   rng: Rng,
-  classId: string,
-  variantId: string,
+  ref: BodyRef,
   stars: readonly CentralBody[],
   orbitRadius: number,
   hostStarId?: string,
 ): { habitability: number; radiusEarth: number; density: number } {
   // La CLASSE donne la structure, la VARIANTE l'environnement : c'est le croisement des deux
-  // qui décide, et c'est ce que l'énumération à plat ne pouvait pas exprimer.
-  const cls = planetClass(classId);
-  const env = planetVariant(variantId);
+  // qui décide, et c'est ce que l'énumération à plat ne pouvait pas exprimer. Planète ou lune,
+  // la chaîne est la même — seules les tables où se lisent les deux définitions changent.
+  const cls = bodyStructure(ref);
+  const env = bodyEnvironment(ref);
   const radiusEarth = range(rng, cls.radiusRange);
   const density = range(rng, cls.densityRange);
   if (!cls.colonizable) return { habitability: 0, radiusEarth, density };
@@ -413,16 +435,15 @@ function generateMoons(
   const count = randInt(rng, minMoons, maxMoons);
   const moons: Planet[] = [];
   const letters = ["a", "b", "c", "d", "e", "f"];
-  // Une lune est à la distance de sa planète : c'est la zone de la PLANÈTE qui décide de
-  // ce qu'elle peut être, pas celle de son orbite propre autour d'elle.
-  const zone = zoneAt(stars, planet.orbitRadius);
 
   for (let i = 0; i < count; i++) {
-    const { classId, variantId } = pickBodyType(rng, zone, true);
+    // C'est la PLANÈTE qui décide de ce qu'une lune peut être, pas la zone thermique : une
+    // géante pétrit ses lunes par effet de marée et les baigne dans sa ceinture de
+    // radiations, phénomènes qu'aucune orbite stellaire ne reproduit.
+    const ref = pickMoonType(rng, planet.classId);
     const body = bodyHabitability(
       rng,
-      classId,
-      variantId,
+      ref,
       stars,
       planet.orbitRadius,
       planet.hostStarId,
@@ -433,14 +454,16 @@ function generateMoons(
       name: `${planet.name} ${letters[i] ?? i + 1}`,
       kind: "moon",
       parentPlanetId: planet.id,
-      classId,
-      variantId,
+      classId: ref.classId,
+      variantId: ref.variantId,
       ...(planet.hostStarId ? { hostStarId: planet.hostStarId } : {}),
-      // Une lune plafonne sous une planète : peu de gravité, peu d'atmosphère, et le jeu
-      // veut que le monde principal d'un système reste le monde principal.
-      habitability: Math.min(40, body.habitability),
-      slots: randInt(rng, 2, 5),
-      deposits: generateDeposits(rng, variantId, depositBonus),
+      // Plus de plafond arbitraire : les classes de lunes sont assez petites pour que la
+      // physique s'en charge seule. Mesuré sur trois galaxies, la meilleure lune de
+      // l'univers sort à 17 — un Titan, à 0,14 g et −179 °C, ne se colonise que sous dôme.
+      // Le `Math.min(40, …)` qui vivait ici ne se déclenchait plus jamais.
+      habitability: body.habitability,
+      slots: randInt(rng, ...moonClass(ref.classId).slotRange),
+      deposits: generateDeposits(rng, ref, depositBonus),
       orbitRadius: 16 + i * 10,
       orbitAngle: rng() * Math.PI * 2,
       inclination: (rng() - 0.5) * 2 * MAX_INCLINATION,
@@ -496,27 +519,20 @@ function generateBodies(
         : stars[0]?.id;
     const orbitRadius = 70 + (i - 1) * 55 + randInt(rng, -8, 8);
     const zone = zoneAt(lightingFor(stars, host, orbitRadius), orbitRadius);
-    const { classId, variantId } = pickBodyType(rng, zone, false);
-    const body = bodyHabitability(
-      rng,
-      classId,
-      variantId,
-      stars,
-      orbitRadius,
-      host,
-    );
-    const cls = planetClass(classId);
+    const ref = pickPlanetType(rng, zone);
+    const body = bodyHabitability(rng, ref, stars, orbitRadius, host);
+    const cls = planetClass(ref.classId);
     const planet: Planet = {
       id: `${system.id}-p${i}`,
       systemId: system.id,
       name: `${system.name} ${romanNumeral(i)}`,
       kind: "planet",
-      classId,
-      variantId,
+      classId: ref.classId,
+      variantId: ref.variantId,
       ...(host ? { hostStarId: host } : {}),
       habitability: body.habitability,
       slots: randInt(rng, cls.slotRange[0], cls.slotRange[1]),
-      deposits: generateDeposits(rng, variantId, depositBonus),
+      deposits: generateDeposits(rng, ref, depositBonus),
       orbitRadius,
       orbitAngle: rng() * Math.PI * 2,
       inclination: (rng() - 0.5) * 2 * MAX_INCLINATION,

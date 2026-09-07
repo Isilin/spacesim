@@ -1,9 +1,10 @@
 import {
   blackHoleType,
-  planetClass,
-  planetVariant,
+  bodyEnvironment,
+  bodyStructure,
   starClass,
   whiteHoleType,
+  type BodyRef,
   type CentralBody,
   type ResourceId,
 } from "@spacesim/shared";
@@ -37,13 +38,13 @@ export interface BodyAppearance {
  * rouge, pas sa taille. La **classe** donne le relief et la rugosité : une géante est lisse,
  * une naine criblée de cratères. La table qui vivait ici confondait les deux, faute d'axes
  * séparés dans le modèle.
+ *
+ * Le corps passe en entier plutôt que ses deux identifiants : c'est `kind` qui décide si on
+ * lit les catalogues de planètes ou ceux de lunes, et l'appelant n'a pas à le savoir.
  */
-export function bodyAppearance(
-  classId: string,
-  variantId: string,
-): BodyAppearance {
-  const cls = planetClass(classId);
-  const env = planetVariant(variantId);
+export function bodyAppearance(body: BodyRef): BodyAppearance {
+  const cls = bodyStructure(body);
+  const env = bodyEnvironment(body);
   return {
     color: env.color,
     accent: env.accent,

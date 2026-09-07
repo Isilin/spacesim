@@ -1,5 +1,7 @@
-import { planetClass } from "../../content/astro/planet-classes.js";
-import { planetVariant } from "../../content/astro/planet-variants.js";
+import {
+  bodyEnvironment,
+  bodyStructure,
+} from "../../content/astro/body-defs.js";
 import type { Atmosphere, CentralBody, Planet } from "../../model/universe.js";
 import { createRng, type Rng } from "../../rng.js";
 import {
@@ -67,15 +69,6 @@ export interface BodyPhysicals {
 /** Rayon terrestre, en kilomètres — le pont entre les unités de la chaîne et la fiche. */
 const EARTH_RADIUS_KM = 6371;
 
-/**
- * Facteur d'échelle d'une lune : un satellite est un corps réduit.
- *
- * Appliqué au RAYON, donc répercuté sur la gravité et la vitesse de libération par la
- * chaîne elle-même — c'est ce qui fait qu'une lune retient bien moins qu'une planète de même
- * nature, sans qu'aucune table ne l'énonce.
- */
-const MOON_SCALE = 0.28;
-
 /** Seuils de rétention : ce qu'un corps garde de ce qu'il dégaze. */
 const RETENTION_NONE = 0.15;
 const RETENTION_TRACE = 0.4;
@@ -123,11 +116,16 @@ export function bodyPhysicals(
 ): BodyPhysicals {
   const rng = createRng(`body:${planet.id}`);
   const isMoon = planet.kind === "moon";
-  const cls = planetClass(planet.classId);
-  const env = planetVariant(planet.variantId);
+  // `bodyStructure` choisit la table selon `kind` : une lune se lit dans les catalogues de
+  // lunes, dont les rayons sont déjà des rayons de lune (0,02 à 0,46 rayon terrestre).
+  //
+  // Le facteur 0,28 qui vivait ici disparaît avec eux, et avec lui un désaccord silencieux :
+  // le générateur calculait l'habitabilité d'une lune sur le rayon PLEIN de sa classe
+  // planétaire quand cette fiche en affichait 28 %. Les deux lisent maintenant la même table.
+  const cls = bodyStructure(planet);
+  const env = bodyEnvironment(planet);
 
-  const scale = isMoon ? MOON_SCALE : 1;
-  const radiusEarth = range(rng, cls.radiusRange) * scale;
+  const radiusEarth = range(rng, cls.radiusRange);
   const density = range(rng, cls.densityRange);
   const gravityG = surfaceGravity(radiusEarth, density);
   const escapeKms = escapeVelocity(radiusEarth, density);

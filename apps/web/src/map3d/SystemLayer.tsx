@@ -3,7 +3,7 @@ import {
   bodyPositionAt,
   sitePosition,
   primaryOf,
-  planetClass,
+  bodyStructure,
   starsOf,
   orbitsBarycenter,
   centralBodyPositionAt,
@@ -68,8 +68,9 @@ export const STAR_CORONA = 26;
  * cette réduction : voir `bodyLabelExtent`.
  */
 export function bodyRadiusOf(planet: Planet): number {
-  if (planet.kind === "moon") return 1.8;
-  return planetClass(planet.classId).renderRadius;
+  // Le 1,8 uniforme des lunes disparaît au chantier 45.3 : elles ont leurs propres classes,
+  // et une capturée de deux pour cent de rayon terrestre ne se lit plus comme un Titan.
+  return bodyStructure(planet).renderRadius;
 }
 
 /**
@@ -81,8 +82,7 @@ export function bodyRadiusOf(planet: Planet): number {
  * lisibilité de la carte. Ces valeurs sont celles d'avant le chantier 37.14.
  */
 export function bodyLabelExtent(planet: Planet): number {
-  if (planet.kind === "moon") return 5;
-  return planetClass(planet.classId).labelExtent;
+  return bodyStructure(planet).labelExtent;
 }
 
 /**
@@ -169,12 +169,7 @@ function OrbitingBody({
           focusable ni clavier — le chemin accessible est la liste DOM parallèle
           (chantier 31.16). */}
       <group onClick={onSelect} onDoubleClick={onOpen}>
-        <ProceduralBody
-          id={body.id}
-          classId={body.classId}
-          variantId={body.variantId}
-          radius={bodyRadiusOf(body)}
-        />
+        <ProceduralBody id={body.id} body={body} radius={bodyRadiusOf(body)} />
         {hasRings(body) && (
           <PlanetRings body={body} radius={bodyRadiusOf(body)} />
         )}

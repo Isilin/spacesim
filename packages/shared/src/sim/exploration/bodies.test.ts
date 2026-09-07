@@ -152,9 +152,12 @@ describe("la température vient de l'étoile, plus d'une table par type", () => 
 });
 
 describe("l'atmosphère est retenue, plus tirée", () => {
-  it("une lune retient bien moins qu'une planète de même nature", () => {
+  it("une lune retient bien moins qu'une planète au même endroit", () => {
     // Le couplage qu'aucune table par type ne pouvait exprimer : c'est le rayon réduit
     // d'une lune qui abaisse sa vitesse de libération, donc sa rétention.
+    //
+    // Le facteur d'échelle qui produisait ce rayon a disparu au chantier 45.3 : les classes
+    // de lunes portent de vrais rayons de lune, et c'est ce que ce cas vérifie désormais.
     const planet = bodyPhysicals(
       body({ id: "p", classId: "rocky", variantId: "temperate" }),
       SUN,
@@ -162,8 +165,8 @@ describe("l'atmosphère est retenue, plus tirée", () => {
     const moon = bodyPhysicals(
       body({
         id: "p",
-        classId: "rocky",
-        variantId: "temperate",
+        classId: "regular",
+        variantId: "airless",
         kind: "moon",
         orbitRadius: 20,
       }),
@@ -180,8 +183,8 @@ describe("l'atmosphère est retenue, plus tirée", () => {
     const warm = bodyPhysicals(
       body({
         id: "m",
-        classId: "dwarf",
-        variantId: "frozen",
+        classId: "icy",
+        variantId: "subglacial",
         kind: "moon",
         orbitRadius: 20,
       }),
@@ -191,8 +194,8 @@ describe("l'atmosphère est retenue, plus tirée", () => {
     const cold = bodyPhysicals(
       body({
         id: "m",
-        classId: "dwarf",
-        variantId: "frozen",
+        classId: "icy",
+        variantId: "subglacial",
         kind: "moon",
         orbitRadius: 20,
       }),
