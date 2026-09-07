@@ -21,6 +21,12 @@
  * Seul l'identifiant part en base ; ces valeurs se relisent à chaque fois.
  */
 
+import {
+  type AstroOverrides,
+  NO_ASTRO_OVERRIDES,
+  patched,
+} from "./overrides.js";
+
 /** Où un trou noir peut apparaître. Un supermassif n'ancre pas un système. */
 export const BLACK_HOLE_PLACEMENTS = [
   /** Au centre du bulbe d'une galaxie. Habillage pur : aucune mécanique n'en dépend. */
@@ -242,6 +248,12 @@ export const BLACK_HOLE_TYPES: Record<BlackHoleTypeId, StaticBlackHoleTypeDef> =
  */
 const GENERIC_BLACK_HOLE: BlackHoleTypeDef = BLACK_HOLE_TYPES.stellar;
 
-export function blackHoleType(id: string): BlackHoleTypeDef {
-  return BLACK_HOLE_TYPES[id as BlackHoleTypeId] ?? GENERIC_BLACK_HOLE;
+export function blackHoleType(
+  id: string,
+  overrides: AstroOverrides = NO_ASTRO_OVERRIDES,
+): BlackHoleTypeDef {
+  return patched<BlackHoleTypeDef>(
+    BLACK_HOLE_TYPES[id as BlackHoleTypeId] ?? GENERIC_BLACK_HOLE,
+    overrides.blackHole?.[id],
+  );
 }

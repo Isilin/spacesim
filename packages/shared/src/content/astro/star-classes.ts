@@ -25,6 +25,12 @@
  * qu'un jour où l'on voudra rapprocher les deux, il faudra savoir de combien.
  */
 
+import {
+  type AstroOverrides,
+  NO_ASTRO_OVERRIDES,
+  patched,
+} from "./overrides.js";
+
 export const STAR_CLASS_IDS = [
   "red_dwarf",
   "orange_dwarf",
@@ -423,8 +429,14 @@ export const STAR_CLASSES: Record<StarClassId, StaticStarClassDef> = {
 /** Repli neutre — même règle que `blackHoleType` : un id inconnu rend une étoile banale. */
 const GENERIC_STAR: StarClassDef = STAR_CLASSES.yellow_dwarf;
 
-export function starClass(id: string): StarClassDef {
-  return STAR_CLASSES[id as StarClassId] ?? GENERIC_STAR;
+export function starClass(
+  id: string,
+  overrides: AstroOverrides = NO_ASTRO_OVERRIDES,
+): StarClassDef {
+  return patched<StarClassDef>(
+    STAR_CLASSES[id as StarClassId] ?? GENERIC_STAR,
+    overrides.star?.[id],
+  );
 }
 
 /** Tables de tirage, dérivées des poids plutôt que redéclarées à côté d'eux. */

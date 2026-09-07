@@ -1106,3 +1106,35 @@ export const contentMilestones = pgTable("content_milestones", {
   metric: text("metric").notNull(),
   threshold: doublePrecision("threshold").notNull(),
 });
+
+/**
+ * Surcharges des catalogues astronomiques (chantier 45.4).
+ *
+ * ## La seule table de contenu qui ne porte pas le contenu
+ *
+ * Les douze autres domaines du CMS stockent l'entrée entière : une ligne de
+ * `content_warships` EST le vaisseau. Ici la base ne stocke qu'un **correctif** — les neuf
+ * catalogues de `content/astro/` restent intégrés au code, et une ligne dit seulement ce
+ * qu'une édition a changé.
+ *
+ * C'est l'ADR 0021 rendue impossible à contourner. Sa décision 3 coupe chaque catalogue en
+ * deux : les entrées de génération, gelées par `GENERATOR_VERSION`, et les effets, relus à
+ * chaque usage. Une table qui porterait l'entrée entière laisserait éditer la première
+ * moitié par accident, et une galaxie matérialisée cesserait de correspondre à ce qui l'a
+ * produite. Un correctif validé par `astroOverrideSchema` ne le peut pas.
+ *
+ * `payload` est du JSON, comme `cost` ou `appearance` ailleurs dans ce fichier : sa forme
+ * dépend de la famille, et neuf tables de trois colonnes chacune n'auraient rien dit de plus.
+ */
+export const contentAstro = pgTable(
+  "content_astro",
+  {
+    /** Une des neuf familles d'`ASTRO_FAMILIES`. */
+    family: text("family").notNull(),
+    /** Identifiant de type dans cette famille — "red_dwarf", "gas_giant", "icy"… */
+    id: text("id").notNull(),
+    /** JSON : la moitié « effets » seulement, partielle. */
+    payload: text("payload").notNull().default("{}"),
+  },
+  (table) => [primaryKey({ columns: [table.family, table.id] })],
+);

@@ -9,6 +9,7 @@ import {
   type CentralBody,
   type ResourceId,
 } from "@spacesim/shared";
+import { astroOverrides } from "../state/astro-content.js";
 
 /**
  * Registre d'apparence (chantier 31.18). Traduit une donnée de jeu — type de planète,
@@ -44,8 +45,9 @@ export interface BodyAppearance {
  * lit les catalogues de planètes ou ceux de lunes, et l'appelant n'a pas à le savoir.
  */
 export function bodyAppearance(body: BodyRef): BodyAppearance {
-  const cls = bodyStructure(body);
-  const env = bodyEnvironment(body);
+  const overrides = astroOverrides();
+  const cls = bodyStructure(body, overrides);
+  const env = bodyEnvironment(body, overrides);
   return {
     color: env.color,
     accent: env.accent,
@@ -113,7 +115,7 @@ export function centralBodyAppearance(
   if (!body) return GENERIC_STAR;
 
   if (body.kind === "star") {
-    const def = starClass(body.typeId);
+    const def = starClass(body.typeId, astroOverrides());
     return {
       core: def.core,
       edge: def.edge,
@@ -131,8 +133,8 @@ export function centralBodyAppearance(
   // brille — d'où un cœur clair là où un trou noir en a un noir.
   const def =
     body.kind === "blackHole"
-      ? blackHoleType(body.typeId)
-      : whiteHoleType(body.typeId);
+      ? blackHoleType(body.typeId, astroOverrides())
+      : whiteHoleType(body.typeId, astroOverrides());
   const glowing = body.kind === "whiteHole";
   return {
     core: glowing ? "#ffffff" : "#000000",
@@ -148,7 +150,7 @@ export function centralBodyAppearance(
 
 /** Apparence d'une classe d'étoile par son identifiant seul, quand le corps n'est pas là. */
 export function starAppearance(typeId: string): StarAppearance {
-  const def = starClass(typeId);
+  const def = starClass(typeId, astroOverrides());
   return {
     core: def.core,
     edge: def.edge,
@@ -170,7 +172,7 @@ export function starAppearance(typeId: string): StarAppearance {
  * champ de débris.
  */
 export function asteroidTint(belt: { typeId: string }): string {
-  return beltType(belt.typeId).tint;
+  return beltType(belt.typeId, astroOverrides()).tint;
 }
 
 /**

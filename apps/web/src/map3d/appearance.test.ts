@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { NO_ASTRO_OVERRIDES } from "@spacesim/shared";
+import { setAstroOverrides } from "../state/astro-content.js";
 import {
   asteroidTint,
   bodyAppearance,
@@ -64,5 +66,40 @@ describe("repli générique du registre d'apparence", () => {
     expect(asteroidTint({ typeId: "icy" })).not.toBe(
       asteroidTint({ typeId: "debris" }),
     );
+  });
+});
+
+describe("contenu publié par le serveur (chantier 45.4)", () => {
+  /**
+   * L'autre moitié de la dette de `design.md` (chantier 31.22). Le serveur publie désormais
+   * les surcharges ; ce cas vérifie que le client les APPLIQUE — sans quoi la route
+   * n'aurait rien changé pour le joueur.
+   */
+  afterEach(() => setAstroOverrides(NO_ASTRO_OVERRIDES));
+
+  it("une couleur éditée en admin change le rendu d'un corps", () => {
+    const body = {
+      kind: "planet",
+      classId: "rocky",
+      variantId: "temperate",
+    } as const;
+    const before = bodyAppearance(body).color;
+    setAstroOverrides({ planetVariant: { temperate: { color: "#0f0f0f" } } });
+    expect(bodyAppearance(body).color).toBe("#0f0f0f");
+    expect(bodyAppearance(body).color).not.toBe(before);
+  });
+
+  it("une teinte de ceinture éditée change le rendu de la ceinture", () => {
+    setAstroOverrides({ belt: { icy: { tint: "#0e0e0e" } } });
+    expect(asteroidTint({ typeId: "icy" })).toBe("#0e0e0e");
+    // Et seulement celle-là : les autres compositions gardent la leur.
+    expect(asteroidTint({ typeId: "debris" })).not.toBe("#0e0e0e");
+  });
+
+  it("un rayon d'étoile édité change la scène sans toucher au reste de la classe", () => {
+    setAstroOverrides({ star: { red_dwarf: { radius: 42 } } });
+    expect(starAppearance("red_dwarf").radius).toBe(42);
+    // `intensity` n'est pas surchargée : elle vient toujours du catalogue intégré.
+    expect(starAppearance("red_dwarf").intensity).toBeGreaterThan(0);
   });
 });

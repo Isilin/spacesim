@@ -335,6 +335,20 @@ export {
   type BodyRef,
 } from "./content/astro/body-defs.js";
 export {
+  ASTRO_FAMILIES,
+  NO_ASTRO_OVERRIDES,
+  patched,
+  type AstroFamily,
+  type AstroOverrides,
+  type BeltEffects,
+  type BlackHoleEffects,
+  type EnvironmentEffects,
+  type GalaxyEffects,
+  type StarEffects,
+  type StructureEffects,
+  type WhiteHoleEffects,
+} from "./content/astro/overrides.js";
+export {
   BELT_TYPE_DEFS,
   beltType,
   beltTypesForZone,

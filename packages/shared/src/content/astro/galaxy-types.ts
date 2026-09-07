@@ -25,6 +25,11 @@
  * effets et habillage éditables au palier 3.
  */
 
+import {
+  type AstroOverrides,
+  NO_ASTRO_OVERRIDES,
+  patched,
+} from "./overrides.js";
 import type { ResourceId } from "../../model/resources.js";
 import type { BlackHoleTypeId } from "./black-hole-types.js";
 
@@ -270,8 +275,14 @@ export const GALAXY_TYPES: Record<GalaxyTypeId, StaticGalaxyTypeDef> = {
 /** Repli neutre — même règle que `blackHoleType` : un identifiant inconnu rend une spirale. */
 const GENERIC_GALAXY: GalaxyTypeDef = GALAXY_TYPES.spiral;
 
-export function galaxyType(id: string): GalaxyTypeDef {
-  return GALAXY_TYPES[id as GalaxyTypeId] ?? GENERIC_GALAXY;
+export function galaxyType(
+  id: string,
+  overrides: AstroOverrides = NO_ASTRO_OVERRIDES,
+): GalaxyTypeDef {
+  return patched<GalaxyTypeDef>(
+    GALAXY_TYPES[id as GalaxyTypeId] ?? GENERIC_GALAXY,
+    overrides.galaxy?.[id],
+  );
 }
 
 /**

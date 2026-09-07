@@ -26,6 +26,7 @@ import {
   siteColor,
   centralBodyAppearance,
 } from "./appearance.js";
+import { astroOverrides } from "../state/astro-content.js";
 import { focusOf, type Focus } from "./bounds.js";
 import { hasRings, PlanetRings } from "./PlanetRings.js";
 import { ProceduralBody } from "./ProceduralBody.js";
@@ -70,7 +71,7 @@ export const STAR_CORONA = 26;
 export function bodyRadiusOf(planet: Planet): number {
   // Le 1,8 uniforme des lunes disparaît au chantier 45.3 : elles ont leurs propres classes,
   // et une capturée de deux pour cent de rayon terrestre ne se lit plus comme un Titan.
-  return bodyStructure(planet).renderRadius;
+  return bodyStructure(planet, astroOverrides()).renderRadius;
 }
 
 /**
@@ -82,7 +83,7 @@ export function bodyRadiusOf(planet: Planet): number {
  * lisibilité de la carte. Ces valeurs sont celles d'avant le chantier 37.14.
  */
 export function bodyLabelExtent(planet: Planet): number {
-  return bodyStructure(planet).labelExtent;
+  return bodyStructure(planet, astroOverrides()).labelExtent;
 }
 
 /**

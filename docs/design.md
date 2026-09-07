@@ -3317,6 +3317,50 @@ plus.
 | Habitabilité lunaire (max mesuré) | 40, par plafond | 17, par la physique |
 | Richesse d'une ceinture | 1,2 à 2,0 | 0,6 à 3,0 selon la composition |
 
+### Palier 4 — la bascule CMS et la publication sur le fil
+
+- **45.18** Les neuf catalogues astronomiques deviennent éditables. Un domaine CMS, pas neuf :
+  ce sont neuf déclinaisons d'un même objet — un type qui porte des multiplicateurs et des
+  couleurs — là où un vaisseau de guerre et un jalon n'ont rien en commun.
+- **45.19** La table `content_astro` ne stocke pas le contenu mais un **correctif**. Les
+  définitions restent intégrées au code ; la base ne dit que ce qu'une édition a changé.
+- **45.20** `GET /api/content/astro` publie ces surcharges au client joueur, sans
+  authentification et hors du fil mesuré par `universe.payload.test.ts`. Solde la dette
+  consignée depuis le chantier 31.22 : « `apps/web` ne voit pas l'apparence éditée ».
+- **45.21** Migration 0029.
+
+### La frontière cesse d'être une convention
+
+L'ADR 0021 coupait chaque catalogue en deux moitiés — entrées de génération gelées, effets
+relus à l'usage — et la coupure ne vivait que dans des commentaires. Elle vit maintenant dans
+trois endroits qui se vérifient l'un l'autre : un `Pick` par famille dans `AstroOverrides`, que
+le compilateur fait respecter ; un schéma Zod `.strict()` par famille, qui **refuse** au lieu
+d'ignorer ; et un test qui envoie une entrée de génération et attend un 400.
+
+Le `.strict()` n'est pas cosmétique. Zod écarte silencieusement les clés inconnues : sans lui,
+une requête corrigeant une fourchette de masse aurait reçu un 200 et n'aurait rien fait. Une
+frontière qu'on ne peut pas franchir mais qui ne le dit pas est une frontière qu'on croit avoir
+franchie.
+
+### Ce que la mise en œuvre a corrigé dans l'ADR
+
+Le critère écrit valait « lu au moment de l'usage ». Il est faux : le rayonnement d'une étoile
+est lu à l'usage par `systemHazard` **et** à la génération par `bodyHabitability`, dont le
+résultat est persisté. L'exposer aurait fait diverger la fiche d'un corps de son habitabilité en
+base — la contradiction exacte que le palier 2 avait supprimée en retirant les trois béquilles
+de `bodyPhysicals`. Le critère devient « lu à l'usage **et jamais par le générateur** », et la
+surface éditable se réduit d'un tiers : rendements, dangers de trajet, habillage.
+
+### Relevés (palier 4)
+
+| | avant | après |
+|---|---|---|
+| Domaines CMS | 12 | 13 |
+| Catalogues éditables | 0 | 9 |
+| Champs éditables | 0 | 46 |
+| Champs gelés par le contrat | — | tout le reste, refusé en 400 |
+| Contenu vu par `apps/web` | aucun | les surcharges, au chargement |
+
 ## Chantier 46 — vite 8, et pourquoi deux montées n'étaient pas des bumps (06/09/2026, corrigé le 08/09/2026)
 
 Planification. Ouvert par le tri des PR Dependabot du 06/09/2026 : deux d'entre elles ne

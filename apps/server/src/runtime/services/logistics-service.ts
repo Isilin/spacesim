@@ -410,7 +410,9 @@ export class LogisticsService {
    */
   private hazardAt(systemId: string): number {
     const system = this.runtime.systemsById.get(systemId);
-    return system ? systemHazard(starsOf(system), system.belts) : 0;
+    return system
+      ? systemHazard(starsOf(system), system.belts, this.runtime.content.astro)
+      : 0;
   }
 
   private portalsCrossed(fromSystemId: string, toSystemId: string): number {

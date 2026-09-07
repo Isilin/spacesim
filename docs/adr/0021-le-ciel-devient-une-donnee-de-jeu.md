@@ -83,6 +83,19 @@ moitiés**, et une seule est exposée.
 Faire porter cette frontière par les schémas Zod de `packages/protocol/src/content.ts` transforme
 l'intention en fait vérifié par le compilateur.
 
+**Précision apportée par la mise en œuvre (palier 45.4).** Le critère n'est pas « lu au moment de
+l'usage » mais « lu au moment de l'usage **et jamais par le générateur** ». Le second membre fait
+tout le travail : le rayonnement d'une étoile est lu par `systemHazard` (usage) *et* par
+`bodyHabitability` (génération, dont le résultat est persisté). L'exposer aurait fait diverger la
+fiche d'un corps de son habitabilité en base — exactement la contradiction que le palier 45.2 a
+supprimée en retirant les trois béquilles de `bodyPhysicals`. Restent donc gelés, malgré leur
+apparence d'effets : `radiation`, `flareActivity`, `luminosity`, `albedo`, `greenhousePerBar`,
+`hazard` d'environnement, `colonizable`, `magnetosphere` et les tendances de gisement.
+
+Ce qui passe la règle : les multiplicateurs de rendement (`depositMult`, `energyMult`,
+`depositBias`, `exoticYield`), les dangers qui n'entrent que dans le coût de trajet — ceux d'une
+singularité et d'une ceinture — et tout l'habillage.
+
 ### 4. La causalité s'inverse : l'étoile d'abord, les corps ensuite
 
 L'ADR 0016 tirait la classe d'étoile **après** les planètes et la conditionnait à elles — « un trou

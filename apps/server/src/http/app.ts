@@ -13,6 +13,7 @@ import { config } from "../config.js";
 import type { GameEngine } from "../game.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerContentRoutes } from "./routes/content.js";
 import { registerDevRoutes } from "./routes/dev.js";
 import { registerWsRoutes } from "./routes/ws.js";
 
@@ -93,6 +94,9 @@ export async function buildApp(
   app.get("/health", () => ({ ok: true, tick: engine.game.tick }));
 
   registerAuthRoutes(app, engine);
+  // Contenu publié au client joueur : cachable, sans authentification, hors du fil mesuré
+  // par `universe.payload.test.ts` (chantier 45.4).
+  registerContentRoutes(app, engine);
   // Toujours actif, y compris en production — la protection est le rôle du compte (adminGuard),
   // pas l'environnement (contrairement à /dev/*).
   registerAdminRoutes(app, engine);

@@ -57,6 +57,25 @@ export const commonFr = {
     milestones: "Jalons",
     zoneTypes: "Types de zone",
     installations: "Installations",
+    astro: "Astronomie",
+  },
+  astroView: {
+    title: "Catalogues astronomiques",
+    loading: "Chargement des catalogues…",
+    family: "Famille",
+    frozenHint:
+      "Seuls les effets et l'habillage sont éditables. Ce qui décide de la GÉNÉRATION — masses, poids de tirage, fourchettes, atmosphères — reste figé dans le code : une galaxie déjà matérialisée doit rester ce que sa version de générateur a produit.",
+    emptyResets:
+      "Un champ vide n'est pas un zéro : il retire la surcharge et rend la valeur intégrée, affichée à côté de chaque étiquette.",
+    family_galaxy: "Galaxies",
+    family_star: "Étoiles",
+    family_blackHole: "Trous noirs",
+    family_whiteHole: "Fontaines blanches",
+    family_planetClass: "Classes de planètes",
+    family_planetVariant: "Variantes de planètes",
+    family_moonClass: "Classes de lunes",
+    family_moonVariant: "Variantes de lunes",
+    family_belt: "Ceintures",
   },
   constantsView: {
     title: "Constantes d'équilibrage",
@@ -403,6 +422,25 @@ export const commonEn: typeof commonFr = {
     milestones: "Milestones",
     zoneTypes: "Zone types",
     installations: "Installations",
+    astro: "Astronomy",
+  },
+  astroView: {
+    title: "Astronomical catalogues",
+    loading: "Loading catalogues…",
+    family: "Family",
+    frozenHint:
+      "Only effects and dressing are editable. What drives GENERATION — masses, draw weights, ranges, atmospheres — stays frozen in code: a materialised galaxy must remain what its generator version produced.",
+    emptyResets:
+      "An empty field is not a zero: it removes the override and restores the built-in value, shown next to each label.",
+    family_galaxy: "Galaxies",
+    family_star: "Stars",
+    family_blackHole: "Black holes",
+    family_whiteHole: "White fountains",
+    family_planetClass: "Planet classes",
+    family_planetVariant: "Planet variants",
+    family_moonClass: "Moon classes",
+    family_moonVariant: "Moon variants",
+    family_belt: "Asteroid belts",
   },
   constantsView: {
     title: "Balance constants",

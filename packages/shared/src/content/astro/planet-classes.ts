@@ -1,3 +1,8 @@
+import {
+  type AstroOverrides,
+  NO_ASTRO_OVERRIDES,
+  patched,
+} from "./overrides.js";
 import type { OrbitZone, PlanetClass } from "../../model/universe.js";
 
 /**
@@ -210,8 +215,14 @@ export const PLANET_CLASS_DEFS: Record<PlanetClass, StaticPlanetClassDef> = {
 /** Repli neutre — même règle que les autres catalogues de `astro/`. */
 const GENERIC_CLASS: PlanetClassDef = PLANET_CLASS_DEFS.rocky;
 
-export function planetClass(id: string): PlanetClassDef {
-  return PLANET_CLASS_DEFS[id as PlanetClass] ?? GENERIC_CLASS;
+export function planetClass(
+  id: string,
+  overrides: AstroOverrides = NO_ASTRO_OVERRIDES,
+): PlanetClassDef {
+  return patched<PlanetClassDef>(
+    PLANET_CLASS_DEFS[id as PlanetClass] ?? GENERIC_CLASS,
+    overrides.planetClass?.[id],
+  );
 }
 
 /**

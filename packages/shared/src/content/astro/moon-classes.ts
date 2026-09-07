@@ -1,3 +1,8 @@
+import {
+  type AstroOverrides,
+  NO_ASTRO_OVERRIDES,
+  patched,
+} from "./overrides.js";
 import type { MoonClass, PlanetClass } from "../../model/universe.js";
 import type { BodyStructureDef } from "./planet-classes.js";
 
@@ -155,8 +160,14 @@ export const MOON_CLASS_DEFS: Record<MoonClass, StaticMoonClassDef> = {
 /** Repli neutre — même règle que les autres catalogues de `astro/`. */
 const GENERIC_MOON_CLASS: MoonClassDef = MOON_CLASS_DEFS.regular;
 
-export function moonClass(id: string): MoonClassDef {
-  return MOON_CLASS_DEFS[id as MoonClass] ?? GENERIC_MOON_CLASS;
+export function moonClass(
+  id: string,
+  overrides: AstroOverrides = NO_ASTRO_OVERRIDES,
+): MoonClassDef {
+  return patched<MoonClassDef>(
+    MOON_CLASS_DEFS[id as MoonClass] ?? GENERIC_MOON_CLASS,
+    overrides.moonClass?.[id],
+  );
 }
 
 /**

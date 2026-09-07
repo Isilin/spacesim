@@ -789,7 +789,9 @@ export class IndustryService {
         : empire.effects;
       // Ce que le ciel du système apporte : métallicité de la galaxie, voisinage stellaire,
       // irradiance à cette orbite (chantier 45.2). Relu du catalogue à chaque tick, jamais
-      // persisté — c'est ce qui rend un rééquilibrage possible sans réécrire l'univers.
+      // persisté — c'est ce qui rend un rééquilibrage possible sans réécrire l'univers, et
+      // les surcharges d'admin (chantier 45.4) entrent par le même chemin.
+      const astroContent = this.runtime.content.astro;
       const system = this.runtime.systemsById.get(planet.systemId);
       const galaxy = system
         ? findGalaxyOfSystem(this.runtime.universe, system.id)
@@ -798,8 +800,9 @@ export class IndustryService {
         system && galaxy
           ? astroYield(
               starsOf(system),
-              galaxyType(galaxy.typeId).depositBias,
+              galaxyType(galaxy.typeId, astroContent).depositBias,
               planet.orbitRadius,
+              astroContent,
             )
           : NEUTRAL_ASTRO;
       // L'ascenseur tourne après la production : ce qui vient d'être produit peut monter.

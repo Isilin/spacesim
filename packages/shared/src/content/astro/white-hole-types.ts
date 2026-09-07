@@ -20,6 +20,11 @@
  * effets et habillage éditables de l'autre (ADR 0021).
  */
 
+import {
+  type AstroOverrides,
+  NO_ASTRO_OVERRIDES,
+  patched,
+} from "./overrides.js";
 import type { BlackHolePlacement } from "./black-hole-types.js";
 
 export const WHITE_HOLE_TYPE_IDS = [
@@ -169,6 +174,12 @@ export const WHITE_HOLE_TYPES: Record<WhiteHoleTypeId, StaticWhiteHoleTypeDef> =
 /** Repli neutre — même règle que `blackHoleType`. */
 const GENERIC_WHITE_HOLE: WhiteHoleTypeDef = WHITE_HOLE_TYPES.stable;
 
-export function whiteHoleType(id: string): WhiteHoleTypeDef {
-  return WHITE_HOLE_TYPES[id as WhiteHoleTypeId] ?? GENERIC_WHITE_HOLE;
+export function whiteHoleType(
+  id: string,
+  overrides: AstroOverrides = NO_ASTRO_OVERRIDES,
+): WhiteHoleTypeDef {
+  return patched<WhiteHoleTypeDef>(
+    WHITE_HOLE_TYPES[id as WhiteHoleTypeId] ?? GENERIC_WHITE_HOLE,
+    overrides.whiteHole?.[id],
+  );
 }

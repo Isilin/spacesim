@@ -1,3 +1,8 @@
+import {
+  type AstroOverrides,
+  NO_ASTRO_OVERRIDES,
+  patched,
+} from "./overrides.js";
 import type {
   Atmosphere,
   OrbitZone,
@@ -255,8 +260,14 @@ export const PLANET_VARIANT_DEFS: Record<
 /** Repli neutre — même règle que les autres catalogues de `astro/`. */
 const GENERIC_VARIANT: PlanetVariantDef = PLANET_VARIANT_DEFS.barren;
 
-export function planetVariant(id: string): PlanetVariantDef {
-  return PLANET_VARIANT_DEFS[id as PlanetVariant] ?? GENERIC_VARIANT;
+export function planetVariant(
+  id: string,
+  overrides: AstroOverrides = NO_ASTRO_OVERRIDES,
+): PlanetVariantDef {
+  return patched<PlanetVariantDef>(
+    PLANET_VARIANT_DEFS[id as PlanetVariant] ?? GENERIC_VARIANT,
+    overrides.planetVariant?.[id],
+  );
 }
 
 /**

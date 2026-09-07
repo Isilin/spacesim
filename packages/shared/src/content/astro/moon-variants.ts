@@ -1,3 +1,8 @@
+import {
+  type AstroOverrides,
+  NO_ASTRO_OVERRIDES,
+  patched,
+} from "./overrides.js";
 import type { MoonVariant, PlanetClass } from "../../model/universe.js";
 import type { BodyEnvironmentDef } from "./planet-variants.js";
 
@@ -179,8 +184,14 @@ export const MOON_VARIANT_DEFS: Record<MoonVariant, StaticMoonVariantDef> = {
 /** Repli neutre — même règle que les autres catalogues de `astro/`. */
 const GENERIC_MOON_VARIANT: MoonVariantDef = MOON_VARIANT_DEFS.airless;
 
-export function moonVariant(id: string): MoonVariantDef {
-  return MOON_VARIANT_DEFS[id as MoonVariant] ?? GENERIC_MOON_VARIANT;
+export function moonVariant(
+  id: string,
+  overrides: AstroOverrides = NO_ASTRO_OVERRIDES,
+): MoonVariantDef {
+  return patched<MoonVariantDef>(
+    MOON_VARIANT_DEFS[id as MoonVariant] ?? GENERIC_MOON_VARIANT,
+    overrides.moonVariant?.[id],
+  );
 }
 
 /**

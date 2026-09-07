@@ -5,6 +5,10 @@ import type {
 } from "../../model/universe.js";
 import type { ResourceId } from "../../model/resources.js";
 import { beltType } from "../../content/astro/belt-types.js";
+import {
+  type AstroOverrides,
+  NO_ASTRO_OVERRIDES,
+} from "../../content/astro/overrides.js";
 import { blackHoleType } from "../../content/astro/black-hole-types.js";
 import { starClass } from "../../content/astro/star-classes.js";
 import { whiteHoleType } from "../../content/astro/white-hole-types.js";
@@ -460,6 +464,7 @@ export function astroYield(
   bodies: readonly CentralBody[],
   galaxyDepositBias: AstroYield,
   orbitRadius: number,
+  overrides: AstroOverrides = NO_ASTRO_OVERRIDES,
 ): AstroYield {
   const out: AstroYield = { ...galaxyDepositBias };
 
@@ -467,14 +472,14 @@ export function astroYield(
   let energy = 1;
   for (const body of bodies) {
     if (body.kind === "star") {
-      deposit *= starClass(body.typeId).depositMult;
-      energy *= starClass(body.typeId).energyMult;
+      deposit *= starClass(body.typeId, overrides).depositMult;
+      energy *= starClass(body.typeId, overrides).energyMult;
     } else if (body.kind === "blackHole") {
-      deposit *= blackHoleType(body.typeId).depositMult;
-      energy *= blackHoleType(body.typeId).energyMult;
+      deposit *= blackHoleType(body.typeId, overrides).depositMult;
+      energy *= blackHoleType(body.typeId, overrides).energyMult;
     } else {
-      deposit *= whiteHoleType(body.typeId).depositMult;
-      energy *= whiteHoleType(body.typeId).energyMult;
+      deposit *= whiteHoleType(body.typeId, overrides).depositMult;
+      energy *= whiteHoleType(body.typeId, overrides).energyMult;
     }
   }
 
@@ -513,18 +518,19 @@ export function astroYield(
 export function systemHazard(
   bodies: readonly CentralBody[],
   belts: readonly AsteroidBelt[] = [],
+  overrides: AstroOverrides = NO_ASTRO_OVERRIDES,
 ): number {
   const central = bodies.reduce((worst, body) => {
     const danger =
       body.kind === "star"
-        ? starClass(body.typeId).radiation
+        ? starClass(body.typeId, overrides).radiation
         : body.kind === "blackHole"
-          ? blackHoleType(body.typeId).hazard
-          : whiteHoleType(body.typeId).hazard;
+          ? blackHoleType(body.typeId, overrides).hazard
+          : whiteHoleType(body.typeId, overrides).hazard;
     return Math.max(worst, danger);
   }, 0);
   return belts.reduce(
-    (worst, belt) => Math.max(worst, beltType(belt.typeId).hazard),
+    (worst, belt) => Math.max(worst, beltType(belt.typeId, overrides).hazard),
     central,
   );
 }

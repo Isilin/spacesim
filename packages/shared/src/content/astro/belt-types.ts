@@ -1,3 +1,8 @@
+import {
+  type AstroOverrides,
+  NO_ASTRO_OVERRIDES,
+  patched,
+} from "./overrides.js";
 import type { BeltType, OrbitZone } from "../../model/universe.js";
 
 /**
@@ -149,8 +154,14 @@ export const BELT_TYPE_DEFS: Record<BeltType, StaticBeltTypeDef> = {
 /** Repli neutre — la ceinture la plus banale, comme les autres catalogues de `astro/`. */
 const GENERIC_BELT: BeltTypeDef = BELT_TYPE_DEFS.silicate;
 
-export function beltType(id: string): BeltTypeDef {
-  return BELT_TYPE_DEFS[id as BeltType] ?? GENERIC_BELT;
+export function beltType(
+  id: string,
+  overrides: AstroOverrides = NO_ASTRO_OVERRIDES,
+): BeltTypeDef {
+  return patched<BeltTypeDef>(
+    BELT_TYPE_DEFS[id as BeltType] ?? GENERIC_BELT,
+    overrides.belt?.[id],
+  );
 }
 
 /**

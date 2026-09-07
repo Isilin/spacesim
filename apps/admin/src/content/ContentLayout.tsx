@@ -16,6 +16,7 @@ const CONTENT_TAB_KEYS = [
   { value: "milestones", key: "contentLayout.milestones" },
   { value: "zone-types", key: "contentLayout.zoneTypes" },
   { value: "installations", key: "contentLayout.installations" },
+  { value: "astro", key: "contentLayout.astro" },
 ];
 
 /** Sous-navigation du CMS de contenu (chantier 23.6) — même patron que les onglets

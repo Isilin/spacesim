@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import type { AstroOverrides } from "@spacesim/shared";
 import { db, schema } from "../../db/index.js";
 import type {
   ChassisKind,
@@ -777,5 +778,42 @@ export class ContentRepository {
       .insert(schema.contentInstallations)
       .values(row)
       .onConflictDoUpdate({ target: schema.contentInstallations.id, set: row });
+  }
+
+  /**
+   * Surcharges astronomiques (chantier 45.4).
+   *
+   * Pas de `count` ni d'`insert` en masse ici, à la différence des douze autres domaines :
+   * il n'y a rien à amorcer. Une table vide est l'état NORMAL — elle veut dire « aucun
+   * catalogue n'a été retouché », et les définitions intégrées font foi. Semer les valeurs
+   * du code en aurait fait une seconde source de vérité qu'il aurait fallu tenir à jour à
+   * chaque édition du catalogue.
+   */
+  async loadAstro(): Promise<AstroOverrides> {
+    const rows = await db
+      .select()
+      .from(schema.contentAstro)
+      .orderBy(schema.contentAstro.family, schema.contentAstro.id);
+    const out: Record<string, Record<string, unknown>> = {};
+    for (const row of rows) {
+      const family = (out[row.family] ??= {});
+      family[row.id] = JSON.parse(row.payload);
+    }
+    return out as AstroOverrides;
+  }
+
+  async saveAstro(
+    family: string,
+    id: string,
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    const row = { family, id, payload: JSON.stringify(payload) };
+    await db
+      .insert(schema.contentAstro)
+      .values(row)
+      .onConflictDoUpdate({
+        target: [schema.contentAstro.family, schema.contentAstro.id],
+        set: { payload: row.payload },
+      });
   }
 }

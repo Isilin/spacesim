@@ -1,4 +1,5 @@
 import type { Planet } from "../../model/universe.js";
+import { type AstroOverrides, NO_ASTRO_OVERRIDES } from "./overrides.js";
 import { moonClass } from "./moon-classes.js";
 import { moonVariant } from "./moon-variants.js";
 import { type BodyStructureDef, planetClass } from "./planet-classes.js";
@@ -20,14 +21,20 @@ import { type BodyEnvironmentDef, planetVariant } from "./planet-variants.js";
 /** Ce qu'il faut d'un corps pour retrouver ses définitions — jamais le corps entier. */
 export type BodyRef = Pick<Planet, "kind" | "classId" | "variantId">;
 
-export function bodyStructure(body: BodyRef): BodyStructureDef {
+export function bodyStructure(
+  body: BodyRef,
+  overrides: AstroOverrides = NO_ASTRO_OVERRIDES,
+): BodyStructureDef {
   return body.kind === "moon"
-    ? moonClass(body.classId)
-    : planetClass(body.classId);
+    ? moonClass(body.classId, overrides)
+    : planetClass(body.classId, overrides);
 }
 
-export function bodyEnvironment(body: BodyRef): BodyEnvironmentDef {
+export function bodyEnvironment(
+  body: BodyRef,
+  overrides: AstroOverrides = NO_ASTRO_OVERRIDES,
+): BodyEnvironmentDef {
   return body.kind === "moon"
-    ? moonVariant(body.variantId)
-    : planetVariant(body.variantId);
+    ? moonVariant(body.variantId, overrides)
+    : planetVariant(body.variantId, overrides);
 }

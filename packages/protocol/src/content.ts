@@ -434,3 +434,160 @@ export const contentInstallationSchema = upsertInstallationSchema.extend({
 export const installationsListResponseSchema = z.object({
   installations: z.array(contentInstallationSchema),
 });
+
+/**
+ * Catalogues astronomiques (chantier 45.4) — le seul domaine du CMS qui édite un CORRECTIF
+ * et non une entrée complète.
+ *
+ * L'ADR 0021 coupe chaque catalogue en deux : entrées de génération gelées par
+ * `GENERATOR_VERSION`, effets et habillage relus à chaque usage. Ces schémas sont l'endroit
+ * où la frontière devient infranchissable : ce qui n'y figure pas ne peut pas être édité, et
+ * une requête qui tenterait de corriger un `massRange` ou un `zoneWeights` est refusée avant
+ * d'atteindre la base.
+ *
+ * Tous les champs sont **optionnels** : une édition ne porte que sur ce qu'elle change, et un
+ * champ absent garde sa valeur intégrée au code.
+ */
+export const ASTRO_FAMILY_IDS = [
+  "galaxy",
+  "star",
+  "blackHole",
+  "whiteHole",
+  "planetClass",
+  "planetVariant",
+  "moonClass",
+  "moonVariant",
+  "belt",
+] as const;
+export const astroFamilySchema = z.enum(ASTRO_FAMILY_IDS);
+
+/** 0–5 partout dans les catalogues astronomiques : rayonnement, danger, corrosion. */
+const dangerSchema = z.number().min(0).max(5);
+/** Un multiplicateur de rendement, borné pour qu'une faute de frappe ne casse pas l'économie. */
+const multSchema = z.number().min(0).max(10);
+
+export const astroOverrideSchemas = {
+  galaxy: z.object({
+    depositBias: z.record(z.string(), z.number().min(0).max(10)).optional(),
+    tint: hexColorSchema.optional(),
+  }),
+  star: z.object({
+    depositMult: multSchema.optional(),
+    energyMult: multSchema.optional(),
+    dark: z.boolean().optional(),
+    core: hexColorSchema.optional(),
+    edge: hexColorSchema.optional(),
+    halo: hexColorSchema.optional(),
+    radius: z.number().positive().max(100).optional(),
+    corona: z.number().min(0).max(10).optional(),
+    light: hexColorSchema.optional(),
+    intensity: z.number().min(0).max(20).optional(),
+    churn: z.number().min(0).max(10).optional(),
+  }),
+  blackHole: z.object({
+    depositMult: multSchema.optional(),
+    energyMult: multSchema.optional(),
+    exoticYield: z.number().min(0).max(10).optional(),
+    hazard: dangerSchema.optional(),
+    discRadius: z.number().min(0).max(200).optional(),
+    horizonRadius: z.number().min(0).max(200).optional(),
+    halo: hexColorSchema.optional(),
+    light: hexColorSchema.optional(),
+    intensity: z.number().min(0).max(20).optional(),
+  }),
+  whiteHole: z.object({
+    depositMult: multSchema.optional(),
+    energyMult: multSchema.optional(),
+    exoticYield: z.number().min(0).max(10).optional(),
+    hazard: dangerSchema.optional(),
+    discRadius: z.number().min(0).max(200).optional(),
+    mouthRadius: z.number().min(0).max(200).optional(),
+    halo: hexColorSchema.optional(),
+    light: hexColorSchema.optional(),
+    intensity: z.number().min(0).max(20).optional(),
+  }),
+  planetClass: z.object({
+    renderRadius: z.number().positive().max(50).optional(),
+    labelExtent: z.number().positive().max(100).optional(),
+    ringChance: z.number().min(0).max(1).optional(),
+    relief: z.number().min(0).max(2).optional(),
+    roughness: z.number().min(0).max(2).optional(),
+  }),
+  planetVariant: z.object({
+    color: hexColorSchema.optional(),
+    accent: hexColorSchema.optional(),
+  }),
+  belt: z.object({
+    hazard: dangerSchema.optional(),
+    tint: hexColorSchema.optional(),
+    density: z.number().min(0).max(1).optional(),
+  }),
+} as const;
+
+/**
+ * Une lune se surcharge exactement comme une planète : mêmes effets, tables distinctes.
+ *
+ * `.strict()` sur chaque membre, et c'est le cœur du contrat : Zod ÉCARTE silencieusement
+ * les clés inconnues par défaut, si bien qu'une requête corrigeant un `richness` ou un
+ * `massRange` aurait été acceptée avec 200 et n'aurait simplement rien fait. La frontière de
+ * l'ADR 0021 doit se voir, donc elle refuse.
+ */
+export const upsertAstroSchema = z.discriminatedUnion("family", [
+  astroOverrideSchemas.galaxy.extend({ family: z.literal("galaxy") }).strict(),
+  astroOverrideSchemas.star.extend({ family: z.literal("star") }).strict(),
+  astroOverrideSchemas.blackHole
+    .extend({ family: z.literal("blackHole") })
+    .strict(),
+  astroOverrideSchemas.whiteHole
+    .extend({ family: z.literal("whiteHole") })
+    .strict(),
+  astroOverrideSchemas.planetClass
+    .extend({
+      family: z.literal("planetClass"),
+    })
+    .strict(),
+  astroOverrideSchemas.planetClass
+    .extend({ family: z.literal("moonClass") })
+    .strict(),
+  astroOverrideSchemas.planetVariant
+    .extend({
+      family: z.literal("planetVariant"),
+    })
+    .strict(),
+  astroOverrideSchemas.planetVariant
+    .extend({
+      family: z.literal("moonVariant"),
+    })
+    .strict(),
+  astroOverrideSchemas.belt.extend({ family: z.literal("belt") }).strict(),
+]);
+export type UpsertAstroInput = z.infer<typeof upsertAstroSchema>;
+
+export const contentAstroSchema = z.object({
+  family: astroFamilySchema,
+  id: z.string(),
+  /** Le correctif, tel qu'il est stocké. Vide = l'entrée n'est pas surchargée. */
+  payload: z.record(z.string(), z.unknown()),
+});
+export const astroListResponseSchema = z.object({
+  astro: z.array(contentAstroSchema),
+});
+
+/**
+ * Contenu astronomique publié au client joueur (chantier 45.4).
+ *
+ * Les surcharges seulement, jamais les catalogues : le client importe déjà `packages/shared`
+ * et connaît les définitions intégrées. Le schéma reste volontairement lâche sur la forme du
+ * correctif — c'est `upsertAstroSchema` qui la valide à l'écriture, et redoubler la validation
+ * en sortie ferait échouer une réponse pour un champ qu'on aurait ajouté au catalogue sans
+ * penser à ce fichier.
+ */
+export const astroOverridesResponseSchema = z.object({
+  // Clé libre plutôt que `astroFamilySchema` : un `z.record` sur une énumération exige
+  // TOUTES les familles, alors qu'une absence est ici l'état normal — elle veut dire
+  // « aucun catalogue de cette famille n'a été retouché ».
+  astro: z.record(
+    z.string(),
+    z.record(z.string(), z.record(z.string(), z.unknown())),
+  ),
+});
