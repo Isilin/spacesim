@@ -14,6 +14,10 @@ import {
   surfaceGravity,
   surfaceTempC,
   systemLuminosity,
+  astroYield,
+  systemHazard,
+  hazardFuelMult,
+  NEUTRAL_ASTRO,
 } from "./physics.js";
 
 /**
@@ -277,5 +281,76 @@ describe("habitabilité calculée", () => {
         }
       }
     }
+  });
+});
+
+describe("ce que le ciel rapporte", () => {
+  const bias = { ore: 1.2, food: 0.6 };
+
+  it("le biais de galaxie se compose avec celui des étoiles", () => {
+    // Deux causes distinctes : la galaxie dit ce que la matière contient, l'étoile ce que
+    // son voisinage a enrichi.
+    const yieldAt = astroYield([SUN], bias, 110);
+    expect(yieldAt.ore).toBeGreaterThan(1);
+    expect(yieldAt.food).toBeLessThan(1);
+  });
+
+  it("une relique enrichit son voisinage", () => {
+    const pulsarYield = astroYield([star("pulsar", 1.4)], {}, 110);
+    const sunYield = astroYield([SUN], {}, 110);
+    expect(pulsarYield.ore!).toBeGreaterThan(sunYield.ore!);
+  });
+
+  it("le rendement énergétique suit l'irradiance, borné", () => {
+    // Une colonie proche capte plus, une colonie lointaine moins — mais ni jusqu'à
+    // l'absurde : sans bornes, un monde d'une supergéante multiplierait sa production par
+    // mille.
+    const near = astroYield([SUN], {}, 30);
+    const far = astroYield([SUN], {}, 600);
+    expect(near.energy!).toBeGreaterThan(far.energy!);
+    expect(near.energy!).toBeLessThan(10);
+    expect(far.energy!).toBeGreaterThan(0.1);
+  });
+
+  it("une naine rouge n'éclaire pas comme une étoile solaire", () => {
+    // La mécanique énergie, sans coefficient décrété : c'est `energyMult` du catalogue qui
+    // porte la différence, et elle vient de la luminosité réelle de la classe.
+    const dwarf = astroYield([star("red_dwarf", 0.26)], {}, 110);
+    const sun = astroYield([SUN], {}, 110);
+    expect(dwarf.energy!).toBeLessThan(sun.energy!);
+  });
+
+  it("un ciel neutre ne change rien", () => {
+    // Le défaut de `depositModifier` : un appelant qui ne connaît pas le système obtient
+    // exactement le comportement d'avant le chantier.
+    expect(NEUTRAL_ASTRO).toEqual({});
+  });
+});
+
+describe("danger de séjour", () => {
+  it("le pire objet fait le danger, pas leur somme", () => {
+    // Deux étoiles calmes ne font pas un pulsar.
+    const calm = star("orange_dwarf", 0.6);
+    expect(systemHazard([calm, calm])).toBe(systemHazard([calm]));
+    expect(systemHazard([calm, star("pulsar", 1.4)])).toBeGreaterThan(
+      systemHazard([calm]),
+    );
+  });
+
+  it("un trou noir dormant est au maximum sans rien émettre", () => {
+    // Son danger n'est pas son rayonnement : c'est qu'on ne le voit pas venir.
+    const dormant: CentralBody = {
+      ...SUN,
+      kind: "blackHole",
+      typeId: "dormant",
+    };
+    expect(systemHazard([dormant])).toBe(5);
+  });
+
+  it("le carburant renchérit avec le danger, sans exploser", () => {
+    expect(hazardFuelMult(0)).toBe(1);
+    expect(hazardFuelMult(5)).toBeCloseTo(1.6, 5);
+    // Borné : une valeur hors échelle ne doit pas multiplier une facture par cent.
+    expect(hazardFuelMult(50)).toBe(hazardFuelMult(5));
   });
 });

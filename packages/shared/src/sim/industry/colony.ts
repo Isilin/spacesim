@@ -5,6 +5,7 @@ import { type BuildingId, type Colony } from "../../model/industry.js";
 import { RESOURCES, type ResourceId } from "../../model/resources.js";
 import type { Planet } from "../../model/universe.js";
 import { NO_EFFECTS, type EmpireEffects } from "../empire/research.js";
+import { NEUTRAL_ASTRO, type AstroYield } from "../exploration/physics.js";
 
 export function emptyResources(): Record<ResourceId, number> {
   return Object.fromEntries(RESOURCES.map((r) => [r, 0])) as Record<
@@ -120,13 +121,27 @@ export function resolveQueue(colony: Colony, now: number): Colony {
   };
 }
 
+/**
+ * Rendement d'extraction d'une ressource sur ce corps.
+ *
+ * Deux facteurs se composent, et ils disent deux choses différentes. Le **gisement** dit ce
+ * que ce corps-ci contient, tiré à la génération et figé avec lui. Le **ciel** dit ce que son
+ * système et sa galaxie apportent — métallicité, voisinage stellaire, irradiance — et se
+ * relit du catalogue à chaque tick (chantier 45.2, ADR 0021).
+ *
+ * C'est ici, et seulement ici, que le type d'étoile et le type de galaxie entrent dans
+ * l'économie d'une colonie. `astro` est neutre par défaut : un appelant qui ne connaît pas le
+ * système obtient exactement le comportement d'avant le chantier.
+ */
 function depositModifier(
   planet: Planet,
   resource: ResourceId | undefined,
   balance: BalanceConstants = DEFAULT_BALANCE,
+  astro: AstroYield = NEUTRAL_ASTRO,
 ): number {
   if (!resource) return 1;
-  return planet.deposits[resource] ?? balance.noDepositModifier;
+  const deposit = planet.deposits[resource] ?? balance.noDepositModifier;
+  return deposit * (astro[resource] ?? 1);
 }
 
 export function housing(
@@ -244,6 +259,7 @@ export function applyColonyTick(
   effects: EmpireEffects = NO_EFFECTS,
   buildings: Record<string, BuildingDef> = BUILDINGS,
   balance: BalanceConstants = DEFAULT_BALANCE,
+  astro: AstroYield = NEUTRAL_ASTRO,
 ): Colony {
   const resources = { ...colony.resources };
   const efficiency = workforceEfficiency(colony, buildings);
@@ -274,7 +290,9 @@ export function applyColonyTick(
       number,
     ][]) {
       const modifier =
-        def.depositScaled === res ? depositModifier(planet, res, balance) : 1;
+        def.depositScaled === res
+          ? depositModifier(planet, res, balance, astro)
+          : 1;
       resources[res] += rate * level * modifier * staffing * outputBoost;
     }
   }
@@ -334,6 +352,7 @@ export function colonyRates(
   effects: EmpireEffects = NO_EFFECTS,
   buildings: Record<string, BuildingDef> = BUILDINGS,
   balance: BalanceConstants = DEFAULT_BALANCE,
+  astro: AstroYield = NEUTRAL_ASTRO,
 ): Record<ResourceId, number> {
   const rates = emptyResources();
   const efficiency = workforceEfficiency(colony, buildings);
@@ -358,7 +377,9 @@ export function colonyRates(
       number,
     ][]) {
       const modifier =
-        def.depositScaled === res ? depositModifier(planet, res, balance) : 1;
+        def.depositScaled === res
+          ? depositModifier(planet, res, balance, astro)
+          : 1;
       rates[res] += rate * level * modifier * staffing * outputBoost;
     }
   }

@@ -9,6 +9,10 @@ export default defineConfig({
   test: {
     env: {
       SPACESIM_DB: ":memory:",
+      // Univers déterministe : la seed décide du nombre de sauts entre colonies, donc du
+      // carburant et des frais qu'un test budgète. Tirée au hasard, elle faisait passer ou
+      // échouer les tests de convoi selon l'univers du jour.
+      SPACESIM_SEED: "test-univers",
       NODE_ENV: "test",
     },
     setupFiles: ["./src/test-setup.ts"],

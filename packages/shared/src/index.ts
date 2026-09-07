@@ -549,6 +549,16 @@ export {
   greenhouseK,
   surfaceTempC,
   habitabilityOf,
+  astroYield,
+  systemHazard,
+  hazardFuelMult,
+  flareErosion,
+  auPerSceneUnit,
+  auAt,
+  zoneAt,
+  NEUTRAL_ASTRO,
+  HABITABLE_SCENE_RADIUS,
+  type AstroYield,
   type SurfaceConditions,
 } from "./sim/exploration/physics.js";
 export {

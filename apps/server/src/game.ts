@@ -26,6 +26,7 @@ import {
 } from "@spacesim/shared";
 import type { EmpireSnapshot } from "@spacesim/protocol";
 import { randomUUID } from "node:crypto";
+import { config } from "./config.js";
 import { Empire, type Clock } from "./empire.js";
 import { bootEngine } from "./runtime/boot.js";
 import {
@@ -319,7 +320,9 @@ export class GameEngine {
     }
     const row = {
       id: randomUUID(),
-      seed: randomUUID().slice(0, 8),
+      // Aléatoire en production ; imposée en test, où la géométrie de l'univers décide du
+      // nombre de sauts, donc du carburant et des frais que les tests budgètent.
+      seed: config.seed ?? randomUUID().slice(0, 8),
       tick: 0,
       lastTickAt: Date.now(),
       createdAt: Date.now(),

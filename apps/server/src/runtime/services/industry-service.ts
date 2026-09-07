@@ -3,6 +3,11 @@ import {
   BLUEPRINT_SELL_FRACTION,
   CLAIM_PRODUCTION_BONUS,
   applyColonyTick,
+  astroYield,
+  NEUTRAL_ASTRO,
+  findGalaxyOfSystem,
+  galaxyType,
+  starsOf,
   applyLift,
   canResearch,
   computeEffects,
@@ -782,6 +787,21 @@ export class IndustryService {
               empire.effects.outputMultAll * CLAIM_PRODUCTION_BONUS,
           }
         : empire.effects;
+      // Ce que le ciel du système apporte : métallicité de la galaxie, voisinage stellaire,
+      // irradiance à cette orbite (chantier 45.2). Relu du catalogue à chaque tick, jamais
+      // persisté — c'est ce qui rend un rééquilibrage possible sans réécrire l'univers.
+      const system = this.runtime.systemsById.get(planet.systemId);
+      const galaxy = system
+        ? findGalaxyOfSystem(this.runtime.universe, system.id)
+        : undefined;
+      const astro =
+        system && galaxy
+          ? astroYield(
+              starsOf(system),
+              galaxyType(galaxy.typeId).depositBias,
+              planet.orbitRadius,
+            )
+          : NEUTRAL_ASTRO;
       // L'ascenseur tourne après la production : ce qui vient d'être produit peut monter.
       const balance = this.balance;
       empire.colonyMap.set(
@@ -793,6 +813,7 @@ export class IndustryService {
             effects,
             buildingDefsFromContent(this.runtime.content.buildings),
             balance,
+            astro,
           ),
           effects,
           balance,

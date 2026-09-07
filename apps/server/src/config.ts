@@ -13,6 +13,18 @@ const EnvSchema = z.object({
   HOST: z.string().min(1).default("127.0.0.1"),
   DATABASE_URL: z.string().min(1).optional(),
   SPACESIM_DB: z.string().min(1).optional(),
+  /**
+   * Seed d'univers imposée, au lieu du tirage aléatoire de `bootstrapNewUniverse`.
+   *
+   * Réservée aux tests. La seed décide de la géométrie de l'univers, donc du nombre de sauts
+   * entre deux colonies — et donc du carburant, des frais et de la durée d'un convoi. Tirée
+   * au hasard à chaque bootstrap, elle rendait instable tout test qui budgète ces coûts : ils
+   * passaient ou non selon l'univers du jour, et le chantier 45.2 l'a rendu visible en
+   * renchérissant le carburant du danger d'arrivée.
+   *
+   * Absente en production, où le tirage aléatoire est exactement ce qu'on veut.
+   */
+  SPACESIM_SEED: z.string().min(1).optional(),
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
@@ -64,6 +76,8 @@ export const config = {
   authRateLimitMax: env.AUTH_RATE_LIMIT_MAX,
   /** Routes `/dev/*` : jamais en prod sauf override explicite (double verrou, chantier 20.5). */
   devRoutes: env.DEV_ROUTES === "1",
+  /** Seed d'univers imposée (tests uniquement) — sinon tirage aléatoire au bootstrap. */
+  seed: env.SPACESIM_SEED,
   /** Crée l'univers officiel au prochain boot prod — une bascule, jamais un défaut (chantier 20.4). */
   bootstrap: env.SPACESIM_BOOTSTRAP === "1",
 } as const;

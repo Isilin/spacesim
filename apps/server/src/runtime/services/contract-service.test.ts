@@ -319,13 +319,25 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
     expect(engine.devSetFactionMood(factionId, "shortage")).toBe(true);
     const contract = engine.contracts.find((c) => c.issuerId === factionId)!;
 
-    // Lève d'abord l'énergie du carburant, SEULE et en quantité MODESTE : l'orbite n'a
-    // que 600 de capacité totale (dock unique), déjà entamée par le minerai/vivres de
-    // la colonie mère (200) — trop d'énergie la remplirait avant même d'y loger la
-    // cargaison. Le débit de l'ascenseur est aussi partagé entre consignes "up"
-    // (RESOURCES itère l'énergie en premier), donc lever les deux à la fois affamerait
-    // la cargaison derrière l'énergie.
-    engine.devGrant({ energy: 200, credits: 500 });
+    // L'orbite d'un dock unique tient 600 unités, et elles se partagent entre le carburant
+    // et la cargaison. La colonie mère en occupe déjà ~200 avec son minerai et ses vivres :
+    // on les redescend d'abord, consigne retirée aussitôt pour qu'elle ne dispute pas le
+    // débit de l'ascenseur à ce qui monte ensuite.
+    for (const res of ["ore", "food"] as const) {
+      engine.logistics.setLiftRule(empire, colony.id, res, {
+        keepGround: 100_000,
+        direction: "down",
+      });
+    }
+    advanceTicks(engine, 10);
+    for (const res of ["ore", "food"] as const) {
+      engine.logistics.setLiftRule(empire, colony.id, res, null);
+    }
+
+    // Dotation relevée au chantier 45.2 : le danger du système d'arrivée renchérit le
+    // carburant jusqu'à 60 %. La seed d'univers est fixée en test (`vitest.config.ts`), donc
+    // la distance ne varie plus — mais la marge, elle, avait disparu.
+    engine.devGrant({ energy: 320, credits: 500 });
     engine.logistics.setLiftRule(empire, colony.id, "energy", {
       keepGround: 0,
       direction: "up",
@@ -337,7 +349,16 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
     // naît avec sa PROPRE consigne "up" sur le minerai (chantier 12) — sans la couper, elle
     // continuerait de disputer le même débit et pourrait affamer la cargaison demandée.
     engine.logistics.setLiftRule(empire, colony.id, "ore", null);
-    engine.devGrant({ [contract.resource]: 150 } as Record<string, number>);
+    // Redote le SOL en énergie : l'ascenseur en consomme à chaque unité hissée
+    // (`LIFT_ENERGY_PER_UNIT`), et la consigne précédente a tout monté en orbite pour le
+    // carburant. Sans ce second apport, la cargaison n'a plus de quoi être levée.
+    //
+    // Large aussi sur la cargaison : la ressource demandée par la faction varie d'une
+    // exécution à l'autre — elle ne vient pas de la seed d'univers.
+    engine.devGrant({
+      energy: 400,
+      [contract.resource]: 400,
+    } as Record<string, number>);
     engine.logistics.setLiftRule(empire, colony.id, contract.resource, {
       keepGround: 0,
       direction: "up",
@@ -345,13 +366,9 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
     advanceTicks(engine, 30);
 
     const repBefore = empire.factionRep[factionId] ?? 0;
+    const qty = contract.quantity;
     expect(
-      engine.contract.acceptContract(
-        empire,
-        colony.id,
-        contract.id,
-        contract.quantity,
-      ),
+      engine.contract.acceptContract(empire, colony.id, contract.id, qty),
     ).toBeNull();
 
     const mission = engine
@@ -375,8 +392,7 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
 
     // Payé au prix fixé du contrat, standing crédité — même mécanique qu'un empire émetteur.
     expect(homeColony(engine, empire).resources.credits).toBeGreaterThanOrEqual(
-      creditsBeforeDelivery +
-        Math.floor(contract.quantity * contract.pricePerUnit),
+      creditsBeforeDelivery + Math.floor(qty * contract.pricePerUnit),
     );
     expect(empire.factionRep[factionId] ?? 0).toBeGreaterThan(repBefore);
     expect(engine.snapshotForEmpire(empire).missions).toHaveLength(0);

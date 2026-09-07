@@ -1,4 +1,5 @@
 import type { CentralBody, OrbitZone } from "../../model/universe.js";
+import type { ResourceId } from "../../model/resources.js";
 import { blackHoleType } from "../../content/astro/black-hole-types.js";
 import { starClass } from "../../content/astro/star-classes.js";
 import { whiteHoleType } from "../../content/astro/white-hole-types.js";
@@ -364,6 +365,120 @@ export function greenhouseK(
 /** Température de surface, en degrés — la seule que le joueur lit. */
 export function surfaceTempC(equilibriumK: number, greenhouse: number): number {
   return equilibriumK + greenhouse - KELVIN_OFFSET;
+}
+
+// ── Ce que le ciel rapporte ──────────────────────────────────────────────────
+
+/**
+ * Multiplicateurs de rendement apportés par le ciel d'un système, par ressource.
+ *
+ * `Partial<Record<ResourceId, number>>` comme partout dans le dépôt : une clé absente vaut 1.
+ * C'est ce que `colony.ts` compose avec le gisement du corps, et le seul endroit où l'étoile
+ * et la galaxie entrent dans l'économie d'une colonie.
+ */
+export type AstroYield = Partial<Record<ResourceId, number>>;
+
+/** Ciel neutre : ce que reçoit un appelant qui n'en connaît pas, et le défaut partout. */
+export const NEUTRAL_ASTRO: AstroYield = {};
+
+/**
+ * Bornes de ce que l'irradiance fait au rendement énergétique.
+ *
+ * Une colonie proche de son étoile capte plus, une colonie lointaine moins — mais ni jusqu'à
+ * l'absurde : sans bornes, un monde à 0,1 UA d'une supergéante multiplierait sa production par
+ * mille, et un monde de la ceinture externe la diviserait par cent. Le rapport de cinq entre
+ * les deux extrêmes suffit à ce que le joueur le sente.
+ */
+const IRRADIANCE_YIELD_MIN = 0.45;
+const IRRADIANCE_YIELD_MAX = 2.2;
+
+/**
+ * Rendement apporté par le ciel à un corps donné (chantier 45.2).
+ *
+ * Trois contributions se composent, et chacune répond à une question différente :
+ *
+ * - **La galaxie** dit ce que la matière contient. Sa métallicité est la cause physique du
+ *   biais — une elliptique vieille a perdu son gaz et rend de la roche, une irrégulière jeune
+ *   nourrit sans fournir de fer.
+ * - **Les étoiles** disent ce que leur voisinage a enrichi. Une relique a soufflé ses métaux
+ *   lourds alentour ; un disque d'accrétion est un réacteur.
+ * - **L'irradiance** dit ce que le corps reçoit, ici et maintenant. C'est elle qui fait qu'une
+ *   colonie de naine rouge doit produire son énergie autrement.
+ *
+ * Rien n'est persisté : tout se relit du type de galaxie, des corps centraux et de l'orbite.
+ * Un rééquilibrage de catalogue change donc les rendements sans toucher à l'univers — c'est
+ * exactement la promesse de l'ADR 0021.
+ */
+export function astroYield(
+  bodies: readonly CentralBody[],
+  galaxyDepositBias: AstroYield,
+  orbitRadius: number,
+): AstroYield {
+  const out: AstroYield = { ...galaxyDepositBias };
+
+  let deposit = 1;
+  let energy = 1;
+  for (const body of bodies) {
+    if (body.kind === "star") {
+      deposit *= starClass(body.typeId).depositMult;
+      energy *= starClass(body.typeId).energyMult;
+    } else if (body.kind === "blackHole") {
+      deposit *= blackHoleType(body.typeId).depositMult;
+      energy *= blackHoleType(body.typeId).energyMult;
+    } else {
+      deposit *= whiteHoleType(body.typeId).depositMult;
+      energy *= whiteHoleType(body.typeId).energyMult;
+    }
+  }
+
+  const flux = Math.min(
+    IRRADIANCE_YIELD_MAX,
+    Math.max(
+      IRRADIANCE_YIELD_MIN,
+      irradianceAt(bodies, auAt(bodies, orbitRadius)),
+    ),
+  );
+
+  for (const resource of ["ore", "metals", "food"] as const) {
+    out[resource] = (out[resource] ?? 1) * deposit;
+  }
+  out.energy = (out.energy ?? 1) * energy * flux;
+  return out;
+}
+
+/**
+ * Danger de séjour dans un système, 0–5 (chantier 45.2).
+ *
+ * Le **maximum** et non la somme : ce qui tue dans un système est son objet le plus hostile,
+ * et deux étoiles calmes ne font pas un pulsar. Pour une étoile, c'est son rayonnement qui
+ * fait le danger ; pour une singularité, son `hazard` catalogue, qui dit aussi les marées et
+ * l'imprévisibilité — un dormant est à 5 sans rien émettre.
+ *
+ * Entre dans le coût de trajet **à l'arrivée**, jamais dans le poids d'une arête : le graphe
+ * reste de la géométrie pure, sans quoi `travel.calibration.test.ts` cesserait de mesurer ce
+ * qu'il mesure.
+ */
+export function systemHazard(bodies: readonly CentralBody[]): number {
+  return bodies.reduce((worst, body) => {
+    const danger =
+      body.kind === "star"
+        ? starClass(body.typeId).radiation
+        : body.kind === "blackHole"
+          ? blackHoleType(body.typeId).hazard
+          : whiteHoleType(body.typeId).hazard;
+    return Math.max(worst, danger);
+  }, 0);
+}
+
+/**
+ * Surcoût de carburant d'un convoi arrivant dans un système dangereux.
+ *
+ * Manœuvres d'évitement, blindage, marge de sécurité : traverser un système à pulsar coûte,
+ * et c'est ce qui donne un prix au danger sans inventer de mécanique nouvelle. À 5, le
+ * convoi consomme 60 % de plus.
+ */
+export function hazardFuelMult(hazard: number): number {
+  return 1 + Math.max(0, Math.min(5, hazard)) * 0.12;
 }
 
 // ── Habitabilité ─────────────────────────────────────────────────────────────
