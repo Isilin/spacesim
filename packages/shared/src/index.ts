@@ -558,6 +558,8 @@ export {
   zoneAt,
   NEUTRAL_ASTRO,
   HABITABLE_SCENE_RADIUS,
+  orbitsBarycenter,
+  lightingFor,
   type AstroYield,
   type SurfaceConditions,
 } from "./sim/exploration/physics.js";
@@ -578,6 +580,7 @@ export {
 export {
   angularSpeedOf,
   bodyPositionAt,
+  centralBodyPositionAt,
   distance3,
   orbitalPeriodTicks,
   orbitPosition,

@@ -9,6 +9,7 @@ import {
   flareErosion,
   greenhouseK,
   irradianceAt,
+  lightingFor,
   surfaceGravity,
   surfaceTempC,
 } from "./physics.js";
@@ -132,11 +133,14 @@ export function bodyPhysicals(
   const orbitRadius = isMoon
     ? (parentOrbitRadius ?? planet.orbitRadius)
     : planet.orbitRadius;
-  const irradiance = irradianceAt(stars, auAt(stars, orbitRadius));
+  // En binaire large, seule l'étoile hôte chauffe : compter la compagne lointaine
+  // déplacerait la zone habitable et rendrait la fiche fausse.
+  const lighting = lightingFor(stars, planet.hostStarId, orbitRadius);
+  const irradiance = irradianceAt(lighting, auAt(lighting, orbitRadius));
   const equilibrium = equilibriumTempK(irradiance, def.albedo);
 
   const retention =
-    atmosphereRetention(escapeKms, equilibrium) * flareErosion(stars);
+    atmosphereRetention(escapeKms, equilibrium) * flareErosion(lighting);
   const atmosphere = retainedAtmosphere(def.atmosphere, retention);
   const pressureBar =
     atmosphere === "none"

@@ -3,6 +3,9 @@ import {
   bodyPositionAt,
   sitePosition,
   primaryOf,
+  starsOf,
+  orbitsBarycenter,
+  centralBodyPositionAt,
   type Fleet,
   type ForeignFleet,
   type ForeignStation,
@@ -91,9 +94,19 @@ export function systemExtent(
   system: StarSystem,
   sites: readonly SystemSite[],
 ): number {
+  // Une binaire large s'étale bien au-delà de sa dernière orbite : sa compagne est à
+  // plusieurs centaines d'unités, et son propre cortège tourne autour d'elle — un monde y
+  // atteint donc `séparation + rayon d'orbite`. Sans ce décalage, le cadrage coupait la
+  // moitié du système (chantier 45.2).
+  const stars = starsOf(system);
+  const offsetOf = (body: Planet) => {
+    if (!body.hostStarId || orbitsBarycenter(stars, body.orbitRadius)) return 0;
+    return stars.find((s) => s.id === body.hostStarId)?.orbitRadius ?? 0;
+  };
   return Math.max(
     STAR_CORONA * 2.2,
-    ...system.planets.map((p) => p.orbitRadius + bodyRadiusOf(p)),
+    ...stars.map((s) => s.orbitRadius + STAR_CORONA * 1.2),
+    ...system.planets.map((p) => offsetOf(p) + p.orbitRadius + bodyRadiusOf(p)),
     ...system.belts.map((b) => b.orbitRadius),
     ...sites.map((s) => s.orbitRadius),
   );
@@ -243,17 +256,48 @@ function AsteroidBelt({ belt }: { belt: StarSystem["belts"][number] }) {
 }
 
 /** Anneau d'orbite, tracé dans le plan du corps puis incliné comme lui. */
-function OrbitRing({ body }: { body: Planet }) {
+/**
+ * Anneau d'orbite.
+ *
+ * Centré sur l'origine — le barycentre — sauf pour une orbite de type S, où il suit son
+ * étoile hôte (chantier 45.2). Sans ce décalage, le cortège d'une binaire large tournerait
+ * visiblement autour d'un anneau qui n'est pas le sien.
+ *
+ * L'anneau est fixe et l'hôte se déplace : on le pose à la position de l'hôte au tick courant,
+ * ce que `useFrame` rafraîchit déjà pour les corps eux-mêmes.
+ */
+function OrbitRing({
+  body,
+  system,
+  tickAt,
+}: {
+  body: Planet;
+  system: StarSystem;
+  tickAt: () => number;
+}) {
+  const ref = useRef<Group>(null);
+  const host = starsOf(system).find((s) => s.id === body.hostStarId);
+  const follows =
+    host !== undefined && !orbitsBarycenter(starsOf(system), body.orbitRadius);
+
+  useFrame(() => {
+    if (!ref.current || !follows || !host) return;
+    const p = centralBodyPositionAt(host, tickAt());
+    ref.current.position.set(p.x, p.y, p.z);
+  });
+
   return (
-    <mesh rotation={[body.inclination, 0, body.ascendingNode]}>
-      <ringGeometry
-        args={[body.orbitRadius - 0.35, body.orbitRadius + 0.35, 96]}
-      />
-      {/* Relevé au chantier 33.8 : `#1e2a38` à 0,7 sur le fond plat `#080b10` se
-          distinguait à peine — l'anneau porte pourtant la lecture de la géométrie du
-          système. La teinte vient du jeton de bordure claire, comme les filets du HUD. */}
-      <meshBasicMaterial color={orbitColor()} transparent opacity={0.85} />
-    </mesh>
+    <group ref={ref}>
+      <mesh rotation={[body.inclination, 0, body.ascendingNode]}>
+        <ringGeometry
+          args={[body.orbitRadius - 0.35, body.orbitRadius + 0.35, 96]}
+        />
+        {/* Relevé au chantier 33.8 : `#1e2a38` à 0,7 sur le fond plat `#080b10` se
+            distinguait à peine — l'anneau porte pourtant la lecture de la géométrie du
+            système. La teinte vient du jeton de bordure claire, comme les filets du HUD. */}
+        <meshBasicMaterial color={orbitColor()} transparent opacity={0.85} />
+      </mesh>
+    </group>
   );
 }
 
@@ -395,7 +439,12 @@ export function SystemLayer({
       )}
 
       {planets.map((planet) => (
-        <OrbitRing key={`ring-${planet.id}`} body={planet} />
+        <OrbitRing
+          key={`ring-${planet.id}`}
+          body={planet}
+          system={system}
+          tickAt={tickAt}
+        />
       ))}
 
       {system.belts.map((belt) => (

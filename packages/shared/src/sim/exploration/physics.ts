@@ -367,6 +367,48 @@ export function surfaceTempC(equilibriumK: number, greenhouse: number): number {
   return equilibriumK + greenhouse - KELVIN_OFFSET;
 }
 
+/**
+ * Le corps orbite-t-il le **barycentre** du système plutôt qu'une étoile en particulier ?
+ *
+ * C'est la distinction des orbites P et S, et elle se **lit** de la géométrie au lieu d'être
+ * un second champ à côté de `hostStarId` : un corps dont l'orbite englobe tous les corps
+ * centraux tourne nécessairement autour de leur centre de masse, un corps dont l'orbite est
+ * plus serrée que leur séparation tourne autour de l'un d'eux. Deux champs qui pourraient se
+ * contredire valent moins qu'un seul qu'on relit.
+ *
+ * Le générateur rend la lecture non ambiguë par construction : il ne tire jamais de séparation
+ * dans la bande intermédiaire, où l'une et l'autre seraient également plausibles — et où les
+ * orbites planétaires ne sont de toute façon pas stables.
+ */
+export function orbitsBarycenter(
+  bodies: readonly CentralBody[],
+  orbitRadius: number,
+): boolean {
+  const outermost = bodies.reduce((max, b) => Math.max(max, b.orbitRadius), 0);
+  return orbitRadius > outermost;
+}
+
+/**
+ * Les corps centraux qui éclairent réellement un corps donné.
+ *
+ * En orbite P — étoile seule ou binaire serrée — c'est le système entier : les deux étoiles
+ * sont si proches qu'un monde qui les englobe reçoit leur flux combiné.
+ *
+ * En orbite S, c'est **la seule étoile hôte**. Sa compagne est à plusieurs centaines d'unités,
+ * et compter sa luminosité déplacerait la zone habitable du cortège vers l'extérieur au point
+ * de la rendre fausse : un monde tempéré autour d'une naine rouge le resterait si sa compagne
+ * lointaine était une géante bleue, ce qui est exactement le contraire de la vérité.
+ */
+export function lightingFor(
+  bodies: readonly CentralBody[],
+  hostStarId: string | undefined,
+  orbitRadius: number,
+): readonly CentralBody[] {
+  if (!hostStarId || orbitsBarycenter(bodies, orbitRadius)) return bodies;
+  const host = bodies.find((b) => b.id === hostStarId);
+  return host ? [host] : bodies;
+}
+
 // ── Ce que le ciel rapporte ──────────────────────────────────────────────────
 
 /**

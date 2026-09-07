@@ -47,6 +47,7 @@ import {
   greenhouseK,
   habitabilityOf,
   irradianceAt,
+  lightingFor,
   radiationAt,
   surfaceGravity,
   surfaceTempC,
@@ -73,7 +74,7 @@ import type {
  * bumper cette version vont ensemble, dans le même commit. Les galaxies déjà
  * matérialisées en DB gardent la version qui les a produites et ne changent jamais.
  */
-export const GENERATOR_VERSION = 7;
+export const GENERATOR_VERSION = 8;
 
 /** Part des systèmes accueillant un comptoir commercial PNJ. */
 const TRADING_POST_PROBABILITY = 0.35;
@@ -333,17 +334,20 @@ function bodyHabitability(
   type: PlanetType,
   stars: readonly CentralBody[],
   orbitRadius: number,
+  hostStarId?: string,
 ): { habitability: number; radiusEarth: number; density: number } {
   const def = planetType(type);
   const radiusEarth = range(rng, def.radiusRange);
   const density = range(rng, def.densityRange);
   if (!def.colonizable) return { habitability: 0, radiusEarth, density };
 
-  const au = auAt(stars, orbitRadius);
+  // En binaire large, c'est l'étoile HÔTE qui chauffe, pas la somme des deux.
+  const lighting = lightingFor(stars, hostStarId, orbitRadius);
+  const au = auAt(lighting, orbitRadius);
   const equilibrium = equilibriumTempK(irradianceAt(stars, au), def.albedo);
   const retention =
     atmosphereRetention(escapeVelocity(radiusEarth, density), equilibrium) *
-    flareErosion(stars);
+    flareErosion(lighting);
   // Ce que le corps retient réellement de ce qu'il dégaze. Sous 0,15 il est nu quoi qu'il
   // tente : c'est ce couplage qui fait qu'une naine sans gravité reste stérile même au bon
   // endroit, et qu'un monde froid garde une atmosphère qu'un monde chaud aurait perdue.
@@ -357,7 +361,7 @@ function bodyHabitability(
       surfaceTempC: surface,
       pressureBar: pressure,
       gravityG: surfaceGravity(radiusEarth, density),
-      radiation: radiationAt(stars, au),
+      radiation: radiationAt(lighting, au),
       breathable: def.atmosphere === "breathable" && retention > 0.5,
     }),
     radiusEarth,
@@ -435,16 +439,34 @@ function generateBodies(
 } {
   const count = randInt(rng, 2, 5);
   const planets: Planet[] = [];
-  // Toutes les planètes orbitent l'ancre au palier 2 : les compagnons d'une binaire large
-  // n'ont pas encore de cortège propre. Le champ existe pour que ce soit possible sans
-  // migration, et c'est l'étape suivante qui le remplira de plusieurs valeurs.
-  const host = stars[0]?.id;
+
+  // Qui héberge le cortège.
+  //
+  // Dans une binaire SERRÉE — séparation sous la première orbite — les planètes englobent les
+  // deux étoiles et tournent autour du barycentre : leur hôte nominal est l'ancre, et
+  // `orbitsBarycenter` le lit de la géométrie. Dans une binaire LARGE, chaque étoile garde son
+  // propre cortège, et l'hôte se tire à la masse : une naine ne retient pas autant de mondes
+  // que sa compagne massive.
+  //
+  // Le générateur ne tire jamais de séparation entre les deux bandes, où l'un et l'autre
+  // seraient également plausibles — et où les orbites ne sont de toute façon pas stables.
+  const wide = stars.some((s) => s.orbitRadius >= WIDE_BINARY[0]);
+  const hostTable: readonly (readonly [string, number])[] = stars.map(
+    (s) => [s.id, s.mass] as const,
+  );
+
   for (let i = 1; i <= count; i++) {
+    const host =
+      wide && hostTable.length > 0
+        ? pickWeighted(rng, hostTable)
+        : stars[0]?.id;
     const orbitRadius = 70 + (i - 1) * 55 + randInt(rng, -8, 8);
-    const candidates = planetTypesForZone(zoneAt(stars, orbitRadius));
+    const candidates = planetTypesForZone(
+      zoneAt(lightingFor(stars, host, orbitRadius), orbitRadius),
+    );
     const type =
       candidates.length > 0 ? pickWeighted(rng, candidates) : "frozen";
-    const body = bodyHabitability(rng, type, stars, orbitRadius);
+    const body = bodyHabitability(rng, type, stars, orbitRadius, host);
     const def = planetType(type);
     const planet: Planet = {
       id: `${system.id}-p${i}`,

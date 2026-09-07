@@ -2,7 +2,13 @@ import {
   MOON_KEPLER_CONSTANT,
   PLANET_KEPLER_CONSTANT,
 } from "../../constants.js";
-import type { Planet, StarSystem } from "../../model/universe.js";
+import {
+  starsOf,
+  type CentralBody,
+  type Planet,
+  type StarSystem,
+} from "../../model/universe.js";
+import { orbitsBarycenter } from "./physics.js";
 
 /**
  * Géométrie de l'univers volumétrique (chantier 31.5). Seul point de vérité :
@@ -92,12 +98,34 @@ function localPositionAt(body: Planet, tick: number): Vec3 {
 }
 
 /**
- * Position d'un corps dans le repère de son système, à un tick donné — étoile à
- * l'origine. Une lune compose sa propre orbite avec celle de sa planète parente.
+ * Position d'un corps central autour du barycentre du système (chantier 45.2).
  *
- * Si la planète parente d'une lune est introuvable (données incohérentes), la lune est
- * positionnée comme si elle orbitait l'étoile : mieux vaut un corps mal placé qu'une vue
- * qui refuse de se rendre.
+ * L'ancre y est immobile — rayon nul, à l'origine, ce que tout le reste suppose. Un compagnon
+ * suit la même loi de Kepler qu'une planète : sa période croît comme `r^1,5`, si bien qu'une
+ * binaire serrée tourne vite et une binaire large très lentement. C'est physiquement juste, et
+ * ça évite une seconde constante à calibrer.
+ */
+export function centralBodyPositionAt(body: CentralBody, tick: number): Vec3 {
+  if (body.orbitRadius <= 0) return { x: 0, y: 0, z: 0 };
+  return orbitPosition(
+    body,
+    (PLANET_KEPLER_CONSTANT / body.orbitRadius ** 1.5) * tick,
+  );
+}
+
+/**
+ * Position d'un corps dans le repère de son système, au tick donné.
+ *
+ * Trois compositions possibles, dans cet ordre :
+ *
+ * - une **lune** part de la position de sa planète ;
+ * - une planète en orbite **S** part de la position de son étoile hôte, elle-même en orbite
+ *   autour du barycentre — le cas d'une binaire large, où chaque étoile garde son cortège ;
+ * - une planète en orbite **P** part de l'origine, qui EST le barycentre — le cas d'une
+ *   étoile seule ou d'une binaire serrée que le cortège englobe.
+ *
+ * `orbitsBarycenter` tranche entre les deux dernières par la seule géométrie, sans champ
+ * supplémentaire qui pourrait la contredire.
  */
 export function bodyPositionAt(
   system: StarSystem,
@@ -105,16 +133,30 @@ export function bodyPositionAt(
   tick: number,
 ): Vec3 {
   const local = localPositionAt(body, tick);
-  if (!isMoon(body) || !body.parentPlanetId) return local;
 
-  const parent = system.planets.find((p) => p.id === body.parentPlanetId);
-  if (!parent) return local;
+  if (isMoon(body) && body.parentPlanetId) {
+    const parent = system.planets.find((p) => p.id === body.parentPlanetId);
+    if (!parent) return local;
+    const parentPos = bodyPositionAt(system, parent, tick);
+    return {
+      x: parentPos.x + local.x,
+      y: parentPos.y + local.y,
+      z: parentPos.z + local.z,
+    };
+  }
 
-  const parentPos = localPositionAt(parent, tick);
+  const stars = starsOf(system);
+  if (!body.hostStarId || orbitsBarycenter(stars, body.orbitRadius)) {
+    return local;
+  }
+  const host = stars.find((s) => s.id === body.hostStarId);
+  if (!host) return local;
+
+  const hostPos = centralBodyPositionAt(host, tick);
   return {
-    x: parentPos.x + local.x,
-    y: parentPos.y + local.y,
-    z: parentPos.z + local.z,
+    x: hostPos.x + local.x,
+    y: hostPos.y + local.y,
+    z: hostPos.z + local.z,
   };
 }
 
