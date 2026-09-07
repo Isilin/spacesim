@@ -5,6 +5,7 @@ import {
   GALAXY_TYPES,
   type GalaxyTypeId,
 } from "./content/astro/galaxy-types.js";
+import { whiteHoleType } from "./content/astro/white-hole-types.js";
 import {
   allPlanets,
   allSystems,
@@ -170,24 +171,28 @@ describe("type de galaxie (chantier 45.1)", () => {
   });
 
   it("la taille d'une galaxie respecte la fourchette de son type", () => {
+    // `galaxy.systems` inclut les errants depuis le chantier 45.1 — ce sont des systèmes,
+    // et c'est tout leur intérêt. La fourchette du type porte sur les systèmes ORDINAIRES :
+    // c'est d'eux que le générateur tire le nombre, avant d'ajouter le halo.
     for (const galaxy of universe.galaxies) {
       const [min, max] =
         GALAXY_TYPES[galaxy.typeId as GalaxyTypeId].systemRange;
+      const ordinary = galaxy.systems.filter((s) => !s.stars?.length).length;
       expect(
-        galaxy.systems.length,
+        ordinary,
         `${galaxy.id} (${galaxy.typeId})`,
       ).toBeGreaterThanOrEqual(min);
-      expect(
-        galaxy.systems.length,
-        `${galaxy.id} (${galaxy.typeId})`,
-      ).toBeLessThanOrEqual(max);
+      expect(ordinary, `${galaxy.id} (${galaxy.typeId})`).toBeLessThanOrEqual(
+        max,
+      );
     }
   });
 
   it("la galaxie mère a un type qui admet ses 520 systèmes", () => {
     const home = universe.galaxies[0]!;
     const [min, max] = GALAXY_TYPES[home.typeId as GalaxyTypeId].systemRange;
-    expect(home.systems.length).toBe(520);
+    const ordinary = home.systems.filter((s) => !s.stars?.length).length;
+    expect(ordinary).toBe(520);
     expect(520).toBeGreaterThanOrEqual(min);
     expect(520).toBeLessThanOrEqual(max);
   });
@@ -205,5 +210,126 @@ describe("type de galaxie (chantier 45.1)", () => {
     // Huit types pondérés : n'en voir qu'un sur douze tirages signalerait un tirage cassé.
     const seen = new Set(universe.galaxies.map((g) => g.typeId));
     expect(seen.size).toBeGreaterThan(1);
+  });
+});
+
+describe("singularités errantes et ponts (chantier 45.1)", () => {
+  /**
+   * Un errant est un **système** sans étoile ni monde, et non une entité nouvelle : c'est
+   * ce qui lui donne gratuitement le graphe de sauts, la carte, la base et le brouillard.
+   * Ces cas protègent les conséquences de ce choix — celles qu'un type ne peut pas dire.
+   */
+  const universe = generateUniverse("errants-45", 6);
+  const drifters = (galaxy: (typeof universe.galaxies)[number]) =>
+    galaxy.systems.filter((s) => (s.stars?.length ?? 0) > 0);
+
+  it("chaque galaxie en porte, dans l'ordre de grandeur de sa densité", () => {
+    for (const galaxy of universe.galaxies) {
+      const expected = Math.round(
+        (GALAXY_TYPES[galaxy.typeId as GalaxyTypeId].singularityDensity *
+          (galaxy.systems.length - drifters(galaxy).length)) /
+          100,
+      );
+      expect(drifters(galaxy).length, galaxy.id).toBe(expected);
+      expect(drifters(galaxy).length, galaxy.id).toBeGreaterThan(0);
+    }
+  });
+
+  it("un errant n'a qu'un corps central, aucun monde et aucun comptoir", () => {
+    // Pas un système appauvri : un objet d'une autre nature, qui se traverse et s'exploite
+    // au lieu de se coloniser.
+    for (const galaxy of universe.galaxies) {
+      for (const d of drifters(galaxy)) {
+        expect(d.stars, d.id).toHaveLength(1);
+        expect(d.planets, d.id).toHaveLength(0);
+        expect(d.belts, d.id).toHaveLength(0);
+        expect(d.station, d.id).toBeUndefined();
+        expect(["blackHole", "whiteHole"], d.id).toContain(d.stars![0]!.kind);
+        expect(d.stars![0]!.rank).toBe(0);
+        expect(d.stars![0]!.orbitRadius).toBe(0);
+        expect(d.stars![0]!.mass).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("un errant est une destination du graphe, pas du décor", () => {
+    for (const galaxy of universe.galaxies) {
+      const linked = new Set(galaxy.links.flat());
+      for (const d of drifters(galaxy)) {
+        expect(linked.has(d.id), `${d.id} sans liaison`).toBe(true);
+      }
+    }
+  });
+
+  it("l'ancre de portail n'est jamais un errant", () => {
+    // Elle est le point d'arrivée des portails inter-galactiques : un trou noir sans monde
+    // ni comptoir en ferait une porte d'entrée absurde. Les errants vivant dans le halo,
+    // le plus excentré des systèmes serait presque toujours l'un d'eux.
+    for (const galaxy of universe.galaxies) {
+      const ids = new Set(drifters(galaxy).map((d) => d.id));
+      expect(ids.has(galaxy.anchorSystemId), galaxy.id).toBe(false);
+    }
+  });
+
+  it("les noms des errants ne doublonnent aucun système", () => {
+    for (const galaxy of universe.galaxies) {
+      const names = galaxy.systems.map((s) => s.name);
+      expect(new Set(names).size, galaxy.id).toBe(names.length);
+    }
+  });
+
+  it("un pont relie une fontaine blanche à un trou noir, en paire canonique", () => {
+    for (const galaxy of universe.galaxies) {
+      const byId = new Map(galaxy.systems.map((s) => [s.id, s]));
+      const used = new Set<string>();
+      for (const [a, b] of galaxy.bridges) {
+        expect(a < b, `${a}/${b} non canonique`).toBe(true);
+        const kinds = [a, b].map((id) => byId.get(id)?.stars?.[0]?.kind);
+        expect(kinds.sort()).toEqual(["blackHole", "whiteHole"]);
+        // Aucune bouche n'est appariée deux fois : un passage a deux extrémités.
+        for (const id of [a, b]) {
+          expect(used.has(id), `${id} apparié deux fois`).toBe(false);
+          used.add(id);
+        }
+      }
+    }
+  });
+
+  it("un pont saute plus loin que la portée minimale de sa fontaine", () => {
+    // Sans quoi il doublerait une liaison existante au lieu de raccourcir quoi que ce soit.
+    for (const galaxy of universe.galaxies) {
+      const byId = new Map(galaxy.systems.map((s) => [s.id, s]));
+      const adjacency = new Map<string, string[]>();
+      for (const [a, b] of galaxy.links) {
+        adjacency.set(a, [...(adjacency.get(a) ?? []), b]);
+        adjacency.set(b, [...(adjacency.get(b) ?? []), a]);
+      }
+      for (const [a, b] of galaxy.bridges) {
+        const mouth = [a, b].find(
+          (id) => byId.get(id)!.stars![0]!.kind === "whiteHole",
+        )!;
+        const other = mouth === a ? b : a;
+        const [minHops] = whiteHoleType(
+          byId.get(mouth)!.stars![0]!.typeId,
+        ).wormholeRange;
+
+        let hops = 0;
+        const seen = new Set([mouth]);
+        let frontier = [mouth];
+        while (frontier.length > 0 && !seen.has(other)) {
+          hops++;
+          const next: string[] = [];
+          for (const id of frontier)
+            for (const n of adjacency.get(id) ?? [])
+              if (!seen.has(n)) {
+                seen.add(n);
+                next.push(n);
+              }
+          frontier = next;
+          if (seen.has(other)) break;
+        }
+        expect(hops, `${a}/${b}`).toBeGreaterThanOrEqual(minHops);
+      }
+    }
   });
 });

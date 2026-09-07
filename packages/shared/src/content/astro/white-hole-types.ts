@@ -37,6 +37,12 @@ export interface WhiteHoleTypeDef {
   // ── Entrées de génération — jamais éditables ──
 
   /**
+   * Masses solaires. Une fontaine n'a pas de masse au sens où un trou noir en a une, mais
+   * un corps central en a besoin : c'est elle qui fixe le barycentre autour duquel tournent
+   * les compagnons, et l'échelle des orbites d'un système qu'elle ancrerait.
+   */
+  massRange: readonly [number, number];
+  /**
    * Emplacements permis. Aucun trou blanc ne peut valoir `"core"` : un bulbe de galaxie
    * accrète, il n'éjecte pas.
    */
@@ -83,6 +89,7 @@ export const WHITE_HOLE_TYPES: Record<WhiteHoleTypeId, StaticWhiteHoleTypeDef> =
     // Vient de s'ouvrir : le passage se referme et se rouvre, praticable mais pas fiable.
     nascent: {
       id: "nascent",
+      massRange: [2, 8],
       placements: ["drifter"],
       weights: { drifter: 6 },
       wormholeRange: [8, 15],
@@ -101,6 +108,7 @@ export const WHITE_HOLE_TYPES: Record<WhiteHoleTypeId, StaticWhiteHoleTypeDef> =
     // Le raccourci fiable : c'est celui-là qui change réellement la carte d'une galaxie.
     stable: {
       id: "stable",
+      massRange: [4, 14],
       placements: ["drifter", "primary"],
       weights: { drifter: 8, primary: 2 },
       wormholeRange: [20, 40],
@@ -120,6 +128,7 @@ export const WHITE_HOLE_TYPES: Record<WhiteHoleTypeId, StaticWhiteHoleTypeDef> =
     // abîme les coques.
     torrent: {
       id: "torrent",
+      massRange: [10, 30],
       placements: ["primary"],
       weights: { primary: 1 },
       wormholeRange: [12, 25],
@@ -139,6 +148,7 @@ export const WHITE_HOLE_TYPES: Record<WhiteHoleTypeId, StaticWhiteHoleTypeDef> =
     // c'est ressortir là-bas.
     echo: {
       id: "echo",
+      massRange: [3, 10],
       placements: ["drifter"],
       weights: { drifter: 4 },
       wormholeRange: [40, 59],

@@ -1,5 +1,5 @@
 {
-  "generatorVersion": 4,
+  "generatorVersion": 5,
   "seed": "fixture-seed",
   "galaxies": [
     {
@@ -12,12 +12,15 @@
       ],
       "depositBonus": 1,
       "anchorSystemId": "gal-0-sys-516",
-      "systemCount": 520,
-      "linkCount": 999,
+      "typeId": "spiral",
+      "systemCount": 526,
+      "linkCount": 1013,
       "bodyCount": 3593,
       "beltCount": 500,
       "stationCount": 179,
-      "fingerprint": "7bc44b28",
+      "drifterCount": 6,
+      "bridgeCount": 1,
+      "fingerprint": "696d4e41",
       "sample": [
         {
           "id": "gal-0-sys-0",
@@ -165,255 +168,147 @@
           "belts": []
         },
         {
-          "id": "gal-0-sys-260",
-          "name": "Dagron",
-          "x": 127,
-          "y": 1817,
-          "z": 68,
+          "id": "gal-0-sys-263",
+          "name": "Ererna",
+          "x": 822,
+          "y": -1146,
+          "z": 81,
           "planets": [
             {
-              "id": "gal-0-sys-260-p1",
-              "systemId": "gal-0-sys-260",
-              "name": "Dagron I",
-              "kind": "planet",
-              "type": "gas",
-              "habitability": 0,
-              "slots": 4,
-              "deposits": {
-                "energy": 1.95
-              },
-              "orbitRadius": 76,
-              "orbitAngle": 2.359128983900072,
-              "inclination": -0.11361522038932889,
-              "ascendingNode": 3.3690558258067886
-            },
-            {
-              "id": "gal-0-sys-260-p1-m1",
-              "systemId": "gal-0-sys-260",
-              "name": "Dagron I a",
-              "kind": "moon",
-              "parentPlanetId": "gal-0-sys-260-p1",
-              "type": "frozen",
-              "habitability": 13,
-              "slots": 5,
-              "deposits": {},
-              "orbitRadius": 16,
-              "orbitAngle": 2.9631015652338024,
-              "inclination": -0.13744257206562907,
-              "ascendingNode": 0.4672554756832245
-            },
-            {
-              "id": "gal-0-sys-260-p1-m2",
-              "systemId": "gal-0-sys-260",
-              "name": "Dagron I b",
-              "kind": "moon",
-              "parentPlanetId": "gal-0-sys-260-p1",
-              "type": "frozen",
-              "habitability": 40,
-              "slots": 5,
-              "deposits": {
-                "ore": 1.35,
-                "food": 0.34
-              },
-              "orbitRadius": 26,
-              "orbitAngle": 3.66416100772214,
-              "inclination": 0.0621389553649351,
-              "ascendingNode": 4.464293016386241
-            },
-            {
-              "id": "gal-0-sys-260-p2",
-              "systemId": "gal-0-sys-260",
-              "name": "Dagron II",
-              "kind": "planet",
-              "type": "telluric",
-              "habitability": 72,
-              "slots": 14,
-              "deposits": {
-                "ore": 0.76,
-                "food": 1.02,
-                "energy": 1.03
-              },
-              "orbitRadius": 132,
-              "orbitAngle": 6.0195826426819625,
-              "inclination": 0.026406251150183378,
-              "ascendingNode": 0.6037025149529528
-            },
-            {
-              "id": "gal-0-sys-260-p3",
-              "systemId": "gal-0-sys-260",
-              "name": "Dagron III",
-              "kind": "planet",
-              "type": "oceanic",
-              "habitability": 60,
-              "slots": 11,
-              "deposits": {
-                "food": 1.22,
-                "energy": 0.97
-              },
-              "orbitRadius": 183,
-              "orbitAngle": 5.671711963031835,
-              "inclination": 0.07123489317018539,
-              "ascendingNode": 0.7695790991670697
-            },
-            {
-              "id": "gal-0-sys-260-p3-m1",
-              "systemId": "gal-0-sys-260",
-              "name": "Dagron III a",
-              "kind": "moon",
-              "parentPlanetId": "gal-0-sys-260-p3",
-              "type": "frozen",
-              "habitability": 10,
-              "slots": 5,
-              "deposits": {},
-              "orbitRadius": 16,
-              "orbitAngle": 6.094485830174661,
-              "inclination": -0.08966985270380974,
-              "ascendingNode": 0.20544518426799094
-            },
-            {
-              "id": "gal-0-sys-260-p3-m2",
-              "systemId": "gal-0-sys-260",
-              "name": "Dagron III b",
-              "kind": "moon",
-              "parentPlanetId": "gal-0-sys-260-p3",
-              "type": "telluric",
-              "habitability": 40,
-              "slots": 2,
-              "deposits": {
-                "food": 1.36,
-                "energy": 0.96
-              },
-              "orbitRadius": 26,
-              "orbitAngle": 1.204375891250122,
-              "inclination": -0.046214315691031516,
-              "ascendingNode": 3.758837436312556
-            }
-          ],
-          "belts": [
-            {
-              "id": "gal-0-sys-260-b1",
-              "systemId": "gal-0-sys-260",
-              "name": "Ceinture Dagron I",
-              "orbitRadius": 270,
-              "inclination": 0.0331106600118801,
-              "ascendingNode": 1.1908758579252603,
-              "deposits": {
-                "ore": 1.91
-              }
-            }
-          ],
-          "station": {
-            "id": "gal-0-sys-260-st",
-            "systemId": "gal-0-sys-260",
-            "factionId": "ferride",
-            "name": "Comptoir Dagron"
-          }
-        },
-        {
-          "id": "gal-0-sys-519",
-          "name": "Galnor",
-          "x": 2496,
-          "y": 1302,
-          "z": 10,
-          "planets": [
-            {
-              "id": "gal-0-sys-519-p1",
-              "systemId": "gal-0-sys-519",
-              "name": "Galnor I",
+              "id": "gal-0-sys-263-p1",
+              "systemId": "gal-0-sys-263",
+              "name": "Ererna I",
               "kind": "planet",
               "type": "frozen",
-              "habitability": 19,
-              "slots": 6,
-              "deposits": {
-                "ore": 1.2,
-                "energy": 0.68
-              },
-              "orbitRadius": 70,
-              "orbitAngle": 1.5010635657797853,
-              "inclination": 0.12783105592243374,
-              "ascendingNode": 5.563317274700837
-            },
-            {
-              "id": "gal-0-sys-519-p2",
-              "systemId": "gal-0-sys-519",
-              "name": "Galnor II",
-              "kind": "planet",
-              "type": "arid",
-              "habitability": 40,
-              "slots": 12,
-              "deposits": {},
-              "orbitRadius": 128,
-              "orbitAngle": 1.112860288812231,
-              "inclination": -0.13027083117049187,
-              "ascendingNode": 5.0568307380521675
-            },
-            {
-              "id": "gal-0-sys-519-p3",
-              "systemId": "gal-0-sys-519",
-              "name": "Galnor III",
-              "kind": "planet",
-              "type": "telluric",
-              "habitability": 86,
+              "habitability": 26,
               "slots": 7,
               "deposits": {
-                "ore": 0.74,
-                "food": 1.14,
-                "energy": 0.92
+                "ore": 1
               },
-              "orbitRadius": 180,
-              "orbitAngle": 5.662664013668426,
-              "inclination": 0.09837078829295932,
-              "ascendingNode": 3.937964354216257
+              "orbitRadius": 75,
+              "orbitAngle": 4.153937937537186,
+              "inclination": 0.11092319707386196,
+              "ascendingNode": 0.861707121537566
             },
             {
-              "id": "gal-0-sys-519-p4",
-              "systemId": "gal-0-sys-519",
-              "name": "Galnor IV",
+              "id": "gal-0-sys-263-p1-m1",
+              "systemId": "gal-0-sys-263",
+              "name": "Ererna I a",
+              "kind": "moon",
+              "parentPlanetId": "gal-0-sys-263-p1",
+              "type": "arid",
+              "habitability": 40,
+              "slots": 3,
+              "deposits": {
+                "ore": 1.11
+              },
+              "orbitRadius": 16,
+              "orbitAngle": 1.9562881319159076,
+              "inclination": -0.06030163338873535,
+              "ascendingNode": 1.8701706342850353
+            },
+            {
+              "id": "gal-0-sys-263-p2",
+              "systemId": "gal-0-sys-263",
+              "name": "Ererna II",
+              "kind": "planet",
+              "type": "volcanic",
+              "habitability": 27,
+              "slots": 14,
+              "deposits": {
+                "ore": 1.79,
+                "energy": 1.58,
+                "food": 0.21
+              },
+              "orbitRadius": 120,
+              "orbitAngle": 5.592926161698399,
+              "inclination": -0.03343181549571454,
+              "ascendingNode": 1.1279862736587856
+            },
+            {
+              "id": "gal-0-sys-263-p2-m1",
+              "systemId": "gal-0-sys-263",
+              "name": "Ererna II a",
+              "kind": "moon",
+              "parentPlanetId": "gal-0-sys-263-p2",
+              "type": "frozen",
+              "habitability": 18,
+              "slots": 4,
+              "deposits": {
+                "ore": 1.3
+              },
+              "orbitRadius": 16,
+              "orbitAngle": 0.6319236881009487,
+              "inclination": -0.12155019314959645,
+              "ascendingNode": 1.0775048226065786
+            },
+            {
+              "id": "gal-0-sys-263-p3",
+              "systemId": "gal-0-sys-263",
+              "name": "Ererna III",
               "kind": "planet",
               "type": "telluric",
-              "habitability": 63,
-              "slots": 11,
-              "deposits": {
-                "ore": 0.72,
-                "food": 1.13,
-                "energy": 0.96
-              },
-              "orbitRadius": 240,
-              "orbitAngle": 0.3849864078863305,
-              "inclination": -0.059742352436296636,
-              "ascendingNode": 1.4645560003845772
-            },
-            {
-              "id": "gal-0-sys-519-p5",
-              "systemId": "gal-0-sys-519",
-              "name": "Galnor V",
-              "kind": "planet",
-              "type": "arid",
-              "habitability": 34,
+              "habitability": 59,
               "slots": 9,
               "deposits": {
-                "ore": 1.19,
-                "energy": 1.46
+                "ore": 1,
+                "food": 1.32,
+                "energy": 1.09
               },
-              "orbitRadius": 286,
-              "orbitAngle": 4.626063305122384,
-              "inclination": -0.1306766556808725,
-              "ascendingNode": 3.649829397633054
+              "orbitRadius": 177,
+              "orbitAngle": 1.4376800901293234,
+              "inclination": -0.1437705360352993,
+              "ascendingNode": 5.286864823483732
             }
           ],
           "belts": [
             {
-              "id": "gal-0-sys-519-b1",
-              "systemId": "gal-0-sys-519",
-              "name": "Ceinture Galnor I",
-              "orbitRadius": 394,
-              "inclination": 0.11295150329824537,
-              "ascendingNode": 0.6986464307995723,
+              "id": "gal-0-sys-263-b1",
+              "systemId": "gal-0-sys-263",
+              "name": "Ceinture Ererna I",
+              "orbitRadius": 267,
+              "inclination": 0.017659699567593633,
+              "ascendingNode": 3.736459375947947,
               "deposits": {
-                "ore": 1.26
+                "ore": 1.56
+              }
+            },
+            {
+              "id": "gal-0-sys-263-b2",
+              "systemId": "gal-0-sys-263",
+              "name": "Ceinture Ererna II",
+              "orbitRadius": 318,
+              "inclination": -0.012205678853206336,
+              "ascendingNode": 4.938591196214934,
+              "deposits": {
+                "ore": 1.89
               }
             }
           ]
+        },
+        {
+          "id": "gal-0-drift-5",
+          "name": "Ithris",
+          "x": 804,
+          "y": 1667,
+          "z": 74,
+          "stars": [
+            {
+              "id": "gal-0-drift-5-s1",
+              "systemId": "gal-0-drift-5",
+              "name": "Ithris A",
+              "kind": "whiteHole",
+              "typeId": "nascent",
+              "rank": 0,
+              "mass": 5.3,
+              "orbitRadius": 0,
+              "orbitAngle": 0,
+              "inclination": 0,
+              "ascendingNode": 0
+            }
+          ],
+          "planets": [],
+          "belts": []
         }
       ]
     },
@@ -427,12 +322,15 @@
       ],
       "depositBonus": 1.5,
       "anchorSystemId": "gal-1-sys-418",
-      "systemCount": 449,
-      "linkCount": 869,
+      "typeId": "elliptical",
+      "systemCount": 456,
+      "linkCount": 885,
       "bodyCount": 3210,
       "beltCount": 469,
       "stationCount": 155,
-      "fingerprint": "981ad497",
+      "drifterCount": 7,
+      "bridgeCount": 2,
+      "fingerprint": "2599f671",
       "sample": [
         {
           "id": "gal-1-sys-0",
@@ -584,398 +482,160 @@
           }
         },
         {
-          "id": "gal-1-sys-224",
-          "name": "Lumvon",
-          "x": -856,
-          "y": 16,
-          "z": -56,
+          "id": "gal-1-sys-228",
+          "name": "Ferden",
+          "x": -256,
+          "y": 127,
+          "z": 595,
           "planets": [
             {
-              "id": "gal-1-sys-224-p1",
-              "systemId": "gal-1-sys-224",
-              "name": "Lumvon I",
-              "kind": "planet",
-              "type": "volcanic",
-              "habitability": 24,
-              "slots": 14,
-              "deposits": {
-                "ore": 2.51
-              },
-              "orbitRadius": 76,
-              "orbitAngle": 4.022371027670149,
-              "inclination": -0.05185363332275301,
-              "ascendingNode": 4.939330149783887
-            },
-            {
-              "id": "gal-1-sys-224-p2",
-              "systemId": "gal-1-sys-224",
-              "name": "Lumvon II",
-              "kind": "planet",
-              "type": "gas",
-              "habitability": 0,
-              "slots": 4,
-              "deposits": {
-                "energy": 2.66
-              },
-              "orbitRadius": 122,
-              "orbitAngle": 2.9291576087031936,
-              "inclination": -0.13446144175250083,
-              "ascendingNode": 2.657624149307557
-            },
-            {
-              "id": "gal-1-sys-224-p2-m1",
-              "systemId": "gal-1-sys-224",
-              "name": "Lumvon II a",
-              "kind": "moon",
-              "parentPlanetId": "gal-1-sys-224-p2",
-              "type": "volcanic",
-              "habitability": 13,
-              "slots": 2,
-              "deposits": {
-                "ore": 2.62,
-                "energy": 2.14
-              },
-              "orbitRadius": 16,
-              "orbitAngle": 1.4070286033604387,
-              "inclination": -0.07971710942219942,
-              "ascendingNode": 1.5897468095985707
-            },
-            {
-              "id": "gal-1-sys-224-p2-m2",
-              "systemId": "gal-1-sys-224",
-              "name": "Lumvon II b",
-              "kind": "moon",
-              "parentPlanetId": "gal-1-sys-224-p2",
-              "type": "frozen",
-              "habitability": 19,
-              "slots": 4,
-              "deposits": {
-                "food": 0.86
-              },
-              "orbitRadius": 26,
-              "orbitAngle": 2.6498267696125377,
-              "inclination": -0.04497415192890912,
-              "ascendingNode": 0.4377144856395573
-            },
-            {
-              "id": "gal-1-sys-224-p2-m3",
-              "systemId": "gal-1-sys-224",
-              "name": "Lumvon II c",
-              "kind": "moon",
-              "parentPlanetId": "gal-1-sys-224-p2",
-              "type": "telluric",
-              "habitability": 40,
-              "slots": 2,
-              "deposits": {
-                "ore": 1.37,
-                "food": 1.46,
-                "energy": 1.28
-              },
-              "orbitRadius": 36,
-              "orbitAngle": 0.41635669213887266,
-              "inclination": 0.051817487273365256,
-              "ascendingNode": 5.7073007910036555
-            },
-            {
-              "id": "gal-1-sys-224-p3",
-              "systemId": "gal-1-sys-224",
-              "name": "Lumvon III",
-              "kind": "planet",
-              "type": "frozen",
-              "habitability": 24,
-              "slots": 12,
-              "deposits": {
-                "food": 0.84
-              },
-              "orbitRadius": 177,
-              "orbitAngle": 3.774961982707493,
-              "inclination": -0.06213538327720016,
-              "ascendingNode": 2.2924444306779077
-            },
-            {
-              "id": "gal-1-sys-224-p3-m1",
-              "systemId": "gal-1-sys-224",
-              "name": "Lumvon III a",
-              "kind": "moon",
-              "parentPlanetId": "gal-1-sys-224-p3",
-              "type": "frozen",
-              "habitability": 17,
-              "slots": 4,
-              "deposits": {
-                "ore": 1.96
-              },
-              "orbitRadius": 16,
-              "orbitAngle": 2.6638789638114018,
-              "inclination": 0.09420031977351755,
-              "ascendingNode": 1.1471467349460494
-            },
-            {
-              "id": "gal-1-sys-224-p4",
-              "systemId": "gal-1-sys-224",
-              "name": "Lumvon IV",
+              "id": "gal-1-sys-228-p1",
+              "systemId": "gal-1-sys-228",
+              "name": "Ferden I",
               "kind": "planet",
               "type": "oceanic",
-              "habitability": 48,
-              "slots": 8,
-              "deposits": {},
-              "orbitRadius": 236,
-              "orbitAngle": 0.6619455597981241,
-              "inclination": 0.10802278441842646,
-              "ascendingNode": 4.13063655350101
+              "habitability": 62,
+              "slots": 10,
+              "deposits": {
+                "food": 2.1,
+                "energy": 1.79
+              },
+              "orbitRadius": 78,
+              "orbitAngle": 5.162581633515724,
+              "inclination": -0.12229820166248828,
+              "ascendingNode": 1.4665360263577494
             },
             {
-              "id": "gal-1-sys-224-p4-m1",
-              "systemId": "gal-1-sys-224",
-              "name": "Lumvon IV a",
+              "id": "gal-1-sys-228-p1-m1",
+              "systemId": "gal-1-sys-228",
+              "name": "Ferden I a",
               "kind": "moon",
-              "parentPlanetId": "gal-1-sys-224-p4",
+              "parentPlanetId": "gal-1-sys-228-p1",
               "type": "volcanic",
               "habitability": 7,
-              "slots": 5,
-              "deposits": {
-                "ore": 2.16
-              },
-              "orbitRadius": 16,
-              "orbitAngle": 6.235554076976232,
-              "inclination": 0.02901763671543449,
-              "ascendingNode": 0.5816037168721674
-            },
-            {
-              "id": "gal-1-sys-224-p4-m2",
-              "systemId": "gal-1-sys-224",
-              "name": "Lumvon IV b",
-              "kind": "moon",
-              "parentPlanetId": "gal-1-sys-224-p4",
-              "type": "frozen",
-              "habitability": 23,
-              "slots": 4,
-              "deposits": {
-                "energy": 1.14
-              },
-              "orbitRadius": 26,
-              "orbitAngle": 5.5806975768087534,
-              "inclination": -0.1291953437263146,
-              "ascendingNode": 2.3333839619851426
-            }
-          ],
-          "belts": [
-            {
-              "id": "gal-1-sys-224-b1",
-              "systemId": "gal-1-sys-224",
-              "name": "Ceinture Lumvon I",
-              "orbitRadius": 334,
-              "inclination": -0.007751860655844212,
-              "ascendingNode": 0.4374627320672962,
-              "deposits": {
-                "ore": 2.06
-              }
-            }
-          ]
-        },
-        {
-          "id": "gal-1-sys-448",
-          "name": "Tybstae",
-          "x": 1085,
-          "y": 1582,
-          "z": 588,
-          "planets": [
-            {
-              "id": "gal-1-sys-448-p1",
-              "systemId": "gal-1-sys-448",
-              "name": "Tybstae I",
-              "kind": "planet",
-              "type": "arid",
-              "habitability": 29,
-              "slots": 12,
-              "deposits": {
-                "ore": 1.66,
-                "energy": 1.63
-              },
-              "orbitRadius": 74,
-              "orbitAngle": 2.1567148239892693,
-              "inclination": 0.04680298862513155,
-              "ascendingNode": 0.13193631862582214
-            },
-            {
-              "id": "gal-1-sys-448-p1-m1",
-              "systemId": "gal-1-sys-448",
-              "name": "Tybstae I a",
-              "kind": "moon",
-              "parentPlanetId": "gal-1-sys-448-p1",
-              "type": "arid",
-              "habitability": 38,
-              "slots": 2,
-              "deposits": {
-                "ore": 1.61,
-                "energy": 1.94
-              },
-              "orbitRadius": 16,
-              "orbitAngle": 3.2704665156005763,
-              "inclination": -0.1347527191741392,
-              "ascendingNode": 1.9182533853760464
-            },
-            {
-              "id": "gal-1-sys-448-p1-m2",
-              "systemId": "gal-1-sys-448",
-              "name": "Tybstae I b",
-              "kind": "moon",
-              "parentPlanetId": "gal-1-sys-448-p1",
-              "type": "frozen",
-              "habitability": 23,
-              "slots": 5,
-              "deposits": {
-                "ore": 2.08,
-                "energy": 1.26
-              },
-              "orbitRadius": 26,
-              "orbitAngle": 1.641210098119678,
-              "inclination": -0.046531080873683094,
-              "ascendingNode": 6.0865561734269145
-            },
-            {
-              "id": "gal-1-sys-448-p2",
-              "systemId": "gal-1-sys-448",
-              "name": "Tybstae II",
-              "kind": "planet",
-              "type": "telluric",
-              "habitability": 62,
-              "slots": 11,
-              "deposits": {
-                "ore": 1.19,
-                "food": 1.58,
-                "energy": 1.59
-              },
-              "orbitRadius": 128,
-              "orbitAngle": 5.916792645134547,
-              "inclination": 0.0030085658887401222,
-              "ascendingNode": 2.5908570421552617
-            },
-            {
-              "id": "gal-1-sys-448-p2-m1",
-              "systemId": "gal-1-sys-448",
-              "name": "Tybstae II a",
-              "kind": "moon",
-              "parentPlanetId": "gal-1-sys-448-p2",
-              "type": "frozen",
-              "habitability": 21,
-              "slots": 5,
-              "deposits": {
-                "ore": 2.23,
-                "energy": 1.33
-              },
-              "orbitRadius": 16,
-              "orbitAngle": 0.7326970662423574,
-              "inclination": 0.11436199159361421,
-              "ascendingNode": 5.807553216702447
-            },
-            {
-              "id": "gal-1-sys-448-p3",
-              "systemId": "gal-1-sys-448",
-              "name": "Tybstae III",
-              "kind": "planet",
-              "type": "telluric",
-              "habitability": 59,
-              "slots": 7,
-              "deposits": {
-                "ore": 1.2,
-                "food": 1.66
-              },
-              "orbitRadius": 175,
-              "orbitAngle": 1.5079856142937476,
-              "inclination": 0.054188516945578157,
-              "ascendingNode": 3.742719961663614
-            },
-            {
-              "id": "gal-1-sys-448-p3-m1",
-              "systemId": "gal-1-sys-448",
-              "name": "Tybstae III a",
-              "kind": "moon",
-              "parentPlanetId": "gal-1-sys-448-p3",
-              "type": "arid",
-              "habitability": 40,
               "slots": 3,
               "deposits": {
-                "ore": 1.42
+                "ore": 2,
+                "energy": 1.68
               },
               "orbitRadius": 16,
-              "orbitAngle": 0.9745706500936968,
-              "inclination": 0.0092946462566033,
-              "ascendingNode": 6.092187492245375
+              "orbitAngle": 0.7343955170582227,
+              "inclination": 0.1279705504188314,
+              "ascendingNode": 5.555106127645032
             },
             {
-              "id": "gal-1-sys-448-p3-m2",
-              "systemId": "gal-1-sys-448",
-              "name": "Tybstae III b",
+              "id": "gal-1-sys-228-p1-m2",
+              "systemId": "gal-1-sys-228",
+              "name": "Ferden I b",
               "kind": "moon",
-              "parentPlanetId": "gal-1-sys-448-p3",
-              "type": "telluric",
-              "habitability": 40,
-              "slots": 5,
+              "parentPlanetId": "gal-1-sys-228-p1",
+              "type": "frozen",
+              "habitability": 33,
+              "slots": 4,
               "deposits": {
-                "ore": 1.06,
-                "food": 1.79
+                "ore": 1.51,
+                "food": 0.53
               },
               "orbitRadius": 26,
-              "orbitAngle": 2.7145453701334525,
-              "inclination": 0.10910500406753272,
-              "ascendingNode": 5.293886271429509
+              "orbitAngle": 2.6453718373495847,
+              "inclination": 0.06043820853810757,
+              "ascendingNode": 2.9643904297087524
             },
             {
-              "id": "gal-1-sys-448-p4",
-              "systemId": "gal-1-sys-448",
-              "name": "Tybstae IV",
+              "id": "gal-1-sys-228-p2",
+              "systemId": "gal-1-sys-228",
+              "name": "Ferden II",
+              "kind": "planet",
+              "type": "arid",
+              "habitability": 51,
+              "slots": 9,
+              "deposits": {
+                "ore": 1.59,
+                "energy": 1.76
+              },
+              "orbitRadius": 133,
+              "orbitAngle": 1.0726059502974548,
+              "inclination": -0.14023320763371885,
+              "ascendingNode": 1.214133872292057
+            },
+            {
+              "id": "gal-1-sys-228-p3",
+              "systemId": "gal-1-sys-228",
+              "name": "Ferden III",
+              "kind": "planet",
+              "type": "arid",
+              "habitability": 31,
+              "slots": 8,
+              "deposits": {
+                "ore": 2.01,
+                "energy": 1.76,
+                "food": 0.64
+              },
+              "orbitRadius": 187,
+              "orbitAngle": 1.0601592121379932,
+              "inclination": -0.05979679708834737,
+              "ascendingNode": 4.582813922720579
+            },
+            {
+              "id": "gal-1-sys-228-p4",
+              "systemId": "gal-1-sys-228",
+              "name": "Ferden IV",
+              "kind": "planet",
+              "type": "telluric",
+              "habitability": 71,
+              "slots": 12,
+              "deposits": {
+                "food": 1.42,
+                "energy": 1.61
+              },
+              "orbitRadius": 229,
+              "orbitAngle": 5.488810952013435,
+              "inclination": 0.04241566720884293,
+              "ascendingNode": 6.070395833815332
+            },
+            {
+              "id": "gal-1-sys-228-p5",
+              "systemId": "gal-1-sys-228",
+              "name": "Ferden V",
               "kind": "planet",
               "type": "telluric",
               "habitability": 68,
               "slots": 8,
               "deposits": {
-                "ore": 1.17,
-                "food": 1.74,
-                "energy": 1.45
+                "food": 1.36,
+                "energy": 1.63
               },
-              "orbitRadius": 237,
-              "orbitAngle": 1.644785491849178,
-              "inclination": 0.07850932243745774,
-              "ascendingNode": 4.260518591357793
-            },
-            {
-              "id": "gal-1-sys-448-p4-m1",
-              "systemId": "gal-1-sys-448",
-              "name": "Tybstae IV a",
-              "kind": "moon",
-              "parentPlanetId": "gal-1-sys-448-p4",
-              "type": "telluric",
-              "habitability": 40,
-              "slots": 5,
-              "deposits": {
-                "ore": 1.67,
-                "food": 1.46
-              },
-              "orbitRadius": 16,
-              "orbitAngle": 1.4234794536329562,
-              "inclination": 0.13404283937998115,
-              "ascendingNode": 0.09956223996692808
+              "orbitRadius": 287,
+              "orbitAngle": 0.5242831632981746,
+              "inclination": 0.10535018085502088,
+              "ascendingNode": 2.785539517633231
             }
           ],
-          "belts": [
+          "belts": []
+        },
+        {
+          "id": "gal-1-drift-6",
+          "name": "Oststum",
+          "x": 2483,
+          "y": 524,
+          "z": 49,
+          "stars": [
             {
-              "id": "gal-1-sys-448-b1",
-              "systemId": "gal-1-sys-448",
-              "name": "Ceinture Tybstae I",
-              "orbitRadius": 325,
-              "inclination": -0.024552841507829725,
-              "ascendingNode": 3.6357468332548644,
-              "deposits": {
-                "ore": 1.86
-              }
+              "id": "gal-1-drift-6-s1",
+              "systemId": "gal-1-drift-6",
+              "name": "Oststum A",
+              "kind": "blackHole",
+              "typeId": "dormant",
+              "rank": 0,
+              "mass": 9.52,
+              "orbitRadius": 0,
+              "orbitAngle": 0,
+              "inclination": 0,
+              "ascendingNode": 0
             }
           ],
-          "station": {
-            "id": "gal-1-sys-448-st",
-            "systemId": "gal-1-sys-448",
-            "factionId": "aether_cartel",
-            "name": "Comptoir Tybstae"
-          }
+          "planets": [],
+          "belts": []
         }
       ]
     },
@@ -989,12 +649,15 @@
       ],
       "depositBonus": 1.71,
       "anchorSystemId": "gal-2-sys-271",
-      "systemCount": 361,
-      "linkCount": 694,
+      "typeId": "irregular",
+      "systemCount": 364,
+      "linkCount": 700,
       "bodyCount": 2492,
       "beltCount": 370,
       "stationCount": 116,
-      "fingerprint": "8685216a",
+      "drifterCount": 3,
+      "bridgeCount": 1,
+      "fingerprint": "9db1c4dc",
       "sample": [
         {
           "id": "gal-2-sys-0",
@@ -1078,342 +741,104 @@
           ]
         },
         {
-          "id": "gal-2-sys-180",
-          "name": "Quordus",
-          "x": 561,
-          "y": 1651,
-          "z": 3,
+          "id": "gal-2-sys-182",
+          "name": "Alstess",
+          "x": 1680,
+          "y": -120,
+          "z": -10,
           "planets": [
             {
-              "id": "gal-2-sys-180-p1",
-              "systemId": "gal-2-sys-180",
-              "name": "Quordus I",
+              "id": "gal-2-sys-182-p1",
+              "systemId": "gal-2-sys-182",
+              "name": "Alstess I",
               "kind": "planet",
-              "type": "telluric",
-              "habitability": 75,
-              "slots": 13,
+              "type": "gas",
+              "habitability": 0,
+              "slots": 3,
               "deposits": {
-                "food": 2.1
+                "energy": 2.29
               },
-              "orbitRadius": 75,
-              "orbitAngle": 5.281368439840149,
-              "inclination": 0.050563920428976415,
-              "ascendingNode": 4.374804796042667
+              "orbitRadius": 68,
+              "orbitAngle": 2.3452635999511764,
+              "inclination": 0.04001062482129782,
+              "ascendingNode": 2.0715614756848004
             },
             {
-              "id": "gal-2-sys-180-p2",
-              "systemId": "gal-2-sys-180",
-              "name": "Quordus II",
-              "kind": "planet",
-              "type": "telluric",
-              "habitability": 83,
-              "slots": 10,
-              "deposits": {
-                "ore": 2,
-                "food": 2.08,
-                "energy": 1.44
-              },
-              "orbitRadius": 118,
-              "orbitAngle": 6.011022569183399,
-              "inclination": 0.044948300882242616,
-              "ascendingNode": 2.554672584161631
-            },
-            {
-              "id": "gal-2-sys-180-p3",
-              "systemId": "gal-2-sys-180",
-              "name": "Quordus III",
-              "kind": "planet",
-              "type": "volcanic",
-              "habitability": 24,
-              "slots": 10,
-              "deposits": {
-                "ore": 2.78,
-                "energy": 1.97
-              },
-              "orbitRadius": 174,
-              "orbitAngle": 2.8266202951439374,
-              "inclination": 0.030005667661316692,
-              "ascendingNode": 4.048074888922001
-            },
-            {
-              "id": "gal-2-sys-180-p3-m1",
-              "systemId": "gal-2-sys-180",
-              "name": "Quordus III a",
+              "id": "gal-2-sys-182-p1-m1",
+              "systemId": "gal-2-sys-182",
+              "name": "Alstess I a",
               "kind": "moon",
-              "parentPlanetId": "gal-2-sys-180-p3",
-              "type": "volcanic",
-              "habitability": 17,
-              "slots": 2,
-              "deposits": {
-                "ore": 2.55,
-                "energy": 1.9
-              },
-              "orbitRadius": 16,
-              "orbitAngle": 3.5533339898691403,
-              "inclination": -0.11703696772456168,
-              "ascendingNode": 5.666539163701122
-            },
-            {
-              "id": "gal-2-sys-180-p3-m2",
-              "systemId": "gal-2-sys-180",
-              "name": "Quordus III b",
-              "kind": "moon",
-              "parentPlanetId": "gal-2-sys-180-p3",
+              "parentPlanetId": "gal-2-sys-182-p1",
               "type": "frozen",
-              "habitability": 12,
-              "slots": 4,
+              "habitability": 16,
+              "slots": 3,
+              "deposits": {},
+              "orbitRadius": 16,
+              "orbitAngle": 0.5082419096069988,
+              "inclination": -0.04473549616523087,
+              "ascendingNode": 0.8248721960379243
+            },
+            {
+              "id": "gal-2-sys-182-p2",
+              "systemId": "gal-2-sys-182",
+              "name": "Alstess II",
+              "kind": "planet",
+              "type": "arid",
+              "habitability": 46,
+              "slots": 10,
               "deposits": {
-                "ore": 1.89
+                "ore": 2.38,
+                "energy": 2.49
               },
-              "orbitRadius": 26,
-              "orbitAngle": 6.2518765108368335,
-              "inclination": 0.13237814053427427,
-              "ascendingNode": 3.1047005982133196
+              "orbitRadius": 127,
+              "orbitAngle": 3.2978964329324487,
+              "inclination": 0.12657536733895539,
+              "ascendingNode": 1.678937721100896
+            },
+            {
+              "id": "gal-2-sys-182-p3",
+              "systemId": "gal-2-sys-182",
+              "name": "Alstess III",
+              "kind": "planet",
+              "type": "telluric",
+              "habitability": 89,
+              "slots": 8,
+              "deposits": {
+                "ore": 1.86,
+                "food": 1.93,
+                "energy": 1.54
+              },
+              "orbitRadius": 173,
+              "orbitAngle": 4.973310461291684,
+              "inclination": -0.10718316491693258,
+              "ascendingNode": 2.2512737714804114
             }
           ],
-          "belts": [
-            {
-              "id": "gal-2-sys-180-b1",
-              "systemId": "gal-2-sys-180",
-              "name": "Ceinture Quordus I",
-              "orbitRadius": 273,
-              "inclination": -0.044575699022971094,
-              "ascendingNode": 4.044238092212589,
-              "deposits": {
-                "ore": 2.43
-              }
-            },
-            {
-              "id": "gal-2-sys-180-b2",
-              "systemId": "gal-2-sys-180",
-              "name": "Ceinture Quordus II",
-              "orbitRadius": 317,
-              "inclination": 0.045207198872230944,
-              "ascendingNode": 1.6513151579388372,
-              "deposits": {
-                "ore": 2.32
-              }
-            }
-          ]
+          "belts": []
         },
         {
-          "id": "gal-2-sys-360",
-          "name": "Aphrnyn",
-          "x": -1324,
-          "y": 53,
-          "z": 22,
-          "planets": [
+          "id": "gal-2-drift-2",
+          "name": "Borsor",
+          "x": 2450,
+          "y": 248,
+          "z": -15,
+          "stars": [
             {
-              "id": "gal-2-sys-360-p1",
-              "systemId": "gal-2-sys-360",
-              "name": "Aphrnyn I",
-              "kind": "planet",
-              "type": "gas",
-              "habitability": 0,
-              "slots": 3,
-              "deposits": {
-                "energy": 2.76
-              },
-              "orbitRadius": 62,
-              "orbitAngle": 1.660576842559463,
-              "inclination": 0.09599716567900031,
-              "ascendingNode": 2.108216652440043
-            },
-            {
-              "id": "gal-2-sys-360-p1-m1",
-              "systemId": "gal-2-sys-360",
-              "name": "Aphrnyn I a",
-              "kind": "moon",
-              "parentPlanetId": "gal-2-sys-360-p1",
-              "type": "frozen",
-              "habitability": 29,
-              "slots": 3,
-              "deposits": {
-                "ore": 1.68
-              },
-              "orbitRadius": 16,
-              "orbitAngle": 1.3097587267653608,
-              "inclination": 0.09780522817745804,
-              "ascendingNode": 6.156951816270857
-            },
-            {
-              "id": "gal-2-sys-360-p2",
-              "systemId": "gal-2-sys-360",
-              "name": "Aphrnyn II",
-              "kind": "planet",
-              "type": "frozen",
-              "habitability": 22,
-              "slots": 10,
-              "deposits": {},
-              "orbitRadius": 122,
-              "orbitAngle": 1.1250559200092225,
-              "inclination": 0.022226580837741493,
-              "ascendingNode": 4.911933085203321
-            },
-            {
-              "id": "gal-2-sys-360-p3",
-              "systemId": "gal-2-sys-360",
-              "name": "Aphrnyn III",
-              "kind": "planet",
-              "type": "gas",
-              "habitability": 0,
-              "slots": 2,
-              "deposits": {
-                "energy": 2.77
-              },
-              "orbitRadius": 179,
-              "orbitAngle": 0.27224271719049903,
-              "inclination": 0.08395129633136093,
-              "ascendingNode": 3.6526374952187326
-            },
-            {
-              "id": "gal-2-sys-360-p3-m1",
-              "systemId": "gal-2-sys-360",
-              "name": "Aphrnyn III a",
-              "kind": "moon",
-              "parentPlanetId": "gal-2-sys-360-p3",
-              "type": "volcanic",
-              "habitability": 25,
-              "slots": 3,
-              "deposits": {
-                "ore": 2.36,
-                "energy": 2.7
-              },
-              "orbitRadius": 16,
-              "orbitAngle": 4.430677700013385,
-              "inclination": 0.04066594422329217,
-              "ascendingNode": 2.668869493789864
-            },
-            {
-              "id": "gal-2-sys-360-p3-m2",
-              "systemId": "gal-2-sys-360",
-              "name": "Aphrnyn III b",
-              "kind": "moon",
-              "parentPlanetId": "gal-2-sys-360-p3",
-              "type": "arid",
-              "habitability": 37,
-              "slots": 3,
-              "deposits": {
-                "ore": 1.64,
-                "energy": 2.03,
-                "food": 0.9
-              },
-              "orbitRadius": 26,
-              "orbitAngle": 1.4005855976119592,
-              "inclination": -0.03214114315342158,
-              "ascendingNode": 2.733417074798558
-            },
-            {
-              "id": "gal-2-sys-360-p4",
-              "systemId": "gal-2-sys-360",
-              "name": "Aphrnyn IV",
-              "kind": "planet",
-              "type": "volcanic",
-              "habitability": 11,
-              "slots": 9,
-              "deposits": {
-                "energy": 2.44
-              },
-              "orbitRadius": 234,
-              "orbitAngle": 1.9227365973083899,
-              "inclination": -0.13798870767932384,
-              "ascendingNode": 2.9475848349682754
-            },
-            {
-              "id": "gal-2-sys-360-p4-m1",
-              "systemId": "gal-2-sys-360",
-              "name": "Aphrnyn IV a",
-              "kind": "moon",
-              "parentPlanetId": "gal-2-sys-360-p4",
-              "type": "arid",
-              "habitability": 40,
-              "slots": 4,
-              "deposits": {
-                "ore": 1.99,
-                "energy": 1.97
-              },
-              "orbitRadius": 16,
-              "orbitAngle": 3.9305394568709078,
-              "inclination": -0.004063387960195541,
-              "ascendingNode": 1.8063520195035676
-            },
-            {
-              "id": "gal-2-sys-360-p4-m2",
-              "systemId": "gal-2-sys-360",
-              "name": "Aphrnyn IV b",
-              "kind": "moon",
-              "parentPlanetId": "gal-2-sys-360-p4",
-              "type": "frozen",
-              "habitability": 14,
-              "slots": 2,
-              "deposits": {
-                "ore": 2.06
-              },
-              "orbitRadius": 26,
-              "orbitAngle": 3.8306725349556108,
-              "inclination": 0.07860344087239354,
-              "ascendingNode": 1.083077367228287
-            },
-            {
-              "id": "gal-2-sys-360-p5",
-              "systemId": "gal-2-sys-360",
-              "name": "Aphrnyn V",
-              "kind": "planet",
-              "type": "oceanic",
-              "habitability": 55,
-              "slots": 7,
-              "deposits": {
-                "food": 2.17,
-                "energy": 1.94
-              },
-              "orbitRadius": 282,
-              "orbitAngle": 0.20618479322424413,
-              "inclination": -0.042308593774214386,
-              "ascendingNode": 4.463541825507554
-            },
-            {
-              "id": "gal-2-sys-360-p5-m1",
-              "systemId": "gal-2-sys-360",
-              "name": "Aphrnyn V a",
-              "kind": "moon",
-              "parentPlanetId": "gal-2-sys-360-p5",
-              "type": "volcanic",
-              "habitability": 24,
-              "slots": 2,
-              "deposits": {
-                "ore": 2.87,
-                "energy": 2.6
-              },
-              "orbitRadius": 16,
-              "orbitAngle": 3.2567670850785926,
-              "inclination": 0.019329332211054862,
-              "ascendingNode": 1.2361475841315162
+              "id": "gal-2-drift-2-s1",
+              "systemId": "gal-2-drift-2",
+              "name": "Borsor A",
+              "kind": "whiteHole",
+              "typeId": "nascent",
+              "rank": 0,
+              "mass": 7.33,
+              "orbitRadius": 0,
+              "orbitAngle": 0,
+              "inclination": 0,
+              "ascendingNode": 0
             }
           ],
-          "belts": [
-            {
-              "id": "gal-2-sys-360-b1",
-              "systemId": "gal-2-sys-360",
-              "name": "Ceinture Aphrnyn I",
-              "orbitRadius": 379,
-              "inclination": -0.04286971993278712,
-              "ascendingNode": 3.4838765207781854,
-              "deposits": {
-                "ore": 2.19
-              }
-            },
-            {
-              "id": "gal-2-sys-360-b2",
-              "systemId": "gal-2-sys-360",
-              "name": "Ceinture Aphrnyn II",
-              "orbitRadius": 430,
-              "inclination": 0.07608733917586505,
-              "ascendingNode": 4.8931291882541075,
-              "deposits": {
-                "ore": 3.39
-              }
-            }
-          ]
+          "planets": [],
+          "belts": []
         }
       ]
     }

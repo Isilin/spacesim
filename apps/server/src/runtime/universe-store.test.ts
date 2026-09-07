@@ -13,10 +13,12 @@ const GAME_ID = "test-game";
 const SEED = "store-seed";
 
 const UNIVERSE_TABLES = [
+  schema.universeBridges,
   schema.universeLinks,
   schema.universeTradingPosts,
   schema.universeBelts,
   schema.universeBodies,
+  schema.universeStars,
   schema.universeSystems,
   schema.universeGalaxies,
   schema.games,

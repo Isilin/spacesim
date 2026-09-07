@@ -18,10 +18,12 @@ export const WARSHIP = Object.keys(WARSHIPS)[0]!;
 
 /** Toutes les tables, vidées avant chaque test (FK déclaratives non appliquées en SQLite). */
 export const ALL_TABLES = [
+  schema.universeBridges,
   schema.universeLinks,
   schema.universeTradingPosts,
   schema.universeBelts,
   schema.universeBodies,
+  schema.universeStars,
   schema.universeSystems,
   schema.universeGalaxies,
   schema.transfers,

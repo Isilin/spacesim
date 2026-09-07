@@ -8,12 +8,17 @@ import {
   UNIVERSE_CENTER_Y,
   UNIVERSE_DISC_THICKNESS,
 } from "./constants.js";
+import { BLACK_HOLE_TYPES } from "./content/astro/black-hole-types.js";
 import {
   GALAXY_TYPE_WEIGHTS,
   galaxyType,
   type GalaxyTypeDef,
   type GalaxyTypeId,
 } from "./content/astro/galaxy-types.js";
+import {
+  WHITE_HOLE_TYPES,
+  whiteHoleType,
+} from "./content/astro/white-hole-types.js";
 import { FACTION_IDS } from "./content/factions.js";
 import {
   createRng,
@@ -25,6 +30,7 @@ import {
 } from "./rng.js";
 import type {
   AsteroidBelt,
+  CentralBodyKind,
   ClientUniverse,
   Deposits,
   Galaxy,
@@ -42,7 +48,7 @@ import type {
  * bumper cette version vont ensemble, dans le même commit. Les galaxies déjà
  * matérialisées en DB gardent la version qui les a produites et ne changent jamais.
  */
-export const GENERATOR_VERSION = 4;
+export const GENERATOR_VERSION = 5;
 
 /** Part des systèmes accueillant un comptoir commercial PNJ. */
 const TRADING_POST_PROBABILITY = 0.35;
@@ -487,7 +493,8 @@ function generatePositions(
   rng: Rng,
   count: number,
   look: GalaxyTypeDef,
-): Point[] {
+  drifterCount = 0,
+): { systems: Point[]; drifters: Point[] } {
   const radius = GALAXY_RADIUS_PER_ROOT_SYSTEM * Math.sqrt(count);
   // Orientation propre à la galaxie : sans elle, toutes les spirales de l'univers partiraient
   // du même angle.
@@ -584,13 +591,78 @@ function generatePositions(
 
   relaxPositions(points, MIN_SYSTEM_DISTANCE);
 
+  // Les errants se posent APRÈS la relaxation, sur les positions définitives : les
+  // repousser avec les systèmes les aurait ramenés dans le disque, alors que tout leur
+  // intérêt est d'être ailleurs.
+  const drifters = placeDrifters(rng, drifterCount, points, radius, halfDepth);
+
   // Recentrage sur l'origine du repère de galaxie : le client y ramène déjà les coordonnées
   // (`systemScenePosition`), et les galaxies matérialisées avant le chantier 37 y sont.
-  return points.map((p) => ({
+  const toGalaxyFrame = (p: Point) => ({
     x: roundCoord(UNIVERSE_CENTER_X + p.x),
     y: roundCoord(UNIVERSE_CENTER_Y + p.y),
     z: roundCoord(p.z),
-  }));
+  });
+  return {
+    systems: points.map(toGalaxyFrame),
+    drifters: drifters.map(toGalaxyFrame),
+  };
+}
+
+/**
+ * Tentatives avant d'accepter une position d'errant trop proche d'un système.
+ *
+ * Plafonné, comme `RELAX_PASSES` et pour la même raison : le rejet-et-retire sans borne
+ * d'avant le chantier 37 saturait sans un message. Huit essais suffisent très largement
+ * dans un halo bien plus vaste que le disque ; au neuvième on accepte, parce qu'un errant
+ * un peu trop près reste préférable à une galaxie qui ne se génère pas.
+ */
+const DRIFTER_TRIES = 8;
+
+/**
+ * Positions des singularités errantes — hors des bras, dans le halo.
+ *
+ * Un errant n'est pas une entité nouvelle : c'est un **système** sans étoile ni monde, ce
+ * qui lui donne gratuitement tout ce qu'on attend de lui. `generateLinks` l'absorbe sans
+ * modification, l'invariant de connexité tient, le graphe de sauts le voit comme une
+ * destination, la carte le rend et la base le stocke. Aucune machinerie parallèle.
+ *
+ * Ce qui le distingue tient donc à sa position et à son contenu, pas à son statut : posé
+ * entre 0,55 et 1,25 rayon, sur une épaisseur trois fois celle du disque, il se lit comme
+ * étant à l'écart — et il l'est aussi dans le graphe, puisque les liaisons se tirent des
+ * distances réelles.
+ */
+function placeDrifters(
+  rng: Rng,
+  count: number,
+  systems: readonly Point[],
+  radius: number,
+  halfDepth: number,
+): Point[] {
+  if (count <= 0) return [];
+  const grid = new SpatialGrid(MIN_SYSTEM_DISTANCE);
+  systems.forEach((p, i) => grid.add(i, p));
+
+  const out: Point[] = [];
+  for (let i = 0; i < count; i++) {
+    let candidate: Point | null = null;
+    for (let attempt = 0; attempt < DRIFTER_TRIES; attempt++) {
+      const r = radius * (0.55 + rng() * 0.7);
+      const theta = rng() * Math.PI * 2;
+      const p = {
+        x: Math.cos(theta) * r,
+        y: Math.sin(theta) * r,
+        z: gaussian(rng) * halfDepth * 1.5,
+      };
+      candidate = p;
+      const tooClose = grid
+        .around(p)
+        .some((j) => distance(p, systems[j]!) < MIN_SYSTEM_DISTANCE);
+      if (!tooClose) break;
+    }
+    out.push(candidate!);
+  }
+  return out;
 }
 
 /**
@@ -828,13 +900,18 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
   // CONTENU (noms, planètes, gisements, comptoirs) du flux dérivé de la seed de partie.
   // C'est ce qui rendra les positions re-dérivables par le client sans lui livrer la seed —
   // et donc l'univers lointain transmissible en condensé plutôt qu'en entier.
-  const positions = generatePositions(
+  const type = galaxyType(def.typeId);
+  const drifterCount = Math.round(
+    (type.singularityDensity * def.systems) / 100,
+  );
+  const layout = generatePositions(
     createRng(`layout:${galaxyId}`),
     def.systems,
-    galaxyType(def.typeId),
+    type,
+    drifterCount,
   );
   const nameOffset = Math.floor(rng() * NAME_SPACE);
-  const systems: StarSystem[] = positions.map((pos, i) => {
+  const systems: StarSystem[] = layout.systems.map((pos, i) => {
     const name = seriesName(nameOffset, i);
     const id = `${galaxyId}-sys-${i}`;
     const system: StarSystem = {
@@ -872,6 +949,21 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
       : best,
   );
 
+  // Les errants s'ajoutent APRÈS l'ancre et le barycentre, et AVANT `generateLinks`.
+  //
+  // Après, parce qu'ils vivent dans le halo : le plus excentré des systèmes serait presque
+  // toujours l'un d'eux, et le point d'arrivée des portails inter-galactiques deviendrait
+  // un trou noir sans monde ni comptoir.
+  //
+  // Avant, parce que ce sont des destinations et non du décor — c'est le graphe de sauts
+  // qui le rend vrai. Leurs noms continuent la même suite bijective que les systèmes
+  // ordinaires, donc sans doublon.
+  const drifters = layout.drifters.map((pos, i) =>
+    makeDrifter(rng, galaxyId, seriesName(nameOffset, def.systems + i), pos, i),
+  );
+  systems.push(...drifters);
+  const links = generateLinks(systems);
+
   return {
     id: galaxyId,
     name: def.name,
@@ -880,12 +972,168 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
     z: def.z,
     typeId: def.typeId,
     systems,
-    links: generateLinks(systems),
-    // Vides au palier 1 : les errants qui portent les bouches n'arrivent qu'avec eux.
-    bridges: [],
+    links,
+    bridges: pairBridges(drifters, links),
     anchorSystemId: anchor.id,
     depositBonus: def.depositBonus,
   };
+}
+
+/**
+ * Types tirables pour un errant, **dérivés des catalogues** plutôt que redéclarés à côté
+ * d'eux : ajouter un type à `black-hole-types.ts` ou `white-hole-types.ts` avec un poids
+ * `drifter` suffit à le rendre tirable, sans penser à un second endroit.
+ */
+const DRIFTER_WEIGHTS: readonly (readonly [
+  {
+    kind: CentralBodyKind;
+    typeId: string;
+    massRange: readonly [number, number];
+  },
+  number,
+])[] = [
+  ...Object.values(BLACK_HOLE_TYPES)
+    .filter((d) => d.placements.includes("drifter"))
+    .map(
+      (d) =>
+        [
+          { kind: "blackHole" as const, typeId: d.id, massRange: d.massRange },
+          d.weights.drifter ?? 0,
+        ] as const,
+    ),
+  ...Object.values(WHITE_HOLE_TYPES)
+    .filter((d) => d.placements.includes("drifter"))
+    .map(
+      (d) =>
+        [
+          { kind: "whiteHole" as const, typeId: d.id, massRange: d.massRange },
+          d.weights.drifter ?? 0,
+        ] as const,
+    ),
+];
+
+/**
+ * Un errant : système sans étoile, sans monde et sans comptoir, dont l'unique corps central
+ * est une singularité.
+ *
+ * Il n'a ni planète ni ceinture à dessein — ce n'est pas un système appauvri mais un objet
+ * d'une autre nature, qui se traverse et s'exploite au lieu de se coloniser. Le brouillard
+ * le traite comme n'importe quel système : inexploré, il n'annonce rien de ce qu'il abrite.
+ */
+function makeDrifter(
+  rng: Rng,
+  galaxyId: string,
+  name: string,
+  pos: Point,
+  index: number,
+): StarSystem {
+  const pickedType = pickWeighted(rng, DRIFTER_WEIGHTS);
+  const id = `${galaxyId}-drift-${index}`;
+  const [minMass, maxMass] = pickedType.massRange;
+  return {
+    id,
+    name,
+    x: pos.x,
+    y: pos.y,
+    z: pos.z,
+    stars: [
+      {
+        id: `${id}-s1`,
+        systemId: id,
+        // Convention astronomique des systèmes multiples, tenue dès le premier corps :
+        // le palier 2 ajoutera B et C sans rien renommer.
+        name: `${name} A`,
+        kind: pickedType.kind,
+        typeId: pickedType.typeId,
+        rank: 0,
+        mass: Math.round((minMass + rng() * (maxMass - minMass)) * 100) / 100,
+        // Ancre : à l'origine du repère du système, ce que `bodyPositionAt` suppose déjà.
+        orbitRadius: 0,
+        orbitAngle: 0,
+        inclination: 0,
+        ascendingNode: 0,
+      },
+    ],
+    planets: [],
+    belts: [],
+  };
+}
+
+/**
+ * Apparie les bouches d'errants en ponts d'Einstein-Rosen.
+ *
+ * Un pont relie une fontaine blanche à un trou noir **de la même galaxie**, séparés d'un
+ * nombre de sauts qui tombe dans la `wormholeRange` du type de la fontaine : c'est ce qui
+ * fait qu'un pont est un raccourci et non un doublon d'une liaison existante. Sur un
+ * diamètre médian de 59 sauts (ADR 0018), une fontaine « stable » cherche entre 20 et 40.
+ *
+ * La distance se mesure en sauts et non en unités d'espace, parce que c'est en sauts que le
+ * joueur paie. Un BFS par fontaine, sur quelques fontaines et cinq cents nœuds : le coût
+ * est négligeable devant le reste de la génération, et il évite d'apparier deux bouches que
+ * trois sauts séparent déjà.
+ *
+ * Une fontaine sans partenaire à portée reste une fontaine — elle rend sa matière exotique
+ * sans ouvrir de passage. C'est un résultat acceptable, pas un échec à réessayer.
+ */
+function pairBridges(
+  drifters: readonly StarSystem[],
+  links: readonly [string, string][],
+): [string, string][] {
+  const mouths = drifters.filter((d) => d.stars?.[0]?.kind === "whiteHole");
+  const sinks = drifters.filter((d) => d.stars?.[0]?.kind === "blackHole");
+  if (mouths.length === 0 || sinks.length === 0) return [];
+
+  const adjacency = new Map<string, string[]>();
+  for (const [a, b] of links) {
+    (adjacency.get(a) ?? adjacency.set(a, []).get(a)!).push(b);
+    (adjacency.get(b) ?? adjacency.set(b, []).get(b)!).push(a);
+  }
+
+  const taken = new Set<string>();
+  const bridges: [string, string][] = [];
+  for (const mouth of mouths) {
+    const [minHops, maxHops] = whiteHoleType(
+      mouth.stars![0]!.typeId,
+    ).wormholeRange;
+    const candidates = new Set(
+      sinks.filter((s) => !taken.has(s.id)).map((s) => s.id),
+    );
+    if (candidates.size === 0) break;
+
+    // BFS borné : au-delà de `maxHops` aucun candidat ne convient plus, inutile de
+    // parcourir le reste de la galaxie.
+    const seen = new Set([mouth.id]);
+    let frontier = [mouth.id];
+    let hops = 0;
+    let partner: string | null = null;
+    while (frontier.length > 0 && hops < maxHops && partner === null) {
+      hops++;
+      const next: string[] = [];
+      for (const id of frontier) {
+        for (const neighbor of adjacency.get(id) ?? []) {
+          if (seen.has(neighbor)) continue;
+          seen.add(neighbor);
+          if (hops >= minHops && candidates.has(neighbor)) {
+            partner = neighbor;
+            break;
+          }
+          next.push(neighbor);
+        }
+        if (partner !== null) break;
+      }
+      frontier = next;
+    }
+
+    if (partner !== null) {
+      taken.add(partner);
+      // Paire canonique (a < b), comme `generateLinks` la produit — la clé primaire de
+      // `universe_bridges` en dépend.
+      bridges.push(
+        mouth.id < partner ? [mouth.id, partner] : [partner, mouth.id],
+      );
+    }
+  }
+  return bridges;
 }
 
 function makeTradingPost(
