@@ -46,11 +46,29 @@ describe("cohérence interne des tables", () => {
     for (const id of GALAXY_TYPE_IDS) expect(GALAXY_TYPES[id].id).toBe(id);
   });
 
-  it("un identifiant inconnu rend un repli, jamais undefined", () => {
+  it("un identifiant inconnu rend un repli utilisable, pas seulement défini", () => {
     // La promesse du CMS (ADR 0007) : une entrée créée sans coder ne casse pas la vue.
-    expect(blackHoleType("n'existe pas").id).toBeTruthy();
-    expect(whiteHoleType("n'existe pas").id).toBeTruthy();
-    expect(galaxyType("n'existe pas").id).toBeTruthy();
+    // Un repli qui rendrait des zéros la casserait autrement — une galaxie sans bras ni
+    // rayon ne se dessine pas, un trou noir sans horizon n'a pas d'emprise cliquable.
+    // Ce contrat était testé côté web sur un doublon de `GALAXIES` devenu mort au
+    // chantier 45 ; il vit ici, avec les tables qu'il protège.
+    for (const unknown of ["", "inconnu", "Étoile-Fantôme", "42"]) {
+      const galaxy = galaxyType(unknown);
+      expect(galaxy.arms, unknown).toBeGreaterThan(0);
+      expect(galaxy.winding, unknown).toBeGreaterThan(0);
+      expect(galaxy.systemRange[0], unknown).toBeGreaterThan(0);
+      expect(galaxy.tint, unknown).toMatch(/^#/);
+
+      const hole = blackHoleType(unknown);
+      expect(hole.horizonRadius, unknown).toBeGreaterThan(0);
+      expect(hole.placements.length, unknown).toBeGreaterThan(0);
+      expect(hole.halo, unknown).toMatch(/^#/);
+
+      const fountain = whiteHoleType(unknown);
+      expect(fountain.mouthRadius, unknown).toBeGreaterThan(0);
+      expect(fountain.wormholeRange[0], unknown).toBeGreaterThan(0);
+      expect(fountain.halo, unknown).toMatch(/^#/);
+    }
   });
 });
 

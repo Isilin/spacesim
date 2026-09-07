@@ -517,17 +517,11 @@ export {
   type SystemSite,
 } from "./sim/exploration/sites.js";
 export {
-  GALAXY_MORPHOLOGIES,
   STAR_CLASSES,
   galacticCoreDisc,
   galacticCoreHorizon,
-  galaxyAppearance,
-  galaxyMorphology,
-  galaxyMorphologyOf,
   isDarkStar,
   starClassOf,
-  type GalaxyAppearance,
-  type GalaxyMorphology,
   type StarClass,
 } from "./sim/exploration/stars.js";
 export {

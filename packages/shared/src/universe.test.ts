@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { GALAXY_SPACING, INITIAL_GALAXIES } from "./constants.js";
 import {
+  GALAXY_TYPE_IDS,
+  GALAXY_TYPES,
+  type GalaxyTypeId,
+} from "./content/astro/galaxy-types.js";
+import {
   allPlanets,
   allSystems,
   findGalaxyOfSystem,
@@ -142,5 +147,63 @@ describe("univers extensible (chantier 9)", () => {
     expect(galaxyDefAt("kappa", 7).name).not.toBe(
       galaxyDefAt("lambda", 7).name,
     );
+  });
+});
+
+describe("type de galaxie (chantier 45.1)", () => {
+  /**
+   * Le type a cessé d'être dérivé pour devenir persisté (ADR 0021), et il précède
+   * désormais la taille au lieu d'en être déduit. Ce que ces cas protègent n'est plus un
+   * accord de dérivation — c'est que le générateur ne pose jamais une galaxie dont le type
+   * est inconnu du catalogue, ou dont la taille contredit le type qu'elle porte.
+   *
+   * Sans eux, une faute de frappe dans un identifiant se rattraperait silencieusement par
+   * le repli générique : la galaxie existerait, se dessinerait, et ne serait simplement
+   * pas celle qu'on croit.
+   */
+  const universe = generateUniverse("types-45", 12);
+
+  it("chaque galaxie porte un type connu du catalogue", () => {
+    for (const galaxy of universe.galaxies) {
+      expect(GALAXY_TYPE_IDS, galaxy.id).toContain(galaxy.typeId);
+    }
+  });
+
+  it("la taille d'une galaxie respecte la fourchette de son type", () => {
+    for (const galaxy of universe.galaxies) {
+      const [min, max] =
+        GALAXY_TYPES[galaxy.typeId as GalaxyTypeId].systemRange;
+      expect(
+        galaxy.systems.length,
+        `${galaxy.id} (${galaxy.typeId})`,
+      ).toBeGreaterThanOrEqual(min);
+      expect(
+        galaxy.systems.length,
+        `${galaxy.id} (${galaxy.typeId})`,
+      ).toBeLessThanOrEqual(max);
+    }
+  });
+
+  it("la galaxie mère a un type qui admet ses 520 systèmes", () => {
+    const home = universe.galaxies[0]!;
+    const [min, max] = GALAXY_TYPES[home.typeId as GalaxyTypeId].systemRange;
+    expect(home.systems.length).toBe(520);
+    expect(520).toBeGreaterThanOrEqual(min);
+    expect(520).toBeLessThanOrEqual(max);
+  });
+
+  it("le type ne dépend que de la seed et de l'index, pas des galaxies voisines", () => {
+    // Même garantie que pour le reste du générateur (ADR 0002) : matérialiser une galaxie
+    // de frontière ne doit rien devoir à celles déjà tirées.
+    const wider = generateUniverse("types-45", 20);
+    for (let i = 0; i < universe.galaxies.length; i++) {
+      expect(wider.galaxies[i]!.typeId).toBe(universe.galaxies[i]!.typeId);
+    }
+  });
+
+  it("plusieurs types apparaissent sur une douzaine de galaxies", () => {
+    // Huit types pondérés : n'en voir qu'un sur douze tirages signalerait un tirage cassé.
+    const seen = new Set(universe.galaxies.map((g) => g.typeId));
+    expect(seen.size).toBeGreaterThan(1);
   });
 });

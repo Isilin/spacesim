@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { Galaxy, Planet, StarSystem } from "../../model/universe.js";
+import type { Planet, StarSystem } from "../../model/universe.js";
 import { generateUniverse } from "../../universe.js";
 import {
   galacticCoreDisc,
   galacticCoreHorizon,
-  galaxyMorphologyOf,
-  GALAXY_MORPHOLOGIES,
   starClassOf,
   STAR_CLASSES,
 } from "./stars.js";
@@ -15,7 +13,11 @@ import {
 } from "../../constants.js";
 
 /**
- * Classes d'étoiles et morphologies dérivées (chantier 35.9).
+ * Classes d'étoiles et cœur galactique dérivés (chantiers 35.9, 39).
+ *
+ * La morphologie de galaxie était testée ici ; elle est devenue un type persisté au
+ * chantier 45 (ADR 0021) et ses invariants ont suivi — cohérence des catalogues dans
+ * `content/astro/astro.test.ts`, appartenance du `typeId` généré dans `universe.test.ts`.
  *
  * Ces valeurs ne sont écrites nulle part : elles se recalculent à chaque appel, côté client
  * comme côté serveur. Ce que ces tests protègent, c'est donc moins une valeur qu'un
@@ -101,21 +103,6 @@ describe("starClassOf", () => {
     const tight = starClassOf(system("tight", [planet("b", 60, 80)]));
     expect(["giant", "mainSequence"]).toContain(wide);
     expect(["redDwarf", "mainSequence"]).toContain(tight);
-  });
-});
-
-describe("galaxyMorphologyOf", () => {
-  it("rend toujours la même morphologie pour la même galaxie", () => {
-    for (const g of universe.galaxies) {
-      expect(galaxyMorphologyOf(g)).toBe(galaxyMorphologyOf(g));
-      expect(GALAXY_MORPHOLOGIES).toContain(galaxyMorphologyOf(g));
-    }
-  });
-
-  it("laisse les galaxies pauvres irrégulières ou elliptiques", () => {
-    // Une galaxie de quelques systèmes n'a pas de bras à montrer.
-    const sparse = { id: "gal-sparse", systems: [] } as unknown as Galaxy;
-    expect(["irregular", "elliptical"]).toContain(galaxyMorphologyOf(sparse));
   });
 });
 

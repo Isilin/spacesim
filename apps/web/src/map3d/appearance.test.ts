@@ -3,7 +3,6 @@ import {
   asteroidTint,
   bodyAppearance,
   factionTint,
-  galaxyAppearance,
   starAppearance,
 } from "./appearance.js";
 
@@ -38,14 +37,6 @@ describe("repli générique du registre d'apparence", () => {
     }
   });
 
-  it("rend une galaxie neutre pour une morphologie inconnue", () => {
-    for (const value of unknown) {
-      const look = galaxyAppearance(value);
-      expect(look.arms).toBeGreaterThan(0);
-      expect(look.winding).toBeGreaterThan(0);
-    }
-  });
-
   it("rend une teinte pour une faction et un gisement inconnus", () => {
     expect(factionTint("faction-inventée")).toMatch(/^#/);
     expect(asteroidTint({})).toMatch(/^#/);
@@ -58,7 +49,6 @@ describe("repli générique du registre d'apparence", () => {
     expect(starAppearance("redDwarf").radius).not.toBe(
       starAppearance("giant").radius,
     );
-    expect(galaxyAppearance("elliptical").arms).toBe(0);
     expect(asteroidTint({ ore: 2 })).not.toBe(asteroidTint({ metals: 2 }));
   });
 });

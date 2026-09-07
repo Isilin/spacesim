@@ -1,9 +1,4 @@
-import type {
-  GalaxyMorphology,
-  PlanetType,
-  ResourceId,
-  StarClass,
-} from "@spacesim/shared";
+import type { PlanetType, ResourceId, StarClass } from "@spacesim/shared";
 
 /**
  * Registre d'apparence (chantier 31.18). Traduit une donnée de jeu — type de planète,
@@ -162,38 +157,6 @@ const STARS: Record<StarClass, StarAppearance> = {
 
 export function starAppearance(starClass: string): StarAppearance {
   return STARS[starClass as StarClass] ?? GENERIC_STAR;
-}
-
-/**
- * Apparence d'une galaxie selon sa morphologie (chantier 35.10). `arms` à zéro décrit un
- * nuage sans bras — c'est ce qui distingue une elliptique d'une spirale.
- */
-export interface GalaxyAppearance {
-  arms: number;
-  /** Nombre de tours parcourus par un bras, en radians. */
-  winding: number;
-  /** Longueur de la barre centrale, en part du rayon. Zéro pour une spirale simple. */
-  bar: number;
-  /** Dispersion perpendiculaire aux bras, en part du rayon. */
-  scatter: number;
-}
-
-const GENERIC_GALAXY: GalaxyAppearance = {
-  arms: 2,
-  winding: Math.PI * 3,
-  bar: 0,
-  scatter: 0.28,
-};
-
-const GALAXIES: Record<GalaxyMorphology, GalaxyAppearance> = {
-  spiral: GENERIC_GALAXY,
-  barred: { arms: 2, winding: Math.PI * 2.2, bar: 0.42, scatter: 0.22 },
-  elliptical: { arms: 0, winding: 0, bar: 0, scatter: 1 },
-  irregular: { arms: 3, winding: Math.PI * 1.2, bar: 0, scatter: 0.75 },
-};
-
-export function galaxyAppearance(morphology: string): GalaxyAppearance {
-  return GALAXIES[morphology as GalaxyMorphology] ?? GENERIC_GALAXY;
 }
 
 /**

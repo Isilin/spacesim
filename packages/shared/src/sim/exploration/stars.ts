@@ -2,7 +2,18 @@ import type { Galaxy, StarSystem } from "../../model/universe.js";
 import { createRng } from "../../rng.js";
 
 /**
- * Classe d'étoile, morphologie de galaxie et cœur galactique (chantiers 35.9, 37.1, 39).
+ * Classe d'étoile et cœur galactique (chantiers 35.9, 39).
+ *
+ * ## Ce qui a quitté ce fichier
+ *
+ * La morphologie de galaxie vivait ici, dérivée de l'identifiant. Le chantier 45 en fait un
+ * type persisté (`Galaxy.typeId`, catalogue `content/astro/galaxy-types.ts`) parce qu'elle
+ * entre désormais dans l'économie : l'ADR 0021 remplace l'ADR 0016 sur ce point et renverse
+ * la décision 3 de l'ADR 0018. Ce qui reste ici est ce qui n'a pas basculé.
+ *
+ * La classe d'étoile ci-dessous bascule aussi, mais au **palier 2** du même chantier : elle
+ * tient encore le rôle de l'étoile implicite d'un système tant que les corps centraux ne
+ * sont pas générés.
  *
  * ## Pourquoi dérivé plutôt que généré
  *
@@ -21,22 +32,17 @@ import { createRng } from "../../rng.js";
  * orbites. La classe devient une lecture de la donnée existante plutôt qu'un tirage
  * indépendant qui la contredirait.
  *
- * ## Portée : la classe est cosmétique, la morphologie ne l'est plus
+ * ## Portée : encore cosmétique, et pour peu de temps
  *
  * La classe d'étoile n'entre ni dans l'économie, ni dans l'habitabilité, ni dans
  * l'exploration, ni dans le combat : elle n'existe que pour que deux systèmes ne se
- * ressemblent pas. Le trou noir central d'une galaxie, plus bas, est cosmétique au même
- * titre.
+ * ressemblent pas. C'est ce que disait l'ADR 0016, et ce qui reste vrai jusqu'au palier 2.
  *
- * La morphologie, elle, a changé de statut au chantier 37. Le générateur a cessé de tirer
- * les positions des systèmes au hasard pour les poser selon les bras de la galaxie : la
- * morphologie décide désormais **où sont les systèmes**. Les deux vivent dans ce fichier
- * parce qu'elles répondent à la même question (« à quoi ressemble cet objet ? »), pas parce
- * qu'elles ont la même portée.
- *
- * Elle reste néanmoins **dérivée**, jamais persistée : `galaxyMorphology()` ne lit que
- * l'identifiant de la galaxie et son nombre de systèmes, tous deux relus de la base. Aucune
- * colonne, aucune migration, et le client retrouve exactement ce que le générateur a posé.
+ * Le cœur galactique, plus bas, est cosmétique **définitivement** : c'est le seul objet du
+ * chantier 45 à ne recevoir aucune mécanique, et c'est délibéré. Dérivé *et* mécanique, une
+ * réédition de catalogue changerait rétroactivement le rendement d'une galaxie vivante.
+ * Rien ne vit sous un cœur — `MapScene` le déclare non descendable — donc rien ne peut en
+ * dépendre.
  */
 
 export const STAR_CLASSES = [
@@ -49,15 +55,6 @@ export const STAR_CLASSES = [
 ] as const;
 
 export type StarClass = (typeof STAR_CLASSES)[number];
-
-export const GALAXY_MORPHOLOGIES = [
-  "spiral",
-  "barred",
-  "elliptical",
-  "irregular",
-] as const;
-
-export type GalaxyMorphology = (typeof GALAXY_MORPHOLOGIES)[number];
 
 /**
  * Habitabilité du meilleur monde en deçà de laquelle un système est réputé mort, et peut
@@ -74,14 +71,6 @@ const DEAD_SYSTEM_HABITABILITY = 41;
 /** Rayon orbital externe au-delà duquel une étoile est réputée dilatée, et en deçà serrée. */
 const GIANT_OUTER_ORBIT = 240;
 const DWARF_OUTER_ORBIT = 150;
-
-/**
- * En deçà de ce nombre de systèmes, une galaxie est trop pauvre pour s'être organisée : elle
- * reste irrégulière ou elliptique. Calé sur le bas de la plage de `galaxyDefAt` (300), dont
- * il coupe le premier huitième — une galaxie de frontière chétive se distingue, sans que ce
- * soit le cas d'une sur deux.
- */
-const POOR_GALAXY_SYSTEMS = 340;
 
 /** Parts cumulées des reliques, dans un système mort. Rares à dessein. */
 const BLACK_HOLE_SHARE = 0.05;
@@ -121,75 +110,6 @@ export function starClassOf(system: StarSystem): StarClass {
 /** Une étoile qui n'éclaire pas : le disque d'accrétion prend le relais. */
 export function isDarkStar(starClass: StarClass): boolean {
   return starClass === "blackHole";
-}
-
-/**
- * Morphologie d'une galaxie, tirée de son seul identifiant et de sa taille.
- *
- * Signature volontairement primitive : le générateur l'appelle **avant** qu'un `Galaxy`
- * existe — il lui faut la forme pour placer les systèmes (`generatePositions`). Le client
- * l'appelle après, sur une galaxie chargée, via `galaxyMorphologyOf`. Une seule
- * implémentation pour les deux, sans quoi le nuage du palier univers et les systèmes du
- * palier galaxie dessineraient deux galaxies différentes.
- *
- * Lue de sa richesse : une galaxie dense s'organise en spirale, une pauvre reste
- * irrégulière. Le seuil suit la plage du générateur (`galaxyDefAt`) — il valait 9 quand une
- * galaxie comptait 7 à 14 systèmes, il vaut `POOR_GALAXY_SYSTEMS` depuis qu'elle en compte
- * 300 à 520.
- */
-export function galaxyMorphology(
-  id: string,
-  systemCount: number,
-): GalaxyMorphology {
-  const roll = createRng(`galaxy:${id}`)();
-  if (systemCount < POOR_GALAXY_SYSTEMS)
-    return roll < 0.6 ? "irregular" : "elliptical";
-  if (roll < 0.45) return "spiral";
-  if (roll < 0.8) return "barred";
-  return "elliptical";
-}
-
-/** Morphologie d'une galaxie déjà construite — l'appel côté client et côté rendu. */
-export function galaxyMorphologyOf(galaxy: Galaxy): GalaxyMorphology {
-  return galaxyMorphology(galaxy.id, galaxy.systems.length);
-}
-
-/**
- * Forme géométrique d'une galaxie, consommée par le générateur (chantier 37.2).
- *
- * Cette description vivait côté client (`apps/web/src/map3d/appearance.ts`) tant qu'elle ne
- * servait qu'à peindre un nuage décoratif au palier univers. Elle décrit maintenant où le
- * générateur pose réellement les systèmes : sa place est ici, et le client la lit d'ici.
- *
- * `arms` à zéro décrit un nuage sans bras — c'est ce qui distingue une elliptique d'une
- * spirale.
- */
-export interface GalaxyAppearance {
-  arms: number;
-  /** Nombre de tours parcourus par un bras, en radians. */
-  winding: number;
-  /** Longueur de la barre centrale, en part du rayon. Zéro pour une spirale simple. */
-  bar: number;
-  /** Dispersion perpendiculaire aux bras, en part du rayon. */
-  scatter: number;
-}
-
-const GENERIC_GALAXY: GalaxyAppearance = {
-  arms: 2,
-  winding: Math.PI * 3,
-  bar: 0,
-  scatter: 0.28,
-};
-
-const GALAXIES: Record<GalaxyMorphology, GalaxyAppearance> = {
-  spiral: GENERIC_GALAXY,
-  barred: { arms: 2, winding: Math.PI * 2.2, bar: 0.42, scatter: 0.22 },
-  elliptical: { arms: 0, winding: 0, bar: 0, scatter: 1 },
-  irregular: { arms: 3, winding: Math.PI * 1.2, bar: 0, scatter: 0.75 },
-};
-
-export function galaxyAppearance(morphology: string): GalaxyAppearance {
-  return GALAXIES[morphology as GalaxyMorphology] ?? GENERIC_GALAXY;
 }
 
 /**
