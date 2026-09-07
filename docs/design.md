@@ -3212,6 +3212,58 @@ déséquilibrés.
 | Longueur d'arête moyenne | 205 | 157 |
 | `JUMP_REFERENCE_LENGTH` | 205 | 174 |
 
+### Palier 2 — l'étoile devient une cause
+
+- **45.9** Onze classes d'étoiles, et la **chaîne physique** : luminosité, irradiance, zone
+  habitable, ligne des glaces, albédo, température d'équilibre, gravité, vitesse de
+  libération, rétention atmosphérique, pression, effet de serre, température de surface,
+  rayonnement. Un seul sens de lecture, aucune boucle, rien de persisté.
+- **45.10** Le générateur s'inverse : corps centraux d'abord, puis les corps que leur lumière
+  autorise. `starClassOf` disparaît avec sa logique de reliques.
+- **45.11** L'habitabilité cesse d'être tirée : elle tombe de la chaîne.
+- **45.12** `bodyPhysicals` perd ses trois béquilles, et le registre d'apparence du client sa
+  table de six classes — les catalogues font foi des deux côtés.
+- **45.13** Un système compte un à quatre corps centraux, avec deux bandes de séparation et un
+  trou délibéré entre elles : serrée (orbites circumbinaires) ou large (orbites autour d'une
+  étoile), jamais l'entre-deux instable.
+
+### Ce que la mesure a démenti (palier 2)
+
+**La chaîne, plausible étape par étape et validée sur le système solaire, a vidé la galaxie.**
+Premier jet : **6,6 % des systèmes** avec un monde viable, contre ~70 % avant. Trois causes,
+aucune visible dans les types ni dans les tests unitaires.
+
+*L'échelle d'orbites ancrée sur le milieu de la zone habitable.* Sa moitié externe exige une
+atmosphère de gaz carbonique épaisse que la plupart des mondes n'ont pas — la Terre est à 3 %
+du bord **interne**. Un monde tempéré sortait à −13 °C.
+
+*Le rayonnement en `1/d²`.* La zone habitable d'une naine rouge est à 0,13 UA, donc `1/d²` y
+vaut cinquante-neuf : toute naine rouge devenait létale chez elle, et elles sont 40 % du ciel.
+Or une zone habitable est **par définition** l'endroit où le flux est comparable d'une étoile à
+l'autre. Le rayonnement suit donc le flux — sauf pour un pulsar ou une naine blanche, dont le
+faisceau vient de la rotation et non de la fusion.
+
+*Des bandes de vivabilité tombant à zéro, et un produit sec.* Dans ce jeu l'habitabilité mesure
+à quel point l'environnement **aide** une colonie, pas s'il s'agit de la Terre : l'ancien modèle
+donnait 10 à 40 à un monde gelé, et on y colonisait sous dôme. Le zéro est désormais réservé à
+ce qui n'a pas de sol.
+
+**Une échelle de scène et une échelle physique ne sont pas la même chose.** Poser les orbites en
+unités astronomiques aurait fait varier l'étendue d'un système d'un facteur cinq cents, et avec
+elle le coût de trajet, le cadrage et les plans de coupe. C'est le facteur de **conversion** qui
+dépend de l'étoile, pas la géométrie.
+
+### Relevés (palier 2)
+
+| | premier jet | après calibration | avant le chantier |
+|---|---|---|---|
+| Systèmes avec un monde viable | 6,6 % | 59,5 % | ~70 % |
+| Meilleur monde d'un système médian | 3 | 58 | — |
+| Corps sans habitabilité | 89 % | 7 % (les géantes) | — |
+| Classes d'étoiles | 6, dérivées | 11, persistées | 6 |
+| Corps centraux par système | 1, implicite | 1 à 3 | 1 |
+| Systèmes multiples | — | 36,7 % | 0 % |
+
 ## Chantier 46 — vite 8, et pourquoi deux montées n'étaient pas des bumps (06/09/2026, corrigé le 08/09/2026)
 
 Planification. Ouvert par le tri des PR Dependabot du 06/09/2026 : deux d'entre elles ne
