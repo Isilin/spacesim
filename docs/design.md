@@ -3113,3 +3113,24 @@ de l'autre, et rien ne prévient qu'on en est près.
 dépasse cinq secondes. Ce qui est vérifiable, et vérifié, est le risque du garde : un test
 recule l'horloge en base d'une heure, recharge, et exige que le rattrapage rende ses
 720 ticks. La CI tranche pour le reste.
+
+## Chantier 46 — vite 7, et pourquoi deux montées n'étaient pas des bumps (06/09/2026)
+
+Planification. Ouvert par le tri des PR Dependabot du 06/09/2026 : deux d'entre elles ne
+pouvaient pas passer, et pour la même raison.
+
+`vite` est en `^5.4.0` dans `apps/web` et `apps/admin`. `@vitejs/plugin-react@6` exige vite 7,
+`vitest@4` exige vite ≥ 6. Les deux PR proposaient donc une montée dont la dépendance réelle
+n'était pas dans le diff — et la CI l'a dit à sa façon : `quality` rouge sur vitest 4,
+`e2e` rouge sur plugin-react 6, chacune verte sur l'autre travail. Fermées toutes les deux.
+
+Ce que la montée touche : `vite` dans deux `package.json`, `vitest` dans cinq, les deux
+`vite.config.ts` et les deux `vitest.config.ts`. La surface de configuration de vitest 4 a
+bougé — c'est ce qui range ceci dans un chantier plutôt que dans un `chore(deps)` : la
+vérification n'est pas « la CI passe », c'est « les suites mesurent encore la même chose ».
+
+Un effet de bord du tri mérite d'être noté : `.github/dependabot.yml` ne fixe pas
+`open-pull-requests-limit`, donc le défaut de cinq s'applique. Cinq PR npm dormaient ouvertes
+depuis un mois, et Dependabot n'a jamais pu ouvrir celle de vite 7 — la montée bloquante était
+retenue par les PR qu'elle bloquait. Une file laissée pleine n'est pas neutre : elle cache ce
+qu'on ne verra pas.
