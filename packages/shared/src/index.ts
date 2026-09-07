@@ -6,6 +6,9 @@ export {
   type Planet,
   type AsteroidBelt,
   type TradingPost,
+  CENTRAL_BODY_KINDS,
+  type CentralBodyKind,
+  type CentralBody,
   type StarSystem,
   systemCountOf,
   type Galaxy,
@@ -263,6 +266,33 @@ export {
   type InstallationDef,
   type InstallationGrant,
 } from "./content/installations.js";
+export {
+  BLACK_HOLE_PLACEMENTS,
+  BLACK_HOLE_TYPE_IDS,
+  BLACK_HOLE_TYPES,
+  blackHoleType,
+  type BlackHolePlacement,
+  type BlackHoleTypeId,
+  type BlackHoleTypeDef,
+  type StaticBlackHoleTypeDef,
+} from "./content/astro/black-hole-types.js";
+export {
+  WHITE_HOLE_TYPE_IDS,
+  WHITE_HOLE_TYPES,
+  whiteHoleType,
+  type WhiteHoleTypeId,
+  type WhiteHoleTypeDef,
+  type StaticWhiteHoleTypeDef,
+} from "./content/astro/white-hole-types.js";
+export {
+  GALAXY_TYPE_IDS,
+  GALAXY_TYPES,
+  GALAXY_TYPE_WEIGHTS,
+  galaxyType,
+  type GalaxyTypeId,
+  type GalaxyTypeDef,
+  type StaticGalaxyTypeDef,
+} from "./content/astro/galaxy-types.js";
 export {
   ROUNDS_PER_PHASE,
   WARSHIP_COMBAT_DEFS,
