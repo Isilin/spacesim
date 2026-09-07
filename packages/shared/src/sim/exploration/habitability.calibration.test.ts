@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MAX_EMPIRES_PER_GALAXY } from "../../constants.js";
-import { planetType } from "../../content/astro/planet-types.js";
+import { planetClass } from "../../content/astro/planet-classes.js";
 import { isDrifter } from "../../model/universe.js";
 import { allPlanets, allSystems, generateUniverse } from "../../universe.js";
 
@@ -35,7 +35,7 @@ import { allPlanets, allSystems, generateUniverse } from "../../universe.js";
 const universe = generateUniverse("calibration-45-2", 4);
 const systems = allSystems(universe).filter((s) => !isDrifter(s));
 const planets = allPlanets(universe);
-const colonizable = planets.filter((p) => planetType(p.type).colonizable);
+const colonizable = planets.filter((p) => planetClass(p.classId).colonizable);
 
 /** Seuil sous lequel un système était réputé mort avant le chantier 45 (`stars.ts`). */
 const DEAD_SYSTEM = 41;
@@ -78,7 +78,7 @@ describe("distribution de l'habitabilité", () => {
     for (const planet of colonizable) {
       expect(planet.habitability, planet.id).toBeGreaterThan(0);
     }
-    const gas = planets.filter((p) => !planetType(p.type).colonizable);
+    const gas = planets.filter((p) => !planetClass(p.classId).colonizable);
     expect(gas.length).toBeGreaterThan(0);
     for (const planet of gas) expect(planet.habitability, planet.id).toBe(0);
   });

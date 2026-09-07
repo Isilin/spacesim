@@ -9,7 +9,6 @@ import type {
   ModuleId,
   ModuleRole,
   ObjectiveKind,
-  PlanetType,
   RelationState,
   ResourceId,
   SlotType,
@@ -79,8 +78,19 @@ export function worldEventLabel(kind: WorldEventKind): {
   return { name: t(`worldEvent.${kind}.name`), ...meta[kind] };
 }
 
-export function planetTypeLabel(type: PlanetType): string {
-  return t(`planetType.${type}`);
+/**
+ * Nom d'un corps, sur ses deux axes (chantier 45.3).
+ *
+ * Deux fonctions et non une chaîne composée : la fiche veut « Rocheuse tempérée », la liste
+ * du système veut « Tempérée » seul, et l'infobox veut la classe. Composer ici aurait forcé
+ * les trois à découper.
+ */
+export function planetClassLabel(classId: string): string {
+  return t(`planetClass.${classId}`);
+}
+
+export function planetVariantLabel(variantId: string): string {
+  return t(`planetVariant.${variantId}`);
 }
 
 export function resourceLabel(resource: ResourceId): string {

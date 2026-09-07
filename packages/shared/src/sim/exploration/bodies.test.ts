@@ -3,7 +3,6 @@ import {
   ATMOSPHERES,
   type CentralBody,
   type Planet,
-  type PlanetType,
   starsOf,
 } from "../../model/universe.js";
 import { allPlanets, allSystems, generateUniverse } from "../../universe.js";
@@ -37,7 +36,7 @@ const SUN = [star("yellow_dwarf", 0.92)];
 
 /** Corps de test : seuls l'id, le type et l'orbite influent sur la fiche. */
 function body(
-  over: Partial<Planet> & { id: string; type: PlanetType },
+  over: Partial<Planet> & { id: string; classId: string; variantId: string },
 ): Planet {
   return {
     systemId: "gal-0-sys-0",
@@ -56,25 +55,35 @@ function body(
 
 describe("bodyPhysicals", () => {
   it("est déterministe : même corps, même fiche", () => {
-    const planet = body({ id: "gal-0-sys-1-p2", type: "telluric" });
+    const planet = body({
+      id: "gal-0-sys-1-p2",
+      classId: "rocky",
+      variantId: "temperate",
+    });
     expect(bodyPhysicals(planet, SUN)).toEqual(bodyPhysicals(planet, SUN));
   });
 
   it("deux corps du même type diffèrent par leur identifiant", () => {
     const a = bodyPhysicals(
-      body({ id: "gal-0-sys-1-p1", type: "telluric" }),
+      body({ id: "gal-0-sys-1-p1", classId: "rocky", variantId: "temperate" }),
       SUN,
     );
     const b = bodyPhysicals(
-      body({ id: "gal-0-sys-1-p2", type: "telluric" }),
+      body({ id: "gal-0-sys-1-p2", classId: "rocky", variantId: "temperate" }),
       SUN,
     );
     expect(a).not.toEqual(b);
   });
 
   it("une gazeuse est immense et peu dense", () => {
-    const gas = bodyPhysicals(body({ id: "g", type: "gas" }), SUN);
-    const telluric = bodyPhysicals(body({ id: "t", type: "telluric" }), SUN);
+    const gas = bodyPhysicals(
+      body({ id: "g", classId: "gas_giant", variantId: "frozen" }),
+      SUN,
+    );
+    const telluric = bodyPhysicals(
+      body({ id: "t", classId: "rocky", variantId: "temperate" }),
+      SUN,
+    );
     expect(gas.radiusKm).toBeGreaterThan(telluric.radiusKm * 4);
     // Peu dense, mais si grande que sa vitesse de libération écrase celle d'un monde rocheux.
     expect(gas.escapeVelocityKms).toBeGreaterThan(telluric.escapeVelocityKms);
@@ -87,11 +96,21 @@ describe("la température vient de l'étoile, plus d'une table par type", () => 
     // Une orbite quatre fois plus proche reçoit seize fois plus de flux : l'écart doit être
     // spectaculaire, et c'est la physique qui le dit.
     const near = bodyPhysicals(
-      body({ id: "n", type: "telluric", orbitRadius: 40 }),
+      body({
+        id: "n",
+        classId: "rocky",
+        variantId: "temperate",
+        orbitRadius: 40,
+      }),
       SUN,
     );
     const far = bodyPhysicals(
-      body({ id: "n", type: "telluric", orbitRadius: 400 }),
+      body({
+        id: "n",
+        classId: "rocky",
+        variantId: "temperate",
+        orbitRadius: 400,
+      }),
       SUN,
     );
     expect(near.meanTempC).toBeGreaterThan(far.meanTempC + 150);
@@ -101,24 +120,32 @@ describe("la température vient de l'étoile, plus d'une table par type", () => 
     // C'est l'inverse qu'on pourrait croire : à 130 unités on est au MILIEU de la zone
     // habitable des deux, par construction de l'échelle. La différence tient à l'orbite
     // réelle, pas à la classe — et c'est ce que ce cas vérifie.
-    const dwarf = bodyPhysicals(body({ id: "d", type: "telluric" }), [
-      star("red_dwarf", 0.26),
-    ]);
-    const giant = bodyPhysicals(body({ id: "d", type: "telluric" }), [
-      star("blue_giant", 30),
-    ]);
+    const dwarf = bodyPhysicals(
+      body({ id: "d", classId: "rocky", variantId: "temperate" }),
+      [star("red_dwarf", 0.26)],
+    );
+    const giant = bodyPhysicals(
+      body({ id: "d", classId: "rocky", variantId: "temperate" }),
+      [star("blue_giant", 30)],
+    );
     expect(Math.abs(dwarf.meanTempC - giant.meanTempC)).toBeLessThan(30);
   });
 
   it("un système sans étoile est glacé", () => {
     // Un errant n'éclaire rien : c'est la bonne réponse, pas un cas dégénéré.
-    const dark = bodyPhysicals(body({ id: "x", type: "telluric" }), []);
+    const dark = bodyPhysicals(
+      body({ id: "x", classId: "rocky", variantId: "temperate" }),
+      [],
+    );
     expect(dark.meanTempC).toBeLessThan(-200);
     expect(dark.irradiance).toBe(0);
   });
 
   it("la serre écarte la surface de l'équilibre, et seulement là où il y a une atmosphère", () => {
-    const volcanic = bodyPhysicals(body({ id: "v", type: "volcanic" }), SUN);
+    const volcanic = bodyPhysicals(
+      body({ id: "v", classId: "rocky", variantId: "volcanic" }),
+      SUN,
+    );
     expect(volcanic.meanTempC).toBeGreaterThan(volcanic.equilibriumTempC);
     expect(volcanic.pressureBar).toBeGreaterThan(0);
   });
@@ -128,9 +155,18 @@ describe("l'atmosphère est retenue, plus tirée", () => {
   it("une lune retient bien moins qu'une planète de même nature", () => {
     // Le couplage qu'aucune table par type ne pouvait exprimer : c'est le rayon réduit
     // d'une lune qui abaisse sa vitesse de libération, donc sa rétention.
-    const planet = bodyPhysicals(body({ id: "p", type: "telluric" }), SUN);
+    const planet = bodyPhysicals(
+      body({ id: "p", classId: "rocky", variantId: "temperate" }),
+      SUN,
+    );
     const moon = bodyPhysicals(
-      body({ id: "p", type: "telluric", kind: "moon", orbitRadius: 20 }),
+      body({
+        id: "p",
+        classId: "rocky",
+        variantId: "temperate",
+        kind: "moon",
+        orbitRadius: 20,
+      }),
       SUN,
       130,
     );
@@ -142,12 +178,24 @@ describe("l'atmosphère est retenue, plus tirée", () => {
 
   it("une lune suit la température de sa planète, pas son orbite propre", () => {
     const warm = bodyPhysicals(
-      body({ id: "m", type: "frozen", kind: "moon", orbitRadius: 20 }),
+      body({
+        id: "m",
+        classId: "dwarf",
+        variantId: "frozen",
+        kind: "moon",
+        orbitRadius: 20,
+      }),
       SUN,
       100,
     );
     const cold = bodyPhysicals(
-      body({ id: "m", type: "frozen", kind: "moon", orbitRadius: 20 }),
+      body({
+        id: "m",
+        classId: "dwarf",
+        variantId: "frozen",
+        kind: "moon",
+        orbitRadius: 20,
+      }),
       SUN,
       600,
     );
@@ -155,10 +203,18 @@ describe("l'atmosphère est retenue, plus tirée", () => {
   });
 
   it("un corps trop chaud et trop léger reste nu, quoi qu'il dégaze", () => {
-    // Une volcanique dégaze une atmosphère toxique épaisse ; en orbite très serrée elle
-    // n'en garde rien. C'est la rétention qui tranche, pas le type.
+    // Une volcanique dégaze une atmosphère toxique épaisse ; en orbite très serrée une
+    // naine n'en garde rien. C'est la rétention qui tranche, pas le type.
+    //
+    // La classe porte la légèreté depuis la séparation des deux axes : une rocheuse de
+    // masse terrestre au même endroit garderait une trace, et ce serait juste.
     const scorched = bodyPhysicals(
-      body({ id: "s", type: "volcanic", orbitRadius: 12 }),
+      body({
+        id: "s",
+        classId: "dwarf",
+        variantId: "volcanic",
+        orbitRadius: 12,
+      }),
       SUN,
     );
     expect(scorched.atmosphere).toBe("none");
@@ -208,7 +264,10 @@ describe("sur tout un univers généré", () => {
 
 describe("isBreathable", () => {
   it("exige une atmosphère respirable ET une température vivable", () => {
-    const base = bodyPhysicals(body({ id: "b", type: "telluric" }), SUN);
+    const base = bodyPhysicals(
+      body({ id: "b", classId: "rocky", variantId: "temperate" }),
+      SUN,
+    );
     expect(
       isBreathable({ ...base, atmosphere: "breathable", meanTempC: 18 }),
     ).toBe(true);

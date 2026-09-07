@@ -20,10 +20,10 @@ import {
   whiteHoleType,
 } from "./content/astro/white-hole-types.js";
 import {
-  PLANET_TYPE_DEFS,
-  planetType,
-  planetTypesForZone,
-} from "./content/astro/planet-types.js";
+  planetClass,
+  planetClassesForZone,
+} from "./content/astro/planet-classes.js";
+import { planetVariant, variantsFor } from "./content/astro/planet-variants.js";
 import {
   STAR_COMPANION_WEIGHTS,
   STAR_PRIMARY_WEIGHTS,
@@ -61,7 +61,7 @@ import type {
   Deposits,
   Galaxy,
   Planet,
-  PlanetType,
+  OrbitZone,
   StarSystem,
   TradingPost,
   Universe,
@@ -74,7 +74,7 @@ import type {
  * bumper cette version vont ensemble, dans le même commit. Les galaxies déjà
  * matérialisées en DB gardent la version qui les a produites et ne changent jamais.
  */
-export const GENERATOR_VERSION = 8;
+export const GENERATOR_VERSION = 9;
 
 /** Part des systèmes accueillant un comptoir commercial PNJ. */
 const TRADING_POST_PROBABILITY = 0.35;
@@ -306,15 +306,37 @@ function generateStars(
   return stars;
 }
 
-function generateDeposits(rng: Rng, type: PlanetType, bonus = 1): Deposits {
+/** Les gisements suivent l'ENVIRONNEMENT : c'est lui qui dit ce que la surface expose. */
+function generateDeposits(rng: Rng, variantId: string, bonus = 1): Deposits {
   const deposits: Deposits = {};
-  for (const [resource, prob, min, max] of planetType(type).depositTendencies) {
+  for (const [resource, prob, min, max] of planetVariant(variantId)
+    .depositTendencies) {
     if (rng() < prob) {
       deposits[resource] =
         Math.round((min + rng() * (max - min)) * bonus * 100) / 100;
     }
   }
   return deposits;
+}
+
+/**
+ * Tire une classe puis une variante pour une zone donnée.
+ *
+ * L'ordre importe : la structure d'abord — c'est elle qui décide de ce que le corps peut
+ * retenir — puis l'environnement parmi ceux que cette structure admet, pondéré par la zone.
+ * L'inverse aurait permis une géante gazeuse océanique.
+ */
+function pickBodyType(
+  rng: Rng,
+  zone: OrbitZone,
+  asMoon: boolean,
+): { classId: string; variantId: string } {
+  const classes = planetClassesForZone(zone, asMoon);
+  const classId = classes.length > 0 ? pickWeighted(rng, classes) : "rocky";
+  const variants = variantsFor(planetClass(classId).variants, zone);
+  const variantId =
+    variants.length > 0 ? pickWeighted(rng, variants) : "barren";
+  return { classId, variantId };
 }
 
 /**
@@ -331,38 +353,44 @@ function generateDeposits(rng: Rng, type: PlanetType, bonus = 1): Deposits {
  */
 function bodyHabitability(
   rng: Rng,
-  type: PlanetType,
+  classId: string,
+  variantId: string,
   stars: readonly CentralBody[],
   orbitRadius: number,
   hostStarId?: string,
 ): { habitability: number; radiusEarth: number; density: number } {
-  const def = planetType(type);
-  const radiusEarth = range(rng, def.radiusRange);
-  const density = range(rng, def.densityRange);
-  if (!def.colonizable) return { habitability: 0, radiusEarth, density };
+  // La CLASSE donne la structure, la VARIANTE l'environnement : c'est le croisement des deux
+  // qui décide, et c'est ce que l'énumération à plat ne pouvait pas exprimer.
+  const cls = planetClass(classId);
+  const env = planetVariant(variantId);
+  const radiusEarth = range(rng, cls.radiusRange);
+  const density = range(rng, cls.densityRange);
+  if (!cls.colonizable) return { habitability: 0, radiusEarth, density };
 
   // En binaire large, c'est l'étoile HÔTE qui chauffe, pas la somme des deux.
   const lighting = lightingFor(stars, hostStarId, orbitRadius);
   const au = auAt(lighting, orbitRadius);
-  const equilibrium = equilibriumTempK(irradianceAt(stars, au), def.albedo);
+  const equilibrium = equilibriumTempK(irradianceAt(lighting, au), env.albedo);
+  // La magnétosphère de la classe protège du vent stellaire ce que les éruptions décaperaient.
+  const shielded = 1 - (1 - flareErosion(lighting)) * (1 - cls.magnetosphere);
   const retention =
     atmosphereRetention(escapeVelocity(radiusEarth, density), equilibrium) *
-    flareErosion(lighting);
+    shielded;
   // Ce que le corps retient réellement de ce qu'il dégaze. Sous 0,15 il est nu quoi qu'il
   // tente : c'est ce couplage qui fait qu'une naine sans gravité reste stérile même au bon
   // endroit, et qu'un monde froid garde une atmosphère qu'un monde chaud aurait perdue.
-  const pressure = def.outgassingBar * Math.min(1.5, Math.max(0, retention));
+  const pressure = env.outgassingBar * Math.min(1.5, Math.max(0, retention));
   const surface = surfaceTempC(
     equilibrium,
-    greenhouseK(pressure, def.greenhousePerBar),
+    greenhouseK(pressure, env.greenhousePerBar),
   );
   return {
     habitability: habitabilityOf({
       surfaceTempC: surface,
       pressureBar: pressure,
       gravityG: surfaceGravity(radiusEarth, density),
-      radiation: radiationAt(lighting, au),
-      breathable: def.atmosphere === "breathable" && retention > 0.5,
+      radiation: Math.max(radiationAt(lighting, au), env.hazard),
+      breathable: env.atmosphere === "breathable" && retention > 0.5,
     }),
     radiusEarth,
     density,
@@ -379,34 +407,40 @@ function generateMoons(
   stars: readonly CentralBody[],
   depositBonus: number,
 ): Planet[] {
-  const maxMoons = planet.type === "gas" ? 3 : 2;
-  const count = Math.max(
-    0,
-    randInt(rng, planet.type === "gas" ? 1 : -1, maxMoons),
-  );
+  // Le cortège dépend de la CLASSE de la planète : une géante en garde plusieurs, une naine
+  // presque jamais.
+  const [minMoons, maxMoons] = planetClass(planet.classId).moonRange;
+  const count = randInt(rng, minMoons, maxMoons);
   const moons: Planet[] = [];
-  const letters = ["a", "b", "c"];
+  const letters = ["a", "b", "c", "d", "e", "f"];
   // Une lune est à la distance de sa planète : c'est la zone de la PLANÈTE qui décide de
   // ce qu'elle peut être, pas celle de son orbite propre autour d'elle.
   const zone = zoneAt(stars, planet.orbitRadius);
-  const candidates = planetTypesForZone(zone, true);
-  if (candidates.length === 0) return moons;
 
   for (let i = 0; i < count; i++) {
-    const type = pickWeighted(rng, candidates);
-    const body = bodyHabitability(rng, type, stars, planet.orbitRadius);
+    const { classId, variantId } = pickBodyType(rng, zone, true);
+    const body = bodyHabitability(
+      rng,
+      classId,
+      variantId,
+      stars,
+      planet.orbitRadius,
+      planet.hostStarId,
+    );
     moons.push({
       id: `${planet.id}-m${i + 1}`,
       systemId: planet.systemId,
-      name: `${planet.name} ${letters[i]}`,
+      name: `${planet.name} ${letters[i] ?? i + 1}`,
       kind: "moon",
       parentPlanetId: planet.id,
-      type,
+      classId,
+      variantId,
+      ...(planet.hostStarId ? { hostStarId: planet.hostStarId } : {}),
       // Une lune plafonne sous une planète : peu de gravité, peu d'atmosphère, et le jeu
       // veut que le monde principal d'un système reste le monde principal.
       habitability: Math.min(40, body.habitability),
       slots: randInt(rng, 2, 5),
-      deposits: generateDeposits(rng, type, depositBonus),
+      deposits: generateDeposits(rng, variantId, depositBonus),
       orbitRadius: 16 + i * 10,
       orbitAngle: rng() * Math.PI * 2,
       inclination: (rng() - 0.5) * 2 * MAX_INCLINATION,
@@ -461,23 +495,28 @@ function generateBodies(
         ? pickWeighted(rng, hostTable)
         : stars[0]?.id;
     const orbitRadius = 70 + (i - 1) * 55 + randInt(rng, -8, 8);
-    const candidates = planetTypesForZone(
-      zoneAt(lightingFor(stars, host, orbitRadius), orbitRadius),
+    const zone = zoneAt(lightingFor(stars, host, orbitRadius), orbitRadius);
+    const { classId, variantId } = pickBodyType(rng, zone, false);
+    const body = bodyHabitability(
+      rng,
+      classId,
+      variantId,
+      stars,
+      orbitRadius,
+      host,
     );
-    const type =
-      candidates.length > 0 ? pickWeighted(rng, candidates) : "frozen";
-    const body = bodyHabitability(rng, type, stars, orbitRadius, host);
-    const def = planetType(type);
+    const cls = planetClass(classId);
     const planet: Planet = {
       id: `${system.id}-p${i}`,
       systemId: system.id,
       name: `${system.name} ${romanNumeral(i)}`,
       kind: "planet",
-      type,
+      classId,
+      variantId,
       ...(host ? { hostStarId: host } : {}),
       habitability: body.habitability,
-      slots: randInt(rng, def.slotRange[0], def.slotRange[1]),
-      deposits: generateDeposits(rng, type, depositBonus),
+      slots: randInt(rng, cls.slotRange[0], cls.slotRange[1]),
+      deposits: generateDeposits(rng, variantId, depositBonus),
       orbitRadius,
       orbitAngle: rng() * Math.PI * 2,
       inclination: (rng() - 0.5) * 2 * MAX_INCLINATION,

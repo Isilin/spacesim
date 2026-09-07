@@ -1,9 +1,10 @@
 import {
   blackHoleType,
+  planetClass,
+  planetVariant,
   starClass,
   whiteHoleType,
   type CentralBody,
-  type PlanetType,
   type ResourceId,
 } from "@spacesim/shared";
 
@@ -29,39 +30,26 @@ export interface BodyAppearance {
   relief: number;
 }
 
-const GENERIC_BODY: BodyAppearance = {
-  color: "#8a8f98",
-  accent: "#6b7078",
-  roughness: 0.85,
-  relief: 0.35,
-};
-
-const BODIES: Record<PlanetType, BodyAppearance> = {
-  telluric: {
-    color: "#5f8f52",
-    accent: "#8fae6a",
-    roughness: 0.9,
-    relief: 0.55,
-  },
-  oceanic: {
-    color: "#2f6f9f",
-    accent: "#7fc8e8",
-    roughness: 0.35,
-    relief: 0.3,
-  },
-  volcanic: {
-    color: "#7a2f28",
-    accent: "#e0762f",
-    roughness: 0.95,
-    relief: 0.75,
-  },
-  frozen: { color: "#9fbcd4", accent: "#e8f4ff", roughness: 0.5, relief: 0.4 },
-  arid: { color: "#a8874a", accent: "#d8b877", roughness: 0.95, relief: 0.6 },
-  gas: { color: "#8f6fb0", accent: "#d8b0e0", roughness: 0.15, relief: 0.2 },
-};
-
-export function bodyAppearance(type: string): BodyAppearance {
-  return BODIES[type as PlanetType] ?? GENERIC_BODY;
+/**
+ * Apparence d'un corps, lue des DEUX axes (chantier 45.3).
+ *
+ * La **variante** donne la couleur — c'est le climat qui fait qu'un monde est vert, bleu ou
+ * rouge, pas sa taille. La **classe** donne le relief et la rugosité : une géante est lisse,
+ * une naine criblée de cratères. La table qui vivait ici confondait les deux, faute d'axes
+ * séparés dans le modèle.
+ */
+export function bodyAppearance(
+  classId: string,
+  variantId: string,
+): BodyAppearance {
+  const cls = planetClass(classId);
+  const env = planetVariant(variantId);
+  return {
+    color: env.color,
+    accent: env.accent,
+    roughness: cls.roughness,
+    relief: cls.relief,
+  };
 }
 
 /** Teinte d'un site découvert au scan (chantier 31.11). */

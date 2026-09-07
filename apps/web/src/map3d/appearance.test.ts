@@ -18,11 +18,18 @@ import {
 describe("repli générique du registre d'apparence", () => {
   const unknown = ["", "inconnu", "Étoile-Fantôme", "42"];
 
-  it("rend un corps neutre pour un type de planète inconnu", () => {
+  it("rend un corps neutre pour une classe ou une variante inconnue", () => {
+    // Deux axes depuis le chantier 45.3, donc deux replis à vérifier : une classe inconnue
+    // ne doit pas coûter la couleur, ni une variante inconnue le relief.
     for (const value of unknown) {
-      const look = bodyAppearance(value);
-      expect(look.color).toMatch(/^#/);
-      expect(look.relief).toBeGreaterThan(0);
+      for (const look of [
+        bodyAppearance(value, "temperate"),
+        bodyAppearance("rocky", value),
+        bodyAppearance(value, value),
+      ]) {
+        expect(look.color).toMatch(/^#/);
+        expect(look.relief).toBeGreaterThan(0);
+      }
     }
   });
 

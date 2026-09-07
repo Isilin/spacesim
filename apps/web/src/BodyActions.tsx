@@ -1,5 +1,6 @@
 import type { ClientMessage } from "@spacesim/protocol";
 import {
+  planetClass,
   canFoundStation,
   COLONY_SHIP_COST,
   colonizeInfluenceCost,
@@ -109,7 +110,7 @@ function ColonizeAction({
       </p>
     );
   }
-  if (body.type === "gas") {
+  if (!planetClass(body.classId).colonizable) {
     return <p className="small muted">{t("bodyActions.gasGiant")}</p>;
   }
 

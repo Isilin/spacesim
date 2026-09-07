@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { isDrifter } from "./model/universe.js";
 import { hashSeed } from "./rng.js";
 import { GENERATOR_VERSION, generateUniverse } from "./universe.js";
 
@@ -43,7 +44,7 @@ function digest(seed: string, galaxyCount: number) {
       stationCount: galaxy.systems.filter((s) => s.station).length,
       // Comptés à part, sans quoi un errant de plus ne se lirait dans le diff que comme
       // une empreinte qui bouge — sans dire pourquoi.
-      drifterCount: galaxy.systems.filter((s) => s.stars?.length).length,
+      drifterCount: galaxy.systems.filter(isDrifter).length,
       bridgeCount: galaxy.bridges.length,
       fingerprint: hashSeed(JSON.stringify(galaxy)).toString(16),
       sample: [

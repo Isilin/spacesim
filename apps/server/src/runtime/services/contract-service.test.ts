@@ -173,24 +173,42 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     // Amorce généreuse d'énergie en orbite et de crédits au sol : sans elles, aucun convoi
     // ne peut appareiller ni payer ses frais, et le nombre de sauts jusqu'à la colonie
     // émettrice (donc carburant et frais) dépend de la seed — pas de marge fixe fiable.
-    engine.devGrant({ credits: 500 });
+    engine.devGrant({ credits: 500, energy: 400 });
     engine.logistics.setLiftRule(accepter, accepterColony.id, "energy", {
       keepGround: 0,
       direction: "up",
     });
     advanceTicks(engine, 60);
 
-    const beforeAccept = homeColony(engine, accepter);
-    const orbitalFoodBefore = beforeAccept.orbitalResources.food;
-
-    expect(
+    // Le carburant d'un convoi dépend du nombre de sauts ET, depuis le chantier 45.2, du
+    // danger du système d'arrivée : aucune avance de temps fixe ne le couvre pour toutes les
+    // seeds, et les soixante ticks ci-dessus ont cessé de suffire au premier changement de
+    // générateur. On accumule donc jusqu'à ce que l'orbite couvre la demande, en
+    // INTERROGEANT le moteur plutôt qu'en devinant : une acceptation qui manque de carburant
+    // ne mute rien (`takeFromOrbit` et `reserveShip` rendent des copies), elle sert de sonde.
+    const accept = () =>
       engine.contract.acceptContract(
         accepter,
         accepterColony.id,
         contractId,
         10,
-      ),
-    ).toBeNull();
+      );
+    let orbitalFoodBefore = homeColony(engine, accepter).orbitalResources.food;
+    let refusal = accept();
+    for (
+      let waited = 0;
+      waited < 480 && refusal?.startsWith("Carburant");
+      waited += 10
+    ) {
+      // Le sol est redoté à chaque tour : l'ascenseur consomme de l'énergie pour en hisser
+      // (`LIFT_ENERGY_PER_UNIT`), donc la seule production organique plafonne l'orbite bien
+      // en dessous de ce qu'un convoi lointain demande, quel que soit le temps accordé.
+      engine.devGrant({ energy: 400 });
+      advanceTicks(engine, 10);
+      orbitalFoodBefore = homeColony(engine, accepter).orbitalResources.food;
+      refusal = accept();
+    }
+    expect(refusal).toBeNull();
 
     const afterAccept = homeColony(engine, accepter);
     expect(afterAccept.orbitalResources.food).toBe(orbitalFoodBefore - 10);
@@ -353,11 +371,22 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
     // (`LIFT_ENERGY_PER_UNIT`), et la consigne précédente a tout monté en orbite pour le
     // carburant. Sans ce second apport, la cargaison n'a plus de quoi être levée.
     //
-    // Large aussi sur la cargaison : la ressource demandée par la faction varie d'une
-    // exécution à l'autre — elle ne vient pas de la seed d'univers.
+    // La dotation suit la quantité demandée au lieu d'un 400 fixe : les 600 unités du dock
+    // unique se partagent entre la cargaison et le carburant, que le chantier 45.2 a
+    // renchéri de 60 % au plus selon le danger du système d'arrivée. Hisser 400 unités dont
+    // 280 inutiles remplissait l'orbite, le complément d'énergie n'entrait plus, et le
+    // convoi restait à quai pour une raison qui ne se lisait nulle part.
+    //
+    // La marge de 60 n'est pas décorative non plus : la colonie CONSOMME la ressource
+    // pendant les trente ticks d'ascension, et une dotation à la quantité exacte arrivait
+    // en orbite amputée de deux unités — assez pour faire refuser l'acceptation.
+    //
+    // Plafond du pire cas : `FACTION_CONTRACT_QUANTITY_MAX` (120) + 60 + 225 d'énergie déjà
+    // hissée = 405 sur 600, de quoi loger le carburant du convoi le plus lointain.
+    const qty = contract.quantity;
     engine.devGrant({
       energy: 400,
-      [contract.resource]: 400,
+      [contract.resource]: qty + 60,
     } as Record<string, number>);
     engine.logistics.setLiftRule(empire, colony.id, contract.resource, {
       keepGround: 0,
@@ -366,10 +395,34 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
     advanceTicks(engine, 30);
 
     const repBefore = empire.factionRep[factionId] ?? 0;
-    const qty = contract.quantity;
-    expect(
-      engine.contract.acceptContract(empire, colony.id, contract.id, qty),
-    ).toBeNull();
+    // Même raison que le test de fourniture ci-dessus, aggravée ici : la quantité demandée
+    // par la faction varie d'une exécution à l'autre, donc le carburant aussi. La cargaison
+    // est déjà en orbite à ce stade — rouvrir la consigne d'énergie ne lui dispute plus rien.
+    const accept = () =>
+      engine.contract.acceptContract(empire, colony.id, contract.id, qty);
+    let refusal = accept();
+    if (refusal?.startsWith("Carburant")) {
+      // La consigne de cargaison est coupée d'abord : la cargaison utile est déjà en orbite,
+      // et tout reliquat resté au sol disputerait le débit unique de l'ascenseur à l'énergie
+      // qu'on veut y hisser — servi avant elle s'il précède dans `RESOURCES`, la boucle
+      // tournerait alors sans jamais faire monter un joule.
+      engine.logistics.setLiftRule(empire, colony.id, contract.resource, null);
+      engine.logistics.setLiftRule(empire, colony.id, "energy", {
+        keepGround: 0,
+        direction: "up",
+      });
+      for (
+        let waited = 0;
+        waited < 300 && refusal?.startsWith("Carburant");
+        waited += 10
+      ) {
+        engine.devGrant({ energy: 400 });
+        advanceTicks(engine, 10);
+        refusal = accept();
+      }
+      engine.logistics.setLiftRule(empire, colony.id, "energy", null);
+    }
+    expect(refusal).toBeNull();
 
     const mission = engine
       .snapshotForEmpire(empire)

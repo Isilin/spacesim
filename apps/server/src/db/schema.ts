@@ -183,7 +183,15 @@ export const universeBodies = pgTable("universe_bodies", {
    * imposer une contrainte de plus au chemin chaud d'écriture.
    */
   hostStarId: text("host_star_id"),
-  type: text("type").notNull(),
+  /**
+   * Deux axes depuis le chantier 45.3 : la CLASSE dit de quoi le corps est fait, la VARIANTE
+   * ce qu'il fait de sa position. L'ancienne colonne `type` les confondait.
+   *
+   * Les défauts valent pour les corps matérialisés avant ce chantier — un monde rocheux
+   * stérile, le cas le plus neutre.
+   */
+  classId: text("class_id").notNull().default("rocky"),
+  variantId: text("variant_id").notNull().default("barren"),
   habitability: integer("habitability").notNull(),
   slots: integer("slots").notNull(),
   /** JSON Deposits. */

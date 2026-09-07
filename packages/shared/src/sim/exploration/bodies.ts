@@ -1,4 +1,5 @@
-import { planetType } from "../../content/astro/planet-types.js";
+import { planetClass } from "../../content/astro/planet-classes.js";
+import { planetVariant } from "../../content/astro/planet-variants.js";
 import type { Atmosphere, CentralBody, Planet } from "../../model/universe.js";
 import { createRng, type Rng } from "../../rng.js";
 import {
@@ -122,11 +123,12 @@ export function bodyPhysicals(
 ): BodyPhysicals {
   const rng = createRng(`body:${planet.id}`);
   const isMoon = planet.kind === "moon";
-  const def = planetType(planet.type);
+  const cls = planetClass(planet.classId);
+  const env = planetVariant(planet.variantId);
 
   const scale = isMoon ? MOON_SCALE : 1;
-  const radiusEarth = range(rng, def.radiusRange) * scale;
-  const density = range(rng, def.densityRange);
+  const radiusEarth = range(rng, cls.radiusRange) * scale;
+  const density = range(rng, cls.densityRange);
   const gravityG = surfaceGravity(radiusEarth, density);
   const escapeKms = escapeVelocity(radiusEarth, density);
 
@@ -137,18 +139,19 @@ export function bodyPhysicals(
   // déplacerait la zone habitable et rendrait la fiche fausse.
   const lighting = lightingFor(stars, planet.hostStarId, orbitRadius);
   const irradiance = irradianceAt(lighting, auAt(lighting, orbitRadius));
-  const equilibrium = equilibriumTempK(irradiance, def.albedo);
+  const equilibrium = equilibriumTempK(irradiance, env.albedo);
 
   const retention =
-    atmosphereRetention(escapeKms, equilibrium) * flareErosion(lighting);
-  const atmosphere = retainedAtmosphere(def.atmosphere, retention);
+    atmosphereRetention(escapeKms, equilibrium) *
+    (1 - (1 - flareErosion(lighting)) * (1 - cls.magnetosphere));
+  const atmosphere = retainedAtmosphere(env.atmosphere, retention);
   const pressureBar =
     atmosphere === "none"
       ? 0
-      : def.outgassingBar * Math.min(1.5, Math.max(0, retention));
+      : env.outgassingBar * Math.min(1.5, Math.max(0, retention));
   const meanTempC = surfaceTempC(
     equilibrium,
-    greenhouseK(pressureBar, def.greenhousePerBar),
+    greenhouseK(pressureBar, env.greenhousePerBar),
   );
 
   return {

@@ -1,7 +1,9 @@
 export { RESOURCES, type ResourceId } from "./model/resources.js";
 export {
-  PLANET_TYPES,
-  type PlanetType,
+  PLANET_CLASSES,
+  type PlanetClass,
+  PLANET_VARIANTS,
+  type PlanetVariant,
   type Deposits,
   type Planet,
   type AsteroidBelt,
@@ -291,6 +293,20 @@ export {
   type WhiteHoleTypeDef,
   type StaticWhiteHoleTypeDef,
 } from "./content/astro/white-hole-types.js";
+export {
+  PLANET_CLASS_DEFS,
+  planetClass,
+  planetClassesForZone,
+  type PlanetClassDef,
+  type StaticPlanetClassDef,
+} from "./content/astro/planet-classes.js";
+export {
+  PLANET_VARIANT_DEFS,
+  planetVariant,
+  variantsFor,
+  type PlanetVariantDef,
+  type StaticPlanetVariantDef,
+} from "./content/astro/planet-variants.js";
 export {
   STAR_CLASS_IDS,
   STAR_CLASSES,

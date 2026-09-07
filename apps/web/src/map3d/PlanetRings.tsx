@@ -1,6 +1,7 @@
 import type { Planet } from "@spacesim/shared";
 import { useMemo } from "react";
 import { Color, DoubleSide } from "three";
+import { planetClass } from "@spacesim/shared";
 import { seedOf } from "./appearance.js";
 
 const RING_VERTEX = /* glsl */ `
@@ -38,7 +39,8 @@ const RING_FRAGMENT = /* glsl */ `
  * prédicat vit ici pour que les deux couches ne puissent pas en donner deux versions.
  */
 export function hasRings(body: Planet): boolean {
-  return body.type === "gas" && seedOf(`${body.id}:rings`) > 0.5;
+  // Les anneaux sont une affaire de CLASSE : une géante en porte souvent, un caillou jamais.
+  return seedOf(`${body.id}:rings`) < planetClass(body.classId).ringChance;
 }
 
 /**

@@ -1,4 +1,5 @@
 import {
+  planetClass,
   STARTER_CLUSTER_RADIUS,
   computeEffects,
   emptyOrbital,
@@ -268,7 +269,7 @@ export class BootstrapService {
       .flatMap((s) => s.planets)
       .filter(
         (p) =>
-          p.type !== "gas" &&
+          planetClass(p.classId).colonizable &&
           !occupiedPlanets.has(p.id) &&
           p.slots >= buildable,
       )

@@ -36,7 +36,7 @@ import {
 import { formatDuration } from "./format.js";
 import {
   buildingLabel,
-  planetTypeLabel,
+  planetVariantLabel,
   resourceLabel,
   techLabel,
 } from "./labels.js";
@@ -119,7 +119,7 @@ export function ColonyView({ effects }: Props) {
         <span className="muted">
           {t("colonyView.habitability", {
             planet: planet.name,
-            type: planetTypeLabel(planet.type),
+            type: planetVariantLabel(planet.variantId),
             hab: planet.habitability,
             slots,
             max: planet.slots,

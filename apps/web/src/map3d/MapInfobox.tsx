@@ -8,7 +8,7 @@ import {
 import { Button, Popover } from "@spacesim/ui";
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { planetTypeLabel, starClassLabel } from "../labels.js";
+import { planetVariantLabel, starClassLabel } from "../labels.js";
 
 /** Ce que l'infobox sait décrire — les trois natures d'objet que la carte sait viser. */
 export type MapTarget =
@@ -121,7 +121,7 @@ export function MapInfobox({ target, portal, onOpen, onClose }: Props) {
               {target.body.kind === "moon"
                 ? t("bodyView.moon")
                 : t("bodyView.planet")}{" "}
-              {planetTypeLabel(target.body.type).toLowerCase()}
+              {planetVariantLabel(target.body.variantId).toLowerCase()}
               {" · "}
               {t("systemView.habitability", {
                 value: target.body.habitability,

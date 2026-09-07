@@ -105,7 +105,8 @@ function OrbitingMoon({
       <group onClick={onSelect} onDoubleClick={onOpen}>
         <ProceduralBody
           id={moon.id}
-          type={moon.type}
+          classId={moon.classId}
+          variantId={moon.variantId}
           radius={bodyRadiusOf(moon)}
         />
       </group>
@@ -175,7 +176,12 @@ export function BodyLayer({
             grillage de sélection — dimensionné pour le repérer de loin dans un système —
             le recouvrait entièrement. Les lunes gardent le leur, elles restent à choisir
             parmi d'autres. */}
-        <ProceduralBody id={body.id} type={body.type} radius={radius} />
+        <ProceduralBody
+          id={body.id}
+          classId={body.classId}
+          variantId={body.variantId}
+          radius={radius}
+        />
         {/* Les mêmes anneaux qu'au palier système (chantier 35.12) : la géante les portait
             de loin et les perdait de près, au moment exact où l'on s'approchait pour les
             regarder. */}

@@ -609,5 +609,10 @@ export function habitabilityOf(conditions: SurfaceConditions): number {
     gravity ** 0.2 *
     irradiated ** 0.4 *
     air;
-  return Math.round(Math.min(100, score * 100));
+
+  // Plancher à 1, jamais 0 : le zéro est réservé aux corps SANS SURFACE, qui n'arrivent
+  // pas jusqu'ici. Sans lui, une super-Terre à 594 °C sous 135 bars tombe sous 0,005 et
+  // l'arrondi la rend indiscernable d'une géante gazeuse — alors qu'elle se colonise sous
+  // dôme, très mal, ce que 1 dit exactement.
+  return Math.max(1, Math.round(Math.min(100, score * 100)));
 }

@@ -3,6 +3,7 @@ import {
   bodyPositionAt,
   sitePosition,
   primaryOf,
+  planetClass,
   starsOf,
   orbitsBarycenter,
   centralBodyPositionAt,
@@ -68,7 +69,7 @@ export const STAR_CORONA = 26;
  */
 export function bodyRadiusOf(planet: Planet): number {
   if (planet.kind === "moon") return 1.8;
-  return planet.type === "gas" ? 8 : 4.5;
+  return planetClass(planet.classId).renderRadius;
 }
 
 /**
@@ -81,7 +82,7 @@ export function bodyRadiusOf(planet: Planet): number {
  */
 export function bodyLabelExtent(planet: Planet): number {
   if (planet.kind === "moon") return 5;
-  return planet.type === "gas" ? 14 : 9;
+  return planetClass(planet.classId).labelExtent;
 }
 
 /**
@@ -170,7 +171,8 @@ function OrbitingBody({
       <group onClick={onSelect} onDoubleClick={onOpen}>
         <ProceduralBody
           id={body.id}
-          type={body.type}
+          classId={body.classId}
+          variantId={body.variantId}
           radius={bodyRadiusOf(body)}
         />
         {hasRings(body) && (

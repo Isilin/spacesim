@@ -26,16 +26,41 @@ export const ORBIT_ZONES = ["inner", "habitable", "outer", "frozen"] as const;
 
 export type OrbitZone = (typeof ORBIT_ZONES)[number];
 
-export const PLANET_TYPES = [
-  "telluric",
-  "oceanic",
-  "volcanic",
-  "frozen",
-  "arid",
-  "gas",
+/**
+ * Deux axes plutôt qu'une énumération à plat (chantier 45.3).
+ *
+ * `PLANET_TYPES` confondait une TAILLE et un CLIMAT : « gazeuse » est une structure,
+ * « océanique » un environnement, et rien ne permettait une super-Terre aride. Six entrées
+ * couvraient trente combinaisons, en en interdisant vingt-quatre sans raison.
+ *
+ * La **classe** dit de quoi le corps est fait — rayon, densité, donc gravité et vitesse de
+ * libération, donc ce qu'il peut retenir. La **variante** dit ce qu'il fait de sa position —
+ * albédo, dégazage, effet de serre. La chaîne physique croise les deux.
+ */
+export const PLANET_CLASSES = [
+  "rocky",
+  "super_earth",
+  "dwarf",
+  "ice_giant",
+  "gas_giant",
 ] as const;
 
-export type PlanetType = (typeof PLANET_TYPES)[number];
+export type PlanetClass = (typeof PLANET_CLASSES)[number];
+
+export const PLANET_VARIANTS = [
+  "temperate",
+  "oceanic",
+  "arid",
+  "greenhouse",
+  "volcanic",
+  "toxic",
+  "frozen",
+  "barren",
+  "irradiated",
+  "chthonian",
+] as const;
+
+export type PlanetVariant = (typeof PLANET_VARIANTS)[number];
 
 /** Modificateurs de rendement par ressource extraite sur place (1 = base). */
 export type Deposits = Partial<Record<ResourceId, number>>;
@@ -48,7 +73,10 @@ export interface Planet {
   kind: "planet" | "moon";
   /** Pour les lunes : la planète orbitée. */
   parentPlanetId?: string;
-  type: PlanetType;
+  /** Axe structurel : de quoi le corps est fait (`content/astro/planet-classes.ts`). */
+  classId: string;
+  /** Axe environnemental : ce qu'il fait de sa position (`content/astro/planet-variants.ts`). */
+  variantId: string;
   /**
    * Étoile hôte (chantier 45.2) — le corps central autour duquel ce corps tourne.
    *

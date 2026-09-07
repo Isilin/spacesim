@@ -1,4 +1,5 @@
 import {
+  planetClass,
   allSystems,
   CLAIM_COST,
   colonizeInfluenceCost,
@@ -189,7 +190,7 @@ export class ExplorationService {
     const target = this.runtime.planetsById.get(planetId);
     if (!target) return "Planète inconnue";
     if (!empire.explored.has(target.systemId)) return "Système non exploré";
-    if (target.type === "gas")
+    if (!planetClass(target.classId).colonizable)
       return "Impossible de coloniser une géante gazeuse";
     if ([...empire.colonyMap.values()].some((c) => c.planetId === planetId)) {
       return "Planète déjà colonisée";
@@ -295,7 +296,7 @@ export class ExplorationService {
       for (const system of galaxy.systems) {
         for (const planet of system.planets) {
           if (occupiedPlanets.has(planet.id)) colonies++;
-          else if (planet.type !== "gas") freeHabitable++;
+          else if (planetClass(planet.classId).colonizable) freeHabitable++;
         }
       }
       return {

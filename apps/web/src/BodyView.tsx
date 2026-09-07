@@ -18,7 +18,12 @@ import { useSearchParams } from "react-router-dom";
 import { Panel } from "@spacesim/ui";
 import { useTranslation } from "react-i18next";
 import { BodyActions } from "./BodyActions.js";
-import { buildingLabel, planetTypeLabel, resourceLabel } from "./labels.js";
+import {
+  buildingLabel,
+  planetClassLabel,
+  planetVariantLabel,
+  resourceLabel,
+} from "./labels.js";
 import { useGameStore } from "./state/game-store.js";
 import { selectActiveColony, selectExplored } from "./state/selectors.js";
 
@@ -73,7 +78,9 @@ export function BodyView({ system, body, effects, now }: Props) {
           <h2>{body.name}</h2>
           <p className="muted">
             {body.kind === "moon" ? t("bodyView.moon") : t("bodyView.planet")}{" "}
-            {planetTypeLabel(body.type).toLowerCase()}
+            {`${planetClassLabel(body.classId)} ${planetVariantLabel(
+              body.variantId,
+            )}`.toLowerCase()}
             {parent
               ? t("bodyView.orbitingParent", { parent: parent.name })
               : t("bodyView.orbitingSystem", { system: system.name })}

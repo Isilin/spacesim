@@ -6,7 +6,6 @@ import {
   type CentralBody,
   type Galaxy,
   type Planet,
-  type PlanetType,
   type StarSystem,
   type TradingPost,
   type Universe,
@@ -106,7 +105,8 @@ function galaxyRows(galaxy: Galaxy, gameId: string, now: number) {
         parentPlanetId: body.parentPlanetId ?? null,
         name: body.name,
         hostStarId: body.hostStarId ?? null,
-        type: body.type,
+        classId: body.classId,
+        variantId: body.variantId,
         habitability: body.habitability,
         slots: body.slots,
         deposits: JSON.stringify(body.deposits),
@@ -285,7 +285,8 @@ export async function loadUniverse(
               ? { parentPlanetId: body.parentPlanetId }
               : {}),
             ...(body.hostStarId ? { hostStarId: body.hostStarId } : {}),
-            type: body.type as PlanetType,
+            classId: body.classId,
+            variantId: body.variantId,
             habitability: body.habitability,
             slots: body.slots,
             deposits: JSON.parse(body.deposits),
@@ -314,10 +315,9 @@ export async function loadUniverse(
               name: tradingPostRow.name,
             }
           : undefined;
-        // `kind` et `typeId` restent des chaînes ouvertes : chaque catalogue de
-        // `content/astro/` porte un repli générique, ce qui rend inutile le cast non
-        // vérifié qu'il aurait fallu sinon (voir `body.type` juste au-dessus, que le
-        // palier 3 fera disparaître pour la même raison).
+        // `kind`, `typeId`, `classId` et `variantId` restent des chaînes ouvertes : chaque
+        // catalogue de `content/astro/` porte un repli générique, ce qui rend inutile le
+        // cast non vérifié qu'il aurait fallu sinon.
         const stars: CentralBody[] = (starsBySystem.get(systemRow.id) ?? [])
           .sort((a, b) => a.starIndex - b.starIndex)
           .map((star) => ({
