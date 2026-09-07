@@ -46,8 +46,8 @@ describe("repli générique du registre d'apparence", () => {
   it("distingue réellement ce qu'il connaît", () => {
     // Un repli qui absorberait tout serait indétectable : ce test dit que les entrées
     // connues, elles, diffèrent bel et bien les unes des autres.
-    expect(starAppearance("redDwarf").radius).not.toBe(
-      starAppearance("giant").radius,
+    expect(starAppearance("red_dwarf").radius).not.toBe(
+      starAppearance("supergiant").radius,
     );
     expect(asteroidTint({ ore: 2 })).not.toBe(asteroidTint({ metals: 2 }));
   });

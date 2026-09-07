@@ -16,7 +16,7 @@ import {
   type ClientUniverse,
   galacticCoreDisc,
   sitePosition,
-  starClassOf,
+  primaryOf,
   systemCountOf,
 } from "@spacesim/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -400,7 +400,7 @@ export function MapScene({
             system: s,
             explored: explored.has(s.id),
             colonized: colonizedSystemIds.has(s.id),
-            starClass: starClassOf(s),
+            starClass: primaryOf(s)?.typeId ?? "",
           }),
           openId: s.id,
           descendable: true,
@@ -874,7 +874,7 @@ export function MapScene({
           system: picked,
           explored: explored.has(picked.id),
           colonized: colonizedSystemIds.has(picked.id),
-          starClass: starClassOf(picked),
+          starClass: primaryOf(picked)?.typeId ?? "",
         },
         at: () => at,
       };

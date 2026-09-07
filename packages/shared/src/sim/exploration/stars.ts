@@ -1,134 +1,21 @@
-import { starsOf, type StarSystem } from "../../model/universe.js";
-import { createRng } from "../../rng.js";
-
 /**
- * Classe d'étoile et cœur galactique (chantiers 35.9, 39).
+ * Cœur galactique (chantier 39).
  *
  * ## Ce qui a quitté ce fichier
  *
- * La morphologie de galaxie vivait ici, dérivée de l'identifiant. Le chantier 45 en fait un
- * type persisté (`Galaxy.typeId`, catalogue `content/astro/galaxy-types.ts`) parce qu'elle
- * entre désormais dans l'économie : l'ADR 0021 remplace l'ADR 0016 sur ce point et renverse
- * la décision 3 de l'ADR 0018. Ce qui reste ici est ce qui n'a pas basculé.
+ * Tout le reste. La morphologie de galaxie y était dérivée de l'identifiant, la classe
+ * d'étoile lue d'après les planètes déjà posées : le chantier 45 en fait des types persistés
+ * et tirés en amont (ADR 0021, qui remplace l'ADR 0016 et renverse la décision 3 de
+ * l'ADR 0018). `starClassOf` a disparu avec sa logique de reliques — un système ne se lit
+ * plus, il se déclare.
  *
- * La classe d'étoile ci-dessous bascule aussi, mais au **palier 2** du même chantier : elle
- * tient encore le rôle de l'étoile implicite d'un système tant que les corps centraux ne
- * sont pas générés.
+ * ## Pourquoi le cœur, lui, reste dérivé
  *
- * ## Pourquoi dérivé plutôt que généré
- *
- * L'ADR 0002 interdit qu'une galaxie matérialisée change par régénération : ajouter une
- * colonne « classe d'étoile » demanderait de régénérer l'univers, ce qui est gratuit
- * aujourd'hui et impossible après le lancement officiel. Ces classes suivent donc le patron
- * déjà en place — `bodyPhysicals()` tire rayon, gravité et atmosphère de l'identifiant du
- * corps, `sitesOfSystem()` tire les sites du seed sans jamais les stocker. Zéro colonne,
- * zéro migration, et un résultat identique côté client et côté serveur.
- *
- * ## Pourquoi la classe se LIT du contenu
- *
- * Un trou noir avec cinq mondes habitables serait absurde. Le tirage est donc **conditionné
- * par ce que le système contient déjà** : les reliques — trou noir, pulsar, naine blanche —
- * ne sont possibles que là où rien ne vit, et la taille de l'étoile suit l'étendue de ses
- * orbites. La classe devient une lecture de la donnée existante plutôt qu'un tirage
- * indépendant qui la contredirait.
- *
- * ## Portée : encore cosmétique, et pour peu de temps
- *
- * La classe d'étoile n'entre ni dans l'économie, ni dans l'habitabilité, ni dans
- * l'exploration, ni dans le combat : elle n'existe que pour que deux systèmes ne se
- * ressemblent pas. C'est ce que disait l'ADR 0016, et ce qui reste vrai jusqu'au palier 2.
- *
- * Le cœur galactique, plus bas, est cosmétique **définitivement** : c'est le seul objet du
- * chantier 45 à ne recevoir aucune mécanique, et c'est délibéré. Dérivé *et* mécanique, une
- * réédition de catalogue changerait rétroactivement le rendement d'une galaxie vivante.
- * Rien ne vit sous un cœur — `MapScene` le déclare non descendable — donc rien ne peut en
- * dépendre.
+ * Il est le seul objet du chantier 45 à ne recevoir aucune mécanique, et c'est délibéré :
+ * dérivé ET mécanique, une réédition de catalogue changerait rétroactivement le rendement
+ * d'une galaxie vivante. Rien ne vit sous un cœur — `MapScene` le déclare non descendable —
+ * donc rien ne peut en dépendre, et il peut rester gratuit.
  */
-
-export const STAR_CLASSES = [
-  "redDwarf",
-  "mainSequence",
-  "giant",
-  "whiteDwarf",
-  "pulsar",
-  "blackHole",
-] as const;
-
-export type StarClass = (typeof STAR_CLASSES)[number];
-
-/**
- * Habitabilité du meilleur monde en deçà de laquelle un système est réputé mort, et peut
- * donc porter une relique.
- *
- * Calé sur les fourchettes du générateur : un monde tellurique naît entre 55 et 90, un
- * océanique entre 45 et 80, un gelé plafonne à 40 et un volcanique à 30. Sous 41, il n'y a
- * donc rien d'autre que du gelé, du volcanique et du gaz — aucun monde qui vaille d'être
- * pris. Mesuré sur l'univers de référence : onze systèmes sur trente-sept, dont un quart
- * deviennent des reliques.
- */
-const DEAD_SYSTEM_HABITABILITY = 41;
-
-/** Rayon orbital externe au-delà duquel une étoile est réputée dilatée, et en deçà serrée. */
-const GIANT_OUTER_ORBIT = 240;
-const DWARF_OUTER_ORBIT = 150;
-
-/** Parts cumulées des reliques, dans un système mort. Rares à dessein. */
-const BLACK_HOLE_SHARE = 0.05;
-const PULSAR_SHARE = 0.12;
-const WHITE_DWARF_SHARE = 0.26;
-
-/**
- * Classe de l'étoile d'un système.
- *
- * Un système vide de corps — inexploré, donc redacté par le brouillard — rend la classe la
- * plus banale : ce que le joueur n'a pas visité ne doit pas lui annoncer un trou noir.
- */
-export function starClassOf(system: StarSystem): StarClass {
-  // Un corps central PERSISTÉ fait autorité sur la dérivation (chantier 45.1).
-  //
-  // C'est le cas des errants dès le palier 1, et ce sera celui de tous les systèmes au
-  // palier 2 — moment où cette fonction disparaîtra. Sans cette lecture, un errant n'a
-  // aucune planète et la dérivation le rendait « mainSequence » : une étoile ordinaire là
-  // où il n'y en a pas.
-  //
-  // Les deux natures de singularité rendent `"blackHole"`, faute de mieux : `StarClass` est
-  // l'énumération à six valeurs du chantier 35, et elle n'a pas de case pour une fontaine
-  // blanche. Ce que ce repli garantit est le seul point qui compte ici — `isDarkStar` reste
-  // vrai, donc le système ne peint pas d'étoile. Le palier 2 lui rendra sa vraie apparence.
-  const central = starsOf(system)[0];
-  if (central) {
-    return central.kind === "star"
-      ? (central.typeId as StarClass)
-      : "blackHole";
-  }
-
-  const planets = system.planets;
-  if (planets.length === 0) return "mainSequence";
-
-  const habitability = Math.max(...planets.map((p) => p.habitability));
-  const outerOrbit = Math.max(...planets.map((p) => p.orbitRadius));
-  const roll = createRng(`star:${system.id}`)();
-
-  // Reliques : seulement là où rien ne vit. C'est ce qui empêche un trou noir d'éclairer
-  // une colonie prospère.
-  if (habitability < DEAD_SYSTEM_HABITABILITY) {
-    if (roll < BLACK_HOLE_SHARE) return "blackHole";
-    if (roll < PULSAR_SHARE) return "pulsar";
-    if (roll < WHITE_DWARF_SHARE) return "whiteDwarf";
-  }
-
-  // Étoiles vivantes : la taille suit l'étendue des orbites, ce que le joueur voit déjà.
-  if (outerOrbit > GIANT_OUTER_ORBIT)
-    return roll < 0.55 ? "giant" : "mainSequence";
-  if (outerOrbit < DWARF_OUTER_ORBIT)
-    return roll < 0.6 ? "redDwarf" : "mainSequence";
-  return "mainSequence";
-}
-
-/** Une étoile qui n'éclaire pas : le disque d'accrétion prend le relais. */
-export function isDarkStar(starClass: StarClass): boolean {
-  return starClass === "blackHole";
-}
 
 /**
  * Trou noir supermassif au centre d'une galaxie (chantier 39).

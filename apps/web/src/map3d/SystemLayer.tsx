@@ -2,7 +2,7 @@ import { useFrame } from "@react-three/fiber";
 import {
   bodyPositionAt,
   sitePosition,
-  starClassOf,
+  primaryOf,
   type Fleet,
   type ForeignFleet,
   type ForeignStation,
@@ -20,7 +20,7 @@ import {
   factionTint,
   seedOf,
   siteColor,
-  starAppearance,
+  centralBodyAppearance,
 } from "./appearance.js";
 import { focusOf, type Focus } from "./bounds.js";
 import { hasRings, PlanetRings } from "./PlanetRings.js";
@@ -357,16 +357,20 @@ export function SystemLayer({
   const beltById = new Map(system.belts.map((b) => [b.id, b]));
   const here = <T extends { systemId: string }>(list: T[]) =>
     list.filter((x) => x.systemId === system.id);
-  const starClass = starClassOf(system);
-  const look = starAppearance(starClass);
+  const primary = primaryOf(system);
+  const look = centralBodyAppearance(primary);
 
   return (
     <>
-      {/* L'étoile, et la lumière du système. Elle prend sa teinte et son intensité de sa
-          classe (chantier 35.10) : une naine rouge éclaire peu et rouge. Un trou noir
-          n'éclaire pas du tout — c'est son disque d'accrétion qui s'en charge, et il porte
-          donc sa propre lumière. */}
-      {starClass === "blackHole" ? (
+      {/* Le corps central, et la lumière du système. Il prend sa teinte et son intensité de
+          son type (chantiers 35.10 puis 45.2) : une naine rouge éclaire peu et rouge. Une
+          singularité n'éclaire pas — c'est son disque qui s'en charge, et il porte donc sa
+          propre lumière.
+
+          Le discriminant est la NATURE du corps et non sa classe : depuis le chantier 45,
+          un trou noir et une fontaine blanche sont deux familles distinctes, et comparer un
+          identifiant à `"blackHole"` n'aurait plus rien attrapé. */}
+      {primary && primary.kind !== "star" ? (
         <BlackHole
           id={system.id}
           radius={STAR_CORE * look.radius}
@@ -385,7 +389,7 @@ export function SystemLayer({
             id={system.id}
             radius={STAR_CORE}
             coronaRadius={STAR_CORONA}
-            starClass={starClass}
+            starClass={primary?.typeId ?? ""}
           />
         </>
       )}

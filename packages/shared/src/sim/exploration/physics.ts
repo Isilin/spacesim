@@ -1,4 +1,4 @@
-import type { CentralBody } from "../../model/universe.js";
+import type { CentralBody, OrbitZone } from "../../model/universe.js";
 import { blackHoleType } from "../../content/astro/black-hole-types.js";
 import { starClass } from "../../content/astro/star-classes.js";
 import { whiteHoleType } from "../../content/astro/white-hole-types.js";
@@ -152,14 +152,138 @@ export function radiationAt(
   const total = bodies.reduce((sum, body) => {
     const output =
       body.kind === "star"
-        ? starClass(body.typeId).radiation +
-          starClass(body.typeId).flareActivity
+        ? starClass(body.typeId).radiation
         : body.kind === "blackHole"
           ? blackHoleType(body.typeId).radiation
           : whiteHoleType(body.typeId).radiation;
-    return sum + output / (d * d);
+    // Deux régimes, parce que deux physiques.
+    //
+    // Le rayonnement d'une étoile ordinaire suit son FLUX, et non la seule distance. En
+    // `output / d²`, une naine rouge devenait létale dans sa propre zone habitable : celle-ci
+    // est à 0,13 UA, donc `1/d²` y vaut cinquante-neuf. Or une zone habitable est par
+    // définition l'endroit où le flux est comparable d'une étoile à l'autre. Mesuré : toute
+    // naine rouge écrasait ses mondes à 15 d'habitabilité, et elles sont 40 % du ciel.
+    //
+    // Un résidu — pulsar, naine blanche — et une singularité échappent à cette règle : leur
+    // rayonnement ne vient pas de leur fusion mais de leur rotation, de leur champ ou de leur
+    // disque. Il garde donc la loi en `1/d²`, sans quoi un pulsar deviendrait inoffensif
+    // faute de luminosité optique.
+    const nonThermal =
+      body.kind !== "star" || starClass(body.typeId).nonThermalRadiation;
+    const flux = nonThermal ? 1 / (d * d) : luminosityOf(body) / (d * d);
+    return sum + output * Math.min(4, flux);
   }, 0);
   return Math.min(5, total);
+}
+
+/**
+ * Érosion de l'atmosphère par l'activité éruptive des étoiles du système, entre 0 et 1.
+ *
+ * C'est le rôle propre de `flareActivity`, et il n'est pas le même que celui du rayonnement :
+ * une éruption n'irradie pas durablement un sol, elle **arrache l'atmosphère** d'un monde
+ * dont la gravité ne suffit pas à la retenir. Les additionner sur la même échelle comptait la
+ * naine rouge deux fois.
+ *
+ * C'est aussi ce qui donne son sens au couple naine rouge / vitesse de libération : un monde
+ * assez massif garde son voile malgré les éruptions, un monde léger le perd. Deux planètes de
+ * même type au même endroit n'ont donc pas le même destin.
+ */
+export function flareErosion(bodies: readonly CentralBody[]): number {
+  const worst = bodies.reduce(
+    (max, body) =>
+      body.kind === "star"
+        ? Math.max(max, starClass(body.typeId).flareActivity)
+        : max,
+    0,
+  );
+  return Math.max(0.4, 1 - worst * 0.2);
+}
+
+// ── Le pont entre la scène et la physique ────────────────────────────────────
+
+/**
+ * Rayon d'orbite, en unités de scène, où tombe le BORD INTERNE de la zone habitable — quelle
+ * que soit l'étoile.
+ *
+ * ## Pourquoi le bord interne, et non le milieu
+ *
+ * Calé sur le milieu, un monde tempéré sortait à −13 °C et l'univers entier devenait
+ * inhabitable : 89 % des corps à zéro, 6,6 % des systèmes avec un monde viable, mesuré. La
+ * raison est dans la définition même de la zone habitable conservatrice — elle marque où
+ * l'eau PEUT être liquide *avec assez d'effet de serre*, et sa moitié externe demande une
+ * atmosphère de gaz carbonique épaisse que la plupart des mondes n'ont pas. La Terre, elle,
+ * est à 3 % du bord interne.
+ *
+ * Ancrer sur le bord interne place la deuxième orbite du générateur là où se trouve la Terre,
+ * et laisse les suivantes se refroidir comme Mars se refroidit.
+ *
+ * ## Pourquoi une conversion plutôt qu'une échelle d'orbites variable
+ *
+ * La zone habitable réelle vaut `0,95√L` à `1,67√L` UA : 0,12–0,20 UA pour une naine rouge,
+ * 67–118 UA pour une géante bleue, un facteur cinq cents entre les deux. Le générateur pose
+ * les orbites entre 70 et 290 unités, en absolu. Poser les orbites en unités astronomiques
+ * aurait donc fait varier l'étendue d'un système d'un facteur cinq cents — et avec elle le
+ * coût de trajet intra-système, le cadrage de la caméra, les plans de coupe, l'emprise des
+ * étiquettes, tout ce que le chantier 37 a calibré.
+ *
+ * Ce n'est pas l'échelle des orbites qui dépend de l'étoile, c'est le **facteur de
+ * conversion**. Un corps à 130 unités est au milieu de la zone habitable de son système,
+ * qu'elle soit à 0,16 UA ou à 92 UA. La scène reste normalisée, la physique reste vraie, et
+ * rien de ce qui était calibré ne bouge.
+ *
+ * C'est exactement ce que `galaxyContentScale` fait déjà d'un palier de carte à l'autre : le
+ * patron existait, il se réapplique ici.
+ *
+ * ## Ce que la valeur 130 décide
+ *
+ * Avec les orbites du générateur (70, 125, 180, 235, 290), elle place le premier créneau en
+ * deçà du bord interne (brûlant), le deuxième là où est la Terre, le troisième dans la
+ * moitié froide de la zone, et les deux derniers au-delà. Un système typique a donc un monde
+ * tempéré et quelques mondes exploitables — ce que le verrou de calibration surveille.
+ */
+export const HABITABLE_SCENE_RADIUS = 110;
+
+/**
+ * Échelle d'un système sans étoile — errants, systèmes à singularité seule.
+ *
+ * Ils n'ont pas de zone habitable, donc pas de calage possible. La valeur retenue est celle
+ * d'un système solaire, pour que les distances affichées restent du même ordre plutôt que de
+ * verser dans l'arbitraire visible.
+ */
+const DARK_SYSTEM_AU_PER_UNIT = 1 / HABITABLE_SCENE_RADIUS;
+
+/** Unités astronomiques par unité de scène, pour ce système. */
+export function auPerSceneUnit(bodies: readonly CentralBody[]): number {
+  const [inner] = habitableZone(bodies);
+  if (inner <= 0) return DARK_SYSTEM_AU_PER_UNIT;
+  return inner / HABITABLE_SCENE_RADIUS;
+}
+
+/** Distance physique d'un corps à son étoile, en unités astronomiques. */
+export function auAt(
+  bodies: readonly CentralBody[],
+  orbitRadius: number,
+): number {
+  return orbitRadius * auPerSceneUnit(bodies);
+}
+
+/**
+ * Zone thermique d'une orbite — ce qui conditionne le type de corps que le générateur a le
+ * droit d'y poser, et le sens même de l'inversion de causalité : l'étoile décide d'abord,
+ * les corps suivent.
+ *
+ * Un système sans étoile est entièrement « frozen » : rien n'y chauffe.
+ */
+export function zoneAt(
+  bodies: readonly CentralBody[],
+  orbitRadius: number,
+): OrbitZone {
+  const [inner, outer] = habitableZone(bodies);
+  if (inner <= 0) return "frozen";
+  const au = auAt(bodies, orbitRadius);
+  if (au < inner) return "inner";
+  if (au <= outer) return "habitable";
+  return au < iceLine(bodies) ? "outer" : "frozen";
 }
 
 // ── Étage orbital ────────────────────────────────────────────────────────────
@@ -252,7 +376,7 @@ export function surfaceTempC(equilibriumK: number, greenhouse: number): number {
  * qu'une gravité forte — et prendre le milieu arithmétique reviendrait à décréter que la
  * Terre, à 1 bar dans une bande 0,4–4, n'est qu'à un tiers de l'idéal.
  */
-const TEMPERATE_C = [-15, 15, 45] as const;
+const TEMPERATE_C = [-60, 12, 60] as const;
 const PRESSURE_BAR = [0.4, 1, 4] as const;
 const GRAVITY_G = [0.25, 1, 2.2] as const;
 
@@ -267,20 +391,34 @@ export interface SurfaceConditions {
 }
 
 /**
+ * Ce que vaut la bande à son bord, et le plancher vers lequel elle tend au-delà.
+ *
+ * Une falaise à zéro paraissait juste — au-delà de la bande, on ne vit pas — mais elle a
+ * vidé la galaxie : 76 % des corps à zéro d'habitabilité, 27 % des systèmes avec un monde
+ * viable, mesuré. Le défaut n'était pas dans les bornes mais dans ce que le nombre veut dire.
+ *
+ * L'habitabilité de ce jeu n'a jamais mesuré « est-ce la Terre ». Elle mesure **à quel point
+ * l'environnement aide une colonie** — l'ancien modèle donnait 10 à 40 à un monde gelé, 5 à
+ * 30 à un volcanique, et on y colonisait sous dôme. Un monde hostile doit donc être *pauvre*,
+ * pas impossible ; l'impossible est réservé à ce qui n'a pas de sol.
+ */
+const BAND_EDGE = 0.12;
+
+/**
  * Score de proximité à l'optimum d'une bande, entre 0 et 1.
  *
- * Vaut 1 à l'optimum, décroît linéairement de part et d'autre à des pentes différentes, et
- * tombe à zéro dès qu'on sort de la bande — une falaise plutôt qu'une pente, parce qu'au-delà
- * on ne vit pas.
+ * Vaut 1 à l'optimum, décroît linéairement jusqu'à `BAND_EDGE` au bord de la bande, puis
+ * continue de décroître au-delà sans jamais atteindre zéro.
  */
 function band(
   value: number,
   [min, best, max]: readonly [number, number, number],
 ): number {
-  if (value <= min || value >= max) return 0;
   const span = value < best ? best - min : max - best;
   if (span <= 0) return 1;
-  return 1 - Math.abs(value - best) / span;
+  const t = Math.abs(value - best) / span;
+  if (t <= 1) return 1 - (1 - BAND_EDGE) * t;
+  return BAND_EDGE / (1 + (t - 1) * 1.5);
 }
 
 /**
@@ -296,17 +434,23 @@ function band(
  */
 export function habitabilityOf(conditions: SurfaceConditions): number {
   const temperature = band(conditions.surfaceTempC, TEMPERATE_C);
-  if (temperature <= 0) return 0;
   const pressure = band(conditions.pressureBar, PRESSURE_BAR);
   const gravity = band(conditions.gravityG, GRAVITY_G);
-  if (pressure <= 0 || gravity <= 0) return 0;
-
-  // Le rayonnement retranche au lieu de multiplier : un monde par ailleurs parfait reste
-  // exploitable sous un ciel dur, il n'est pas annulé.
-  const irradiated = Math.max(0, 1 - conditions.radiation / 6);
+  const irradiated = Math.max(0.05, 1 - conditions.radiation / 6);
   const air = conditions.breathable ? 1 : 0.55;
 
+  // Moyenne géométrique pondérée, et non un produit sec.
+  //
+  // Le produit laissait un seul facteur bas annuler l'ensemble : un monde gelé sortait à 1
+  // d'habitabilité parce que sa température ET sa pression étaient mauvaises, alors qu'il
+  // reste exploitable sous dôme. Les exposants disent ce qui compte le plus — la température
+  // domine, la pression et la gravité modulent, le rayonnement pèse peu — sans qu'aucun
+  // puisse à lui seul réduire le tout à rien.
   const score =
-    temperature * pressure ** 0.5 * gravity ** 0.5 * irradiated * air;
+    temperature ** 0.45 *
+    pressure ** 0.2 *
+    gravity ** 0.2 *
+    irradiated ** 0.4 *
+    air;
   return Math.round(Math.min(100, score * 100));
 }

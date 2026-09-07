@@ -105,6 +105,7 @@ function galaxyRows(galaxy: Galaxy, gameId: string, now: number) {
         kind: body.kind,
         parentPlanetId: body.parentPlanetId ?? null,
         name: body.name,
+        hostStarId: body.hostStarId ?? null,
         type: body.type,
         habitability: body.habitability,
         slots: body.slots,
@@ -283,6 +284,7 @@ export async function loadUniverse(
             ...(body.parentPlanetId
               ? { parentPlanetId: body.parentPlanetId }
               : {}),
+            ...(body.hostStarId ? { hostStarId: body.hostStarId } : {}),
             type: body.type as PlanetType,
             habitability: body.habitability,
             slots: body.slots,

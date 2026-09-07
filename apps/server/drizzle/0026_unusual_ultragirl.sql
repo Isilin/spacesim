@@ -1,0 +1,1 @@
+ALTER TABLE "universe_bodies" ADD COLUMN "host_star_id" text;

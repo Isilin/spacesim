@@ -401,7 +401,11 @@ export const commonFr = {
   },
   bodyView: {
     atmosphereNone: "Aucune",
+    atmosphereTrace: "Traces",
     atmosphereThin: "Ténue",
+    atmosphereCorrosive: "Corrosive",
+    atmosphereReducing: "Réductrice",
+    atmosphereCrushing: "Écrasante",
     atmosphereBreathable: "Respirable",
     atmosphereToxic: "Toxique",
     atmosphereDense: "Dense",
@@ -1121,7 +1125,11 @@ export const commonEn: typeof commonFr = {
   },
   bodyView: {
     atmosphereNone: "None",
+    atmosphereTrace: "Trace",
     atmosphereThin: "Thin",
+    atmosphereCorrosive: "Corrosive",
+    atmosphereReducing: "Reducing",
+    atmosphereCrushing: "Crushing",
     atmosphereBreathable: "Breathable",
     atmosphereToxic: "Toxic",
     atmosphereDense: "Dense",

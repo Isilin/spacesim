@@ -9,9 +9,15 @@ export {
   CENTRAL_BODY_KINDS,
   type CentralBodyKind,
   type CentralBody,
+  ATMOSPHERES,
+  type Atmosphere,
+  ORBIT_ZONES,
+  type OrbitZone,
   type StarSystem,
   systemCountOf,
   starsOf,
+  primaryOf,
+  isDrifter,
   type Galaxy,
   type Gateway,
   type ClientUniverse,
@@ -398,10 +404,8 @@ export {
   type FrontierConfig,
 } from "./sim/exploration/expansion.js";
 export {
-  ATMOSPHERES,
   bodyPhysicals,
   isBreathable,
-  type Atmosphere,
   type BodyPhysicals,
 } from "./sim/exploration/bodies.js";
 export {
@@ -528,14 +532,8 @@ export {
   type SystemSite,
 } from "./sim/exploration/sites.js";
 export {
-  // L'énumération à six valeurs du chantier 35 ne sort plus du paquet : `STAR_CLASSES`
-  // désigne désormais le catalogue de `content/astro/`. Elle ne sert plus qu'à
-  // `starClassOf` et à son test, tous deux internes, et disparaîtra avec eux au palier 2.
   galacticCoreDisc,
   galacticCoreHorizon,
-  isDarkStar,
-  starClassOf,
-  type StarClass,
 } from "./sim/exploration/stars.js";
 export {
   luminosityOf,

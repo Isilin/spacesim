@@ -1,5 +1,31 @@
 import type { ResourceId } from "./resources.js";
 
+/** Type d'atmosphère, du vide au voile écrasant. */
+export const ATMOSPHERES = [
+  "none",
+  "trace",
+  "thin",
+  "breathable",
+  "dense",
+  "toxic",
+  "corrosive",
+  "reducing",
+  "crushing",
+] as const;
+
+export type Atmosphere = (typeof ATMOSPHERES)[number];
+
+/**
+ * Zone thermique d'une orbite, relativement aux repères de son système.
+ *
+ * Vit dans le modèle et non dans `sim/` parce que les catalogues de `content/` la lisent :
+ * c'est elle qui dit quel corps le générateur a le droit de poser où, et `content` ne doit
+ * pas dépendre de `sim`.
+ */
+export const ORBIT_ZONES = ["inner", "habitable", "outer", "frozen"] as const;
+
+export type OrbitZone = (typeof ORBIT_ZONES)[number];
+
 export const PLANET_TYPES = [
   "telluric",
   "oceanic",
@@ -23,6 +49,15 @@ export interface Planet {
   /** Pour les lunes : la planète orbitée. */
   parentPlanetId?: string;
   type: PlanetType;
+  /**
+   * Étoile hôte (chantier 45.2) — le corps central autour duquel ce corps tourne.
+   *
+   * Absent sur les corps matérialisés avant ce chantier, et sur un système sans étoile.
+   * Toutes les planètes désignent l'ancre pour l'instant ; le champ existe parce que les
+   * orbites de type S — chaque étoile d'une binaire large gardant son cortège — le
+   * rempliront de plusieurs valeurs sans nouvelle migration.
+   */
+  hostStarId?: string;
   /** 0–100 : plafonne pop max, module croissance et entretien. */
   habitability: number;
   /** Nombre d'emplacements de bâtiments. */
@@ -112,10 +147,12 @@ export interface StarSystem {
   /** Écart au plan galactique (chantier 31.1) — centré sur 0, borné par `MAP_DEPTH`. */
   z: number;
   /**
-   * Corps centraux (chantier 45.1). **Absent** tant que le palier 2 n'a pas inversé la
-   * causalité : un système ordinaire garde alors son étoile implicite, dérivée par
-   * `starClassOf`. Seuls les **errants** — systèmes sans étoile ni monde, posés hors des
-   * bras — en portent un dès le palier 1, puisque c'est leur seul contenu.
+   * Corps centraux (chantiers 45.1 puis 45.2). Tout système en porte au moins un, tiré
+   * AVANT ses corps : c'est la luminosité de son ancre qui place la zone habitable, donc ce
+   * que le générateur a le droit de poser à chaque orbite.
+   *
+   * Un **errant** n'en porte qu'un, et ce n'est pas une étoile — c'est son seul contenu, et
+   * `isDrifter` en fait le discriminant.
    *
    * Optionnel et non « tableau vide », pour la même raison que `station`, `systemCount` et
    * `cloud` : l'univers part en entier à chaque `hello`, et `"stars":[]` sur cinq cents
@@ -223,6 +260,29 @@ export function starsOf(system: StarSystem): readonly CentralBody[] {
 
 /** Partagé plutôt que réalloué : `starsOf` est appelé sur le chemin chaud du rendu. */
 const EMPTY_STARS: readonly CentralBody[] = [];
+
+/**
+ * Corps central principal — l'ancre, à l'origine du repère du système.
+ *
+ * Absent d'un système redacté par le brouillard : un système inexploré n'annonce pas ce
+ * qu'il abrite, et l'appelant doit prévoir le cas plutôt que supposer une étoile.
+ */
+export function primaryOf(system: StarSystem): CentralBody | undefined {
+  return starsOf(system)[0];
+}
+
+/**
+ * Le système est-il un errant — une singularité sans étoile ni monde ?
+ *
+ * Le discriminant est la **nature de l'ancre**, et non « a-t-il des corps centraux » : depuis
+ * que le palier 2 en donne à tous les systèmes, cette seconde lecture ne distinguait plus
+ * rien. Un système redacté n'a pas d'ancre connue et n'est donc pas réputé errant, ce qui est
+ * la bonne réponse : le brouillard ne doit pas révéler l'inverse non plus.
+ */
+export function isDrifter(system: StarSystem): boolean {
+  const anchor = primaryOf(system);
+  return anchor !== undefined && anchor.kind !== "star";
+}
 
 /** Méga-projet de portail vers une galaxie lointaine (contributions par convois). */
 export interface Gateway {

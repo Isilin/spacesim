@@ -183,6 +183,13 @@
       "when": 1788724631320,
       "tag": "0025_real_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1788778901299,
+      "tag": "0026_unusual_ultragirl",
+      "breakpoints": true
     }
   ]
 }

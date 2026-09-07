@@ -1,4 +1,11 @@
-import type { PlanetType, ResourceId, StarClass } from "@spacesim/shared";
+import {
+  blackHoleType,
+  starClass,
+  whiteHoleType,
+  type CentralBody,
+  type PlanetType,
+  type ResourceId,
+} from "@spacesim/shared";
 
 /**
  * Registre d'apparence (chantier 31.18). Traduit une donnée de jeu — type de planète,
@@ -99,64 +106,69 @@ const GENERIC_STAR: StarAppearance = {
   churn: 1,
 };
 
-const STARS: Record<StarClass, StarAppearance> = {
-  redDwarf: {
-    core: "#ffb27a",
-    edge: "#d8452a",
-    halo: "#e0603a",
-    radius: 0.62,
-    corona: 0.8,
-    light: "#ffb089",
-    intensity: 2,
-    churn: 0.55,
-  },
-  mainSequence: GENERIC_STAR,
-  giant: {
-    core: "#ffd9a0",
-    edge: "#e05a2a",
-    halo: "#ff8a4a",
-    radius: 1.7,
-    corona: 1.5,
-    light: "#ffd0a0",
-    intensity: 3.6,
-    churn: 0.4,
-  },
-  whiteDwarf: {
-    core: "#f2f8ff",
-    edge: "#9fc4ff",
-    halo: "#cfe2ff",
-    radius: 0.34,
-    corona: 0.55,
-    light: "#dceaff",
-    intensity: 2.4,
-    churn: 1.8,
-  },
-  pulsar: {
-    core: "#eaf4ff",
-    edge: "#7aa8ff",
-    halo: "#9fd0ff",
-    radius: 0.3,
-    corona: 0.5,
-    light: "#cfe4ff",
-    intensity: 2.6,
-    churn: 2.6,
-  },
-  blackHole: {
-    // L'horizon ne rend rien de tout cela — c'est le disque qui porte la teinte, et la
-    // lumière qu'il émet, chaude et faible, remplace celle d'une étoile absente.
-    core: "#000000",
-    edge: "#000000",
-    halo: "#ff8a3d",
+/**
+ * Apparence d'un corps central — étoile ou singularité (chantier 45.2).
+ *
+ * La table qui vivait ici dupliquait, pour six classes dérivées, ce que les catalogues de
+ * `content/astro/` portent désormais pour vingt-deux types persistés. Elle est remplacée par
+ * une lecture : c'est le même doublon que `galaxyAppearance` avait créé, et qu'on ne
+ * reproduit pas.
+ *
+ * Un corps absent — système redacté par le brouillard — rend l'étoile la plus banale : ce que
+ * le joueur n'a pas visité ne doit rien lui annoncer.
+ */
+export function centralBodyAppearance(
+  body: CentralBody | undefined,
+): StarAppearance {
+  if (!body) return GENERIC_STAR;
+
+  if (body.kind === "star") {
+    const def = starClass(body.typeId);
+    return {
+      core: def.core,
+      edge: def.edge,
+      halo: def.halo,
+      radius: def.radius,
+      corona: def.corona,
+      light: def.light,
+      intensity: def.intensity,
+      churn: def.churn,
+    };
+  }
+
+  // Une singularité ne rend ni cœur ni bord : c'est son disque qui porte la teinte, et la
+  // lumière qu'il émet remplace celle d'une étoile absente. Une fontaine blanche, elle,
+  // brille — d'où un cœur clair là où un trou noir en a un noir.
+  const def =
+    body.kind === "blackHole"
+      ? blackHoleType(body.typeId)
+      : whiteHoleType(body.typeId);
+  const glowing = body.kind === "whiteHole";
+  return {
+    core: glowing ? "#ffffff" : "#000000",
+    edge: glowing ? def.halo : "#000000",
+    halo: def.halo,
     radius: 0.55,
     corona: 1.6,
-    light: "#ffb37a",
-    intensity: 1.1,
+    light: def.light,
+    intensity: def.intensity,
     churn: 1,
-  },
-};
+  };
+}
 
-export function starAppearance(starClass: string): StarAppearance {
-  return STARS[starClass as StarClass] ?? GENERIC_STAR;
+/** Apparence d'une classe d'étoile par son identifiant seul, quand le corps n'est pas là. */
+export function starAppearance(typeId: string): StarAppearance {
+  const def = starClass(typeId);
+  return {
+    core: def.core,
+    edge: def.edge,
+    halo: def.halo,
+    radius: def.radius,
+    corona: def.corona,
+    light: def.light,
+    intensity: def.intensity,
+    churn: def.churn,
+  };
 }
 
 /**

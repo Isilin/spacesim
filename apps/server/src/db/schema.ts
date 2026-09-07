@@ -174,6 +174,15 @@ export const universeBodies = pgTable("universe_bodies", {
   /** NULL pour une planète ; la planète orbitée pour une lune. */
   parentPlanetId: text("parent_planet_id"),
   name: text("name").notNull(),
+  /**
+   * Étoile hôte (chantier 45.2) — le corps central autour duquel le corps tourne.
+   *
+   * Nullable : les corps matérialisés avant ce chantier n'en ont pas, et un système sans
+   * étoile n'en a pas non plus. Pas de FK vers `universe_stars` : les deux tables s'écrivent
+   * dans la même transaction, mais l'ordre d'insertion suffit à garantir la cohérence sans
+   * imposer une contrainte de plus au chemin chaud d'écriture.
+   */
+  hostStarId: text("host_star_id"),
   type: text("type").notNull(),
   habitability: integer("habitability").notNull(),
   slots: integer("slots").notNull(),

@@ -90,6 +90,17 @@ export interface StarClassDef {
   flareActivity: number;
   /** Rayonnement ionisant, 0–5. Stérilise, et entre dans le danger de séjour. */
   radiation: number;
+  /**
+   * Le rayonnement est-il NON THERMIQUE — indépendant de ce que l'étoile émet en lumière ?
+   *
+   * Faux pour une étoile ordinaire : son ultraviolet suit son flux, donc son danger est à peu
+   * près le même partout dans sa zone habitable, quelle que soit sa classe. Vrai pour un
+   * résidu — le faisceau d'un pulsar est produit par sa rotation et son champ magnétique, pas
+   * par sa fusion : sa luminosité optique est dérisoire et son rayonnement mortel.
+   *
+   * Sans cette distinction, pondérer le rayonnement par le flux rendait un pulsar inoffensif.
+   */
+  nonThermalRadiation: boolean;
   /** Multiplicateur de rendement énergétique d'une colonie du système. */
   energyMult: number;
   /** Multiplicateur de rendement minier — une relique a enrichi son voisinage. */
@@ -136,6 +147,7 @@ export const STAR_CLASSES: Record<StarClassId, StaticStarClassDef> = {
     effectiveTempK: 3200,
     flareActivity: 3,
     radiation: 2,
+    nonThermalRadiation: false,
     energyMult: 0.35,
     depositMult: 1.0,
     realShare: "76 %",
@@ -161,6 +173,7 @@ export const STAR_CLASSES: Record<StarClassId, StaticStarClassDef> = {
     effectiveTempK: 4600,
     flareActivity: 1,
     radiation: 1,
+    nonThermalRadiation: false,
     energyMult: 0.75,
     depositMult: 1.0,
     realShare: "12 %",
@@ -185,6 +198,7 @@ export const STAR_CLASSES: Record<StarClassId, StaticStarClassDef> = {
     effectiveTempK: 5700,
     flareActivity: 0,
     radiation: 1,
+    nonThermalRadiation: false,
     energyMult: 1,
     depositMult: 1,
     realShare: "7,6 %",
@@ -209,6 +223,7 @@ export const STAR_CLASSES: Record<StarClassId, StaticStarClassDef> = {
     effectiveTempK: 6800,
     flareActivity: 0,
     radiation: 2,
+    nonThermalRadiation: false,
     energyMult: 1.45,
     depositMult: 1.0,
     realShare: "3,0 %",
@@ -233,6 +248,7 @@ export const STAR_CLASSES: Record<StarClassId, StaticStarClassDef> = {
     effectiveTempK: 8600,
     flareActivity: 0,
     radiation: 3,
+    nonThermalRadiation: false,
     energyMult: 2.1,
     depositMult: 1.0,
     realShare: "0,6 %",
@@ -258,6 +274,7 @@ export const STAR_CLASSES: Record<StarClassId, StaticStarClassDef> = {
     effectiveTempK: 25000,
     flareActivity: 0,
     radiation: 5,
+    nonThermalRadiation: false,
     energyMult: 3.2,
     depositMult: 1.1,
     realShare: "0,13 %",
@@ -283,6 +300,7 @@ export const STAR_CLASSES: Record<StarClassId, StaticStarClassDef> = {
     effectiveTempK: 3800,
     flareActivity: 1,
     radiation: 2,
+    nonThermalRadiation: false,
     energyMult: 1.9,
     depositMult: 1.2,
     realShare: "0,4 %",
@@ -308,6 +326,7 @@ export const STAR_CLASSES: Record<StarClassId, StaticStarClassDef> = {
     effectiveTempK: 12000,
     flareActivity: 1,
     radiation: 5,
+    nonThermalRadiation: false,
     energyMult: 3.6,
     depositMult: 1.3,
     realShare: "0,01 %",
@@ -333,6 +352,7 @@ export const STAR_CLASSES: Record<StarClassId, StaticStarClassDef> = {
     effectiveTempK: 15000,
     flareActivity: 0,
     radiation: 3,
+    nonThermalRadiation: true,
     energyMult: 0.45,
     depositMult: 1.3,
     realShare: "5 %",
@@ -358,6 +378,7 @@ export const STAR_CLASSES: Record<StarClassId, StaticStarClassDef> = {
     effectiveTempK: 1200,
     flareActivity: 2,
     radiation: 0,
+    nonThermalRadiation: false,
     energyMult: 0.1,
     depositMult: 0.9,
     realShare: "—",
@@ -383,6 +404,7 @@ export const STAR_CLASSES: Record<StarClassId, StaticStarClassDef> = {
     effectiveTempK: 1000000,
     flareActivity: 0,
     radiation: 5,
+    nonThermalRadiation: true,
     energyMult: 2.4,
     depositMult: 1.4,
     realShare: "0,1 %",

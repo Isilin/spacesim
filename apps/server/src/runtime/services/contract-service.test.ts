@@ -360,10 +360,18 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
     expect(mission).toBeDefined();
     const creditsBeforeDelivery = homeColony(engine, empire).resources.credits;
 
+    // On avance jusqu'à la livraison plutôt que d'un nombre de ticks calculé depuis
+    // `arrivesAt` — même fragilité que le contrat entre empires plus haut : la durée
+    // annoncée à l'acceptation ne couvre pas tout ce qui sépare l'acceptation de l'arrivée,
+    // et le nombre de sauts dépend de la seed.
     const durationS = Math.ceil(
       (mission.arrivesAt - mission.departedAt) / 1000,
     );
-    advanceTicks(engine, Math.ceil((durationS + 5) / 5));
+    const maxTicks = Math.ceil((durationS + 5) / 5) * 3 + 20;
+    for (let tick = 0; tick < maxTicks; tick++) {
+      if (engine.snapshotForEmpire(empire).missions.length === 0) break;
+      advanceTicks(engine, 1);
+    }
 
     // Payé au prix fixé du contrat, standing crédité — même mécanique qu'un empire émetteur.
     expect(homeColony(engine, empire).resources.credits).toBeGreaterThanOrEqual(

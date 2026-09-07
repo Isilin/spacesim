@@ -198,8 +198,20 @@ describe("rayonnement", () => {
     expect(near).toBeGreaterThan(far);
   });
 
-  it("un pulsar stérilise son système entier", () => {
+  it("un pulsar stérilise son système entier, malgré une luminosité dérisoire", () => {
+    // Son faisceau vient de sa rotation et de son champ, pas de sa fusion : pondérer son
+    // rayonnement par son flux optique l'aurait rendu inoffensif.
     expect(radiationAt([star("pulsar", 1.4)], 2)).toBeGreaterThan(1);
+  });
+
+  it("une étoile ordinaire n'est pas plus dangereuse parce qu'elle est petite", () => {
+    // Le défaut qui écrasait 40 % du ciel : en `sortie / d²`, une naine rouge devenait létale
+    // dans sa propre zone habitable, qui est à 0,13 UA. Rapporté au flux, son danger à sa
+    // zone habitable est comparable à celui du Soleil à la sienne.
+    const dwarf = star("red_dwarf", 0.26);
+    const atDwarfHz = radiationAt([dwarf], habitableZone([dwarf])[0]);
+    const atSunHz = radiationAt([SUN], habitableZone([SUN])[0]);
+    expect(atDwarfHz).toBeLessThan(atSunHz * 3);
   });
 
   it("il est borné, pour rester une échelle 0–5", () => {
@@ -220,12 +232,20 @@ describe("habitabilité calculée", () => {
     expect(habitabilityOf(earth)).toBeGreaterThan(85);
   });
 
-  it("un seul facteur rédhibitoire annule le tout", () => {
-    // Le produit, et non la somme : on ne colonise pas un monde tempéré et écrasant.
-    expect(habitabilityOf({ ...earth, pressureBar: 92 })).toBe(0);
-    expect(habitabilityOf({ ...earth, gravityG: 3 })).toBe(0);
-    expect(habitabilityOf({ ...earth, surfaceTempC: 460 })).toBe(0);
-    expect(habitabilityOf({ ...earth, surfaceTempC: -80 })).toBe(0);
+  it("un facteur rédhibitoire appauvrit sans condamner", () => {
+    // La falaise à zéro a vidé la galaxie : 76 % des corps sans habitabilité. Dans ce jeu,
+    // l'habitabilité mesure à quel point l'environnement AIDE une colonie, pas s'il s'agit
+    // de la Terre — on colonise sous dôme, mal. Le zéro est réservé à ce qui n'a pas de sol.
+    for (const hostile of [
+      { ...earth, pressureBar: 92 },
+      { ...earth, gravityG: 3 },
+      { ...earth, surfaceTempC: 460 },
+      { ...earth, surfaceTempC: -80 },
+    ]) {
+      const score = habitabilityOf(hostile);
+      expect(score).toBeGreaterThan(0);
+      expect(score).toBeLessThan(habitabilityOf(earth) * 0.75);
+    }
   });
 
   it("ne pas respirer coûte, sans condamner", () => {
@@ -238,7 +258,7 @@ describe("habitabilité calculée", () => {
     // Un monde par ailleurs parfait reste exploitable sous un ciel dur.
     const harsh = habitabilityOf({ ...earth, radiation: 4 });
     expect(harsh).toBeGreaterThan(0);
-    expect(harsh).toBeLessThan(habitabilityOf(earth) / 2);
+    expect(harsh).toBeLessThan(habitabilityOf(earth) * 0.75);
   });
 
   it("reste dans 0–100 sur tout le domaine", () => {

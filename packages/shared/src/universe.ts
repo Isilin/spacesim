@@ -19,6 +19,16 @@ import {
   WHITE_HOLE_TYPES,
   whiteHoleType,
 } from "./content/astro/white-hole-types.js";
+import {
+  PLANET_TYPE_DEFS,
+  planetType,
+  planetTypesForZone,
+} from "./content/astro/planet-types.js";
+import {
+  STAR_COMPANION_WEIGHTS,
+  STAR_PRIMARY_WEIGHTS,
+  starClass,
+} from "./content/astro/star-classes.js";
 import { FACTION_IDS } from "./content/factions.js";
 import {
   createRng,
@@ -28,8 +38,23 @@ import {
   randInt,
   type Rng,
 } from "./rng.js";
+import {
+  atmosphereRetention,
+  auAt,
+  equilibriumTempK,
+  escapeVelocity,
+  flareErosion,
+  greenhouseK,
+  habitabilityOf,
+  irradianceAt,
+  radiationAt,
+  surfaceGravity,
+  surfaceTempC,
+  zoneAt,
+} from "./sim/exploration/physics.js";
 import type {
   AsteroidBelt,
+  CentralBody,
   CentralBodyKind,
   ClientUniverse,
   Deposits,
@@ -48,7 +73,7 @@ import type {
  * bumper cette version vont ensemble, dans le même commit. Les galaxies déjà
  * matérialisées en DB gardent la version qui les a produites et ne changent jamais.
  */
-export const GENERATOR_VERSION = 6;
+export const GENERATOR_VERSION = 7;
 
 /** Part des systèmes accueillant un comptoir commercial PNJ. */
 const TRADING_POST_PROBABILITY = 0.35;
@@ -205,72 +230,84 @@ function seriesName(offset: number, index: number): string {
   return lap === 0 ? name : `${name} ${lap + 1}`;
 }
 
-const TYPE_WEIGHTS: readonly (readonly [PlanetType, number])[] = [
-  ["telluric", 3],
-  ["oceanic", 2],
-  ["arid", 3],
-  ["frozen", 3],
-  ["volcanic", 2],
-  ["gas", 3],
+/**
+ * Nombre de corps centraux d'un système.
+ *
+ * Environ la moitié des étoiles du ciel réel vivent en couple ou davantage. La table penche
+ * vers le simple sans l'imposer : un tiers des systèmes sont multiples, assez pour que le cas
+ * se rencontre, assez peu pour que la carte reste lisible.
+ */
+const STAR_COUNT_WEIGHTS: readonly (readonly [number, number])[] = [
+  [1, 65],
+  [2, 28],
+  [3, 7],
 ];
 
-const MOON_TYPE_WEIGHTS: readonly (readonly [PlanetType, number])[] = [
-  ["frozen", 4],
-  ["arid", 3],
-  ["volcanic", 2],
-  ["telluric", 1],
-];
-
-/** [min, max] d'habitabilité par type de planète. */
-const HABITABILITY: Record<PlanetType, [number, number]> = {
-  telluric: [55, 90],
-  oceanic: [45, 80],
-  arid: [25, 55],
-  frozen: [10, 40],
-  volcanic: [5, 30],
-  gas: [0, 0],
-};
-
-/** Tendance des gisements par type : [ressource, proba, min, max]. */
-const DEPOSIT_TENDENCIES: Record<
-  PlanetType,
-  readonly (readonly ["ore" | "energy" | "food", number, number, number])[]
-> = {
-  telluric: [
-    ["ore", 0.8, 0.7, 1.2],
-    ["food", 0.9, 0.9, 1.4],
-    ["energy", 0.6, 0.8, 1.1],
-  ],
-  oceanic: [
-    ["food", 0.95, 1.1, 1.6],
-    ["ore", 0.4, 0.5, 0.9],
-    ["energy", 0.6, 0.8, 1.2],
-  ],
-  arid: [
-    ["ore", 0.85, 0.9, 1.4],
-    ["energy", 0.85, 1.0, 1.5],
-    ["food", 0.3, 0.4, 0.8],
-  ],
-  frozen: [
-    ["ore", 0.8, 0.9, 1.5],
-    ["energy", 0.4, 0.5, 0.9],
-    ["food", 0.2, 0.3, 0.6],
-  ],
-  volcanic: [
-    ["ore", 0.95, 1.2, 1.8],
-    ["energy", 0.9, 1.1, 1.6],
-    ["food", 0.1, 0.2, 0.4],
-  ],
-  gas: [["energy", 1.0, 1.3, 2.0]],
-};
+/**
+ * Séparation d'un compagnon, en unités de scène — et le trou délibéré entre les deux bandes.
+ *
+ * Une binaire serrée voit ses planètes tourner autour du **barycentre** (orbites P), une
+ * binaire large voit chaque étoile garder les siennes (orbites S). Entre les deux, les orbites
+ * planétaires ne sont pas stables : la bande intermédiaire n'est jamais tirée, et `orbitsBary`
+ * devient non ambigu par construction plutôt que par prudence.
+ *
+ * La bande serrée s'arrête à 22 pour que trois fois la séparation reste sous la première
+ * orbite planétaire (70) : toute planète du système est alors circumbinaire et stable.
+ */
+const TIGHT_BINARY = [10, 22] as const;
+const WIDE_BINARY = [420, 900] as const;
 
 function romanNumeral(n: number): string {
   return ["I", "II", "III", "IV", "V", "VI"][n - 1] ?? String(n);
 }
 
+/**
+ * Corps centraux d'un système (chantier 45.2).
+ *
+ * Tirés **avant** les corps, et c'est tout le sujet : leur luminosité place la zone habitable
+ * et la ligne des glaces, qui décident ensuite de ce qu'on trouve à chaque orbite. L'ADR 0016
+ * faisait l'inverse — la classe d'étoile était lue d'après les planètes déjà posées, faute
+ * de pouvoir les causer.
+ */
+function generateStars(
+  rng: Rng,
+  system: Pick<StarSystem, "id" | "name">,
+): CentralBody[] {
+  const count = pickWeighted(rng, STAR_COUNT_WEIGHTS);
+  const letters = ["A", "B", "C", "D"];
+  const stars: CentralBody[] = [];
+  // La séparation est propre au SYSTÈME et non à chaque compagnon : deux étoiles d'une
+  // binaire serrée ne peuvent pas être à la fois serrées et larges.
+  const wide = count > 1 && rng() < 0.4;
+  const [sepMin, sepMax] = wide ? WIDE_BINARY : TIGHT_BINARY;
+
+  for (let i = 0; i < count; i++) {
+    const typeId = pickWeighted(
+      rng,
+      i === 0 ? STAR_PRIMARY_WEIGHTS : STAR_COMPANION_WEIGHTS,
+    );
+    const [minMass, maxMass] = starClass(typeId).massRange;
+    stars.push({
+      id: `${system.id}-s${i + 1}`,
+      systemId: system.id,
+      name: `${system.name} ${letters[i] ?? i + 1}`,
+      kind: "star",
+      typeId,
+      rank: i,
+      mass: Math.round((minMass + rng() * (maxMass - minMass)) * 1000) / 1000,
+      // L'ancre est à l'origine du repère, ce que `bodyPositionAt` suppose déjà.
+      orbitRadius: i === 0 ? 0 : Math.round(sepMin + rng() * (sepMax - sepMin)),
+      orbitAngle: i === 0 ? 0 : rng() * Math.PI * 2,
+      inclination: i === 0 ? 0 : (rng() - 0.5) * 2 * MAX_INCLINATION,
+      ascendingNode: i === 0 ? 0 : rng() * Math.PI * 2,
+    });
+  }
+  return stars;
+}
+
 function generateDeposits(rng: Rng, type: PlanetType, bonus = 1): Deposits {
   const deposits: Deposits = {};
-  for (const [resource, prob, min, max] of DEPOSIT_TENDENCIES[type]) {
+  for (const [resource, prob, min, max] of planetType(type).depositTendencies) {
     if (rng() < prob) {
       deposits[resource] =
         Math.round((min + rng() * (max - min)) * bonus * 100) / 100;
@@ -279,9 +316,63 @@ function generateDeposits(rng: Rng, type: PlanetType, bonus = 1): Deposits {
   return deposits;
 }
 
+/**
+ * Habitabilité d'un corps, **calculée** par la chaîne physique et non tirée.
+ *
+ * C'est le point d'arrivée du chantier. La table `HABITABILITY` qui vivait ici donnait une
+ * fourchette par type de planète, indépendante de l'étoile : un monde tellurique naissait
+ * entre 55 et 90 qu'il tourne autour d'une naine brune ou d'une supergéante. La valeur tombe
+ * désormais de la température de surface, de la pression réellement retenue, de la gravité et
+ * du rayonnement reçu.
+ *
+ * Le tirage ne disparaît pas pour autant : rayon et densité restent tirés dans la fourchette
+ * du type, et c'est par eux que deux mondes du même type au même endroit ne se valent pas.
+ */
+function bodyHabitability(
+  rng: Rng,
+  type: PlanetType,
+  stars: readonly CentralBody[],
+  orbitRadius: number,
+): { habitability: number; radiusEarth: number; density: number } {
+  const def = planetType(type);
+  const radiusEarth = range(rng, def.radiusRange);
+  const density = range(rng, def.densityRange);
+  if (!def.colonizable) return { habitability: 0, radiusEarth, density };
+
+  const au = auAt(stars, orbitRadius);
+  const equilibrium = equilibriumTempK(irradianceAt(stars, au), def.albedo);
+  const retention =
+    atmosphereRetention(escapeVelocity(radiusEarth, density), equilibrium) *
+    flareErosion(stars);
+  // Ce que le corps retient réellement de ce qu'il dégaze. Sous 0,15 il est nu quoi qu'il
+  // tente : c'est ce couplage qui fait qu'une naine sans gravité reste stérile même au bon
+  // endroit, et qu'un monde froid garde une atmosphère qu'un monde chaud aurait perdue.
+  const pressure = def.outgassingBar * Math.min(1.5, Math.max(0, retention));
+  const surface = surfaceTempC(
+    equilibrium,
+    greenhouseK(pressure, def.greenhousePerBar),
+  );
+  return {
+    habitability: habitabilityOf({
+      surfaceTempC: surface,
+      pressureBar: pressure,
+      gravityG: surfaceGravity(radiusEarth, density),
+      radiation: radiationAt(stars, au),
+      breathable: def.atmosphere === "breathable" && retention > 0.5,
+    }),
+    radiusEarth,
+    density,
+  };
+}
+
+function range(rng: Rng, [min, max]: readonly [number, number]): number {
+  return min + rng() * (max - min);
+}
+
 function generateMoons(
   rng: Rng,
   planet: Planet,
+  stars: readonly CentralBody[],
   depositBonus: number,
 ): Planet[] {
   const maxMoons = planet.type === "gas" ? 3 : 2;
@@ -291,9 +382,15 @@ function generateMoons(
   );
   const moons: Planet[] = [];
   const letters = ["a", "b", "c"];
+  // Une lune est à la distance de sa planète : c'est la zone de la PLANÈTE qui décide de
+  // ce qu'elle peut être, pas celle de son orbite propre autour d'elle.
+  const zone = zoneAt(stars, planet.orbitRadius);
+  const candidates = planetTypesForZone(zone, true);
+  if (candidates.length === 0) return moons;
+
   for (let i = 0; i < count; i++) {
-    const type = pickWeighted(rng, MOON_TYPE_WEIGHTS);
-    const [hMin, hMax] = HABITABILITY[type];
+    const type = pickWeighted(rng, candidates);
+    const body = bodyHabitability(rng, type, stars, planet.orbitRadius);
     moons.push({
       id: `${planet.id}-m${i + 1}`,
       systemId: planet.systemId,
@@ -301,7 +398,9 @@ function generateMoons(
       kind: "moon",
       parentPlanetId: planet.id,
       type,
-      habitability: Math.min(40, randInt(rng, hMin, hMax)),
+      // Une lune plafonne sous une planète : peu de gravité, peu d'atmosphère, et le jeu
+      // veut que le monde principal d'un système reste le monde principal.
+      habitability: Math.min(40, body.habitability),
       slots: randInt(rng, 2, 5),
       deposits: generateDeposits(rng, type, depositBonus),
       orbitRadius: 16 + i * 10,
@@ -313,9 +412,22 @@ function generateMoons(
   return moons;
 }
 
+/**
+ * Corps d'un système, conditionnés par les étoiles qui l'éclairent (chantier 45.2).
+ *
+ * L'ordre s'est inversé : `stars` arrive en paramètre parce qu'il a été tiré avant. Chaque
+ * créneau orbital est traduit en unités astronomiques par `auAt`, classé en zone thermique
+ * par `zoneAt`, et c'est la zone qui décide des types tirables. Une orbite qui tombe dans la
+ * zone habitable d'une naine rouge est à 0,16 UA, celle d'une géante bleue à 92 UA — même
+ * créneau de scène, même zone, deux mondes possibles.
+ *
+ * L'échelle des orbites, elle, ne bouge pas : c'est le facteur de conversion qui porte la
+ * différence, pas la géométrie. Voir `HABITABLE_SCENE_RADIUS`.
+ */
 function generateBodies(
   rng: Rng,
   system: Pick<StarSystem, "id" | "name">,
+  stars: readonly CentralBody[],
   depositBonus: number,
 ): {
   planets: Planet[];
@@ -323,24 +435,33 @@ function generateBodies(
 } {
   const count = randInt(rng, 2, 5);
   const planets: Planet[] = [];
+  // Toutes les planètes orbitent l'ancre au palier 2 : les compagnons d'une binaire large
+  // n'ont pas encore de cortège propre. Le champ existe pour que ce soit possible sans
+  // migration, et c'est l'étape suivante qui le remplira de plusieurs valeurs.
+  const host = stars[0]?.id;
   for (let i = 1; i <= count; i++) {
-    const type = pickWeighted(rng, TYPE_WEIGHTS);
-    const [hMin, hMax] = HABITABILITY[type];
+    const orbitRadius = 70 + (i - 1) * 55 + randInt(rng, -8, 8);
+    const candidates = planetTypesForZone(zoneAt(stars, orbitRadius));
+    const type =
+      candidates.length > 0 ? pickWeighted(rng, candidates) : "frozen";
+    const body = bodyHabitability(rng, type, stars, orbitRadius);
+    const def = planetType(type);
     const planet: Planet = {
       id: `${system.id}-p${i}`,
       systemId: system.id,
       name: `${system.name} ${romanNumeral(i)}`,
       kind: "planet",
       type,
-      habitability: randInt(rng, hMin, hMax),
-      slots: type === "gas" ? randInt(rng, 2, 4) : randInt(rng, 6, 14),
+      ...(host ? { hostStarId: host } : {}),
+      habitability: body.habitability,
+      slots: randInt(rng, def.slotRange[0], def.slotRange[1]),
       deposits: generateDeposits(rng, type, depositBonus),
-      orbitRadius: 70 + (i - 1) * 55 + randInt(rng, -8, 8),
+      orbitRadius,
       orbitAngle: rng() * Math.PI * 2,
       inclination: (rng() - 0.5) * 2 * MAX_INCLINATION,
       ascendingNode: rng() * Math.PI * 2,
     };
-    planets.push(planet, ...generateMoons(rng, planet, depositBonus));
+    planets.push(planet, ...generateMoons(rng, planet, stars, depositBonus));
   }
 
   const belts: AsteroidBelt[] = [];
@@ -923,7 +1044,11 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
       planets: [],
       belts: [],
     };
-    const bodies = generateBodies(rng, system, def.depositBonus);
+    // Les étoiles AVANT les corps : c'est l'inversion de causalité de l'ADR 0021. Leur
+    // luminosité place la zone habitable, qui décide de ce qu'on trouve à chaque orbite.
+    const stars = generateStars(rng, system);
+    system.stars = stars;
+    const bodies = generateBodies(rng, system, stars, def.depositBonus);
     system.planets = bodies.planets;
     system.belts = bodies.belts;
     if (rng() < TRADING_POST_PROBABILITY) {

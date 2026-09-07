@@ -6,6 +6,7 @@ import {
   type GalaxyTypeId,
 } from "./content/astro/galaxy-types.js";
 import { whiteHoleType } from "./content/astro/white-hole-types.js";
+import { isDrifter } from "./model/universe.js";
 import {
   allPlanets,
   allSystems,
@@ -177,7 +178,7 @@ describe("type de galaxie (chantier 45.1)", () => {
     for (const galaxy of universe.galaxies) {
       const [min, max] =
         GALAXY_TYPES[galaxy.typeId as GalaxyTypeId].systemRange;
-      const ordinary = galaxy.systems.filter((s) => !s.stars?.length).length;
+      const ordinary = galaxy.systems.filter((s) => !isDrifter(s)).length;
       expect(
         ordinary,
         `${galaxy.id} (${galaxy.typeId})`,
@@ -191,7 +192,7 @@ describe("type de galaxie (chantier 45.1)", () => {
   it("la galaxie mère a un type qui admet ses 520 systèmes", () => {
     const home = universe.galaxies[0]!;
     const [min, max] = GALAXY_TYPES[home.typeId as GalaxyTypeId].systemRange;
-    const ordinary = home.systems.filter((s) => !s.stars?.length).length;
+    const ordinary = home.systems.filter((s) => !isDrifter(s)).length;
     expect(ordinary).toBe(520);
     expect(520).toBeGreaterThanOrEqual(min);
     expect(520).toBeLessThanOrEqual(max);
@@ -220,8 +221,10 @@ describe("singularités errantes et ponts (chantier 45.1)", () => {
    * Ces cas protègent les conséquences de ce choix — celles qu'un type ne peut pas dire.
    */
   const universe = generateUniverse("errants-45", 6);
+  // Le discriminant est la NATURE de l'ancre : depuis que le palier 2 donne des corps
+  // centraux à tous les systèmes, « il en a » ne distingue plus rien.
   const drifters = (galaxy: (typeof universe.galaxies)[number]) =>
-    galaxy.systems.filter((s) => (s.stars?.length ?? 0) > 0);
+    galaxy.systems.filter(isDrifter);
 
   it("chaque galaxie en porte, dans l'ordre de grandeur de sa densité", () => {
     for (const galaxy of universe.galaxies) {
