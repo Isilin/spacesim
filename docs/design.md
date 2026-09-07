@@ -3264,6 +3264,59 @@ dépend de l'étoile, pas la géométrie.
 | Corps centraux par système | 1, implicite | 1 à 3 | 1 |
 | Systèmes multiples | — | 36,7 % | 0 % |
 
+### Palier 3 — les corps, les lunes, les ceintures
+
+- **45.14** `PLANET_TYPES` laisse la place à **deux axes** : cinq classes structurelles ×
+  dix variantes d'environnement. Six entrées couvraient trente combinaisons en en interdisant
+  vingt-quatre ; la matrice de compatibilité vit maintenant en un seul endroit, dans les
+  `variants` de chaque classe, et se croise avec l'affinité de zone de chaque variante.
+- **45.15** Les lunes reçoivent leur **propre taxonomie** — quatre classes, six variantes —
+  tirée de la planète parente et non de la zone thermique. `bodyStructure()` et
+  `bodyEnvironment()` tranchent sur `kind` une fois, pour la vingtaine d'appelants.
+- **45.16** Les ceintures reçoivent une composition, la première fois que ce type existe : six
+  entrées, un seul axe, une richesse et un danger qui leur sont propres.
+- **45.17** Migrations 0027 et 0028 : `class_id` + `variant_id` remplacent `type`, `type_id`
+  arrive sur les ceintures.
+
+### Ce que les deux axes ont fait tomber
+
+**Un plafond qui ne plafonnait plus.** `Math.min(40, …)` bornait l'habitabilité d'une lune
+« pour que le monde principal d'un système reste le monde principal ». Les classes de lunes
+portant de vrais rayons de lune — 0,02 à 0,46 rayon terrestre — la meilleure lune de l'univers
+sort à 17 sur trois galaxies mesurées. La physique plafonne mieux qu'un nombre.
+
+**Un facteur d'échelle qui cachait un désaccord.** `MOON_SCALE = 0,28` rétrécissait le rayon
+d'une classe planétaire pour en faire une lune, mais seulement dans la fiche de corps : le
+générateur, lui, calculait l'habitabilité sur le rayon **plein**. Les deux lisaient la même
+table et n'en tiraient pas la même chose. La taxonomie de lunes supprime la question.
+
+**Une teinte qui ne disait qu'un mot.** `asteroidTint` se déduisait du gisement dominant.
+Toutes les ceintures portant du minerai, toutes sortaient de la même couleur — la table de cinq
+teintes par ressource n'en servait qu'une seule.
+
+**Le zéro d'habitabilité fuyait.** Une super-Terre à effet de serre emballé sort à 594 °C sous
+135 bars : son score tombait sous 0,005 et l'arrondi la rendait indiscernable d'une géante
+gazeuse. Le verrou de calibration l'a vu, et lui seul — le zéro est réservé à ce qui n'a pas de
+sol, et cette planète en a un.
+
+**Deux tests de contrat dépendaient du hasard.** Le carburant d'un convoi dépend du nombre de
+sauts **et** du danger du système d'arrivée : aucune avance de temps fixe ne le couvre. Ils
+interrogent maintenant le moteur au lieu de deviner — une acceptation qui manque de carburant
+ne mute rien, elle sert de sonde. Le test de faction dotait par ailleurs 400 unités de cargaison
+quand la pénurie en demande 40 à 120, saturant l'orbite au point que le carburant n'y entrait
+plus.
+
+### Relevés (palier 3)
+
+| | avant | après |
+|---|---|---|
+| Types de corps | 6, un seul axe | 5 × 10 planétaires, 4 × 6 lunaires |
+| Types de ceinture | 0 | 6 |
+| Types astronomiques du chantier | 16 | 61 |
+| Rayon de rendu d'une lune | 1,8, uniforme | 1,2 à 3,0 selon la classe |
+| Habitabilité lunaire (max mesuré) | 40, par plafond | 17, par la physique |
+| Richesse d'une ceinture | 1,2 à 2,0 | 0,6 à 3,0 selon la composition |
+
 ## Chantier 46 — vite 8, et pourquoi deux montées n'étaient pas des bumps (06/09/2026, corrigé le 08/09/2026)
 
 Planification. Ouvert par le tri des PR Dependabot du 06/09/2026 : deux d'entre elles ne
