@@ -286,6 +286,16 @@ export {
   type StaticWhiteHoleTypeDef,
 } from "./content/astro/white-hole-types.js";
 export {
+  STAR_CLASS_IDS,
+  STAR_CLASSES,
+  STAR_PRIMARY_WEIGHTS,
+  STAR_COMPANION_WEIGHTS,
+  starClass,
+  type StarClassId,
+  type StarClassDef,
+  type StaticStarClassDef,
+} from "./content/astro/star-classes.js";
+export {
   GALAXY_TYPE_IDS,
   GALAXY_TYPES,
   GALAXY_TYPE_WEIGHTS,
@@ -518,13 +528,31 @@ export {
   type SystemSite,
 } from "./sim/exploration/sites.js";
 export {
-  STAR_CLASSES,
+  // L'énumération à six valeurs du chantier 35 ne sort plus du paquet : `STAR_CLASSES`
+  // désigne désormais le catalogue de `content/astro/`. Elle ne sert plus qu'à
+  // `starClassOf` et à son test, tous deux internes, et disparaîtra avec eux au palier 2.
   galacticCoreDisc,
   galacticCoreHorizon,
   isDarkStar,
   starClassOf,
   type StarClass,
 } from "./sim/exploration/stars.js";
+export {
+  luminosityOf,
+  systemLuminosity,
+  habitableZone,
+  iceLine,
+  radiationAt,
+  irradianceAt,
+  surfaceGravity,
+  escapeVelocity,
+  equilibriumTempK,
+  atmosphereRetention,
+  greenhouseK,
+  surfaceTempC,
+  habitabilityOf,
+  type SurfaceConditions,
+} from "./sim/exploration/physics.js";
 export {
   galaxyGraph,
   universeGraph,
