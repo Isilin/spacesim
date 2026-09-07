@@ -9,6 +9,7 @@ function system(id: string, orbits: number[] = [100, 200]): StarSystem {
     x: 0,
     y: 0,
     z: 0,
+    stars: [],
     planets: orbits.map((orbitRadius, i) => ({
       id: `${id}-p${i}`,
       systemId: id,

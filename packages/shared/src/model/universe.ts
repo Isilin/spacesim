@@ -64,6 +64,46 @@ export interface TradingPost {
   name: string;
 }
 
+/** Nature d'un corps central : ce qui décide du catalogue où lire son type. */
+export const CENTRAL_BODY_KINDS = ["star", "blackHole", "whiteHole"] as const;
+
+export type CentralBodyKind = (typeof CENTRAL_BODY_KINDS)[number];
+
+/**
+ * Corps central d'un système : étoile, trou noir ou trou blanc (chantier 45.1).
+ *
+ * Un système en compte un à quatre. Le rang 0 est l'**ancre** — `orbitRadius` nul, à
+ * l'origine du repère du système, ce que `bodyPositionAt` suppose déjà pour l'étoile
+ * implicite d'aujourd'hui. Les suivants sont des compagnons en orbite autour du barycentre,
+ * et portent les mêmes éléments orbitaux qu'une planète : `orbitPosition` s'applique tel
+ * quel, sans seconde implémentation.
+ *
+ * `typeId` est une **chaîne ouverte**, résolue selon `kind` dans `content/astro/`. Le
+ * catalogue devient éditable au palier 3 (ADR 0021) : un identifiant relu de la base ne
+ * peut pas être prouvé membre d'une union, et chaque accesseur porte donc un repli
+ * générique. C'est ce qui permet de supprimer les casts non vérifiés de `loadUniverse`
+ * plutôt que d'en ajouter un de plus.
+ */
+export interface CentralBody {
+  id: string;
+  systemId: string;
+  name: string;
+  kind: CentralBodyKind;
+  /** Id de catalogue, à lire dans la table que désigne `kind`. */
+  typeId: string;
+  /** Rang dans le système, par masse décroissante. 0 = ancre. */
+  rank: number;
+  /** Masse en masses solaires, tirée dans la fourchette du type puis **persistée**.
+   *  La zone habitable et l'échelle des orbites en dérivent : la retirer du tirage la
+   *  rendrait rejouable, et une galaxie matérialisée ne se régénère pas (ADR 0002). */
+  mass: number;
+  /** Zéro pour l'ancre ; sinon rayon d'orbite autour du barycentre. */
+  orbitRadius: number;
+  orbitAngle: number;
+  inclination: number;
+  ascendingNode: number;
+}
+
 export interface StarSystem {
   id: string;
   name: string;
@@ -71,6 +111,21 @@ export interface StarSystem {
   y: number;
   /** Écart au plan galactique (chantier 31.1) — centré sur 0, borné par `MAP_DEPTH`. */
   z: number;
+  /**
+   * Corps centraux (chantier 45.1). **Absent** tant que le palier 2 n'a pas inversé la
+   * causalité : un système ordinaire garde alors son étoile implicite, dérivée par
+   * `starClassOf`. Seuls les **errants** — systèmes sans étoile ni monde, posés hors des
+   * bras — en portent un dès le palier 1, puisque c'est leur seul contenu.
+   *
+   * Optionnel et non « tableau vide », pour la même raison que `station`, `systemCount` et
+   * `cloud` : l'univers part en entier à chaque `hello`, et `"stars":[]` sur cinq cents
+   * systèmes coûte 5,7 Ko par galaxie détaillée pour ne rien dire. `universe.payload.test.ts`
+   * mesure ce mur. Lire par `starsOf`, jamais par `system.stars` directement.
+   *
+   * Vidé par le brouillard au même titre que `planets` : un système inexploré ne doit pas
+   * annoncer qu'il abrite un trou noir.
+   */
+  stars?: CentralBody[];
   /** Planètes et lunes (les lunes référencent leur parente via parentPlanetId). */
   planets: Planet[];
   belts: AsteroidBelt[];
@@ -95,9 +150,36 @@ export interface Galaxy {
    * frontière dépendrait de celles déjà tirées (ADR 0002).
    */
   z: number;
+  /**
+   * Type de galaxie (chantier 45.1) — id de catalogue, `content/astro/galaxy-types.ts`.
+   *
+   * Il **remplace** `galaxyMorphology()`, qui dérivait la forme de l'identifiant et de la
+   * taille. Le sens de la dépendance s'inverse : le type précède et contraint la taille au
+   * lieu d'en être déduit. L'ADR 0018 interdisait de le persister, l'ADR 0021 lève cette
+   * interdiction — c'est le prix d'un type qui entre dans l'économie.
+   *
+   * Présent **aussi sur une galaxie condensée** : deux chaînes courtes sur le fil, et c'est
+   * ce qui permet au palier univers de distinguer une elliptique d'une spirale barrée sans
+   * recevoir un seul système.
+   */
+  typeId: string;
   systems: StarSystem[];
   /** Liaisons de saut intra-galactiques (graphe non orienté, connexe). */
   links: [string, string][];
+  /**
+   * Ponts d'Einstein-Rosen : paires de systèmes reliées par une bouche de trou noir et sa
+   * fontaine blanche, **à l'intérieur d'une même galaxie** (chantier 45.1).
+   *
+   * Volontairement pas appelés « trous de ver » : `parentIndex`, juste en dessous, emploie
+   * déjà ce mot pour l'arbre **inter**-galactique des portails. Deux raccourcis de portées
+   * différentes qui porteraient le même nom se confondraient à la première relecture.
+   *
+   * Tenus hors de `links` : une arête de saut est pondérée par sa longueur 3D réelle, ce
+   * qui n'a aucun sens pour un pont, et `links` porte l'invariant de connexité que
+   * `universe.test.ts` verrouille. Les ponts sont un arc optionnel du graphe de routage —
+   * voir `galaxyGraph(galaxy, bridges)`.
+   */
+  bridges: [string, string][];
   /** Système d'ancrage : seul point d'arrivée/départ des portails inter-galactiques. */
   anchorSystemId: string;
   /** Multiplicateur de richesse des gisements (galaxies lointaines plus riches). */
@@ -130,6 +212,17 @@ export interface Galaxy {
 export function systemCountOf(galaxy: Galaxy): number {
   return galaxy.systemCount ?? galaxy.systems.length;
 }
+
+/**
+ * Corps centraux d'un système, absents comme vides. Même rôle que `systemCountOf` : un
+ * seul endroit sait que le champ est optionnel, et le reste du code lit un tableau.
+ */
+export function starsOf(system: StarSystem): readonly CentralBody[] {
+  return system.stars ?? EMPTY_STARS;
+}
+
+/** Partagé plutôt que réalloué : `starsOf` est appelé sur le chemin chaud du rendu. */
+const EMPTY_STARS: readonly CentralBody[] = [];
 
 /** Méga-projet de portail vers une galaxie lointaine (contributions par convois). */
 export interface Gateway {

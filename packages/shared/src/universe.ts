@@ -8,6 +8,12 @@ import {
   UNIVERSE_CENTER_Y,
   UNIVERSE_DISC_THICKNESS,
 } from "./constants.js";
+import {
+  GALAXY_TYPE_WEIGHTS,
+  galaxyType,
+  type GalaxyTypeDef,
+  type GalaxyTypeId,
+} from "./content/astro/galaxy-types.js";
 import { FACTION_IDS } from "./content/factions.js";
 import {
   createRng,
@@ -17,12 +23,6 @@ import {
   randInt,
   type Rng,
 } from "./rng.js";
-import {
-  galaxyAppearance,
-  galaxyMorphology,
-  type GalaxyAppearance,
-  type GalaxyMorphology,
-} from "./sim/exploration/stars.js";
 import type {
   AsteroidBelt,
   ClientUniverse,
@@ -42,7 +42,7 @@ import type {
  * bumper cette version vont ensemble, dans le même commit. Les galaxies déjà
  * matérialisées en DB gardent la version qui les a produites et ne changent jamais.
  */
-export const GENERATOR_VERSION = 3;
+export const GENERATOR_VERSION = 4;
 
 /** Part des systèmes accueillant un comptoir commercial PNJ. */
 const TRADING_POST_PROBABILITY = 0.35;
@@ -486,7 +486,7 @@ function relaxPositions(points: Point[], minDist: number): void {
 function generatePositions(
   rng: Rng,
   count: number,
-  look: GalaxyAppearance,
+  look: GalaxyTypeDef,
 ): Point[] {
   const radius = GALAXY_RADIUS_PER_ROOT_SYSTEM * Math.sqrt(count);
   // Orientation propre à la galaxie : sans elle, toutes les spirales de l'univers partiraient
@@ -498,16 +498,38 @@ function generatePositions(
   for (let i = 0; i < count; i++) {
     const t = (i + 0.5) / count;
 
+    if (look.ring > 0) {
+      // Annulaire : une collision frontale a chassé la matière vers l'extérieur. Les
+      // systèmes se concentrent sur un tore et le centre reste vide — ce qui en fait la
+      // seule morphologie dont le graphe de sauts est un anneau, donc au diamètre bien
+      // plus grand que sa taille ne le laisse croire.
+      const r = radius * (look.ring + gaussian(rng) * look.scatter);
+      const theta = rng() * Math.PI * 2;
+      points.push({
+        x: Math.cos(theta) * r,
+        y: Math.sin(theta) * r,
+        z: gaussian(rng) * halfDepth * 0.4,
+      });
+      continue;
+    }
+
     if (look.arms === 0) {
-      // Elliptique : aucun bras, un ellipsoïde dont la densité décroît vers le bord. Trois
-      // tirages indépendants, sinon le nuage se range sur une diagonale.
+      // Sans bras : un ellipsoïde dont la densité décroît vers le bord. Trois tirages
+      // indépendants, sinon le nuage se range sur une diagonale.
+      //
+      // `scatter` sert ici d'APLATISSEMENT, et non de dispersion perpendiculaire comme
+      // dans la branche des bras : c'est la seule grandeur qui distingue les trois
+      // morphologies sans bras l'une de l'autre. À 1 l'objet est sphéroïdal (elliptique),
+      // à 0,3 c'est un disque épais sans bras (lenticulaire). Sans cet usage, elliptique,
+      // naine et lenticulaire rendaient exactement la même forme.
+      const flatten = look.scatter;
       const r = radius * (0.1 + t ** 0.6 * 0.9);
       const theta = rng() * Math.PI * 2;
       const phi = Math.acos(2 * rng() - 1);
       points.push({
         x: Math.sin(phi) * Math.cos(theta) * r,
         y: Math.sin(phi) * Math.sin(theta) * r * 0.78,
-        z: Math.cos(phi) * r * 0.5,
+        z: Math.cos(phi) * r * 0.5 * flatten,
       });
       continue;
     }
@@ -541,6 +563,15 @@ function generatePositions(
       r = radius * look.bar * along;
       x = Math.cos(turn) * r + Math.cos(turn + Math.PI / 2) * spread * 0.4;
       y = Math.sin(turn) * r + Math.sin(turn + Math.PI / 2) * spread * 0.4;
+    }
+
+    // Queue de marée : une galaxie en interaction projette une partie de son disque
+    // externe très loin, en un filament. Réservé aux plus excentrés — une queue part du
+    // bord, jamais du bulbe — et tiré après la barre, sur laquelle il ne s'applique pas.
+    if (look.tidalTails && t > 0.75 && rng() < 0.25) {
+      const stretch = 1.6 + rng() * 1.2;
+      x *= stretch;
+      y *= stretch;
     }
 
     points.push({
@@ -704,10 +735,12 @@ export interface GalaxyDef {
   z: number;
   systems: number;
   /**
-   * Forme de la galaxie. Entrée du générateur depuis le chantier 37 : c'est elle qui décide
-   * où sont posés les systèmes, plus seulement à quoi ressemble le nuage qui les figure.
+   * Type de la galaxie. Entrée du générateur depuis le chantier 37 pour sa forme, et
+   * **antérieur à la taille** depuis le chantier 45 : le type est tiré d'abord, et sa
+   * `systemRange` contraint le nombre de systèmes. C'est l'inverse de `galaxyMorphology`,
+   * qui déduisait la forme d'une taille déjà tirée.
    */
-  morphology: GalaxyMorphology;
+  typeId: GalaxyTypeId;
   depositBonus: number;
 }
 
@@ -723,6 +756,24 @@ export interface GalaxyDef {
  * précédentes (ADR 0002).
  * Richesse : croît avec l'éloignement (les anneaux lointains sont la récompense).
  */
+/**
+ * Type de la galaxie `index`, sur son propre flux RNG.
+ *
+ * La galaxie mère compte 520 systèmes (`HOME_GALAXY_SYSTEMS`) : son type se tire parmi les
+ * seuls qui admettent cette taille, faute de quoi elle n'aurait aucune forme possible. Une
+ * naine sphéroïdale à 520 systèmes n'est pas une naine. Les autres tirent dans toute la
+ * table — `astro.test.ts` vérifie qu'elle n'est jamais vide.
+ */
+function pickGalaxyType(seed: string, index: number): GalaxyTypeId {
+  const rng = createRng(`${seed}:galaxy-type:${index}`);
+  if (index !== 0) return pickWeighted(rng, GALAXY_TYPE_WEIGHTS);
+  const admits = GALAXY_TYPE_WEIGHTS.filter(([id]) => {
+    const [min, max] = galaxyType(id).systemRange;
+    return HOME_GALAXY_SYSTEMS >= min && HOME_GALAXY_SYSTEMS <= max;
+  });
+  return pickWeighted(rng, admits);
+}
+
 export function galaxyDefAt(seed: string, index: number): GalaxyDef {
   const radius = GALAXY_SPACING * Math.sqrt(index);
   const angle = index * GOLDEN_ANGLE;
@@ -730,13 +781,18 @@ export function galaxyDefAt(seed: string, index: number): GalaxyDef {
   const nameOffset = hashSeed(`${seed}:galaxies`) % NAME_SPACE;
   const thickness =
     UNIVERSE_DISC_THICKNESS / (1 + (0.35 * radius) / GALAXY_SPACING);
+  // Le type se tire AVANT la taille, sur son propre flux — même idiome que `galaxy-size`,
+  // et pour la même raison : matérialiser une galaxie de frontière ne doit dépendre
+  // d'aucune de celles déjà tirées (ADR 0002).
+  const typeId = pickGalaxyType(seed, index);
+  const [typeMin, typeMax] = galaxyType(typeId).systemRange;
   const systems =
     index === 0
       ? HOME_GALAXY_SYSTEMS
       : randInt(
           createRng(`${seed}:galaxy-size:${index}`),
-          MIN_GALAXY_SYSTEMS,
-          MAX_GALAXY_SYSTEMS,
+          Math.max(MIN_GALAXY_SYSTEMS, typeMin),
+          Math.min(MAX_GALAXY_SYSTEMS, typeMax),
         );
   return {
     index,
@@ -745,7 +801,7 @@ export function galaxyDefAt(seed: string, index: number): GalaxyDef {
     y: Math.round(UNIVERSE_CENTER_Y + Math.sin(angle) * radius),
     z: roundCoord(gaussian(createRng(`${seed}:galaxy-z:${index}`)) * thickness),
     systems,
-    morphology: galaxyMorphology(`gal-${index}`, systems),
+    typeId,
     depositBonus:
       index === 0
         ? 1
@@ -775,7 +831,7 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
   const positions = generatePositions(
     createRng(`layout:${galaxyId}`),
     def.systems,
-    galaxyAppearance(def.morphology),
+    galaxyType(def.typeId),
   );
   const nameOffset = Math.floor(rng() * NAME_SPACE);
   const systems: StarSystem[] = positions.map((pos, i) => {
@@ -822,8 +878,11 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
     x: def.x,
     y: def.y,
     z: def.z,
+    typeId: def.typeId,
     systems,
     links: generateLinks(systems),
+    // Vides au palier 1 : les errants qui portent les bouches n'arrivent qu'avec eux.
+    bridges: [],
     anchorSystemId: anchor.id,
     depositBonus: def.depositBonus,
   };

@@ -58,12 +58,19 @@ export const GALAXY_SPACING = 260;
 
 /**
  * Normalisation du coût de trajet (chantier 31.6) : une arête pèse sa longueur 3D
- * divisée par cette référence. Calée sur la longueur d'arête **moyenne** d'un univers
- * généré (mesurée : moyenne 205, médiane 198, étendue 96-388) pour que l'arête typique
- * vaille ≈ 1 — la valeur retournée reste ainsi à l'échelle du compte de sauts d'avant,
- * et les constantes de `balance.ts` qui la multiplient gardent leur ordre de grandeur.
+ * divisée par cette référence. Calée pour que l'arête typique vaille ≈ 1 — la valeur
+ * retournée reste ainsi à l'échelle du compte de sauts d'avant, et les constantes de
+ * `balance.ts` qui la multiplient gardent leur ordre de grandeur.
+ *
+ * Valait 205 au chantier 31.6 (moyenne 205, médiane 198, étendue 96-388). Le chantier 45
+ * a fait passer les morphologies de quatre à huit et changé la façon dont la taille d'une
+ * galaxie se tire — la longueur d'arête moyenne est tombée à **157** (médiane 139-146,
+ * mesurée sur deux seeds indépendantes). La constante ne suit pas cette moyenne
+ * directement : `travelCostInUniverse` fait du Dijkstra pondéré, dont le chemin le moins
+ * cher n'est pas celui du moins de sauts. 174 est la valeur qui ramène le rapport
+ * coût/sauts à ≈ 1, et c'est ce rapport que `travel.calibration.test.ts` verrouille.
  */
-export const JUMP_REFERENCE_LENGTH = 205;
+export const JUMP_REFERENCE_LENGTH = 174;
 
 /**
  * Poids d'un saut de portail inter-galactique, forfaitaire (chantier 31.6). Sa longueur

@@ -38,16 +38,19 @@ function makeGalaxy(
     x: 0,
     y: 0,
     z: 0,
+    typeId: "spiral",
     systems: specs.map((s) => ({
       id: s.id,
       name: s.id,
       x: s.x,
       y: s.y ?? 0,
       z: s.z ?? 0,
+      stars: [],
       planets: [],
       belts: [],
     })),
     links,
+    bridges: [],
     anchorSystemId: specs[0]!.id,
     depositBonus: 1,
   };
@@ -266,6 +269,7 @@ describe("intraSystemCost (chantier 31.8)", () => {
       x: 0,
       y: 0,
       z: 0,
+      stars: [],
       planets,
       belts: [],
     };

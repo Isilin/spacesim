@@ -25,6 +25,7 @@ function galaxy(): Galaxy {
     x,
     y: 0,
     z,
+    stars: [],
     planets: [
       {
         id: `${id}-p1`,
@@ -49,6 +50,7 @@ function galaxy(): Galaxy {
     x: 0,
     y: 0,
     z: 0,
+    typeId: "spiral",
     systems: [
       at("depart", 0),
       at("milieu", R),
@@ -61,6 +63,7 @@ function galaxy(): Galaxy {
       ["depart", "contour"],
       ["contour", "arrivee"],
     ],
+    bridges: [],
     anchorSystemId: "depart",
     depositBonus: 1,
   };
