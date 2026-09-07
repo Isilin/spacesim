@@ -205,7 +205,7 @@ function AsteroidBelt({ belt }: { belt: StarSystem["belts"][number] }) {
       ),
     [belt.id],
   );
-  const tint = asteroidTint(belt.deposits);
+  const tint = asteroidTint(belt);
   const perShape = Math.ceil(ASTEROIDS / ASTEROID_SHAPES);
 
   useEffect(() => {

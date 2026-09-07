@@ -1,5 +1,5 @@
 {
-  "generatorVersion": 10,
+  "generatorVersion": 11,
   "seed": "fixture-seed",
   "galaxies": [
     {
@@ -15,12 +15,12 @@
       "typeId": "spiral",
       "systemCount": 526,
       "linkCount": 1013,
-      "bodyCount": 4710,
-      "beltCount": 518,
-      "stationCount": 170,
+      "bodyCount": 4757,
+      "beltCount": 516,
+      "stationCount": 157,
       "drifterCount": 6,
-      "bridgeCount": 1,
-      "fingerprint": "e7474736",
+      "bridgeCount": 0,
+      "fingerprint": "d06baee2",
       "sample": [
         {
           "id": "gal-0-sys-0",
@@ -246,22 +246,25 @@
               "id": "gal-0-sys-0-b1",
               "systemId": "gal-0-sys-0",
               "name": "Ceinture Jarvum I",
+              "typeId": "icy",
               "orbitRadius": 335,
-              "inclination": -0.0017588540213182569,
-              "ascendingNode": 3.58223034359826,
+              "inclination": 0.021038899943232537,
+              "ascendingNode": 3.74553579223426,
               "deposits": {
-                "ore": 1.68
+                "ore": 0.63,
+                "food": 0.69
               }
             },
             {
               "id": "gal-0-sys-0-b2",
               "systemId": "gal-0-sys-0",
               "name": "Ceinture Jarvum II",
-              "orbitRadius": 361,
-              "inclination": 0.13770695831626653,
-              "ascendingNode": 3.036846174272773,
+              "typeId": "debris",
+              "orbitRadius": 366,
+              "inclination": 0.08110298670362681,
+              "ascendingNode": 4.113065541003526,
               "deposits": {
-                "ore": 1.39
+                "ore": 2.1
               }
             }
           ],
@@ -312,18 +315,38 @@
               "systemId": "gal-0-sys-263",
               "name": "Ererna I",
               "kind": "planet",
-              "classId": "rocky",
-              "variantId": "greenhouse",
+              "classId": "dwarf",
+              "variantId": "volcanic",
               "hostStarId": "gal-0-sys-263-s1",
-              "habitability": 1,
-              "slots": 11,
+              "habitability": 3,
+              "slots": 6,
               "deposits": {
-                "energy": 1.3
+                "ore": 1.21
               },
-              "orbitRadius": 66,
-              "orbitAngle": 4.329202609808567,
-              "inclination": 0.03246217626146972,
-              "ascendingNode": 4.322173986249612
+              "orbitRadius": 63,
+              "orbitAngle": 2.9118741239766806,
+              "inclination": -0.14488821581471711,
+              "ascendingNode": 5.33578739049359
+            },
+            {
+              "id": "gal-0-sys-263-p1-m1",
+              "systemId": "gal-0-sys-263",
+              "name": "Ererna I a",
+              "kind": "moon",
+              "parentPlanetId": "gal-0-sys-263-p1",
+              "classId": "irregular",
+              "variantId": "airless",
+              "hostStarId": "gal-0-sys-263-s1",
+              "habitability": 4,
+              "slots": 3,
+              "deposits": {
+                "ore": 1.21,
+                "energy": 0.66
+              },
+              "orbitRadius": 16,
+              "orbitAngle": 5.1139471004464925,
+              "inclination": -0.11825671840924769,
+              "ascendingNode": 3.9794881735414327
             },
             {
               "id": "gal-0-sys-263-p2",
@@ -331,18 +354,18 @@
               "name": "Ererna II",
               "kind": "planet",
               "classId": "gas_giant",
-              "variantId": "frozen",
+              "variantId": "toxic",
               "hostStarId": "gal-0-sys-263-s1",
               "habitability": 0,
-              "slots": 4,
+              "slots": 2,
               "deposits": {
-                "ore": 1.31,
-                "energy": 0.82
+                "ore": 0.99,
+                "energy": 1.28
               },
               "orbitRadius": 121,
-              "orbitAngle": 3.2569524470396622,
-              "inclination": 0.1387988926609978,
-              "ascendingNode": 3.1800985460633453
+              "orbitAngle": 5.57857609982358,
+              "inclination": -0.07889321381226182,
+              "ascendingNode": 3.627402907365431
             },
             {
               "id": "gal-0-sys-263-p2-m1",
@@ -351,18 +374,18 @@
               "kind": "moon",
               "parentPlanetId": "gal-0-sys-263-p2",
               "classId": "irregular",
-              "variantId": "airless",
+              "variantId": "belted",
               "hostStarId": "gal-0-sys-263-s1",
-              "habitability": 16,
-              "slots": 3,
+              "habitability": 9,
+              "slots": 1,
               "deposits": {
-                "ore": 1.38,
-                "energy": 0.96
+                "energy": 1.98,
+                "ore": 1.21
               },
               "orbitRadius": 16,
-              "orbitAngle": 0.3076939021260779,
-              "inclination": 0.036208908143453296,
-              "ascendingNode": 0.27187024654417297
+              "orbitAngle": 0.3753616357759392,
+              "inclination": -0.10204317464958876,
+              "ascendingNode": 3.9647559477250938
             },
             {
               "id": "gal-0-sys-263-p2-m2",
@@ -370,19 +393,19 @@
               "name": "Ererna II b",
               "kind": "moon",
               "parentPlanetId": "gal-0-sys-263-p2",
-              "classId": "irregular",
-              "variantId": "belted",
+              "classId": "regular",
+              "variantId": "airless",
               "hostStarId": "gal-0-sys-263-s1",
-              "habitability": 9,
-              "slots": 1,
+              "habitability": 16,
+              "slots": 4,
               "deposits": {
-                "energy": 1.93,
-                "ore": 1.43
+                "ore": 1.49,
+                "energy": 0.7
               },
               "orbitRadius": 26,
-              "orbitAngle": 3.745803250232102,
-              "inclination": -0.09131230276543646,
-              "ascendingNode": 6.059355166201495
+              "orbitAngle": 5.830817644502103,
+              "inclination": -0.03076148643158376,
+              "ascendingNode": 2.032586068431216
             },
             {
               "id": "gal-0-sys-263-p2-m3",
@@ -396,13 +419,33 @@
               "habitability": 9,
               "slots": 3,
               "deposits": {
-                "energy": 1.87,
-                "ore": 1.32
+                "energy": 1.72,
+                "ore": 1.16
               },
               "orbitRadius": 36,
-              "orbitAngle": 1.355556017994938,
-              "inclination": -0.1030247189104557,
-              "ascendingNode": 0.5816863073752505
+              "orbitAngle": 0.9674686641189029,
+              "inclination": 0.07442356715910137,
+              "ascendingNode": 2.773612328977949
+            },
+            {
+              "id": "gal-0-sys-263-p2-m4",
+              "systemId": "gal-0-sys-263",
+              "name": "Ererna II d",
+              "kind": "moon",
+              "parentPlanetId": "gal-0-sys-263-p2",
+              "classId": "regular",
+              "variantId": "shepherd",
+              "hostStarId": "gal-0-sys-263-s1",
+              "habitability": 11,
+              "slots": 4,
+              "deposits": {
+                "ore": 1.61,
+                "energy": 1.2
+              },
+              "orbitRadius": 46,
+              "orbitAngle": 4.575968330694193,
+              "inclination": 0.04566510405857116,
+              "ascendingNode": 0.8535881865970515
             },
             {
               "id": "gal-0-sys-263-p3",
@@ -410,38 +453,152 @@
               "name": "Ererna III",
               "kind": "planet",
               "classId": "rocky",
-              "variantId": "volcanic",
+              "variantId": "arid",
               "hostStarId": "gal-0-sys-263-s1",
-              "habitability": 6,
-              "slots": 7,
+              "habitability": 11,
+              "slots": 6,
               "deposits": {
-                "ore": 1.79,
-                "energy": 1.12
+                "ore": 0.95,
+                "energy": 1.09
               },
-              "orbitRadius": 178,
-              "orbitAngle": 1.1732907619154267,
-              "inclination": -0.10207949322648346,
-              "ascendingNode": 3.9426856326593116
+              "orbitRadius": 185,
+              "orbitAngle": 5.096697025843073,
+              "inclination": 0.11630786061286925,
+              "ascendingNode": 1.9964445002698334
             },
             {
-              "id": "gal-0-sys-263-p3-m1",
+              "id": "gal-0-sys-263-p4",
               "systemId": "gal-0-sys-263",
-              "name": "Ererna III a",
+              "name": "Ererna IV",
+              "kind": "planet",
+              "classId": "ice_giant",
+              "variantId": "frozen",
+              "hostStarId": "gal-0-sys-263-s1",
+              "habitability": 0,
+              "slots": 3,
+              "deposits": {
+                "ore": 1.08,
+                "food": 0.51
+              },
+              "orbitRadius": 235,
+              "orbitAngle": 3.32129505859627,
+              "inclination": -0.11745531989727169,
+              "ascendingNode": 2.2171179419873006
+            },
+            {
+              "id": "gal-0-sys-263-p4-m1",
+              "systemId": "gal-0-sys-263",
+              "name": "Ererna IV a",
               "kind": "moon",
-              "parentPlanetId": "gal-0-sys-263-p3",
+              "parentPlanetId": "gal-0-sys-263-p4",
+              "classId": "irregular",
+              "variantId": "airless",
+              "hostStarId": "gal-0-sys-263-s1",
+              "habitability": 6,
+              "slots": 3,
+              "deposits": {
+                "ore": 1.16,
+                "energy": 0.79
+              },
+              "orbitRadius": 16,
+              "orbitAngle": 0.01506810302983028,
+              "inclination": 0.13258547913283109,
+              "ascendingNode": 4.691362406166332
+            },
+            {
+              "id": "gal-0-sys-263-p4-m2",
+              "systemId": "gal-0-sys-263",
+              "name": "Ererna IV b",
+              "kind": "moon",
+              "parentPlanetId": "gal-0-sys-263-p4",
+              "classId": "irregular",
+              "variantId": "airless",
+              "hostStarId": "gal-0-sys-263-s1",
+              "habitability": 6,
+              "slots": 2,
+              "deposits": {
+                "energy": 0.72
+              },
+              "orbitRadius": 26,
+              "orbitAngle": 4.448278686239396,
+              "inclination": 0.022395938937552273,
+              "ascendingNode": 2.831845734655896
+            },
+            {
+              "id": "gal-0-sys-263-p4-m3",
+              "systemId": "gal-0-sys-263",
+              "name": "Ererna IV c",
+              "kind": "moon",
+              "parentPlanetId": "gal-0-sys-263-p4",
               "classId": "regular",
-              "variantId": "tidal",
+              "variantId": "airless",
               "hostStarId": "gal-0-sys-263-s1",
               "habitability": 6,
               "slots": 6,
               "deposits": {
-                "ore": 1.8,
-                "energy": 1.59
+                "ore": 1.35
+              },
+              "orbitRadius": 36,
+              "orbitAngle": 2.9335448341916024,
+              "inclination": -0.10564924185164272,
+              "ascendingNode": 0.25124952529979205
+            },
+            {
+              "id": "gal-0-sys-263-p5",
+              "systemId": "gal-0-sys-263",
+              "name": "Ererna V",
+              "kind": "planet",
+              "classId": "ice_giant",
+              "variantId": "frozen",
+              "hostStarId": "gal-0-sys-263-s1",
+              "habitability": 0,
+              "slots": 3,
+              "deposits": {
+                "ore": 0.92,
+                "food": 0.55
+              },
+              "orbitRadius": 292,
+              "orbitAngle": 0.3093298790253681,
+              "inclination": -0.07652586365584284,
+              "ascendingNode": 3.9538452720859447
+            },
+            {
+              "id": "gal-0-sys-263-p5-m1",
+              "systemId": "gal-0-sys-263",
+              "name": "Ererna V a",
+              "kind": "moon",
+              "parentPlanetId": "gal-0-sys-263-p5",
+              "classId": "icy",
+              "variantId": "belted",
+              "hostStarId": "gal-0-sys-263-s1",
+              "habitability": 3,
+              "slots": 4,
+              "deposits": {
+                "energy": 1.51
               },
               "orbitRadius": 16,
-              "orbitAngle": 3.061608030389186,
-              "inclination": -0.09562174323946238,
-              "ascendingNode": 5.07197031194476
+              "orbitAngle": 2.482846175251967,
+              "inclination": 0.1361477201571688,
+              "ascendingNode": 4.5996991704246355
+            },
+            {
+              "id": "gal-0-sys-263-p5-m2",
+              "systemId": "gal-0-sys-263",
+              "name": "Ererna V b",
+              "kind": "moon",
+              "parentPlanetId": "gal-0-sys-263-p5",
+              "classId": "icy",
+              "variantId": "subglacial",
+              "hostStarId": "gal-0-sys-263-s1",
+              "habitability": 4,
+              "slots": 5,
+              "deposits": {
+                "energy": 1.04
+              },
+              "orbitRadius": 26,
+              "orbitAngle": 0.6437466058072129,
+              "inclination": -0.012668688548728824,
+              "ascendingNode": 0.45176093057036976
             }
           ],
           "belts": [
@@ -449,11 +606,26 @@
               "id": "gal-0-sys-263-b1",
               "systemId": "gal-0-sys-263",
               "name": "Ceinture Ererna I",
-              "orbitRadius": 274,
-              "inclination": 0.001503521972335875,
-              "ascendingNode": 1.4901167531382422,
+              "typeId": "icy",
+              "orbitRadius": 383,
+              "inclination": 0.13522628399077802,
+              "ascendingNode": 1.9680295416784674,
               "deposits": {
-                "ore": 1.91
+                "ore": 0.75,
+                "energy": 1.19
+              }
+            },
+            {
+              "id": "gal-0-sys-263-b2",
+              "systemId": "gal-0-sys-263",
+              "name": "Ceinture Ererna II",
+              "typeId": "debris",
+              "orbitRadius": 417,
+              "inclination": -0.08848835262469947,
+              "ascendingNode": 0.9185785724274865,
+              "deposits": {
+                "ore": 2.28,
+                "energy": 1.29
               }
             }
           ],
@@ -463,9 +635,9 @@
               "systemId": "gal-0-sys-263",
               "name": "Ererna A",
               "kind": "star",
-              "typeId": "orange_dwarf",
+              "typeId": "yellow_dwarf",
               "rank": 0,
-              "mass": 0.562,
+              "mass": 0.968,
               "orbitRadius": 0,
               "orbitAngle": 0,
               "inclination": 0,
@@ -485,9 +657,9 @@
               "systemId": "gal-0-drift-5",
               "name": "Ithris A",
               "kind": "blackHole",
-              "typeId": "dormant",
+              "typeId": "primordial",
               "rank": 0,
-              "mass": 5.23,
+              "mass": 0.24,
               "orbitRadius": 0,
               "orbitAngle": 0,
               "inclination": 0,
@@ -512,12 +684,12 @@
       "typeId": "elliptical",
       "systemCount": 456,
       "linkCount": 885,
-      "bodyCount": 4135,
-      "beltCount": 454,
-      "stationCount": 152,
+      "bodyCount": 4066,
+      "beltCount": 463,
+      "stationCount": 149,
       "drifterCount": 7,
       "bridgeCount": 1,
-      "fingerprint": "42ff8b60",
+      "fingerprint": "c467272d",
       "sample": [
         {
           "id": "gal-1-sys-0",
@@ -801,22 +973,26 @@
               "id": "gal-1-sys-0-b1",
               "systemId": "gal-1-sys-0",
               "name": "Ceinture Dagsess I",
+              "typeId": "debris",
               "orbitRadius": 380,
-              "inclination": 0.14529815521091222,
-              "ascendingNode": 1.163228346158278,
+              "inclination": -0.09445993762928992,
+              "ascendingNode": 5.103860354898767,
               "deposits": {
-                "ore": 2.77
+                "ore": 3.5,
+                "energy": 1.39
               }
             },
             {
               "id": "gal-1-sys-0-b2",
               "systemId": "gal-1-sys-0",
               "name": "Ceinture Dagsess II",
-              "orbitRadius": 422,
-              "inclination": -0.010721964505501091,
-              "ascendingNode": 1.5599366075182846,
+              "typeId": "carbonaceous",
+              "orbitRadius": 421,
+              "inclination": -0.06980647186283022,
+              "ascendingNode": 2.134529792739383,
               "deposits": {
-                "ore": 2.17
+                "ore": 1.47,
+                "food": 1.67
               }
             }
           ],
@@ -834,13 +1010,7 @@
               "inclination": 0,
               "ascendingNode": 0
             }
-          ],
-          "station": {
-            "id": "gal-1-sys-0-st",
-            "systemId": "gal-1-sys-0",
-            "factionId": "ferride",
-            "name": "Comptoir Dagsess"
-          }
+          ]
         },
         {
           "id": "gal-1-sys-228",
@@ -854,18 +1024,18 @@
               "systemId": "gal-1-sys-228",
               "name": "Ferden I",
               "kind": "planet",
-              "classId": "super_earth",
-              "variantId": "greenhouse",
+              "classId": "gas_giant",
+              "variantId": "toxic",
               "hostStarId": "gal-1-sys-228-s1",
-              "habitability": 1,
-              "slots": 18,
+              "habitability": 0,
+              "slots": 2,
               "deposits": {
-                "energy": 2.55
+                "energy": 1.49
               },
-              "orbitRadius": 78,
-              "orbitAngle": 0.9257051983314897,
-              "inclination": -0.046797635941766204,
-              "ascendingNode": 1.51420473213354
+              "orbitRadius": 76,
+              "orbitAngle": 4.880806637210394,
+              "inclination": -0.026304205181077123,
+              "ascendingNode": 6.28088267412282
             },
             {
               "id": "gal-1-sys-228-p1-m1",
@@ -873,37 +1043,139 @@
               "name": "Ferden I a",
               "kind": "moon",
               "parentPlanetId": "gal-1-sys-228-p1",
-              "classId": "regular",
-              "variantId": "airless",
+              "classId": "irregular",
+              "variantId": "belted",
               "hostStarId": "gal-1-sys-228-s1",
-              "habitability": 6,
-              "slots": 3,
+              "habitability": 7,
+              "slots": 1,
               "deposits": {
-                "ore": 2.03
+                "energy": 2.81,
+                "ore": 1.77
               },
               "orbitRadius": 16,
-              "orbitAngle": 1.4059361371005483,
-              "inclination": -0.12607818546239286,
-              "ascendingNode": 5.3483639187450445
+              "orbitAngle": 3.229168000288788,
+              "inclination": 0.05587890199385583,
+              "ascendingNode": 0.5456414483393338
+            },
+            {
+              "id": "gal-1-sys-228-p1-m2",
+              "systemId": "gal-1-sys-228",
+              "name": "Ferden I b",
+              "kind": "moon",
+              "parentPlanetId": "gal-1-sys-228-p1",
+              "classId": "regular",
+              "variantId": "tidal",
+              "hostStarId": "gal-1-sys-228-s1",
+              "habitability": 11,
+              "slots": 5,
+              "deposits": {
+                "ore": 2.18,
+                "energy": 2.35
+              },
+              "orbitRadius": 26,
+              "orbitAngle": 5.235277633115902,
+              "inclination": 0.08583430505823343,
+              "ascendingNode": 4.724352345541154
+            },
+            {
+              "id": "gal-1-sys-228-p1-m3",
+              "systemId": "gal-1-sys-228",
+              "name": "Ferden I c",
+              "kind": "moon",
+              "parentPlanetId": "gal-1-sys-228-p1",
+              "classId": "icy",
+              "variantId": "subglacial",
+              "hostStarId": "gal-1-sys-228-s1",
+              "habitability": 9,
+              "slots": 2,
+              "deposits": {
+                "food": 2.03,
+                "ore": 0.96
+              },
+              "orbitRadius": 36,
+              "orbitAngle": 4.0805902123214475,
+              "inclination": 0.03261525600682944,
+              "ascendingNode": 1.1468726294484552
+            },
+            {
+              "id": "gal-1-sys-228-p1-m4",
+              "systemId": "gal-1-sys-228",
+              "name": "Ferden I d",
+              "kind": "moon",
+              "parentPlanetId": "gal-1-sys-228-p1",
+              "classId": "icy",
+              "variantId": "airless",
+              "hostStarId": "gal-1-sys-228-s1",
+              "habitability": 4,
+              "slots": 4,
+              "deposits": {
+                "ore": 1.54,
+                "energy": 1.26
+              },
+              "orbitRadius": 46,
+              "orbitAngle": 0.6938405795994367,
+              "inclination": 0.02533628032542765,
+              "ascendingNode": 0.6605371281027193
+            },
+            {
+              "id": "gal-1-sys-228-p1-m5",
+              "systemId": "gal-1-sys-228",
+              "name": "Ferden I e",
+              "kind": "moon",
+              "parentPlanetId": "gal-1-sys-228-p1",
+              "classId": "irregular",
+              "variantId": "shepherd",
+              "hostStarId": "gal-1-sys-228-s1",
+              "habitability": 10,
+              "slots": 3,
+              "deposits": {
+                "ore": 2.52,
+                "energy": 1.86
+              },
+              "orbitRadius": 56,
+              "orbitAngle": 2.2274000617074297,
+              "inclination": 0.1309026952832937,
+              "ascendingNode": 5.152859605148504
             },
             {
               "id": "gal-1-sys-228-p2",
               "systemId": "gal-1-sys-228",
               "name": "Ferden II",
               "kind": "planet",
-              "classId": "super_earth",
-              "variantId": "oceanic",
+              "classId": "rocky",
+              "variantId": "temperate",
               "hostStarId": "gal-1-sys-228-s1",
-              "habitability": 57,
-              "slots": 18,
+              "habitability": 69,
+              "slots": 6,
               "deposits": {
-                "food": 1.95,
-                "energy": 1.42
+                "food": 1.51,
+                "ore": 1.45,
+                "energy": 1.46
               },
-              "orbitRadius": 125,
-              "orbitAngle": 1.1876933264571932,
-              "inclination": 0.1493968741502613,
-              "ascendingNode": 4.195562644081862
+              "orbitRadius": 117,
+              "orbitAngle": 4.661391334299459,
+              "inclination": -0.036682788748294115,
+              "ascendingNode": 4.643247258754456
+            },
+            {
+              "id": "gal-1-sys-228-p2-m1",
+              "systemId": "gal-1-sys-228",
+              "name": "Ferden II a",
+              "kind": "moon",
+              "parentPlanetId": "gal-1-sys-228-p2",
+              "classId": "regular",
+              "variantId": "tidal",
+              "hostStarId": "gal-1-sys-228-s1",
+              "habitability": 11,
+              "slots": 4,
+              "deposits": {
+                "ore": 1.98,
+                "energy": 2.02
+              },
+              "orbitRadius": 16,
+              "orbitAngle": 2.305772966116337,
+              "inclination": 0.1278785444330424,
+              "ascendingNode": 2.1108193504757202
             },
             {
               "id": "gal-1-sys-228-p3",
@@ -911,73 +1183,80 @@
               "name": "Ferden III",
               "kind": "planet",
               "classId": "super_earth",
-              "variantId": "arid",
+              "variantId": "temperate",
               "hostStarId": "gal-1-sys-228-s1",
-              "habitability": 10,
-              "slots": 12,
+              "habitability": 38,
+              "slots": 18,
               "deposits": {
-                "ore": 1.37,
-                "energy": 2.18,
-                "food": 0.68
+                "food": 1.72,
+                "ore": 1.65,
+                "energy": 1.34
               },
-              "orbitRadius": 173,
-              "orbitAngle": 4.49925236826357,
-              "inclination": 0.09841141782235353,
-              "ascendingNode": 3.642827792708105
+              "orbitRadius": 188,
+              "orbitAngle": 2.874652323939304,
+              "inclination": -0.08359672059305012,
+              "ascendingNode": 3.6576045790091385
             },
             {
-              "id": "gal-1-sys-228-p4",
+              "id": "gal-1-sys-228-p3-m1",
               "systemId": "gal-1-sys-228",
-              "name": "Ferden IV",
-              "kind": "planet",
-              "classId": "rocky",
-              "variantId": "arid",
-              "hostStarId": "gal-1-sys-228-s1",
-              "habitability": 10,
-              "slots": 7,
-              "deposits": {
-                "ore": 1.56,
-                "energy": 2.13
-              },
-              "orbitRadius": 238,
-              "orbitAngle": 3.9111063764108183,
-              "inclination": -0.04829433776903897,
-              "ascendingNode": 0.2170010521305573
-            },
-            {
-              "id": "gal-1-sys-228-p4-m1",
-              "systemId": "gal-1-sys-228",
-              "name": "Ferden IV a",
+              "name": "Ferden III a",
               "kind": "moon",
-              "parentPlanetId": "gal-1-sys-228-p4",
+              "parentPlanetId": "gal-1-sys-228-p3",
               "classId": "regular",
-              "variantId": "airless",
+              "variantId": "shepherd",
               "hostStarId": "gal-1-sys-228-s1",
-              "habitability": 6,
-              "slots": 6,
+              "habitability": 5,
+              "slots": 5,
               "deposits": {
-                "ore": 2.24,
-                "energy": 1.48
+                "energy": 1.52
               },
               "orbitRadius": 16,
-              "orbitAngle": 0.07211316133405357,
-              "inclination": 0.13433976110536605,
-              "ascendingNode": 4.69901167710917
-            }
-          ],
-          "belts": [
+              "orbitAngle": 1.7532868634811065,
+              "inclination": 0.04870874772313982,
+              "ascendingNode": 3.501136078016594
+            },
             {
-              "id": "gal-1-sys-228-b1",
+              "id": "gal-1-sys-228-p3-m2",
               "systemId": "gal-1-sys-228",
-              "name": "Ceinture Ferden I",
-              "orbitRadius": 322,
-              "inclination": -0.13702274055685848,
-              "ascendingNode": 0.0746677703266292,
+              "name": "Ferden III b",
+              "kind": "moon",
+              "parentPlanetId": "gal-1-sys-228-p3",
+              "classId": "irregular",
+              "variantId": "airless",
+              "hostStarId": "gal-1-sys-228-s1",
+              "habitability": 7,
+              "slots": 1,
               "deposits": {
-                "ore": 1.83
-              }
+                "ore": 1.74,
+                "energy": 0.92
+              },
+              "orbitRadius": 26,
+              "orbitAngle": 1.0588402174022824,
+              "inclination": -0.12756984843872488,
+              "ascendingNode": 0.42018267934659703
+            },
+            {
+              "id": "gal-1-sys-228-p3-m3",
+              "systemId": "gal-1-sys-228",
+              "name": "Ferden III c",
+              "kind": "moon",
+              "parentPlanetId": "gal-1-sys-228-p3",
+              "classId": "irregular",
+              "variantId": "airless",
+              "hostStarId": "gal-1-sys-228-s1",
+              "habitability": 7,
+              "slots": 3,
+              "deposits": {
+                "ore": 1.91
+              },
+              "orbitRadius": 36,
+              "orbitAngle": 2.8868127939002606,
+              "inclination": 0.01404348355717957,
+              "ascendingNode": 4.207100168414632
             }
           ],
+          "belts": [],
           "stars": [
             {
               "id": "gal-1-sys-228-s1",
@@ -986,7 +1265,7 @@
               "kind": "star",
               "typeId": "red_dwarf",
               "rank": 0,
-              "mass": 0.382,
+              "mass": 0.183,
               "orbitRadius": 0,
               "orbitAngle": 0,
               "inclination": 0,
@@ -1011,10 +1290,10 @@
               "id": "gal-1-drift-6-s1",
               "systemId": "gal-1-drift-6",
               "name": "Oststum A",
-              "kind": "blackHole",
-              "typeId": "dormant",
+              "kind": "whiteHole",
+              "typeId": "stable",
               "rank": 0,
-              "mass": 5.56,
+              "mass": 5.15,
               "orbitRadius": 0,
               "orbitAngle": 0,
               "inclination": 0,
@@ -1039,12 +1318,12 @@
       "typeId": "irregular",
       "systemCount": 364,
       "linkCount": 700,
-      "bodyCount": 3339,
-      "beltCount": 357,
-      "stationCount": 130,
+      "bodyCount": 3246,
+      "beltCount": 338,
+      "stationCount": 121,
       "drifterCount": 3,
       "bridgeCount": 0,
-      "fingerprint": "15817766",
+      "fingerprint": "d65cd981",
       "sample": [
         {
           "id": "gal-2-sys-0",
@@ -1255,11 +1534,12 @@
               "id": "gal-2-sys-0-b1",
               "systemId": "gal-2-sys-0",
               "name": "Ceinture Gheness I",
+              "typeId": "silicate",
               "orbitRadius": 265,
-              "inclination": -0.11231951122172176,
-              "ascendingNode": 6.14193867946202,
+              "inclination": 0.14325597030110657,
+              "ascendingNode": 2.6757603177803424,
               "deposits": {
-                "ore": 2.63
+                "ore": 2.58
               }
             }
           ],
@@ -1277,7 +1557,13 @@
               "inclination": 0,
               "ascendingNode": 0
             }
-          ]
+          ],
+          "station": {
+            "id": "gal-2-sys-0-st",
+            "systemId": "gal-2-sys-0",
+            "factionId": "aether_cartel",
+            "name": "Comptoir Gheness"
+          }
         },
         {
           "id": "gal-2-sys-182",
@@ -1295,15 +1581,15 @@
               "variantId": "greenhouse",
               "hostStarId": "gal-2-sys-182-s1",
               "habitability": 1,
-              "slots": 13,
+              "slots": 12,
               "deposits": {
-                "energy": 2.25,
-                "ore": 1.76
+                "energy": 2.88,
+                "ore": 1.46
               },
-              "orbitRadius": 71,
-              "orbitAngle": 3.134536914844239,
-              "inclination": 0.03304762921761721,
-              "ascendingNode": 6.16587840195041
+              "orbitRadius": 77,
+              "orbitAngle": 0.19890983327867567,
+              "inclination": 0.023188456753268836,
+              "ascendingNode": 0.1963870486059964
             },
             {
               "id": "gal-2-sys-182-p1-m1",
@@ -1311,36 +1597,58 @@
               "name": "Alstess I a",
               "kind": "moon",
               "parentPlanetId": "gal-2-sys-182-p1",
-              "classId": "regular",
+              "classId": "irregular",
               "variantId": "airless",
               "hostStarId": "gal-2-sys-182-s1",
-              "habitability": 5,
-              "slots": 6,
+              "habitability": 12,
+              "slots": 2,
               "deposits": {
-                "ore": 2.19
+                "ore": 2.31
               },
               "orbitRadius": 16,
-              "orbitAngle": 4.001784626483908,
-              "inclination": -0.06523845707997679,
-              "ascendingNode": 0.0806248210217017
+              "orbitAngle": 2.617275926562126,
+              "inclination": -0.0548993153963238,
+              "ascendingNode": 3.754340540244499
             },
             {
               "id": "gal-2-sys-182-p2",
               "systemId": "gal-2-sys-182",
               "name": "Alstess II",
               "kind": "planet",
-              "classId": "super_earth",
-              "variantId": "oceanic",
-              "hostStarId": "gal-2-sys-182-s1",
-              "habitability": 42,
-              "slots": 18,
+              "classId": "dwarf",
+              "variantId": "volcanic",
+              "hostStarId": "gal-2-sys-182-s2",
+              "habitability": 15,
+              "slots": 4,
               "deposits": {
-                "food": 2.3
+                "ore": 2.5,
+                "energy": 2.66,
+                "food": 0.35
               },
               "orbitRadius": 126,
-              "orbitAngle": 0.19338133858325218,
-              "inclination": -0.08135378386359661,
-              "ascendingNode": 4.883556930514008
+              "orbitAngle": 5.255576063266994,
+              "inclination": -0.07000254874583334,
+              "ascendingNode": 4.57684820131005
+            },
+            {
+              "id": "gal-2-sys-182-p2-m1",
+              "systemId": "gal-2-sys-182",
+              "name": "Alstess II a",
+              "kind": "moon",
+              "parentPlanetId": "gal-2-sys-182-p2",
+              "classId": "regular",
+              "variantId": "airless",
+              "hostStarId": "gal-2-sys-182-s2",
+              "habitability": 16,
+              "slots": 7,
+              "deposits": {
+                "ore": 1.91,
+                "energy": 1.55
+              },
+              "orbitRadius": 16,
+              "orbitAngle": 3.134536914844239,
+              "inclination": 0.03304762921761721,
+              "ascendingNode": 6.16587840195041
             },
             {
               "id": "gal-2-sys-182-p3",
@@ -1349,77 +1657,68 @@
               "kind": "planet",
               "classId": "rocky",
               "variantId": "oceanic",
-              "hostStarId": "gal-2-sys-182-s1",
-              "habitability": 64,
-              "slots": 12,
+              "hostStarId": "gal-2-sys-182-s2",
+              "habitability": 75,
+              "slots": 8,
               "deposits": {
-                "food": 2.34
+                "food": 2.63,
+                "energy": 1.38
               },
-              "orbitRadius": 183,
+              "orbitRadius": 178,
+              "orbitAngle": 3.4489107028029458,
+              "inclination": 0.019417130411602555,
+              "ascendingNode": 3.078905684940215
+            },
+            {
+              "id": "gal-2-sys-182-p3-m1",
+              "systemId": "gal-2-sys-182",
+              "name": "Alstess III a",
+              "kind": "moon",
+              "parentPlanetId": "gal-2-sys-182-p3",
+              "classId": "regular",
+              "variantId": "airless",
+              "hostStarId": "gal-2-sys-182-s2",
+              "habitability": 9,
+              "slots": 6,
+              "deposits": {
+                "ore": 1.74,
+                "energy": 1.56
+              },
+              "orbitRadius": 16,
+              "orbitAngle": 0.7598345564906107,
+              "inclination": 0.05872052544727921,
+              "ascendingNode": 0.1533491046800245
+            },
+            {
+              "id": "gal-2-sys-182-p3-m2",
+              "systemId": "gal-2-sys-182",
+              "name": "Alstess III b",
+              "kind": "moon",
+              "parentPlanetId": "gal-2-sys-182-p3",
+              "classId": "regular",
+              "variantId": "airless",
+              "hostStarId": "gal-2-sys-182-s2",
+              "habitability": 9,
+              "slots": 7,
+              "deposits": {
+                "ore": 2.51
+              },
+              "orbitRadius": 26,
               "orbitAngle": 2.8203865349570894,
               "inclination": 0.06435129807796329,
               "ascendingNode": 5.429306618699108
-            },
-            {
-              "id": "gal-2-sys-182-p4",
-              "systemId": "gal-2-sys-182",
-              "name": "Alstess IV",
-              "kind": "planet",
-              "classId": "rocky",
-              "variantId": "barren",
-              "hostStarId": "gal-2-sys-182-s1",
-              "habitability": 10,
-              "slots": 6,
-              "deposits": {
-                "ore": 2.32
-              },
-              "orbitRadius": 239,
-              "orbitAngle": 2.632550138657226,
-              "inclination": 0.1250547997187823,
-              "ascendingNode": 5.699465249627621
-            },
-            {
-              "id": "gal-2-sys-182-p4-m1",
-              "systemId": "gal-2-sys-182",
-              "name": "Alstess IV a",
-              "kind": "moon",
-              "parentPlanetId": "gal-2-sys-182-p4",
-              "classId": "irregular",
-              "variantId": "airless",
-              "hostStarId": "gal-2-sys-182-s1",
-              "habitability": 6,
-              "slots": 1,
-              "deposits": {
-                "ore": 1.76
-              },
-              "orbitRadius": 16,
-              "orbitAngle": 5.306407625725603,
-              "inclination": -0.09474767278879881,
-              "ascendingNode": 3.3296735254444734
             }
           ],
-          "belts": [
-            {
-              "id": "gal-2-sys-182-b1",
-              "systemId": "gal-2-sys-182",
-              "name": "Ceinture Alstess I",
-              "orbitRadius": 322,
-              "inclination": -0.015831222524866462,
-              "ascendingNode": 3.5363982349183964,
-              "deposits": {
-                "ore": 3.12
-              }
-            }
-          ],
+          "belts": [],
           "stars": [
             {
               "id": "gal-2-sys-182-s1",
               "systemId": "gal-2-sys-182",
               "name": "Alstess A",
               "kind": "star",
-              "typeId": "orange_dwarf",
+              "typeId": "brown_dwarf",
               "rank": 0,
-              "mass": 0.601,
+              "mass": 0.069,
               "orbitRadius": 0,
               "orbitAngle": 0,
               "inclination": 0,
@@ -1430,21 +1729,28 @@
               "systemId": "gal-2-sys-182",
               "name": "Alstess B",
               "kind": "star",
-              "typeId": "red_dwarf",
+              "typeId": "orange_dwarf",
               "rank": 1,
-              "mass": 0.418,
-              "orbitRadius": 11,
-              "orbitAngle": 0.060198113435911305,
-              "inclination": 0.1009352727793157,
-              "ascendingNode": 1.6754627011066505
+              "mass": 0.771,
+              "orbitRadius": 745,
+              "orbitAngle": 4.749664258855372,
+              "inclination": 0.02941472630482167,
+              "ascendingNode": 4.934994622357482
+            },
+            {
+              "id": "gal-2-sys-182-s3",
+              "systemId": "gal-2-sys-182",
+              "name": "Alstess C",
+              "kind": "star",
+              "typeId": "red_dwarf",
+              "rank": 2,
+              "mass": 0.408,
+              "orbitRadius": 743,
+              "orbitAngle": 2.105927861514142,
+              "inclination": -0.09767288959119469,
+              "ascendingNode": 6.019505385978196
             }
-          ],
-          "station": {
-            "id": "gal-2-sys-182-st",
-            "systemId": "gal-2-sys-182",
-            "factionId": "ostara_league",
-            "name": "Comptoir Alstess"
-          }
+          ]
         },
         {
           "id": "gal-2-drift-2",
@@ -1457,10 +1763,10 @@
               "id": "gal-2-drift-2-s1",
               "systemId": "gal-2-drift-2",
               "name": "Borsor A",
-              "kind": "blackHole",
-              "typeId": "dormant",
+              "kind": "whiteHole",
+              "typeId": "echo",
               "rank": 0,
-              "mass": 10.25,
+              "mass": 9.2,
               "orbitRadius": 0,
               "orbitAngle": 0,
               "inclination": 0,

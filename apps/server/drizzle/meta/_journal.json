@@ -197,6 +197,13 @@
       "when": 1788798585716,
       "tag": "0027_early_runaways",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1788803522018,
+      "tag": "0028_pretty_king_bedlam",
+      "breakpoints": true
     }
   ]
 }

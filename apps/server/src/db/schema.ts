@@ -212,6 +212,13 @@ export const universeBelts = pgTable("universe_belts", {
   /** Position dans `system.belts`. */
   beltIndex: integer("belt_index").notNull(),
   name: text("name").notNull(),
+  /**
+   * Composition (chantier 45.3) — la première fois qu'une ceinture porte un type.
+   *
+   * Le défaut vaut pour les ceintures matérialisées avant ce chantier : silicatée, la plus
+   * banale, et celle dont la richesse encadre celle qu'elles avaient déjà.
+   */
+  typeId: text("type_id").notNull().default("silicate"),
   orbitRadius: doublePrecision("orbit_radius").notNull(),
   inclination: doublePrecision("inclination").notNull().default(0),
   ascendingNode: doublePrecision("ascending_node").notNull().default(0),

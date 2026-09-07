@@ -142,11 +142,31 @@ export interface Planet {
   ascendingNode: number;
 }
 
+/**
+ * Composition d'une ceinture d'astéroïdes (chantier 45.3).
+ *
+ * Un seul axe, à la différence des corps : une ceinture n'a ni gravité, ni atmosphère, ni
+ * température de surface qui compte. Ce qui la distingue est sa composition, qui est à la
+ * fois sa structure et son environnement.
+ */
+export const BELT_TYPES = [
+  "metallic",
+  "silicate",
+  "carbonaceous",
+  "icy",
+  "trojan",
+  "debris",
+] as const;
+
+export type BeltType = (typeof BELT_TYPES)[number];
+
 /** Ceinture d'astéroïdes — décor riche en gisements (exploitation minière : v2). */
 export interface AsteroidBelt {
   id: string;
   systemId: string;
   name: string;
+  /** Composition (`content/astro/belt-types.ts`). Chaîne ouverte, repli générique obligatoire. */
+  typeId: string;
   orbitRadius: number;
   /** Inclinaison du plan de la ceinture, en radians (chantier 31.1). */
   inclination: number;

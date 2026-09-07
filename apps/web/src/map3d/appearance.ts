@@ -2,6 +2,7 @@ import {
   blackHoleType,
   bodyEnvironment,
   bodyStructure,
+  beltType,
   starClass,
   whiteHoleType,
   type BodyRef,
@@ -161,25 +162,15 @@ export function starAppearance(typeId: string): StarAppearance {
 }
 
 /**
- * Teinte d'une ceinture selon ce qu'on y extrait (chantier 35.10). Une ceinture de fer ne
- * doit pas ressembler à une ceinture de glace : c'est la seule information qu'elle porte, et
- * elle était invisible.
+ * Teinte d'une ceinture, lue de sa COMPOSITION depuis le chantier 45.3.
+ *
+ * Elle se déduisait du gisement dominant, ce qui ne pouvait dire qu'une chose : « du
+ * minerai ». Toutes les ceintures sortaient donc de la même couleur, puisque toutes en
+ * portaient. Le type dit ce dont elles sont faites, et une glacée ne ressemble plus à un
+ * champ de débris.
  */
-const ORES: Record<string, string> = {
-  ore: "#8a7458",
-  metals: "#8f9aa6",
-  components: "#9a86c4",
-  energy: "#c4a86a",
-  food: "#7e9463",
-};
-
-export function asteroidTint(
-  deposits: Partial<Record<ResourceId, number>>,
-): string {
-  const best = Object.entries(deposits).sort(
-    (a, b) => (b[1] ?? 0) - (a[1] ?? 0),
-  )[0];
-  return (best && ORES[best[0]]) ?? "#6b5a44";
+export function asteroidTint(belt: { typeId: string }): string {
+  return beltType(belt.typeId).tint;
 }
 
 /**

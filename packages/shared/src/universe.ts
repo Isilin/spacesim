@@ -9,6 +9,7 @@ import {
   UNIVERSE_DISC_THICKNESS,
 } from "./constants.js";
 import { BLACK_HOLE_TYPES } from "./content/astro/black-hole-types.js";
+import { beltType, beltTypesForZone } from "./content/astro/belt-types.js";
 import {
   GALAXY_TYPE_WEIGHTS,
   galaxyType,
@@ -84,7 +85,7 @@ import type {
  * bumper cette version vont ensemble, dans le même commit. Les galaxies déjà
  * matérialisées en DB gardent la version qui les a produites et ne changent jamais.
  */
-export const GENERATOR_VERSION = 10;
+export const GENERATOR_VERSION = 11;
 
 /** Part des systèmes accueillant un comptoir commercial PNJ. */
 const TRADING_POST_PROBABILITY = 0.35;
@@ -318,9 +319,25 @@ function generateStars(
 
 /** Les gisements suivent l'ENVIRONNEMENT : c'est lui qui dit ce que la surface expose. */
 function generateDeposits(rng: Rng, ref: BodyRef, bonus = 1): Deposits {
+  return rollDeposits(rng, bodyEnvironment(ref).depositTendencies, bonus);
+}
+
+/**
+ * Le tirage lui-même, partagé par les corps et les ceintures : les deux portent la même forme
+ * de tendance — [ressource, probabilité, min, max] — sans partager de catalogue.
+ */
+function rollDeposits(
+  rng: Rng,
+  tendencies: readonly (readonly [
+    "ore" | "energy" | "food",
+    number,
+    number,
+    number,
+  ])[],
+  bonus = 1,
+): Deposits {
   const deposits: Deposits = {};
-  for (const [resource, prob, min, max] of bodyEnvironment(ref)
-    .depositTendencies) {
+  for (const [resource, prob, min, max] of tendencies) {
     if (rng() < prob) {
       deposits[resource] =
         Math.round((min + rng() * (max - min)) * bonus * 100) / 100;
@@ -544,15 +561,29 @@ function generateBodies(
   const belts: AsteroidBelt[] = [];
   const beltCount = randInt(rng, 0, 2);
   for (let i = 1; i <= beltCount; i++) {
+    const orbitRadius = 70 + count * 55 + i * 40 + randInt(rng, -10, 10);
+    // Même conditionnement que les planètes : c'est la ligne des glaces qui sépare une
+    // ceinture silicatée d'une ceinture glacée, comme la principale et celle de Kuiper.
+    const zone = zoneAt(
+      lightingFor(stars, stars[0]?.id, orbitRadius),
+      orbitRadius,
+    );
+    const table = beltTypesForZone(zone);
+    const typeId = table.length > 0 ? pickWeighted(rng, table) : "silicate";
+    const def = beltType(typeId);
     belts.push({
       id: `${system.id}-b${i}`,
       systemId: system.id,
       name: `Ceinture ${system.name} ${romanNumeral(i)}`,
-      orbitRadius: 70 + count * 55 + i * 40 + randInt(rng, -10, 10),
+      typeId,
+      orbitRadius,
       inclination: (rng() - 0.5) * 2 * MAX_INCLINATION,
       ascendingNode: rng() * Math.PI * 2,
       deposits: {
-        ore: Math.round((1.2 + rng() * 0.8) * depositBonus * 100) / 100,
+        // Le minerai reste à part des tendances : c'est lui que lit `beltRichness`, et le
+        // seul chiffre qu'un avant-poste minier voie jamais.
+        ore: Math.round(range(rng, def.richness) * depositBonus * 100) / 100,
+        ...rollDeposits(rng, def.depositTendencies, depositBonus),
       },
     });
   }

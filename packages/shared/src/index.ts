@@ -4,6 +4,8 @@ export {
   type PlanetClass,
   PLANET_VARIANTS,
   type PlanetVariant,
+  BELT_TYPES,
+  type BeltType,
   MOON_CLASSES,
   type MoonClass,
   MOON_VARIANTS,
@@ -332,6 +334,13 @@ export {
   bodyStructure,
   type BodyRef,
 } from "./content/astro/body-defs.js";
+export {
+  BELT_TYPE_DEFS,
+  beltType,
+  beltTypesForZone,
+  type BeltTypeDef,
+  type StaticBeltTypeDef,
+} from "./content/astro/belt-types.js";
 export {
   STAR_CLASS_IDS,
   STAR_CLASSES,

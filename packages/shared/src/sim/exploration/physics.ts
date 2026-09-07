@@ -1,5 +1,10 @@
-import type { CentralBody, OrbitZone } from "../../model/universe.js";
+import type {
+  AsteroidBelt,
+  CentralBody,
+  OrbitZone,
+} from "../../model/universe.js";
 import type { ResourceId } from "../../model/resources.js";
+import { beltType } from "../../content/astro/belt-types.js";
 import { blackHoleType } from "../../content/astro/black-hole-types.js";
 import { starClass } from "../../content/astro/star-classes.js";
 import { whiteHoleType } from "../../content/astro/white-hole-types.js";
@@ -499,9 +504,17 @@ export function astroYield(
  * Entre dans le coût de trajet **à l'arrivée**, jamais dans le poids d'une arête : le graphe
  * reste de la géométrie pure, sans quoi `travel.calibration.test.ts` cesserait de mesurer ce
  * qu'il mesure.
+ *
+ * Les ceintures comptent au même titre depuis le chantier 45.3 : un champ de débris récent
+ * est dangereux à traverser, et c'est le seul endroit où ce danger peut entrer. `geometry.ts`
+ * exclut délibérément les ceintures du repère de position — « un anneau n'a pas UNE
+ * position » — donc aucun coût de franchissement ne pourrait leur être attaché.
  */
-export function systemHazard(bodies: readonly CentralBody[]): number {
-  return bodies.reduce((worst, body) => {
+export function systemHazard(
+  bodies: readonly CentralBody[],
+  belts: readonly AsteroidBelt[] = [],
+): number {
+  const central = bodies.reduce((worst, body) => {
     const danger =
       body.kind === "star"
         ? starClass(body.typeId).radiation
@@ -510,6 +523,10 @@ export function systemHazard(bodies: readonly CentralBody[]): number {
           : whiteHoleType(body.typeId).hazard;
     return Math.max(worst, danger);
   }, 0);
+  return belts.reduce(
+    (worst, belt) => Math.max(worst, beltType(belt.typeId).hazard),
+    central,
+  );
 }
 
 /**

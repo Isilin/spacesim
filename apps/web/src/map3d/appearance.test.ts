@@ -49,10 +49,10 @@ describe("repli générique du registre d'apparence", () => {
     }
   });
 
-  it("rend une teinte pour une faction et un gisement inconnus", () => {
+  it("rend une teinte pour une faction et une ceinture inconnues", () => {
     expect(factionTint("faction-inventée")).toMatch(/^#/);
-    expect(asteroidTint({})).toMatch(/^#/);
-    expect(asteroidTint({ science: 2 })).toMatch(/^#/);
+    for (const value of unknown)
+      expect(asteroidTint({ typeId: value })).toMatch(/^#/);
   });
 
   it("distingue réellement ce qu'il connaît", () => {
@@ -61,6 +61,8 @@ describe("repli générique du registre d'apparence", () => {
     expect(starAppearance("red_dwarf").radius).not.toBe(
       starAppearance("supergiant").radius,
     );
-    expect(asteroidTint({ ore: 2 })).not.toBe(asteroidTint({ metals: 2 }));
+    expect(asteroidTint({ typeId: "icy" })).not.toBe(
+      asteroidTint({ typeId: "debris" }),
+    );
   });
 });
