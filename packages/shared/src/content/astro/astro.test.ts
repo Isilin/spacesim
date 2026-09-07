@@ -99,6 +99,27 @@ describe("singularités : emplacements et poids", () => {
     }
   });
 
+  it("un trou blanc errant reste plus rare qu'un trou noir errant", () => {
+    // Le catalogue annonce la fontaine blanche comme « le plus rare que le joueur puisse
+    // rencontrer ». Les premiers poids disaient l'inverse — dix-huit fontaines pour cinq
+    // trous noirs sur un univers neuf, mesuré en base — et ça ne se voyait ni dans les
+    // types ni dans les tests, seulement à l'exécution.
+    //
+    // Le rapport a une seconde conséquence : un pont exige une fontaine ET un trou noir.
+    // La face rare doit être la fontaine, sinon la plupart d'entre elles restent orphelines
+    // et les ponts se raréfient sans qu'on l'ait décidé.
+    const weightOf = (
+      defs: { placements: readonly string[]; weights: { drifter?: number } }[],
+    ) =>
+      defs
+        .filter((d) => d.placements.includes("drifter"))
+        .reduce((sum, d) => sum + (d.weights.drifter ?? 0), 0);
+
+    const black = weightOf(Object.values(BLACK_HOLE_TYPES));
+    const white = weightOf(Object.values(WHITE_HOLE_TYPES));
+    expect(black).toBeGreaterThan(white * 2);
+  });
+
   it("aucun trou blanc au cœur d'une galaxie", () => {
     // Un bulbe accrète, il n'éjecte pas. La règle est dans la doc du catalogue ; ici elle
     // devient vérifiable.

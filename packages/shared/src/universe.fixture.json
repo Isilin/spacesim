@@ -1,5 +1,5 @@
 {
-  "generatorVersion": 5,
+  "generatorVersion": 6,
   "seed": "fixture-seed",
   "galaxies": [
     {
@@ -20,7 +20,7 @@
       "stationCount": 179,
       "drifterCount": 6,
       "bridgeCount": 1,
-      "fingerprint": "696d4e41",
+      "fingerprint": "6a119b23",
       "sample": [
         {
           "id": "gal-0-sys-0",
@@ -297,10 +297,10 @@
               "id": "gal-0-drift-5-s1",
               "systemId": "gal-0-drift-5",
               "name": "Ithris A",
-              "kind": "whiteHole",
-              "typeId": "nascent",
+              "kind": "blackHole",
+              "typeId": "dormant",
               "rank": 0,
-              "mass": 5.3,
+              "mass": 12.34,
               "orbitRadius": 0,
               "orbitAngle": 0,
               "inclination": 0,
@@ -329,8 +329,8 @@
       "beltCount": 469,
       "stationCount": 155,
       "drifterCount": 7,
-      "bridgeCount": 2,
-      "fingerprint": "2599f671",
+      "bridgeCount": 1,
+      "fingerprint": "29a6d447",
       "sample": [
         {
           "id": "gal-1-sys-0",
@@ -625,9 +625,9 @@
               "systemId": "gal-1-drift-6",
               "name": "Oststum A",
               "kind": "blackHole",
-              "typeId": "dormant",
+              "typeId": "primordial",
               "rank": 0,
-              "mass": 9.52,
+              "mass": 0.38,
               "orbitRadius": 0,
               "orbitAngle": 0,
               "inclination": 0,
@@ -656,8 +656,8 @@
       "beltCount": 370,
       "stationCount": 116,
       "drifterCount": 3,
-      "bridgeCount": 1,
-      "fingerprint": "9db1c4dc",
+      "bridgeCount": 0,
+      "fingerprint": "c4a2a0e4",
       "sample": [
         {
           "id": "gal-2-sys-0",
@@ -827,10 +827,10 @@
               "id": "gal-2-drift-2-s1",
               "systemId": "gal-2-drift-2",
               "name": "Borsor A",
-              "kind": "whiteHole",
-              "typeId": "nascent",
+              "kind": "blackHole",
+              "typeId": "dormant",
               "rank": 0,
-              "mass": 7.33,
+              "mass": 18.09,
               "orbitRadius": 0,
               "orbitAngle": 0,
               "inclination": 0,

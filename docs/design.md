@@ -3114,6 +3114,104 @@ dépasse cinq secondes. Ce qui est vérifiable, et vérifié, est le risque du g
 recule l'horloge en base d'une heure, recharge, et exige que le rattrapage rende ses
 720 ticks. La CI tranche pour le reste.
 
+## Chantier 45 — Le ciel devient une donnée de jeu (07/09/2026)
+
+**Question de départ.** Un joueur qui traverse cinq cents systèmes voit-il autre chose que la
+même chose ? Le ciel comptait **seize types en tout** : six types de planètes en une
+énumération qui confondait une taille et un climat, six classes d'étoiles dérivées et
+explicitement cosmétiques, quatre morphologies de galaxie, une étoile implicite par système,
+des ceintures d'astéroïdes sans **aucun** champ de type, deux notions de trou noir sans
+parenté, et pas de trou blanc.
+
+La demande n'était pas « plus de types » mais « des types qui comptent ». C'est ce qui a fait
+basculer l'ADR [0016](adr/0016-classes-d-etoiles-derivees.md), qui s'était réservé le droit de
+décider ce point : « si une classe devait un jour modifier un rendement ou une portée, il
+faudrait la persister ». L'ADR [0021](adr/0021-le-ciel-devient-une-donnee-de-jeu.md) la
+remplace et renverse au passage la décision 3 de l'ADR
+[0018](adr/0018-morphologie-de-galaxie-structurante.md).
+
+Trois paliers : socle et galaxies et singularités (45.1), étoiles et systèmes (45.2 — la chaîne
+physique), corps et bascule CMS (45.3).
+
+### Palier 1 — socle, galaxies, singularités
+
+- **45.1** Trois catalogues dans `content/astro/` — huit types de galaxies, sept de trous
+  noirs, quatre de trous blancs. Chaque définition porte la frontière de l'ADR 0021 dans sa
+  structure : entrées de génération gelées d'un côté, effets et habillage éditables de l'autre.
+  Aucun cas particulier, c'est ce qui la rend tenable.
+- **45.2** Le type de galaxie précède et **contraint** la taille, au lieu d'en être déduit. La
+  galaxie mère tire parmi les seuls types qui admettent ses 520 systèmes.
+- **45.3** `CentralBody` : un système compte un à quatre corps centraux, étoiles ou
+  singularités. Vide au palier 1, sauf pour les errants.
+- **45.4** Un errant est un **système** sans étoile ni monde, posé dans le halo. Ce choix lui
+  donne gratuitement le graphe de sauts, la carte, la base et le brouillard : aucune machinerie
+  parallèle.
+- **45.5** Les ponts d'Einstein-Rosen apparient une fontaine blanche à un trou noir de la même
+  galaxie, à une distance en **sauts** qui tombe dans la portée du type. Nommés ainsi parce que
+  `parentIndex` emploie déjà « trou de ver » pour l'arbre inter-galactique.
+- **45.6** Migration 0025 : `type_id` sur les galaxies, tables `universe_stars` et
+  `universe_bridges`.
+- **45.7** Le brouillard vide `stars` sur un système inexploré, au même titre que `planets` :
+  la variété du ciel reste une récompense d'exploration.
+- **45.8** Au palier univers, la teinte d'une galaxie vient de son type quand aucun état n'est
+  à signaler. Le cœur galactique lit sa couleur du `coreClassId` de sa galaxie.
+
+### Ce que la mesure a démenti
+
+**L'échelle d'orbites est fausse, et la physique le dit.** La zone habitable réelle vaut
+`0,95√L` à `1,67√L` UA. Le générateur pose les orbites à `70 + (i−1)×55` **quelle que soit
+l'étoile**. Pour une naine rouge (`L ≈ 0,015`) la zone habitable tombe à 0,12–0,20 UA, très en
+deçà de la première orbite. Sans correction, **aucune naine rouge n'aurait de monde habitable**
+— et elles sont 76 % des étoiles. Le palier 2 pose donc les orbites *relativement* à la zone
+habitable, et sépare distance physique et distance de scène.
+
+**Trois de mes huit morphologies rendaient la même forme.** La branche `arms === 0` de
+`generatePositions` ne lisait ni `bar` ni `scatter` : elliptique, naine et lenticulaire
+sortaient identiques. `scatter` y vaut désormais aplatissement — sphéroïde à 1, disque épais à
+0,3. Le défaut ne se voyait dans aucun type et dans aucun test.
+
+**Les fontaines blanches étaient quatre fois trop nombreuses.** Mesuré en base sur un univers
+neuf : dix-huit fontaines pour cinq trous noirs errants, alors que le catalogue annonce la
+fontaine comme « le plus rare que le joueur puisse rencontrer ». Le rapport bridait aussi les
+ponts, chacun exigeant un trou noir. Rien dans les types ni dans les tests ne le disait — seule
+l'exécution. Poids inversés, et un test qui verrouille désormais l'intention.
+
+**`JUMP_REFERENCE_LENGTH` : 205 → 174.** Le mélange de morphologies ayant changé, la longueur
+d'arête moyenne est tombée de 205 à 157 (deux seeds indépendantes) et le rapport coût/sauts à
+0,851. La constante ne suit pas la moyenne directement — Dijkstra pondéré ne prend pas le
+chemin du moins de sauts.
+
+### Ce que ce chantier a appris sur la vérification
+
+**Un test peut cesser de mesurer ce qu'il croit sans jamais casser.** « Le condensé divise par
+trois » était vrai quand une galaxie sur quatre pesait un quart du contenu. Les tailles étant
+désormais bornées par le type, la galaxie mère pèse près d'un tiers de l'univers à elle seule :
+le facteur trois devenait inatteignable par arithmétique, sans que le condensé ait rien perdu.
+Il vérifie maintenant sa vraie promesse — les galaxies hors de portée coûtent moins d'un
+dixième de leur version complète. Verrou plus serré, pas plus lâche.
+
+**Un défaut latent n'est pas un défaut.** `galaxyMorphologyOf` lisait `galaxy.systems.length`
+au lieu de `systemCountOf` : une galaxie condensée aurait résolu la mauvaise morphologie. La
+fonction n'avait aucun appelant de production. Persister le type l'a rendu impossible plutôt
+que corrigé — c'est moins cher, et ça ne laisse pas le piège en place.
+
+**La base a trouvé ce que les tests ne cherchaient pas.** Le déséquilibre des fontaines et la
+FK manquante dans l'ordre de purge sont apparus en faisant tourner un univers neuf, pas en
+lisant du code. Les catalogues étaient cohérents, typés et testés ; ils étaient aussi
+déséquilibrés.
+
+### Relevés (palier 1)
+
+| | avant | après |
+|---|---|---|
+| Types astronomiques | 16 | 30 (57 à la fin du chantier) |
+| Morphologies de galaxie | 4, dérivées | 8, persistées |
+| Formes de galaxie réellement distinctes | 4 | 8 |
+| Singularités par galaxie | 1 (le cœur) | 1 + 3 à 7 errants |
+| Ponts par galaxie | — | ~1 |
+| Longueur d'arête moyenne | 205 | 157 |
+| `JUMP_REFERENCE_LENGTH` | 205 | 174 |
+
 ## Chantier 46 — vite 8, et pourquoi deux montées n'étaient pas des bumps (06/09/2026, corrigé le 08/09/2026)
 
 Planification. Ouvert par le tri des PR Dependabot du 06/09/2026 : deux d'entre elles ne

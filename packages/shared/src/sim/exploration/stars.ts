@@ -1,4 +1,4 @@
-import type { Galaxy, StarSystem } from "../../model/universe.js";
+import { starsOf, type StarSystem } from "../../model/universe.js";
 import { createRng } from "../../rng.js";
 
 /**
@@ -84,6 +84,24 @@ const WHITE_DWARF_SHARE = 0.26;
  * plus banale : ce que le joueur n'a pas visité ne doit pas lui annoncer un trou noir.
  */
 export function starClassOf(system: StarSystem): StarClass {
+  // Un corps central PERSISTÉ fait autorité sur la dérivation (chantier 45.1).
+  //
+  // C'est le cas des errants dès le palier 1, et ce sera celui de tous les systèmes au
+  // palier 2 — moment où cette fonction disparaîtra. Sans cette lecture, un errant n'a
+  // aucune planète et la dérivation le rendait « mainSequence » : une étoile ordinaire là
+  // où il n'y en a pas.
+  //
+  // Les deux natures de singularité rendent `"blackHole"`, faute de mieux : `StarClass` est
+  // l'énumération à six valeurs du chantier 35, et elle n'a pas de case pour une fontaine
+  // blanche. Ce que ce repli garantit est le seul point qui compte ici — `isDarkStar` reste
+  // vrai, donc le système ne peint pas d'étoile. Le palier 2 lui rendra sa vraie apparence.
+  const central = starsOf(system)[0];
+  if (central) {
+    return central.kind === "star"
+      ? (central.typeId as StarClass)
+      : "blackHole";
+  }
+
   const planets = system.planets;
   if (planets.length === 0) return "mainSequence";
 
@@ -128,9 +146,9 @@ export function isDarkStar(starClass: StarClass): boolean {
  *
  * C'est le repère où vit déjà le rayon du disque (`GALAXY_RADIUS_PER_ROOT_SYSTEM × √n`) et
  * celui que le client retrouve par `systemScenePosition`. Rendre ici une grandeur sans
- * dimension obligerait le rendu à redéclarer la constante 97 de son côté — le doublon que
- * `galaxyAppearance` a déjà créé entre ce fichier et `apps/web/src/map3d/appearance.ts`, et
- * qu'il ne faut pas reproduire.
+ * dimension obligerait le rendu à redéclarer la constante 97 de son côté — exactement le
+ * doublon que `galaxyAppearance` avait créé entre ce fichier et `apps/web/src/map3d/
+ * appearance.ts`, et que le chantier 45 vient de supprimer.
  *
  * Dérivé, jamais persisté, comme tout ce fichier : le seul appui est `systemCountOf`, qui vaut
  * aussi sur une galaxie condensée. Une galaxie hors de portée montre donc son cœur pendant que
