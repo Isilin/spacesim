@@ -3,6 +3,7 @@ import {
   GENERATOR_VERSION,
   galaxyIndexOfId,
   type AsteroidBelt,
+  type CentralBody,
   type Galaxy,
   type Planet,
   type PlanetType,
@@ -80,6 +81,7 @@ function galaxyRows(galaxy: Galaxy, gameId: string, now: number) {
       x: galaxy.x,
       y: galaxy.y,
       z: galaxy.z,
+      typeId: galaxy.typeId,
       depositBonus: galaxy.depositBonus,
       anchorSystemId: galaxy.anchorSystemId,
       parentGalaxyIndex: galaxy.parentIndex ?? null,
@@ -137,11 +139,32 @@ function galaxyRows(galaxy: Galaxy, gameId: string, now: number) {
           ]
         : [],
     ),
+    stars: galaxy.systems.flatMap((system) =>
+      (system.stars ?? []).map((star, starIndex) => ({
+        id: star.id,
+        systemId: system.id,
+        starIndex,
+        name: star.name,
+        kind: star.kind,
+        typeId: star.typeId,
+        mass: star.mass,
+        orbitRadius: star.orbitRadius,
+        orbitAngle: star.orbitAngle,
+        inclination: star.inclination,
+        ascendingNode: star.ascendingNode,
+      })),
+    ),
     links: galaxy.links.map(([aSystemId, bSystemId], linkIndex) => ({
       galaxyId: galaxy.id,
       aSystemId,
       bSystemId,
       linkIndex,
+    })),
+    bridges: galaxy.bridges.map(([aSystemId, bSystemId], bridgeIndex) => ({
+      galaxyId: galaxy.id,
+      aSystemId,
+      bSystemId,
+      bridgeIndex,
     })),
   };
 }
@@ -174,12 +197,17 @@ export async function appendGalaxies(
       if (exists.length > 0) continue;
 
       const rows = galaxyRows(galaxy, gameId, now);
+      // Ordre imposé par les FK réelles (chantier 20.3) : galaxie, puis systèmes, puis
+      // tout ce qui les référence. Les corps centraux et les ponts s'insèrent après les
+      // systèmes pour la même raison que les liens.
       await tx.insert(schema.universeGalaxies).values(rows.galaxy);
       await insertChunked(tx, schema.universeSystems, rows.systems);
+      await insertChunked(tx, schema.universeStars, rows.stars);
       await insertChunked(tx, schema.universeBodies, rows.bodies);
       await insertChunked(tx, schema.universeBelts, rows.belts);
       await insertChunked(tx, schema.universeTradingPosts, rows.comptoirs);
       await insertChunked(tx, schema.universeLinks, rows.links);
+      await insertChunked(tx, schema.universeBridges, rows.bridges);
     }
     await tx
       .update(schema.games)
@@ -213,15 +241,26 @@ export async function loadUniverse(
   ).sort((a, b) => a.index - b.index);
   if (galaxyRowsDb.length === 0) return null;
 
-  const [systemRows, bodyRows, beltRows, tradingPostRows, linkRows] =
-    await Promise.all([
-      db.select().from(schema.universeSystems),
-      db.select().from(schema.universeBodies),
-      db.select().from(schema.universeBelts),
-      db.select().from(schema.universeTradingPosts),
-      db.select().from(schema.universeLinks),
-    ]);
+  const [
+    systemRows,
+    starRows,
+    bodyRows,
+    beltRows,
+    tradingPostRows,
+    linkRows,
+    bridgeRows,
+  ] = await Promise.all([
+    db.select().from(schema.universeSystems),
+    db.select().from(schema.universeStars),
+    db.select().from(schema.universeBodies),
+    db.select().from(schema.universeBelts),
+    db.select().from(schema.universeTradingPosts),
+    db.select().from(schema.universeLinks),
+    db.select().from(schema.universeBridges),
+  ]);
 
+  const starsBySystem = groupBy(starRows, (r) => r.systemId);
+  const bridgesByGalaxy = groupBy(bridgeRows, (r) => r.galaxyId);
   const bodiesBySystem = groupBy(bodyRows, (r) => r.systemId);
   const beltsBySystem = groupBy(beltRows, (r) => r.systemId);
   const tradingPostBySystem = new Map(
@@ -273,12 +312,32 @@ export async function loadUniverse(
               name: tradingPostRow.name,
             }
           : undefined;
+        // `kind` et `typeId` restent des chaînes ouvertes : chaque catalogue de
+        // `content/astro/` porte un repli générique, ce qui rend inutile le cast non
+        // vérifié qu'il aurait fallu sinon (voir `body.type` juste au-dessus, que le
+        // palier 3 fera disparaître pour la même raison).
+        const stars: CentralBody[] = (starsBySystem.get(systemRow.id) ?? [])
+          .sort((a, b) => a.starIndex - b.starIndex)
+          .map((star) => ({
+            id: star.id,
+            systemId: systemRow.id,
+            name: star.name,
+            kind: star.kind as CentralBody["kind"],
+            typeId: star.typeId,
+            rank: star.starIndex,
+            mass: star.mass,
+            orbitRadius: star.orbitRadius,
+            orbitAngle: star.orbitAngle,
+            inclination: star.inclination,
+            ascendingNode: star.ascendingNode,
+          }));
         return {
           id: systemRow.id,
           name: systemRow.name,
           x: systemRow.x,
           y: systemRow.y,
           z: systemRow.z,
+          ...(stars.length > 0 ? { stars } : {}),
           planets,
           belts,
           ...(comptoir ? { station: comptoir } : {}),
@@ -290,10 +349,14 @@ export async function loadUniverse(
       x: galaxyRow.x,
       y: galaxyRow.y,
       z: galaxyRow.z,
+      typeId: galaxyRow.typeId,
       systems,
       links: (linksByGalaxy.get(galaxyRow.id) ?? [])
         .sort((a, b) => a.linkIndex - b.linkIndex)
         .map((l) => [l.aSystemId, l.bSystemId] as [string, string]),
+      bridges: (bridgesByGalaxy.get(galaxyRow.id) ?? [])
+        .sort((a, b) => a.bridgeIndex - b.bridgeIndex)
+        .map((b) => [b.aSystemId, b.bSystemId] as [string, string]),
       anchorSystemId: galaxyRow.anchorSystemId,
       depositBonus: galaxyRow.depositBonus,
       parentIndex: galaxyRow.parentGalaxyIndex,

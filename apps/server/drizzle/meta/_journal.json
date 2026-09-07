@@ -176,6 +176,13 @@
       "when": 1788177401440,
       "tag": "0024_sparkling_shatterstar",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1788724631320,
+      "tag": "0025_real_rockslide",
+      "breakpoints": true
     }
   ]
 }

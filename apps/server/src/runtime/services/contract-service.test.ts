@@ -210,13 +210,25 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     const accepterCreditsBeforeDelivery = homeColony(engine, accepter).resources
       .credits;
 
-    // Juste assez pour faire arriver CE convoi précis (le nombre de sauts, donc la durée,
-    // dépend de la seed — pas une avance à l'aveugle).
+    // On avance jusqu'à ce que le convoi arrive, plutôt que d'un nombre de ticks calculé
+    // depuis `arrivesAt`. La durée annoncée à l'acceptation ne couvre pas tout ce qui
+    // sépare l'acceptation de l'arrivée, et le nombre de sauts dépend de la seed : la
+    // marge fixe était juste ou insuffisante selon l'univers tiré, et le chantier 45 —
+    // qui a rendu les sauts plus chers et changé la géométrie des galaxies — l'a fait
+    // basculer du mauvais côté. Le plafond garde le test borné si rien n'arrive jamais.
     const durationS = Math.ceil(
       (mission!.arrivesAt - mission!.departedAt) / 1000,
     );
-    const ticksElapsed = Math.ceil((durationS + 5) / 5);
-    advanceTicks(engine, ticksElapsed);
+    const maxTicks = Math.ceil((durationS + 5) / 5) * 3 + 20;
+    let ticksElapsed = 0;
+    while (
+      homeColony(engine, issuer).orbitalResources.food <
+        issuerFoodBefore + 10 &&
+      ticksElapsed < maxTicks
+    ) {
+      advanceTicks(engine, 1);
+      ticksElapsed++;
+    }
 
     const issuerAfter = homeColony(engine, issuer);
     expect(issuerAfter.orbitalResources.food).toBe(issuerFoodBefore + 10);

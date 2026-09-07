@@ -47,6 +47,14 @@ export const universeGalaxies = pgTable("universe_galaxies", {
   y: integer("y").notNull(),
   /** Écart au plan de l'univers (chantier 31.4). */
   z: integer("z").notNull().default(0),
+  /**
+   * Type de galaxie (chantier 45.1) — id de `content/astro/galaxy-types.ts`.
+   *
+   * Première colonne d'un chantier qui en pose plusieurs : l'ADR 0021 fait des types
+   * astronomiques une donnée de jeu, donc quelque chose qui se persiste. Le défaut vaut
+   * pour les galaxies matérialisées avant ce chantier, qui n'en avaient pas.
+   */
+  typeId: text("type_id").notNull().default("spiral"),
   depositBonus: doublePrecision("deposit_bonus").notNull(),
   anchorSystemId: text("anchor_system_id").notNull(),
   /**
@@ -89,6 +97,66 @@ export const universeLinks = pgTable(
       .references(() => universeSystems.id),
     /** Position dans `galaxy.links`. */
     linkIndex: integer("link_index").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.aSystemId, t.bSystemId] })],
+);
+
+/**
+ * Corps centraux d'un système : étoiles, trous noirs, trous blancs (chantier 45.1).
+ *
+ * Une table plutôt qu'une colonne, parce qu'un système en compte un à quatre. `star_index`
+ * fige l'ordre comme le font `system_index` et `body_index` — le rang 0 est l'ancre, à
+ * l'origine du repère du système.
+ *
+ * `kind` dit dans quel catalogue lire `type_id` ; les deux restent du `text` nu, comme
+ * `universe_bodies.kind` et `.type` avant eux, et le repli générique de chaque accesseur
+ * remplace la validation qu'aucun `pgEnum` n'apporterait ici (le contenu devient éditable
+ * au palier 3, voir ADR 0021).
+ */
+export const universeStars = pgTable("universe_stars", {
+  /** "gal-7-sys-3-s1" */
+  id: text("id").primaryKey(),
+  systemId: text("system_id")
+    .notNull()
+    .references(() => universeSystems.id),
+  /** Position dans `system.stars` — 0 = ancre, puis compagnons par masse décroissante. */
+  starIndex: integer("star_index").notNull(),
+  name: text("name").notNull(),
+  /** "star" | "blackHole" | "whiteHole" */
+  kind: text("kind").notNull(),
+  typeId: text("type_id").notNull(),
+  /** Masses solaires. Tirée à la génération : la zone habitable en dérive. */
+  mass: doublePrecision("mass").notNull(),
+  /** Zéro pour l'ancre ; sinon orbite autour du barycentre. */
+  orbitRadius: doublePrecision("orbit_radius").notNull().default(0),
+  orbitAngle: doublePrecision("orbit_angle").notNull().default(0),
+  inclination: doublePrecision("inclination").notNull().default(0),
+  ascendingNode: doublePrecision("ascending_node").notNull().default(0),
+});
+
+/**
+ * Ponts d'Einstein-Rosen (chantier 45.1) : paires de systèmes reliées par une bouche de
+ * trou noir et sa fontaine blanche, à l'intérieur d'une même galaxie.
+ *
+ * Table jumelle de `universe_links` et non une extension de celle-ci : une arête de saut
+ * est pondérée par sa longueur 3D, un pont ne l'est pas, et `links` porte l'invariant de
+ * connexité. Les mélanger reviendrait à facturer un raccourci au prix de la distance qu'il
+ * annule.
+ */
+export const universeBridges = pgTable(
+  "universe_bridges",
+  {
+    galaxyId: text("galaxy_id")
+      .notNull()
+      .references(() => universeGalaxies.id),
+    aSystemId: text("a_system_id")
+      .notNull()
+      .references(() => universeSystems.id),
+    bSystemId: text("b_system_id")
+      .notNull()
+      .references(() => universeSystems.id),
+    /** Position dans `galaxy.bridges`. */
+    bridgeIndex: integer("bridge_index").notNull(),
   },
   (t) => [primaryKey({ columns: [t.aSystemId, t.bSystemId] })],
 );
