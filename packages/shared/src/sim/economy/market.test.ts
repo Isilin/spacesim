@@ -26,6 +26,8 @@ function stocksAt(value: number): Stocks {
     components: value,
     credits: 0,
     science: 0,
+    // Hors marché, comme les crédits et la science : un comptoir n'en cote jamais.
+    exotic: 0,
   };
 }
 

@@ -5,8 +5,9 @@ import {
   GALAXY_TYPES,
   type GalaxyTypeId,
 } from "./content/astro/galaxy-types.js";
+import { blackHoleType } from "./content/astro/black-hole-types.js";
 import { whiteHoleType } from "./content/astro/white-hole-types.js";
-import { isDrifter } from "./model/universe.js";
+import { isDrifter, starsOf } from "./model/universe.js";
 import {
   allPlanets,
   allSystems,
@@ -332,6 +333,80 @@ describe("singularités errantes et ponts (chantier 45.1)", () => {
           if (seen.has(other)) break;
         }
         expect(hops, `${a}/${b}`).toBeGreaterThanOrEqual(minHops);
+      }
+    }
+  });
+});
+
+describe("les quatre emplacements de singularité (chantier 45.5)", () => {
+  /**
+   * Le garde-fou qui manquait. Les catalogues déclarent depuis le palier 1 quatre
+   * emplacements — cœur de galaxie, corps central, compagnon, errant — et le générateur n'en
+   * produisait que deux : `generateStars` ne tirait que dans les tables d'étoiles. Mesuré sur
+   * 1427 systèmes avant correction : `primary` 0, `companion` 0.
+   *
+   * Rien ne le signalait. Les types étaient cohérents, `placements` et `weights` étaient lus
+   * par les tests de catalogue, et `microquasar` comme `torrent` n'existaient nulle part.
+   * Seul un comptage sur un univers généré pouvait le voir.
+   */
+  const universe = generateUniverse("emplacements-45-5", 6);
+  const systems = allSystems(universe);
+  const singular = (system: (typeof systems)[number]) =>
+    starsOf(system).filter((b) => b.kind !== "star");
+
+  it("chaque emplacement déclaré par un catalogue est réellement produit", () => {
+    const seen = new Set<string>();
+    for (const galaxy of universe.galaxies) {
+      // Le cœur n'est pas un corps central de système : il se lit sur la galaxie.
+      seen.add("core");
+      for (const system of galaxy.systems) {
+        if (isDrifter(system)) {
+          seen.add("drifter");
+          continue;
+        }
+        for (const body of singular(system)) {
+          seen.add(body.rank === 0 ? "primary" : "companion");
+        }
+      }
+    }
+    expect([...seen].sort()).toEqual([
+      "companion",
+      "core",
+      "drifter",
+      "primary",
+    ]);
+  });
+
+  it("une singularité dans un système reste rare, et le système reste un système", () => {
+    // Un trou noir primaire éteint son système : ses mondes gèlent. La part se paie donc
+    // directement sur `habitability.calibration.test.ts`, et doit rester marginale.
+    const inSystem = systems.filter(
+      (s) => !isDrifter(s) && singular(s).length > 0,
+    );
+    const share = inSystem.length / systems.length;
+    expect(share).toBeGreaterThan(0.005);
+    expect(share).toBeLessThan(0.06);
+    for (const system of inSystem) {
+      // Ce n'est pas un errant : il a des mondes, une place sur un bras, et se colonise.
+      expect(system.planets.length, system.id).toBeGreaterThan(0);
+    }
+  });
+
+  it("un type ne se pose que là où son catalogue l'autorise", () => {
+    for (const system of systems) {
+      for (const body of singular(system)) {
+        const def =
+          body.kind === "blackHole"
+            ? blackHoleType(body.typeId)
+            : whiteHoleType(body.typeId);
+        const placement = isDrifter(system)
+          ? "drifter"
+          : body.rank === 0
+            ? "primary"
+            : "companion";
+        expect(def.placements, `${system.id}/${body.typeId}`).toContain(
+          placement,
+        );
       }
     }
   });

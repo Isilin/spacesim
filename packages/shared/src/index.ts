@@ -614,6 +614,7 @@ export {
   surfaceTempC,
   habitabilityOf,
   astroYield,
+  exoticHarvest,
   systemHazard,
   hazardFuelMult,
   flareErosion,

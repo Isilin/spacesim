@@ -260,9 +260,21 @@ export function applyColonyTick(
   buildings: Record<string, BuildingDef> = BUILDINGS,
   balance: BalanceConstants = DEFAULT_BALANCE,
   astro: AstroYield = NEUTRAL_ASTRO,
+  /**
+   * Matière exotique récoltée ce tick (`exoticHarvest`), zéro par défaut.
+   *
+   * Un `number` déjà calculé et non le système : faire entrer le modèle d'univers dans le
+   * code d'industrie aurait élargi une signature du chemin chaud du tick pour une valeur qui
+   * se lit ailleurs. Même choix que pour `astro`.
+   */
+  exoticPerTick = 0,
 ): Colony {
   const resources = { ...colony.resources };
   const efficiency = workforceEfficiency(colony, buildings);
+
+  // Avant les bâtiments : elle ne dépend d'aucun intrant, d'aucun emploi et d'aucun gisement.
+  // C'est le ciel qui la donne, pas la colonie qui la fabrique.
+  if (exoticPerTick > 0) resources.exotic += exoticPerTick;
 
   for (const [buildingId, level] of Object.entries(colony.buildings) as [
     BuildingId,

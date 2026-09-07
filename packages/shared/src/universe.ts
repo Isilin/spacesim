@@ -8,7 +8,10 @@ import {
   UNIVERSE_CENTER_Y,
   UNIVERSE_DISC_THICKNESS,
 } from "./constants.js";
-import { BLACK_HOLE_TYPES } from "./content/astro/black-hole-types.js";
+import {
+  BLACK_HOLE_TYPES,
+  type BlackHolePlacement,
+} from "./content/astro/black-hole-types.js";
 import { beltType, beltTypesForZone } from "./content/astro/belt-types.js";
 import {
   GALAXY_TYPE_WEIGHTS,
@@ -85,7 +88,7 @@ import type {
  * bumper cette version vont ensemble, dans le même commit. Les galaxies déjà
  * matérialisées en DB gardent la version qui les a produites et ne changent jamais.
  */
-export const GENERATOR_VERSION = 11;
+export const GENERATOR_VERSION = 12;
 
 /** Part des systèmes accueillant un comptoir commercial PNJ. */
 const TRADING_POST_PROBABILITY = 0.35;
@@ -269,6 +272,22 @@ const STAR_COUNT_WEIGHTS: readonly (readonly [number, number])[] = [
 const TIGHT_BINARY = [10, 22] as const;
 const WIDE_BINARY = [420, 900] as const;
 
+/**
+ * Part des systèmes dont l'ancre est une singularité, et part des compagnons qui en sont une
+ * (chantier 45.5).
+ *
+ * Volontairement basses. Un trou noir primaire éteint son système : ses mondes gèlent et son
+ * habitabilité tombe au plancher, si bien qu'un pour cent de plus se paie directement sur la
+ * part de systèmes viables que `habitability.calibration.test.ts` verrouille. À 1,5 %, une
+ * galaxie de cinq cents systèmes en compte sept ou huit — assez pour que le joueur en
+ * rencontre, trop peu pour que l'expansion en souffre.
+ *
+ * Les errants restent la forme la plus fréquente : ce sont des objets à traverser, pas des
+ * systèmes à exploiter.
+ */
+const SINGULARITY_PRIMARY_SHARE = 0.015;
+const SINGULARITY_COMPANION_SHARE = 0.02;
+
 function romanNumeral(n: number): string {
   return ["I", "II", "III", "IV", "V", "VI"][n - 1] ?? String(n);
 }
@@ -294,6 +313,41 @@ function generateStars(
   const [sepMin, sepMax] = wide ? WIDE_BINARY : TIGHT_BINARY;
 
   for (let i = 0; i < count; i++) {
+    // Une singularité peut tenir la place d'une étoile (chantier 45.5). Les catalogues
+    // déclaraient ces deux emplacements depuis le palier 1 et le générateur ne les produisait
+    // pas : `microquasar` et `torrent` n'existaient nulle part, `stellar` non plus.
+    //
+    // Un système à trou noir primaire n'éclaire rien : ses mondes sont gelés et son
+    // habitabilité tombe au plancher. C'est voulu — il ne se colonise pas pour sa population
+    // mais pour ce que son disque d'accrétion crache, et c'est le seul endroit où l'on
+    // extrait de la matière exotique sans quitter un système habitable.
+    const singular =
+      i === 0
+        ? rng() < SINGULARITY_PRIMARY_SHARE && PRIMARY_SINGULARITIES.length > 0
+        : rng() < SINGULARITY_COMPANION_SHARE &&
+          COMPANION_SINGULARITIES.length > 0;
+    if (singular) {
+      const picked = pickWeighted(
+        rng,
+        i === 0 ? PRIMARY_SINGULARITIES : COMPANION_SINGULARITIES,
+      );
+      const [minMass, maxMass] = picked.massRange;
+      stars.push({
+        id: `${system.id}-s${i + 1}`,
+        systemId: system.id,
+        name: `${system.name} ${letters[i] ?? i + 1}`,
+        kind: picked.kind,
+        typeId: picked.typeId,
+        rank: i,
+        mass: Math.round((minMass + rng() * (maxMass - minMass)) * 1000) / 1000,
+        orbitRadius:
+          i === 0 ? 0 : Math.round(sepMin + rng() * (sepMax - sepMin)),
+        orbitAngle: i === 0 ? 0 : rng() * Math.PI * 2,
+        inclination: i === 0 ? 0 : (rng() - 0.5) * 2 * MAX_INCLINATION,
+        ascendingNode: i === 0 ? 0 : rng() * Math.PI * 2,
+      });
+      continue;
+    }
     const typeId = pickWeighted(
       rng,
       i === 0 ? STAR_PRIMARY_WEIGHTS : STAR_COMPANION_WEIGHTS,
@@ -1217,33 +1271,49 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
  * d'eux : ajouter un type à `black-hole-types.ts` ou `white-hole-types.ts` avec un poids
  * `drifter` suffit à le rendre tirable, sans penser à un second endroit.
  */
-const DRIFTER_WEIGHTS: readonly (readonly [
+type SingularityDraw = readonly (readonly [
   {
     kind: CentralBodyKind;
     typeId: string;
     massRange: readonly [number, number];
   },
   number,
-])[] = [
-  ...Object.values(BLACK_HOLE_TYPES)
-    .filter((d) => d.placements.includes("drifter"))
-    .map(
-      (d) =>
-        [
-          { kind: "blackHole" as const, typeId: d.id, massRange: d.massRange },
-          d.weights.drifter ?? 0,
-        ] as const,
-    ),
-  ...Object.values(WHITE_HOLE_TYPES)
-    .filter((d) => d.placements.includes("drifter"))
-    .map(
-      (d) =>
-        [
-          { kind: "whiteHole" as const, typeId: d.id, massRange: d.massRange },
-          d.weights.drifter ?? 0,
-        ] as const,
-    ),
-];
+])[];
+
+function singularitiesFor(placement: BlackHolePlacement): SingularityDraw {
+  return [
+    ...Object.values(BLACK_HOLE_TYPES)
+      .filter((d) => d.placements.includes(placement))
+      .map(
+        (d) =>
+          [
+            {
+              kind: "blackHole" as const,
+              typeId: d.id,
+              massRange: d.massRange,
+            },
+            d.weights[placement] ?? 0,
+          ] as const,
+      ),
+    ...Object.values(WHITE_HOLE_TYPES)
+      .filter((d) => d.placements.includes(placement))
+      .map(
+        (d) =>
+          [
+            {
+              kind: "whiteHole" as const,
+              typeId: d.id,
+              massRange: d.massRange,
+            },
+            d.weights[placement] ?? 0,
+          ] as const,
+      ),
+  ];
+}
+
+const DRIFTER_WEIGHTS = singularitiesFor("drifter");
+const PRIMARY_SINGULARITIES = singularitiesFor("primary");
+const COMPANION_SINGULARITIES = singularitiesFor("companion");
 
 /**
  * Un errant : système sans étoile, sans monde et sans comptoir, dont l'unique corps central

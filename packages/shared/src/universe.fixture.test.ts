@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isDrifter } from "./model/universe.js";
+import { isDrifter, primaryOf } from "./model/universe.js";
 import { hashSeed } from "./rng.js";
 import { GENERATOR_VERSION, generateUniverse } from "./universe.js";
 
@@ -45,6 +45,12 @@ function digest(seed: string, galaxyCount: number) {
       // Comptés à part, sans quoi un errant de plus ne se lirait dans le diff que comme
       // une empreinte qui bouge — sans dire pourquoi.
       drifterCount: galaxy.systems.filter(isDrifter).length,
+      // Comptés à part pour la même raison (chantier 45.5) : un système ordinaire ancré par
+      // une singularité n'est pas un errant, et le confondre avec l'un d'eux avait fait
+      // perdre dix systèmes à la galaxie mère sans qu'aucun type ne bouge.
+      singularSystemCount: galaxy.systems.filter(
+        (s) => !isDrifter(s) && primaryOf(s)?.kind !== "star",
+      ).length,
       bridgeCount: galaxy.bridges.length,
       fingerprint: hashSeed(JSON.stringify(galaxy)).toString(16),
       sample: [

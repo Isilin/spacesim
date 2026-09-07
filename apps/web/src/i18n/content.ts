@@ -12,6 +12,7 @@ export const contentFr = {
     goods: "Biens",
     credits: "Crédits",
     science: "Science",
+    exotic: "Matière exotique",
   },
   planetClass: {
     rocky: "Rocheuse",
@@ -645,6 +646,7 @@ export const contentEn: typeof contentFr = {
     goods: "Goods",
     credits: "Credits",
     science: "Science",
+    exotic: "Exotic matter",
   },
   planetClass: {
     rocky: "Rocky",

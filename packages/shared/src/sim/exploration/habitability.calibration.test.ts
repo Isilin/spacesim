@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { MAX_EMPIRES_PER_GALAXY } from "../../constants.js";
 import { planetClass } from "../../content/astro/planet-classes.js";
-import { isDrifter } from "../../model/universe.js";
+import { isDrifter, starsOf } from "../../model/universe.js";
+import { GATEWAY_COST } from "./gateways.js";
+import { exoticHarvest } from "./physics.js";
 import { allPlanets, allSystems, generateUniverse } from "../../universe.js";
 
 /**
@@ -132,5 +134,60 @@ describe("distribution des gisements", () => {
       (p) => Object.keys(p.deposits).length > 0,
     ).length;
     expect(withDeposit / planets.length).toBeGreaterThan(0.7);
+  });
+});
+
+describe("matière exotique (chantier 45.5)", () => {
+  /**
+   * La seule ressource dont la rareté est GÉOGRAPHIQUE : elle ne se produit qu'auprès d'une
+   * singularité, et son unique emploi est le coût d'un portail inter-galactique. Deux risques,
+   * tous deux invisibles dans les types.
+   *
+   * Trop rare, et le seul chemin de progression inter-galactique dépend d'un tirage : un empire
+   * sans singularité à portée n'atteint jamais la galaxie voisine. Trop répandue, et le
+   * méga-projet cesse d'en être un.
+   */
+  const sources = (galaxy: (typeof universe.galaxies)[number]) =>
+    galaxy.systems.filter(
+      (s) =>
+        !isDrifter(s) &&
+        starsOf(s).some((b) => b.kind !== "star") &&
+        s.planets.some((p) => planetClass(p.classId).colonizable),
+    );
+
+  it("chaque galaxie porte de quoi en récolter, sans en faire une banalité", () => {
+    // Mesuré sur dix-huit galaxies de trois seeds indépendantes : de 4 à 15 systèmes
+    // exploitables. Le plancher est ce qui garantit qu'un portail reste atteignable.
+    for (const galaxy of universe.galaxies) {
+      expect(sources(galaxy).length, galaxy.id).toBeGreaterThanOrEqual(3);
+      expect(
+        sources(galaxy).length / galaxy.systems.length,
+        galaxy.id,
+      ).toBeLessThan(0.06);
+    }
+  });
+
+  it("un système sans singularité n'en récolte rien", () => {
+    // L'inverse du cas précédent, et le vrai contenu de la mécanique : c'est le ciel qui
+    // donne cette matière, jamais un bâtiment.
+    const ordinary = systems.find(
+      (s) =>
+        starsOf(s).length > 0 && starsOf(s).every((b) => b.kind === "star"),
+    )!;
+    expect(exoticHarvest(starsOf(ordinary))).toBe(0);
+  });
+
+  it("un portail reste atteignable depuis une seule colonie bien placée", () => {
+    // Le puits contre la source : un portail voisin demande 40 unités. La meilleure source
+    // d'une galaxie doit pouvoir les fournir en un temps de méga-projet, pas de campagne.
+    const best = Math.max(
+      ...universe.galaxies.flatMap((g) =>
+        sources(g).map((s) => exoticHarvest(starsOf(s))),
+      ),
+    );
+    expect(best).toBeGreaterThan(0);
+    const ticks = (GATEWAY_COST.exotic ?? 0) / best;
+    expect(ticks).toBeLessThan(4000);
+    expect(ticks).toBeGreaterThan(300);
   });
 });

@@ -460,6 +460,48 @@ const IRRADIANCE_YIELD_MAX = 2.2;
  * Un rééquilibrage de catalogue change donc les rendements sans toucher à l'univers — c'est
  * exactement la promesse de l'ADR 0021.
  */
+/**
+ * Matière exotique récoltée par tick et par colonie, du seul fait de partager son système
+ * avec une singularité (chantier 45.5).
+ *
+ * Une ADDITION et non un multiplicateur, à la différence de tout le reste d'`astroYield` :
+ * cette matière ne s'extrait d'aucun gisement et aucun bâtiment ne la fabrique. Il n'y a
+ * rien à multiplier — soit le système en contient une source, soit il n'en contient pas.
+ *
+ * C'est ce qui donne une raison de coloniser un monde gelé autour d'un trou noir, là où la
+ * chaîne physique ne laisse qu'une habitabilité au plancher : le système ne nourrit personne,
+ * mais il est le seul à produire ce qu'un portail inter-galactique réclame.
+ *
+ * Le biais de la galaxie s'y applique comme aux gisements — une galaxie particulière, déjà
+ * la plus riche en singularités, l'est aussi en ce qu'elles crachent. C'est le premier
+ * lecteur d'`exoticBias`, posé au palier 1 et resté sans emploi jusqu'ici.
+ */
+export function exoticHarvest(
+  bodies: readonly CentralBody[],
+  galaxyExoticBias = 1,
+  overrides: AstroOverrides = NO_ASTRO_OVERRIDES,
+): number {
+  const total = bodies.reduce((sum, body) => {
+    if (body.kind === "star") return sum;
+    const def =
+      body.kind === "blackHole"
+        ? blackHoleType(body.typeId, overrides)
+        : whiteHoleType(body.typeId, overrides);
+    return sum + def.exoticYield;
+  }, 0);
+  return total * galaxyExoticBias * EXOTIC_PER_TICK;
+}
+
+/**
+ * Récolte de référence par point d'`exoticYield` et par tick.
+ *
+ * Calée sur le puits : un portail vers la galaxie voisine demande 40 unités, soit deux mille
+ * ticks pour une colonie voisine d'un trou noir stellaire (rendement 0,6), ou huit cents
+ * auprès d'une fontaine en torrent (2,4). Assez long pour que le portail reste un
+ * méga-projet, assez court pour qu'une seule colonie bien placée y suffise.
+ */
+const EXOTIC_PER_TICK = 0.02;
+
 export function astroYield(
   bodies: readonly CentralBody[],
   galaxyDepositBias: AstroYield,

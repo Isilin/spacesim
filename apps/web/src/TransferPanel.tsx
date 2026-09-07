@@ -52,6 +52,9 @@ const CARGO_RESOURCES: ResourceId[] = [
   "components",
   "food",
   "goods",
+  // La matière exotique voyage (chantier 45.5) : elle se récolte auprès d'une singularité et
+  // se dépense sur un chantier de portail, qui est presque toujours ailleurs.
+  "exotic",
 ];
 
 export function TransferPanel({

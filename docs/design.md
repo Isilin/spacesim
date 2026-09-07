@@ -3361,6 +3361,70 @@ surface éditable se réduit d'un tiers : rendements, dangers de trajet, habilla
 | Champs gelés par le contrat | — | tout le reste, refusé en 400 |
 | Contenu vu par `apps/web` | aucun | les surcharges, au chargement |
 
+### Palier 5 — deux emplacements morts, et une ressource promise
+
+Deux manques trouvés en relisant le chantier, pas en le codant.
+
+- **45.22** `generateStars` ne tirait que dans les tables d'étoiles : les emplacements
+  `primary` et `companion`, déclarés par les catalogues depuis le palier 1 et choisis
+  explicitement, n'étaient **jamais produits**. Mesuré sur 1427 systèmes avant correction :
+  `primary` 0, `companion` 0. `microquasar` et `torrent` n'existaient nulle part.
+- **45.23** La matière exotique entre dans `RESOURCES`. Le catalogue portait depuis le palier
+  1 un `exoticYield` et le commentaire « la ressource n'existe pas encore […] c'est le palier
+  3 qui le fera ». Le palier 3 ne l'a pas fait.
+- **45.24** `exoticBias`, posé au palier 1 et resté sans lecteur, en devient le multiplicateur
+  de galaxie.
+
+### Ce qu'un test ne cherchait pas
+
+**Rien ne signalait deux emplacements morts.** Les types étaient cohérents, `placements` et
+`weights` étaient lus par les tests de catalogue, et la table déclarait fidèlement des
+positions que personne ne remplissait. Il n'existe pas de test qui échoue quand une donnée
+n'est *pas* consommée. Le garde-fou ajouté compte les quatre emplacements sur un univers
+généré et exige les quatre — c'est la seule forme qui puisse attraper ça.
+
+**`isDrifter` s'est mis à mentir.** Il lisait « l'ancre n'est pas une étoile », ce qui devient
+faux dès qu'un système ordinaire est ancré par une singularité. Conséquence immédiate et
+silencieuse : la galaxie mère perdait dix des cinq cent vingt systèmes qu'elle doit avoir,
+parce que le compte des systèmes ordinaires excluait les nouveaux. Quatre tests l'ont dit
+d'un coup. La définition rejoint sa propre documentation — sans étoile **ni monde**.
+
+### Une ressource dont la rareté est géographique
+
+La matière exotique ne s'extrait d'aucun gisement et aucun bâtiment ne la fabrique : elle se
+récolte du seul fait de partager un système avec une singularité. C'est une **addition** et non
+un multiplicateur — il n'y a rien à multiplier quand il n'y a pas de source.
+
+Elle donne une raison de coloniser un monde gelé autour d'un trou noir, là où la chaîne
+physique ne laisse qu'une habitabilité au plancher : le système ne nourrit personne, mais il
+est le seul à produire ce qu'un portail inter-galactique réclame. Les fontaines blanches sont
+le raccourci intra-galactique ; ce qu'elles crachent paie le passage inter-galactique.
+
+Hors marché, comme les crédits et la science. Un prix aurait remplacé une rareté géographique
+par une rareté monétaire, que n'importe quel empire riche contourne.
+
+**Le piège évité :** une exigence de portail trop forte aurait fait dépendre le seul chemin de
+progression inter-galactique d'un tirage. Mesuré sur dix-huit galaxies de trois seeds, chacune
+compte de 4 à 15 systèmes exploitables ; un test verrouille un plancher de trois, et un autre
+vérifie qu'une seule colonie bien placée couvre le coût d'un portail en un temps de
+méga-projet.
+
+**Trois listes écrites à la main** — cargaison de convoi, affichage de colonie, ascenseur
+orbital — auraient laissé la ressource produite, invisible et inexpédiable. Les panneaux qui
+dérivent de `MARKET_RESOURCES` ou de `GATEWAY_COST` se sont mis à jour seuls ; ceux qui
+énumèrent, non. C'est le coût d'une liste littérale, et il ne se voit qu'en la cherchant.
+
+### Relevés (palier 5)
+
+| | avant | après |
+|---|---|---|
+| Emplacements de singularité produits | 2 sur 4 | 4 sur 4 |
+| Singularités hors cœur (1427 systèmes) | 17 | 50 |
+| Systèmes ancrés par une singularité | 0 | ~20 |
+| Ressources | 8 | 9 |
+| Systèmes exploitables par galaxie | — | 4 à 15 (18 galaxies mesurées) |
+| Part de systèmes viables | 0,595 | 0,583 |
+
 ## Chantier 46 — vite 8, et pourquoi deux montées n'étaient pas des bumps (06/09/2026, corrigé le 08/09/2026)
 
 Planification. Ouvert par le tri des PR Dependabot du 06/09/2026 : deux d'entre elles ne

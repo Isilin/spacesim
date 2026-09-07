@@ -174,6 +174,16 @@ describe("GameEngine — contrats de fourniture (chantier 14)", () => {
     // ne peut appareiller ni payer ses frais, et le nombre de sauts jusqu'à la colonie
     // émettrice (donc carburant et frais) dépend de la seed — pas de marge fixe fiable.
     engine.devGrant({ credits: 500, energy: 400 });
+    // L'orbite de l'ACCEPTEUR est libérée de son minerai avant tout : un dock unique tient
+    // 600 unités, la colonie mère naît avec une consigne d'ascension par défaut sur le
+    // minerai, et le carburant d'un convoi lointain peut à lui seul frôler ce plafond
+    // (mesuré à 494 après le chantier 45.5). Sans ça, le convoi reste à quai faute de place.
+    engine.logistics.setLiftRule(accepter, accepterColony.id, "ore", {
+      keepGround: 100_000,
+      direction: "down",
+    });
+    advanceTicks(engine, 20);
+    engine.logistics.setLiftRule(accepter, accepterColony.id, "ore", null);
     engine.logistics.setLiftRule(accepter, accepterColony.id, "energy", {
       keepGround: 0,
       direction: "up",

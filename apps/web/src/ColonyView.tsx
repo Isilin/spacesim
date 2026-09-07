@@ -67,6 +67,7 @@ const SHOWN_RESOURCES: ResourceId[] = [
   "goods",
   "credits",
   "science",
+  "exotic",
 ];
 
 function formatCost(cost: Partial<Record<ResourceId, number>>): string {

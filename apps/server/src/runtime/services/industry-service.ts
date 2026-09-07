@@ -4,6 +4,7 @@ import {
   CLAIM_PRODUCTION_BONUS,
   applyColonyTick,
   astroYield,
+  exoticHarvest,
   NEUTRAL_ASTRO,
   findGalaxyOfSystem,
   galaxyType,
@@ -805,6 +806,16 @@ export class IndustryService {
               astroContent,
             )
           : NEUTRAL_ASTRO;
+      // La matière exotique ne se multiplie pas, elle s'ajoute : une singularité dans le
+      // système en crache, sinon rien (chantier 45.5).
+      const exotic =
+        system && galaxy
+          ? exoticHarvest(
+              starsOf(system),
+              galaxyType(galaxy.typeId, astroContent).exoticBias,
+              astroContent,
+            )
+          : 0;
       // L'ascenseur tourne après la production : ce qui vient d'être produit peut monter.
       const balance = this.balance;
       empire.colonyMap.set(
@@ -817,6 +828,7 @@ export class IndustryService {
             buildingDefsFromContent(this.runtime.content.buildings),
             balance,
             astro,
+            exotic,
           ),
           effects,
           balance,

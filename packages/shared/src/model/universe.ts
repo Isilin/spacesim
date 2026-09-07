@@ -362,10 +362,22 @@ export function primaryOf(system: StarSystem): CentralBody | undefined {
  * que le palier 2 en donne à tous les systèmes, cette seconde lecture ne distinguait plus
  * rien. Un système redacté n'a pas d'ancre connue et n'est donc pas réputé errant, ce qui est
  * la bonne réponse : le brouillard ne doit pas révéler l'inverse non plus.
+ *
+ * L'absence de monde est venue s'y ajouter au chantier 45.5, quand une singularité a pu tenir
+ * la place d'une étoile dans un système ORDINAIRE. Sans elle, ces systèmes-là — qui ont des
+ * planètes, un comptoir possible et une place normale sur un bras — étaient comptés comme
+ * errants, et la galaxie mère perdait dix des cinq cent vingt systèmes qu'elle doit avoir.
+ *
+ * La clause ne peut pas mentir sous le brouillard : `redactUniverse` vide `stars` avant
+ * `planets`, donc l'ancre manque d'abord et la question ne se pose plus.
  */
 export function isDrifter(system: StarSystem): boolean {
   const anchor = primaryOf(system);
-  return anchor !== undefined && anchor.kind !== "star";
+  return (
+    anchor !== undefined &&
+    anchor.kind !== "star" &&
+    system.planets.length === 0
+  );
 }
 
 /** Méga-projet de portail vers une galaxie lointaine (contributions par convois). */
