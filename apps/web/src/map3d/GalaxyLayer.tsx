@@ -1,6 +1,8 @@
 import {
+  blackHoleType,
   galacticCoreDisc,
   galacticCoreHorizon,
+  galaxyType,
   MAP_HEIGHT,
   MAP_WIDTH,
   systemCountOf,
@@ -10,6 +12,8 @@ import {
   type StarSystem,
   type Station,
   type Territory,
+  starsOf,
+  whiteHoleType,
 } from "@spacesim/shared";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useLayoutEffect, useMemo, useRef } from "react";
@@ -24,7 +28,6 @@ import {
   type Intersection,
   type Raycaster,
 } from "three";
-import { starAppearance } from "./appearance.js";
 import { BlackHole } from "./BlackHole.js";
 import { focusOf, type Focus } from "./bounds.js";
 import { FOV } from "./MapCanvas.js";
@@ -367,16 +370,23 @@ export function GalaxyLayer({
    */
   const colors = useMemo(
     () =>
-      galaxy.systems.map((system) =>
-        system.id === selectedId
-          ? "#8fd8ff"
-          : colonized.has(system.id)
-            ? "#7cf09a"
-            : withStation.has(system.id)
-              ? "#f5cf7a"
-              : (territoryColor.get(system.id) ??
-                (explored.has(system.id) ? "#dce8f5" : "#8ea4bb")),
-      ),
+      galaxy.systems.map((system) => {
+        if (system.id === selectedId) return "#8fd8ff";
+        if (colonized.has(system.id)) return "#7cf09a";
+        if (withStation.has(system.id)) return "#f5cf7a";
+        const territory = territoryColor.get(system.id);
+        if (territory) return territory;
+        // Un errant n'est pas une étoile : il porte la teinte de sa singularité, et le
+        // brouillard la lui retire tant qu'il n'est pas exploré — un système inexploré
+        // n'annonce jamais ce qu'il abrite (`redactUniverse` vide `stars`).
+        const singularity = starsOf(system)[0];
+        if (singularity) {
+          return singularity.kind === "whiteHole"
+            ? whiteHoleType(singularity.typeId).halo
+            : blackHoleType(singularity.typeId).halo;
+        }
+        return explored.has(system.id) ? "#dce8f5" : "#8ea4bb";
+      }),
     [galaxy, selectedId, colonized, withStation, territoryColor, explored],
   );
 
@@ -491,7 +501,7 @@ export function GalaxyLayer({
           id={`${galaxy.id}:core`}
           radius={galacticCoreHorizon(systemCount)}
           discRadius={galacticCoreDisc(systemCount)}
-          color={starAppearance("blackHole").halo}
+          color={blackHoleType(galaxyType(galaxy.typeId).coreClassId).halo}
           light={false}
           tilt={0}
         />

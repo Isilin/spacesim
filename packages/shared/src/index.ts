@@ -11,6 +11,7 @@ export {
   type CentralBody,
   type StarSystem,
   systemCountOf,
+  starsOf,
   type Galaxy,
   type Gateway,
   type ClientUniverse,

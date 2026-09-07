@@ -1,5 +1,6 @@
 import {
   GALAXY_SPACING,
+  galaxyType,
   UNIVERSE_CENTER_X,
   UNIVERSE_CENTER_Y,
   type Galaxy,
@@ -280,6 +281,11 @@ export function UniverseLayer({
             <GalaxyCloud
               stars={stars}
               galaxy={galaxy}
+              // L'état garde la priorité sur l'identité : une galaxie colonisée doit se
+              // reconnaître d'un coup d'œil, c'est ce que la couleur dit d'abord. Mais
+              // quand rien n'est à signaler, la teinte du TYPE remplace le gris uniforme
+              // qui les rendait toutes identiques (chantier 45.1) — et elle vaut aussi
+              // pour une galaxie condensée, `typeId` traversant le brouillard.
               color={
                 selected
                   ? "#9fdcff"
@@ -287,7 +293,7 @@ export function UniverseLayer({
                     ? "#8fe6a0"
                     : activeGatewayIds.has(galaxy.id)
                       ? "#cbb0ee"
-                      : "#7f95ad"
+                      : galaxyType(galaxy.typeId).tint
               }
             />
             {/* Volume de saisie : plus peint du tout depuis le chantier 36.7, mais
