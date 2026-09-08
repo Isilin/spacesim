@@ -179,7 +179,6 @@ export function SystemPanel({
   };
 
   const planets = system.planets.filter((p) => p.kind === "planet");
-  const moonCount = system.planets.length - planets.length;
 
   const claimed = game.claimedSystemIds.includes(system.id);
   const hasOwnColony = colonies.some((c) =>

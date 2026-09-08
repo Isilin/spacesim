@@ -7,7 +7,6 @@ import {
   whiteHoleType,
   type BodyRef,
   type CentralBody,
-  type ResourceId,
 } from "@spacesim/shared";
 import { astroOverrides } from "../state/astro-content.js";
 

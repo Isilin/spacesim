@@ -16,7 +16,6 @@ import {
   type ClientUniverse,
   galacticCoreDisc,
   sitePosition,
-  primaryOf,
   starsOf,
   systemCountOf,
   systemProfile,

@@ -1,8 +1,6 @@
 import type { BeltTypeDef } from "./belt-types.js";
 import type { BlackHoleTypeDef } from "./black-hole-types.js";
 import type { GalaxyTypeDef } from "./galaxy-types.js";
-import type { MoonClassDef } from "./moon-classes.js";
-import type { MoonVariantDef } from "./moon-variants.js";
 import type { PlanetClassDef } from "./planet-classes.js";
 import type { PlanetVariantDef } from "./planet-variants.js";
 import type { StarClassDef } from "./star-classes.js";
