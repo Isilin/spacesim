@@ -297,8 +297,9 @@ export interface Galaxy {
    *
    * Tenus hors de `links` : une arête de saut est pondérée par sa longueur 3D réelle, ce
    * qui n'a aucun sens pour un pont, et `links` porte l'invariant de connexité que
-   * `universe.test.ts` verrouille. Les ponts sont un arc optionnel du graphe de routage —
-   * voir `galaxyGraph(galaxy, bridges)`.
+   * `universe.test.ts` verrouille. Les ponts sont un arc OPTIONNEL du graphe de routage —
+   * `galaxyGraph(galaxy, bridges)` et `universeGraph(universe, extraLinks, bridges)`, le
+   * drapeau étant faux par défaut pour que la calibration mesure la géométrie nue.
    */
   bridges: [string, string][];
   /** Système d'ancrage : seul point d'arrivée/départ des portails inter-galactiques. */

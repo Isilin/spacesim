@@ -19,11 +19,21 @@ import { travelCostInUniverse } from "./travel.js";
  * moyenne, **ou** assumer la dérive et recalibrer `balance.ts` en conséquence.
  */
 
-/** Modèle de référence : le BFS en nombre de sauts d'avant le chantier 31.6. */
+/**
+ * Modèle de référence : le BFS en nombre de sauts d'avant le chantier 31.6.
+ *
+ * Les **ponts** entrent dans son adjacence depuis le chantier 47, et c'est indispensable :
+ * `travelCostInUniverse` les emprunte désormais, et les omettre d'un seul côté ferait comparer
+ * deux graphes différents. Le rapport chuterait pour toute paire qu'un pont raccourcit, sans
+ * qu'il y ait de défaut — le test cesserait de mesurer ce qu'il prétend mesurer.
+ *
+ * C'est le même piège que le chantier 45.1 avait relevé pour les trous de ver, à ceci près
+ * qu'il se referme cette fois sur la référence et non sur le sujet.
+ */
 function hopCount(galaxy: Galaxy, from: string, to: string): number {
   if (from === to) return 0;
   const adjacency = new Map<string, string[]>();
-  for (const [a, b] of galaxy.links) {
+  for (const [a, b] of [...galaxy.links, ...galaxy.bridges]) {
     adjacency.set(a, [...(adjacency.get(a) ?? []), b]);
     adjacency.set(b, [...(adjacency.get(b) ?? []), a]);
   }

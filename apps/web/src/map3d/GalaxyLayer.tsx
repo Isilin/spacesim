@@ -433,6 +433,23 @@ export function GalaxyLayer({
         routePairs.has(key) ? "#4fc1ff" : "#223148",
       );
     }
+    // Les ponts d'Einstein-Rosen, d'une autre teinte (chantier 47). Sans eux, un itinéraire
+    // qui en emprunte un saute d'un bout à l'autre de la galaxie sans qu'aucune arête ne
+    // l'explique — et le raccourci vaut un facteur treize sur le trajet mesuré.
+    //
+    // Toujours visibles, jamais estompés comme les liaisons ordinaires : ils sont une poignée
+    // par galaxie, et c'est ce qu'on veut faire remarquer.
+    for (const [a, b] of galaxy.bridges) {
+      const sa = byId.get(a);
+      const sb = byId.get(b);
+      if (!sa || !sb) continue;
+      const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+      push(
+        systemScenePosition(sa),
+        systemScenePosition(sb),
+        routePairs.has(key) ? "#a0e8ff" : "#6a4fa8",
+      );
+    }
     // Plus de trait de rappel au plan (chantier 37.13) : lisible à quatorze systèmes, il
     // faisait cinq cents hachures verticales dans une galaxie qui en compte autant, et
     // brouillait la seule chose que ce palier doit montrer — la forme et le réseau. La

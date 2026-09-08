@@ -17,6 +17,7 @@ function makeGalaxy(
   id: string,
   specs: Spec[],
   links: [string, string][],
+  bridges: [string, string][] = [],
 ): Galaxy {
   return {
     id,
@@ -36,7 +37,7 @@ function makeGalaxy(
       belts: [],
     })),
     links,
-    bridges: [],
+    bridges,
     anchorSystemId: specs[0]!.id,
     depositBonus: 1,
   };
@@ -265,5 +266,70 @@ describe("hostileSystemIds", () => {
       "moi",
     );
     expect(hostile.size).toBe(0);
+  });
+});
+
+describe("ponts d'Einstein-Rosen (chantier 47)", () => {
+  /**
+   * Ils étaient générés, persistés en base et vérifiés par `universe.test.ts` — et
+   * infranchissables : `galaxyGraph(galaxy)` ne lisait pas `galaxy.bridges`, alors que le
+   * modèle documentait la signature `galaxyGraph(galaxy, bridges)` depuis le chantier 45.1.
+   * Le rôle n°1 de la famille des fontaines blanches n'existait donc pas.
+   */
+  const withBridge = makeGalaxy(
+    "g-pont",
+    [
+      { id: "a", x: 0 },
+      { id: "b", x: R },
+      { id: "c", x: 2 * R },
+      { id: "d", x: 3 * R },
+    ],
+    [
+      ["a", "b"],
+      ["b", "c"],
+      ["c", "d"],
+    ],
+    [["a", "d"]],
+  );
+
+  it("un pont raccourcit un trajet, mais seulement si on le demande", () => {
+    // Le drapeau par défaut à faux est ce qui laisse `travel.calibration.test.ts` mesurer la
+    // géométrie de base, comme `extraLinks` le fait pour les portails.
+    expect(shortestPath(galaxyGraph(withBridge), "a", "d")).toEqual([
+      "a",
+      "b",
+      "c",
+      "d",
+    ]);
+    expect(shortestPath(galaxyGraph(withBridge, true), "a", "d")).toEqual([
+      "a",
+      "d",
+    ]);
+  });
+
+  it("un pont coûte plus cher qu'un saut et moins qu'un détour", () => {
+    const graph = galaxyGraph(withBridge, true);
+    const direct = priceOf(graph, ["a", "d"]);
+    const around = priceOf(graph, ["a", "b", "c", "d"]);
+    expect(direct).not.toBeNull();
+    expect(around).not.toBeNull();
+    expect(direct!.cost).toBeGreaterThan(1);
+    expect(direct!.cost).toBeLessThan(around!.cost);
+    // Ce n'est pas un portail : il ne compte pas dans les péages.
+    expect(direct!.gates).toBe(0);
+  });
+
+  it("un pont vers un système inconnu ne crée aucune arête", () => {
+    const orphan = makeGalaxy(
+      "g-orphelin",
+      [
+        { id: "a", x: 0 },
+        { id: "b", x: R },
+      ],
+      [["a", "b"]],
+      [["a", "disparu"]],
+    );
+    const graph = galaxyGraph(orphan, true);
+    expect(graph.get("a")?.map((arc) => arc.to)).toEqual(["b"]);
   });
 });
