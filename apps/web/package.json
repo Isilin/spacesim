@@ -33,7 +33,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "^4.3.0",
-    "jsdom": "^25.0.0",
+    "jsdom": "^30.0.1",
     "typescript": "catalog:",
     "vite": "^5.4.0",
     "vitest": "^2.1.0"
