@@ -176,6 +176,41 @@
       "when": 1788177401440,
       "tag": "0024_sparkling_shatterstar",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1788724631320,
+      "tag": "0025_real_rockslide",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1788778901299,
+      "tag": "0026_unusual_ultragirl",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1788798585716,
+      "tag": "0027_early_runaways",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1788803522018,
+      "tag": "0028_pretty_king_bedlam",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1788805086102,
+      "tag": "0029_lively_lorna_dane",
+      "breakpoints": true
     }
   ]
 }

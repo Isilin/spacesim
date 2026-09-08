@@ -1,5 +1,6 @@
 import {
   bodyPhysicals,
+  starsOf,
   isBreathable,
   orbitalCap,
   orbitalUsed,
@@ -17,7 +18,12 @@ import { useSearchParams } from "react-router-dom";
 import { Panel } from "@spacesim/ui";
 import { useTranslation } from "react-i18next";
 import { BodyActions } from "./BodyActions.js";
-import { buildingLabel, planetTypeLabel, resourceLabel } from "./labels.js";
+import {
+  buildingLabel,
+  bodyClassLabel,
+  bodyVariantLabel,
+  resourceLabel,
+} from "./labels.js";
 import { useGameStore } from "./state/game-store.js";
 import { selectActiveColony, selectExplored } from "./state/selectors.js";
 
@@ -30,10 +36,14 @@ interface Props {
 
 const ATMOSPHERE_KEYS: Record<Atmosphere, string> = {
   none: "bodyView.atmosphereNone",
+  trace: "bodyView.atmosphereTrace",
   thin: "bodyView.atmosphereThin",
   breathable: "bodyView.atmosphereBreathable",
   toxic: "bodyView.atmosphereToxic",
+  corrosive: "bodyView.atmosphereCorrosive",
+  reducing: "bodyView.atmosphereReducing",
   dense: "bodyView.atmosphereDense",
+  crushing: "bodyView.atmosphereCrushing",
 };
 
 /**
@@ -56,7 +66,7 @@ export function BodyView({ system, body, effects, now }: Props) {
     ? system.planets.find((p) => p.id === body.parentPlanetId)
     : undefined;
   const moons = system.planets.filter((p) => p.parentPlanetId === body.id);
-  const physicals = bodyPhysicals(body, parent?.orbitRadius);
+  const physicals = bodyPhysicals(body, starsOf(system), parent?.orbitRadius);
   const colony = colonies.find((c) => c.planetId === body.id);
 
   if (!game) return null;
@@ -68,7 +78,7 @@ export function BodyView({ system, body, effects, now }: Props) {
           <h2>{body.name}</h2>
           <p className="muted">
             {body.kind === "moon" ? t("bodyView.moon") : t("bodyView.planet")}{" "}
-            {planetTypeLabel(body.type).toLowerCase()}
+            {`${bodyClassLabel(body)} ${bodyVariantLabel(body)}`.toLowerCase()}
             {parent
               ? t("bodyView.orbitingParent", { parent: parent.name })
               : t("bodyView.orbitingSystem", { system: system.name })}

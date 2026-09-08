@@ -10,6 +10,7 @@ import {
 import { AccountDetailView } from "./AccountDetailView.js";
 import { AccountsListView } from "./AccountsListView.js";
 import { AuditLogView } from "./AuditLogView.js";
+import { AstroView } from "./content/AstroView.js";
 import { BuildingsView } from "./content/BuildingsView.js";
 import { ContentLayout } from "./content/ContentLayout.js";
 import { ChassisView } from "./content/ChassisView.js";
@@ -82,6 +83,7 @@ export function App({ auth }: Props) {
             <Route path="milestones" element={<MilestonesView />} />
             <Route path="zone-types" element={<ZoneTypesView />} />
             <Route path="installations" element={<InstallationsView />} />
+            <Route path="astro" element={<AstroView />} />
           </Route>
           <Route path="/ops" element={<OpsView />} />
           <Route path="/audit" element={<AuditLogView />} />

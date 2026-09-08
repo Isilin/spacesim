@@ -37,10 +37,32 @@ describe("charge utile de l'univers (chantier 37.9)", () => {
     expect(whole).toBeLessThan(320 * KB);
   });
 
-  it("le condensé divise par trois ce que reçoit un joueur neuf", () => {
-    const whole = size(redactUniverse(fresh, nowhere));
-    const cut = size(redactUniverse(fresh, nowhere, home));
-    expect(cut).toBeLessThan(whole / 3);
+  it("le condensé rend quasi gratuit tout ce qui est hors de portée", () => {
+    // Formulé « divise par trois » au chantier 37.10, et vrai tant qu'une galaxie sur
+    // quatre pesait un quart du contenu. Le chantier 45 borne la taille d'une galaxie par
+    // son type : la mère reste la plus grande possible (520) pendant que les autres
+    // peuvent tomber à 300, et elle pèse alors près d'un tiers de l'univers **à elle
+    // seule**. Un facteur trois devenait inatteignable par arithmétique, sans que le
+    // condensé ait rien perdu de son efficacité.
+    //
+    // Ce que le condensé promet vraiment ne dépend ni du nombre de galaxies ni de leurs
+    // tailles relatives : les galaxies hors de portée ne coûtent presque plus rien. C'est
+    // cela qu'on mesure, et c'est un verrou plus serré que l'ancien.
+    const cut = redactUniverse(fresh, nowhere, home);
+    const whole = redactUniverse(fresh, nowhere);
+    const homeId = fresh.galaxies[0]!.id;
+
+    const distantCut = cut.galaxies.filter((g) => g.id !== homeId);
+    const distantWhole = whole.galaxies.filter((g) => g.id !== homeId);
+    const cutCost = distantCut.reduce((s, g) => s + size(g), 0);
+    const wholeCost = distantWhole.reduce((s, g) => s + size(g), 0);
+
+    expect(cutCost).toBeLessThan(wholeCost / 10);
+    // Et la galaxie de départ reste ce qui domine la facture : si ce rapport s'inverse,
+    // c'est que le condensé a cessé de condenser.
+    expect(cutCost).toBeLessThan(
+      size(cut.galaxies.find((g) => g.id === homeId)!),
+    );
   });
 
   it("une galaxie hors de portée ne coûte que son nuage", () => {

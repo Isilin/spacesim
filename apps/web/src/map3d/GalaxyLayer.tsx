@@ -1,6 +1,8 @@
 import {
+  blackHoleType,
   galacticCoreDisc,
   galacticCoreHorizon,
+  galaxyType,
   MAP_HEIGHT,
   MAP_WIDTH,
   systemCountOf,
@@ -24,11 +26,12 @@ import {
   type Intersection,
   type Raycaster,
 } from "three";
-import { starAppearance } from "./appearance.js";
 import { BlackHole } from "./BlackHole.js";
 import { focusOf, type Focus } from "./bounds.js";
 import { FOV } from "./MapCanvas.js";
 import { worldPerPixel, type Vec3 } from "./tiers.js";
+import { astroOverrides } from "../state/astro-content.js";
+import { systemNodeColor } from "./systemNodeColor.js";
 
 /**
  * Emprise d'un système dans le repère de la galaxie — ce que le palier système remplit
@@ -358,24 +361,20 @@ export function GalaxyLayer({
    * Teintes des nœuds. Un nœud EST une étoile : il doit se lire comme une lumière, pas
    * comme une pastille (chantier 37.12).
    *
-   * Les deux teintes neutres ont été relevées. Elles valaient `#7f95ad` et `#3a4757` quand
-   * une galaxie comptait quatorze systèmes largement espacés ; à cinq cents, la vue se
-   * remplit surtout d'inexplorés, et un gris ardoise à 22 % de luminance rendait la galaxie
-   * éteinte. L'ORDRE est conservé — un système exploré reste plus clair qu'un inexploré,
-   * c'est ce que la couleur dit ici — mais le plancher se situe désormais au-dessus du seuil
-   * où un point cesse de ressembler à une étoile.
+   * La décision vit dans `systemNodeColor`, fonction pure et testée : elle était en ligne ici
+   * jusqu'au chantier 47, donc hors de portée de tout test — et c'est ce qui a laissé passer
+   * six mois de nœuds orange.
    */
   const colors = useMemo(
     () =>
       galaxy.systems.map((system) =>
-        system.id === selectedId
-          ? "#8fd8ff"
-          : colonized.has(system.id)
-            ? "#7cf09a"
-            : withStation.has(system.id)
-              ? "#f5cf7a"
-              : (territoryColor.get(system.id) ??
-                (explored.has(system.id) ? "#dce8f5" : "#8ea4bb")),
+        systemNodeColor(system, {
+          selected: system.id === selectedId,
+          colonized: colonized.has(system.id),
+          withStation: withStation.has(system.id),
+          territory: territoryColor.get(system.id),
+          explored: explored.has(system.id),
+        }),
       ),
     [galaxy, selectedId, colonized, withStation, territoryColor, explored],
   );
@@ -434,6 +433,23 @@ export function GalaxyLayer({
         routePairs.has(key) ? "#4fc1ff" : "#223148",
       );
     }
+    // Les ponts d'Einstein-Rosen, d'une autre teinte (chantier 47). Sans eux, un itinéraire
+    // qui en emprunte un saute d'un bout à l'autre de la galaxie sans qu'aucune arête ne
+    // l'explique — et le raccourci vaut un facteur treize sur le trajet mesuré.
+    //
+    // Toujours visibles, jamais estompés comme les liaisons ordinaires : ils sont une poignée
+    // par galaxie, et c'est ce qu'on veut faire remarquer.
+    for (const [a, b] of galaxy.bridges) {
+      const sa = byId.get(a);
+      const sb = byId.get(b);
+      if (!sa || !sb) continue;
+      const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+      push(
+        systemScenePosition(sa),
+        systemScenePosition(sb),
+        routePairs.has(key) ? "#a0e8ff" : "#6a4fa8",
+      );
+    }
     // Plus de trait de rappel au plan (chantier 37.13) : lisible à quatorze systèmes, il
     // faisait cinq cents hachures verticales dans une galaxie qui en compte autant, et
     // brouillait la seule chose que ce palier doit montrer — la forme et le réseau. La
@@ -449,6 +465,8 @@ export function GalaxyLayer({
   // `systemCountOf` et non `galaxy.systems.length` : une galaxie condensée n'a pas ses
   // systèmes, mais elle a son compte — et donc son cœur, quand tout le reste est redacté.
   const systemCount = systemCountOf(galaxy);
+  // Le type du cœur donne sa teinte ET, depuis le chantier 47, la proportion de son horizon.
+  const coreClassId = galaxyType(galaxy.typeId, astroOverrides()).coreClassId;
 
   const systemAt = (event: ThreeEvent<MouseEvent>): StarSystem | null =>
     event.instanceId === undefined
@@ -489,9 +507,13 @@ export function GalaxyLayer({
       <group onClick={onSelectCore} onDoubleClick={onOpenCore}>
         <BlackHole
           id={`${galaxy.id}:core`}
-          radius={galacticCoreHorizon(systemCount)}
+          radius={galacticCoreHorizon(
+            systemCount,
+            coreClassId,
+            astroOverrides(),
+          )}
           discRadius={galacticCoreDisc(systemCount)}
-          color={starAppearance("blackHole").halo}
+          color={blackHoleType(coreClassId, astroOverrides()).halo}
           light={false}
           tilt={0}
         />

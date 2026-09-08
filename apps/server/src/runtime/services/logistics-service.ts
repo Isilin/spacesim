@@ -4,6 +4,9 @@ import {
   convoyDurationMs,
   convoyFees,
   convoyFuel,
+  hazardFuelMult,
+  systemHazard,
+  starsOf,
   deliverToOrbit,
   deliverToStation,
   emptyOrbital,
@@ -360,9 +363,13 @@ export class LogisticsService {
     const duration =
       convoyDurationMs(jumps, reserved.ships, this.statsOf, balance) * speed;
     const cost = convoyFees(jumps, portals, balance);
+    // Le danger du système d'arrivée renchérit le carburant : manœuvres d'évitement,
+    // blindage, marge de sécurité (chantier 45.2). Il s'applique à l'ARRIVÉE et non au poids
+    // des arêtes, pour que le graphe reste de la géométrie pure.
     const fuel = Math.ceil(
       convoyFuel(jumps, reserved.ships, total, this.statsOf, balance) *
-        empire.effects.fuelMult,
+        empire.effects.fuelMult *
+        hazardFuelMult(this.hazardAt(toSystemId)),
     );
     const resources = { ...reserved.colony.resources };
     if (resources.credits < cost)
@@ -395,6 +402,19 @@ export class LogisticsService {
    * partent de l'ancrage de la galaxie d'origine : rejoindre une galaxie lointaine en
    * traverse un, passer d'une lointaine à une autre en traverse deux.
    */
+  /**
+   * Danger du système d'arrivée, 0–5 (chantier 45.2).
+   *
+   * Zéro pour un système inconnu ou sans corps central : un convoi ne paie pas pour ce que
+   * le serveur ne sait pas.
+   */
+  private hazardAt(systemId: string): number {
+    const system = this.runtime.systemsById.get(systemId);
+    return system
+      ? systemHazard(starsOf(system), system.belts, this.runtime.content.astro)
+      : 0;
+  }
+
   private portalsCrossed(fromSystemId: string, toSystemId: string): number {
     const from = this.runtime.galaxyIndexOfSystem.get(fromSystemId);
     const to = this.runtime.galaxyIndexOfSystem.get(toSystemId);

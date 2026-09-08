@@ -27,8 +27,13 @@ interface Props {
   send: (msg: ClientMessage) => void;
 }
 
-/** Ressources transportables — les crédits et la science ne montent pas en orbite. */
-const LIFTABLE: ResourceId[] = [...MARKET_RESOURCES];
+/**
+ * Ressources transportables — les crédits et la science ne montent pas en orbite.
+ *
+ * La matière exotique, si : hors marché mais bien physique, et sans elle un portail ne se
+ * construirait jamais ailleurs que dans le système qui la récolte (chantier 45.5).
+ */
+const LIFTABLE: ResourceId[] = [...MARKET_RESOURCES, "exotic"];
 
 /**
  * Sol ↔ orbite d'une colonie (chantier 12) : ce qui est en orbite, ce qui monte,

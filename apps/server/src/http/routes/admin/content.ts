@@ -1,4 +1,6 @@
 import {
+  astroListResponseSchema,
+  astroParamsSchema,
   buildingsListResponseSchema,
   chassisListResponseSchema,
   constantsListResponseSchema,
@@ -12,6 +14,7 @@ import {
   presetsListResponseSchema,
   shipsListResponseSchema,
   techsListResponseSchema,
+  upsertAstroSchema,
   upsertBuildingSchema,
   upsertChassisSchema,
   upsertConstantSchema,
@@ -28,9 +31,12 @@ import {
   zoneTypesListResponseSchema,
 } from "@spacesim/protocol";
 import {
+  ASTRO_FAMILIES,
   BUILDING_IDS,
   DEFAULT_BALANCE,
   validateTree,
+  type AstroFamily,
+  type AstroOverrides,
   type BuildingId,
 } from "@spacesim/shared";
 import { recordAuditEntry } from "../../../admin/audit-service.js";
@@ -613,5 +619,69 @@ export function registerContentRoutes(
       });
       return { installations: Object.values(engine.content.installations) };
     },
+  );
+
+  // Catalogues astronomiques (chantier 45.4). Deux différences avec les douze domaines
+  // précédents, toutes deux venues de l'ADR 0021.
+  //
+  // La ressource est une PAIRE (famille, id), pas un id : « icy » nomme une lune de glace
+  // et une ceinture glacée, dans deux catalogues sans rapport.
+  //
+  // Et le corps est un CORRECTIF, pas une entrée : `upsertAstroSchema` n'accepte que la
+  // moitié « effets », si bien qu'une requête tentant de corriger une entrée de génération
+  // est refusée par le contrat avant d'atteindre la base. La frontière de l'ADR n'est donc
+  // pas une convention à respecter, c'est une validation.
+  admin.get(
+    "/content/astro",
+    {
+      schema: { response: { 200: astroListResponseSchema } },
+      config: { adminAction: "content.astro.read" },
+    },
+    () => ({ astro: astroRows(engine.content.astro) }),
+  );
+
+  admin.put(
+    "/content/astro/:family/:id",
+    {
+      schema: {
+        params: astroParamsSchema,
+        body: upsertAstroSchema,
+        response: { 200: astroListResponseSchema },
+      },
+      config: { adminAction: "content.astro.write" },
+    },
+    async (request) => {
+      const { family, id } = request.params;
+      // `family` arrive en double — dans le chemin et dans le corps, où le schéma en fait
+      // le discriminant. Le chemin fait foi, et le corps ne garde que le correctif.
+      const { family: _bodyFamily, ...payload } = request.body;
+      const isNew = !(id in (engine.content.astro[family] ?? {}));
+      await repo.saveAstro(family, id, payload);
+      await engine.loadContent();
+
+      const actor = request.adminAccount!;
+      await recordAuditEntry({
+        actorAccountId: actor.id,
+        actorEmail: actor.email,
+        action: "content.astro.write",
+        targetType: "content_astro",
+        targetId: `${family}/${id}`,
+        reason: isNew ? "création" : "modification",
+      });
+      return { astro: astroRows(engine.content.astro) };
+    },
+  );
+}
+
+/** Aplatit les surcharges en lignes, la forme que l'admin liste et édite. */
+function astroRows(
+  overrides: AstroOverrides,
+): { family: AstroFamily; id: string; payload: Record<string, unknown> }[] {
+  return ASTRO_FAMILIES.flatMap((family) =>
+    Object.entries(overrides[family] ?? {}).map(([id, payload]) => ({
+      family,
+      id,
+      payload: payload as Record<string, unknown>,
+    })),
   );
 }

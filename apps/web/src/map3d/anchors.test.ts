@@ -32,8 +32,10 @@ describe("slotIdFor", () => {
   });
 
   it("ne vise rien quand rien n'est sélectionné, ni un objet sans chemin", () => {
-    // Comptoir, station, ceinture, site : `anchorPathOf` ne leur rend aucun chemin, donc les
-    // trois comparaisons échouent. Aucun cas particulier à écrire pour eux.
+    // Comptoir, station, ceinture, site, et depuis le chantier 47 un corps central compagnon :
+    // `anchorPathOf` ne leur rend aucun chemin, donc les trois comparaisons échouent. Aucun
+    // cas particulier à écrire pour eux — c'est ce qui les rend sélectionnables sans être
+    // descendables, et ce qui aurait coûté un quatrième maillon de chemin autrement.
     const nowhere: AnchorPath = {
       galaxyId: null,
       systemId: null,
@@ -41,6 +43,7 @@ describe("slotIdFor", () => {
     };
     expect(slotIdFor(path, "galaxy", null)).toBeNull();
     expect(slotIdFor(nowhere, "system", "comptoir-1")).toBeNull();
+    expect(slotIdFor(nowhere, "system", "gal-0-sys-3-s2")).toBeNull();
   });
 });
 

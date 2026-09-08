@@ -1,0 +1,1 @@
+ALTER TABLE "universe_belts" ADD COLUMN "type_id" text DEFAULT 'silicate' NOT NULL;

@@ -903,6 +903,7 @@ export async function loadContentBundle(): Promise<ContentBundle> {
     milestones,
     zoneTypes,
     installations,
+    astro,
   ] = await Promise.all([
     repo.loadWarships(),
     repo.loadTuning(),
@@ -917,6 +918,7 @@ export async function loadContentBundle(): Promise<ContentBundle> {
     repo.loadMilestones(),
     repo.loadZoneTypes(),
     repo.loadInstallations(),
+    repo.loadAstro(),
   ]);
   return {
     warships,
@@ -932,6 +934,7 @@ export async function loadContentBundle(): Promise<ContentBundle> {
     milestones,
     zoneTypes,
     installations,
+    astro,
   };
 }
 

@@ -48,6 +48,8 @@ export const ADMIN_ACTIONS = [
   "content.zoneTypes.write",
   "content.installations.read",
   "content.installations.write",
+  "content.astro.read",
+  "content.astro.write",
   "ops.read",
 ] as const;
 export type AdminActionId = (typeof ADMIN_ACTIONS)[number];
@@ -94,6 +96,8 @@ export const ROLE_PERMISSIONS: Record<RoleId, ReadonlySet<AdminActionId>> = {
     "content.zoneTypes.write",
     "content.installations.read",
     "content.installations.write",
+    "content.astro.read",
+    "content.astro.write",
   ]),
   admin: new Set(ADMIN_ACTIONS),
 };
@@ -162,6 +166,23 @@ export const idParamSchema = z.object({ id: z.string().min(1) });
 /** `:key` de route — uniquement `/content/constants/:key` (clé de `BalanceConstants`,
  *  pas un id libre). */
 export const keyParamSchema = z.object({ key: z.string().min(1) });
+
+/** `:family/:id` de route — uniquement `/content/astro`, dont la ressource est une paire :
+ *  « icy » nomme une lune de glace ET une ceinture glacée, dans deux catalogues distincts. */
+export const astroParamsSchema = z.object({
+  family: z.enum([
+    "galaxy",
+    "star",
+    "blackHole",
+    "whiteHole",
+    "planetClass",
+    "planetVariant",
+    "moonClass",
+    "moonVariant",
+    "belt",
+  ]),
+  id: z.string().min(1),
+});
 
 /** Query de `GET /api/admin/accounts` — un paramètre malformé (ex. `limit=abc`) doit
  *  renvoyer un 400 Zod, pas se coercer silencieusement (ancien `Number(limit) || 50`). */

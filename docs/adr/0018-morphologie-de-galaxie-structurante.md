@@ -2,7 +2,10 @@
 
 ## Statut
 
-Accepté
+Accepté — décision 3 (« la morphologie reste dérivée, jamais persistée ») **renversée** par
+l'ADR [0021](0021-le-ciel-devient-une-donnee-de-jeu.md) : la morphologie devient un champ du
+type de galaxie, persisté en base. La décision principale — la morphologie est une **entrée**
+du générateur, donc une cause — est confirmée et étendue à sept autres familles.
 
 ## Contexte
 

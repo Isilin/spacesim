@@ -58,12 +58,19 @@ export const GALAXY_SPACING = 260;
 
 /**
  * Normalisation du coût de trajet (chantier 31.6) : une arête pèse sa longueur 3D
- * divisée par cette référence. Calée sur la longueur d'arête **moyenne** d'un univers
- * généré (mesurée : moyenne 205, médiane 198, étendue 96-388) pour que l'arête typique
- * vaille ≈ 1 — la valeur retournée reste ainsi à l'échelle du compte de sauts d'avant,
- * et les constantes de `balance.ts` qui la multiplient gardent leur ordre de grandeur.
+ * divisée par cette référence. Calée pour que l'arête typique vaille ≈ 1 — la valeur
+ * retournée reste ainsi à l'échelle du compte de sauts d'avant, et les constantes de
+ * `balance.ts` qui la multiplient gardent leur ordre de grandeur.
+ *
+ * Valait 205 au chantier 31.6 (moyenne 205, médiane 198, étendue 96-388). Le chantier 45
+ * a fait passer les morphologies de quatre à huit et changé la façon dont la taille d'une
+ * galaxie se tire — la longueur d'arête moyenne est tombée à **157** (médiane 139-146,
+ * mesurée sur deux seeds indépendantes). La constante ne suit pas cette moyenne
+ * directement : `travelCostInUniverse` fait du Dijkstra pondéré, dont le chemin le moins
+ * cher n'est pas celui du moins de sauts. 174 est la valeur qui ramène le rapport
+ * coût/sauts à ≈ 1, et c'est ce rapport que `travel.calibration.test.ts` verrouille.
  */
-export const JUMP_REFERENCE_LENGTH = 205;
+export const JUMP_REFERENCE_LENGTH = 174;
 
 /**
  * Poids d'un saut de portail inter-galactique, forfaitaire (chantier 31.6). Sa longueur
@@ -299,3 +306,37 @@ export const MAIL_MAX_BODY = 4000;
 export const STANDING_MIN = -10;
 export const STANDING_MAX = 10;
 export const STANDING_TRADE_MIN = 3;
+
+/**
+ * Nombre maximal de corps centraux d'un système (chantier 47).
+ *
+ * Il gouverne le RENDU, pas la génération : `SystemLayer` monte toujours autant de sources de
+ * lumière, quelles que soient les étoiles présentes, celles qui manquent restant à intensité
+ * nulle. Un nombre variable de lumières fait recompiler tous les matériaux de la scène par
+ * three.js — le compte entre dans les *defines* du programme — soit un à-coup visible à chaque
+ * entrée dans un système au nombre d'étoiles différent.
+ *
+ * Trois plutôt que « le maximum de `STAR_COUNT_WEIGHTS` » écrit en dur dans le rendu : la
+ * table peut gagner une ligne `[4, 2]` sans que personne ne pense au client, et la quatrième
+ * étoile serait alors noire sans que rien ne le dise. `universe.test.ts` verrouille que la
+ * table ne dépasse pas cette borne.
+ */
+export const MAX_CENTRAL_BODIES = 3;
+
+/**
+ * Séparation d'un compagnon, en unités de scène — et le trou délibéré entre les deux bandes.
+ *
+ * Une binaire serrée voit ses planètes tourner autour du **barycentre** (orbites P), une
+ * binaire large voit chaque étoile garder les siennes (orbites S). Entre les deux, les orbites
+ * planétaires ne sont pas stables : la bande intermédiaire n'est jamais tirée, et
+ * `orbitsBarycenter` devient non ambigu par construction plutôt que par prudence.
+ *
+ * La bande serrée s'arrête à 22 pour que trois fois la séparation reste sous la première
+ * orbite planétaire (70) : toute planète du système est alors circumbinaire et stable.
+ *
+ * Ici et non dans `universe.ts` depuis le chantier 47 : le générateur les tire, mais la fiche
+ * de lecture d'un système et le rendu les LISENT pour dire de quelle sorte de binaire il
+ * s'agit. Les redéclarer d'un côté ou de l'autre aurait fait un doublon de seuil.
+ */
+export const TIGHT_BINARY = [10, 22] as const;
+export const WIDE_BINARY = [420, 900] as const;

@@ -47,6 +47,14 @@ export const universeGalaxies = pgTable("universe_galaxies", {
   y: integer("y").notNull(),
   /** Écart au plan de l'univers (chantier 31.4). */
   z: integer("z").notNull().default(0),
+  /**
+   * Type de galaxie (chantier 45.1) — id de `content/astro/galaxy-types.ts`.
+   *
+   * Première colonne d'un chantier qui en pose plusieurs : l'ADR 0021 fait des types
+   * astronomiques une donnée de jeu, donc quelque chose qui se persiste. Le défaut vaut
+   * pour les galaxies matérialisées avant ce chantier, qui n'en avaient pas.
+   */
+  typeId: text("type_id").notNull().default("spiral"),
   depositBonus: doublePrecision("deposit_bonus").notNull(),
   anchorSystemId: text("anchor_system_id").notNull(),
   /**
@@ -93,6 +101,66 @@ export const universeLinks = pgTable(
   (t) => [primaryKey({ columns: [t.aSystemId, t.bSystemId] })],
 );
 
+/**
+ * Corps centraux d'un système : étoiles, trous noirs, trous blancs (chantier 45.1).
+ *
+ * Une table plutôt qu'une colonne, parce qu'un système en compte un à quatre. `star_index`
+ * fige l'ordre comme le font `system_index` et `body_index` — le rang 0 est l'ancre, à
+ * l'origine du repère du système.
+ *
+ * `kind` dit dans quel catalogue lire `type_id` ; les deux restent du `text` nu, comme
+ * `universe_bodies.kind` et `.type` avant eux, et le repli générique de chaque accesseur
+ * remplace la validation qu'aucun `pgEnum` n'apporterait ici (le contenu devient éditable
+ * au palier 3, voir ADR 0021).
+ */
+export const universeStars = pgTable("universe_stars", {
+  /** "gal-7-sys-3-s1" */
+  id: text("id").primaryKey(),
+  systemId: text("system_id")
+    .notNull()
+    .references(() => universeSystems.id),
+  /** Position dans `system.stars` — 0 = ancre, puis compagnons par masse décroissante. */
+  starIndex: integer("star_index").notNull(),
+  name: text("name").notNull(),
+  /** "star" | "blackHole" | "whiteHole" */
+  kind: text("kind").notNull(),
+  typeId: text("type_id").notNull(),
+  /** Masses solaires. Tirée à la génération : la zone habitable en dérive. */
+  mass: doublePrecision("mass").notNull(),
+  /** Zéro pour l'ancre ; sinon orbite autour du barycentre. */
+  orbitRadius: doublePrecision("orbit_radius").notNull().default(0),
+  orbitAngle: doublePrecision("orbit_angle").notNull().default(0),
+  inclination: doublePrecision("inclination").notNull().default(0),
+  ascendingNode: doublePrecision("ascending_node").notNull().default(0),
+});
+
+/**
+ * Ponts d'Einstein-Rosen (chantier 45.1) : paires de systèmes reliées par une bouche de
+ * trou noir et sa fontaine blanche, à l'intérieur d'une même galaxie.
+ *
+ * Table jumelle de `universe_links` et non une extension de celle-ci : une arête de saut
+ * est pondérée par sa longueur 3D, un pont ne l'est pas, et `links` porte l'invariant de
+ * connexité. Les mélanger reviendrait à facturer un raccourci au prix de la distance qu'il
+ * annule.
+ */
+export const universeBridges = pgTable(
+  "universe_bridges",
+  {
+    galaxyId: text("galaxy_id")
+      .notNull()
+      .references(() => universeGalaxies.id),
+    aSystemId: text("a_system_id")
+      .notNull()
+      .references(() => universeSystems.id),
+    bSystemId: text("b_system_id")
+      .notNull()
+      .references(() => universeSystems.id),
+    /** Position dans `galaxy.bridges`. */
+    bridgeIndex: integer("bridge_index").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.aSystemId, t.bSystemId] })],
+);
+
 /** Planètes ET lunes (comme `system.planets`, entrelacées dans l'ordre de génération). */
 export const universeBodies = pgTable("universe_bodies", {
   /** "...-p2" (planète) ou "...-p2-m1" (lune). */
@@ -106,7 +174,24 @@ export const universeBodies = pgTable("universe_bodies", {
   /** NULL pour une planète ; la planète orbitée pour une lune. */
   parentPlanetId: text("parent_planet_id"),
   name: text("name").notNull(),
-  type: text("type").notNull(),
+  /**
+   * Étoile hôte (chantier 45.2) — le corps central autour duquel le corps tourne.
+   *
+   * Nullable : les corps matérialisés avant ce chantier n'en ont pas, et un système sans
+   * étoile n'en a pas non plus. Pas de FK vers `universe_stars` : les deux tables s'écrivent
+   * dans la même transaction, mais l'ordre d'insertion suffit à garantir la cohérence sans
+   * imposer une contrainte de plus au chemin chaud d'écriture.
+   */
+  hostStarId: text("host_star_id"),
+  /**
+   * Deux axes depuis le chantier 45.3 : la CLASSE dit de quoi le corps est fait, la VARIANTE
+   * ce qu'il fait de sa position. L'ancienne colonne `type` les confondait.
+   *
+   * Les défauts valent pour les corps matérialisés avant ce chantier — un monde rocheux
+   * stérile, le cas le plus neutre.
+   */
+  classId: text("class_id").notNull().default("rocky"),
+  variantId: text("variant_id").notNull().default("barren"),
   habitability: integer("habitability").notNull(),
   slots: integer("slots").notNull(),
   /** JSON Deposits. */
@@ -127,6 +212,13 @@ export const universeBelts = pgTable("universe_belts", {
   /** Position dans `system.belts`. */
   beltIndex: integer("belt_index").notNull(),
   name: text("name").notNull(),
+  /**
+   * Composition (chantier 45.3) — la première fois qu'une ceinture porte un type.
+   *
+   * Le défaut vaut pour les ceintures matérialisées avant ce chantier : silicatée, la plus
+   * banale, et celle dont la richesse encadre celle qu'elles avaient déjà.
+   */
+  typeId: text("type_id").notNull().default("silicate"),
   orbitRadius: doublePrecision("orbit_radius").notNull(),
   inclination: doublePrecision("inclination").notNull().default(0),
   ascendingNode: doublePrecision("ascending_node").notNull().default(0),
@@ -1014,3 +1106,35 @@ export const contentMilestones = pgTable("content_milestones", {
   metric: text("metric").notNull(),
   threshold: doublePrecision("threshold").notNull(),
 });
+
+/**
+ * Surcharges des catalogues astronomiques (chantier 45.4).
+ *
+ * ## La seule table de contenu qui ne porte pas le contenu
+ *
+ * Les douze autres domaines du CMS stockent l'entrée entière : une ligne de
+ * `content_warships` EST le vaisseau. Ici la base ne stocke qu'un **correctif** — les neuf
+ * catalogues de `content/astro/` restent intégrés au code, et une ligne dit seulement ce
+ * qu'une édition a changé.
+ *
+ * C'est l'ADR 0021 rendue impossible à contourner. Sa décision 3 coupe chaque catalogue en
+ * deux : les entrées de génération, gelées par `GENERATOR_VERSION`, et les effets, relus à
+ * chaque usage. Une table qui porterait l'entrée entière laisserait éditer la première
+ * moitié par accident, et une galaxie matérialisée cesserait de correspondre à ce qui l'a
+ * produite. Un correctif validé par `astroOverrideSchema` ne le peut pas.
+ *
+ * `payload` est du JSON, comme `cost` ou `appearance` ailleurs dans ce fichier : sa forme
+ * dépend de la famille, et neuf tables de trois colonnes chacune n'auraient rien dit de plus.
+ */
+export const contentAstro = pgTable(
+  "content_astro",
+  {
+    /** Une des neuf familles d'`ASTRO_FAMILIES`. */
+    family: text("family").notNull(),
+    /** Identifiant de type dans cette famille — "red_dwarf", "gas_giant", "icy"… */
+    id: text("id").notNull(),
+    /** JSON : la moitié « effets » seulement, partielle. */
+    payload: text("payload").notNull().default("{}"),
+  },
+  (table) => [primaryKey({ columns: [table.family, table.id] })],
+);

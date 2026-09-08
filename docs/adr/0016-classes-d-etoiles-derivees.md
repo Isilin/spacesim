@@ -2,7 +2,11 @@
 
 ## Statut
 
-Accepté
+Accepté — **remplacée** par l'ADR
+[0021](0021-le-ciel-devient-une-donnee-de-jeu.md). Le mécanisme reste juste pour un habillage,
+mais la portée ne tient plus : classes d'étoiles et types de corps entrent dans l'économie,
+l'habitabilité, l'exploration et le coût de trajet, et se persistent. La bascule que cette ADR
+s'était réservé le droit de décider a été prise.
 
 ## Contexte
 

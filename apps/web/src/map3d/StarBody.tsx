@@ -98,15 +98,25 @@ export function StarBody({
   id,
   radius,
   coronaRadius,
-  starClass = "mainSequence",
+  starClass = "yellow_dwarf",
 }: {
   id: string;
+  /**
+   * Rayon de la sphère, en unités de scène — **déjà multiplié par le facteur de la classe**
+   * (chantier 47).
+   *
+   * Il était relatif : le composant faisait `radius * look.radius` en interne, quand
+   * `BlackHole`, son voisin immédiat, recevait un rayon absolu. Deux contrats opposés pour
+   * deux composants qui rendent la même chose à la même place — c'est la même confusion
+   * d'unités qui avait figé la taille des singularités.
+   */
   radius: number;
+  /** Rayon de la couronne, absolu lui aussi. */
   coronaRadius: number;
   /**
-   * Classe de l'étoile (chantier 35.10), dérivée du système par `starClassOf`. Elle règle
-   * la teinte, la taille, l'étendue de la couronne et la vitesse de la granulation — une
-   * géante bout lentement, une naine blanche vibre.
+   * Classe de l'étoile (chantier 35.10), désormais un identifiant de catalogue persisté.
+   * Elle règle la teinte et la vitesse de la granulation — une géante bout lentement, une
+   * naine blanche vibre. La TAILLE, elle, est passée par l'appelant.
    */
   starClass?: string;
 }) {
@@ -140,7 +150,7 @@ export function StarBody({
   return (
     <>
       <mesh>
-        <sphereGeometry args={[radius * look.radius, 48, 48]} />
+        <sphereGeometry args={[radius, 48, 48]} />
         <shaderMaterial
           ref={surface}
           vertexShader={VERTEX}
@@ -152,7 +162,7 @@ export function StarBody({
       {/* Halo additif rendu sur la face INTERNE : la coque ne masque donc jamais l'étoile
           qu'elle entoure, quel que soit l'angle. */}
       <mesh>
-        <sphereGeometry args={[coronaRadius * look.corona, 32, 32]} />
+        <sphereGeometry args={[coronaRadius, 32, 32]} />
         <shaderMaterial
           vertexShader={HALO_VERTEX}
           fragmentShader={HALO_FRAGMENT}

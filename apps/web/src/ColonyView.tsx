@@ -36,7 +36,7 @@ import {
 import { formatDuration } from "./format.js";
 import {
   buildingLabel,
-  planetTypeLabel,
+  bodyVariantLabel,
   resourceLabel,
   techLabel,
 } from "./labels.js";
@@ -67,6 +67,7 @@ const SHOWN_RESOURCES: ResourceId[] = [
   "goods",
   "credits",
   "science",
+  "exotic",
 ];
 
 function formatCost(cost: Partial<Record<ResourceId, number>>): string {
@@ -119,7 +120,7 @@ export function ColonyView({ effects }: Props) {
         <span className="muted">
           {t("colonyView.habitability", {
             planet: planet.name,
-            type: planetTypeLabel(planet.type),
+            type: bodyVariantLabel(planet),
             hab: planet.habitability,
             slots,
             max: planet.slots,

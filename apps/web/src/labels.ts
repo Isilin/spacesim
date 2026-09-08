@@ -1,5 +1,8 @@
 import type {
+  BodyRef,
+  SystemProfile,
   BuildingId,
+  CentralBodyKind,
   ChassisId,
   CombatDirective,
   FactionId,
@@ -9,7 +12,6 @@ import type {
   ModuleId,
   ModuleRole,
   ObjectiveKind,
-  PlanetType,
   RelationState,
   ResourceId,
   SlotType,
@@ -26,7 +28,9 @@ import { i18n } from "./i18n.js";
  *  clés (ids stables de `@spacesim/shared`) vivent dans `src/i18n/content.ts`. Le ton/icône
  *  des badges reste en code (pas de texte affiché, donc rien à traduire). */
 
-const t = (key: string) => i18n.t(key);
+/** Interpolation admise : la fiche de lecture d'un système compte des mondes et des lunes. */
+const t = (key: string, options?: Record<string, unknown>) =>
+  i18n.t(key, options);
 
 /** Humeur de faction (chantier 15) : nom + ton d'affichage (neutre/positif/négatif). */
 export function factionMoodLabel(mood: FactionMood): {
@@ -79,8 +83,26 @@ export function worldEventLabel(kind: WorldEventKind): {
   return { name: t(`worldEvent.${kind}.name`), ...meta[kind] };
 }
 
-export function planetTypeLabel(type: PlanetType): string {
-  return t(`planetType.${type}`);
+/**
+ * Nom d'un corps, sur ses deux axes (chantier 45.3).
+ *
+ * Deux fonctions et non une chaîne composée : la fiche veut « Rocheuse tempérée », la liste
+ * du système veut « Tempérée » seul, et l'infobox veut la classe. Composer ici aurait forcé
+ * les trois à découper.
+ *
+ * Le corps entier plutôt que ses identifiants : une lune se nomme dans ses propres
+ * catalogues, et « regular » n'a pas de traduction du côté planétaire.
+ */
+export function bodyClassLabel(body: BodyRef): string {
+  return t(
+    `${body.kind === "moon" ? "moonClass" : "planetClass"}.${body.classId}`,
+  );
+}
+
+export function bodyVariantLabel(body: BodyRef): string {
+  return t(
+    `${body.kind === "moon" ? "moonVariant" : "planetVariant"}.${body.variantId}`,
+  );
 }
 
 export function resourceLabel(resource: ResourceId): string {
@@ -224,9 +246,86 @@ export function installationLabel(id: InstallationId): {
 }
 
 /**
- * Libellé d'une classe d'étoile (chantier 35.10). Repli sur la classe brute plutôt que sur
- * du vide : une classe ajoutée sans traduction doit rester lisible.
+ * Libellé d'un corps central — étoile, trou noir ou fontaine blanche (chantiers 35.10 puis 46).
+ *
+ * Le corps entier plutôt que son seul identifiant, et pour la même raison que
+ * `bodyClassLabel` : c'est `kind` qui dit dans quel catalogue lire, et « stellar » nomme un
+ * trou noir quand « pulsar » nomme une étoile. Un identifiant seul ne pouvait pas trancher.
+ *
+ * Repli sur l'identifiant brut plutôt que sur du vide : un type ajouté sans traduction doit
+ * rester lisible. C'est aussi ce qui a masqué le défaut que ce chantier corrige — la table
+ * i18n portait encore les six identifiants dérivés d'avant le chantier 45, aucune clé ne
+ * correspondait, et l'infobox rendait `orange_dwarf` sans que rien ne signale l'absence.
+ * D'où le test de couverture qui accompagne ces tables.
  */
-export function starClassLabel(starClass: string): string {
-  return i18n.t(`starClass.${starClass}`, { defaultValue: starClass });
+export function centralBodyLabel(body: {
+  kind: CentralBodyKind;
+  typeId: string;
+}): string {
+  const table =
+    body.kind === "star"
+      ? "starClass"
+      : body.kind === "blackHole"
+        ? "blackHoleType"
+        : "whiteHoleType";
+  return i18n.t(`${table}.${body.typeId}`, { defaultValue: body.typeId });
+}
+
+/**
+ * Fiche de lecture d'un système, en une ligne (chantier 47).
+ *
+ * La dérivation vit dans `shared` (`systemProfile`) parce qu'elle doit être la même dans
+ * l'infobox de la carte et dans le panneau de système. La PHRASE vit ici parce que les
+ * accords, les pluriels et l'ordre des segments sont de la langue.
+ *
+ * Elle nomme les deux corps d'une binaire et ne choisit pas — ce que le champ `starClass`
+ * qu'elle remplace était structurellement incapable de faire : un champ, un type.
+ *
+ * Deux corps identiques se rendent « Naine rouge ×2 » et non « deux naines rouges » : le
+ * pluriel d'un nom composé français demanderait une forme `_one`/`_other` pour chacun des
+ * vingt-deux types, dans les deux langues, à tenir à jour à chaque type ajouté. Un compteur
+ * dit la même chose, dans un relevé où il se lit sans effort.
+ *
+ * Un système inexploré ne rend qu'« Inexploré » : la fiche se tait plutôt que d'annoncer
+ * « 0 monde », qui affirmerait quelque chose de faux.
+ */
+export function systemProfileLabel(profile: SystemProfile): string {
+  if (!profile.known) return t("systemProfile.unknown");
+
+  const segments: string[] = [];
+
+  const bodies = profile.groups
+    .map((group) =>
+      group.count > 1
+        ? t("systemProfile.several", {
+            count: group.count,
+            name: centralBodyLabel(group),
+          })
+        : centralBodyLabel(group),
+    )
+    .join(t("systemProfile.and"));
+
+  if (profile.drifter) {
+    segments.push(t("systemProfile.drifter"), bodies);
+  } else {
+    if (profile.arrangement !== "single") {
+      segments.push(t(`systemProfile.${profile.arrangement}`));
+    }
+    segments.push(bodies);
+  }
+
+  if (profile.planets > 0) {
+    const worlds = t("systemProfile.worlds", { count: profile.planets });
+    segments.push(
+      profile.moons > 0
+        ? `${worlds}${t("systemProfile.moonsSuffix", { count: profile.moons })}`
+        : worlds,
+    );
+  }
+  if (profile.belts > 0)
+    segments.push(t("systemProfile.belts", { count: profile.belts }));
+  // En dernier, parce que c'est la seule information de la fiche qui change une décision.
+  if (profile.exotic) segments.push(t("systemProfile.exotic"));
+
+  return segments.join(" · ");
 }

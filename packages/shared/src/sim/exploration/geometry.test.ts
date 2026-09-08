@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { Planet, StarSystem } from "../../model/universe.js";
+import type { CentralBody, Planet, StarSystem } from "../../model/universe.js";
 import {
   angularSpeedOf,
   bodyPositionAt,
+  centralBodyPositionAt,
   distance3,
   orbitalPeriodTicks,
 } from "./geometry.js";
@@ -12,7 +13,8 @@ function planet(over: Partial<Planet> & { id: string }): Planet {
     systemId: "sys-0",
     name: "Test",
     kind: "planet",
-    type: "telluric",
+    classId: "rocky",
+    variantId: "temperate",
     habitability: 50,
     slots: 8,
     deposits: {},
@@ -31,6 +33,7 @@ function system(planets: Planet[]): StarSystem {
     x: 0,
     y: 0,
     z: 0,
+    stars: [],
     planets,
     belts: [],
   };
@@ -172,5 +175,123 @@ describe("distance3", () => {
     const a = system([]);
     const b = { ...system([]), x: 6, y: 8, z: 0 };
     expect(distance3(a, b)).toBeCloseTo(10, 9);
+  });
+});
+
+describe("orbites S et P (chantier 45.2)", () => {
+  /**
+   * Les deux régimes d'un système multiple. Le générateur ne tire jamais de séparation dans
+   * la bande intermédiaire, si bien que `orbitsBarycenter` tranche sans ambiguïté — ces cas
+   * vérifient que la géométrie suit cette lecture, et non un second champ qui pourrait la
+   * contredire.
+   */
+  const companion = (id: string, orbitRadius: number): CentralBody => ({
+    id,
+    systemId: "sys-0",
+    name: id,
+    kind: "star",
+    typeId: "yellow_dwarf",
+    rank: 1,
+    mass: 1,
+    orbitRadius,
+    orbitAngle: 0,
+    inclination: 0,
+    ascendingNode: 0,
+  });
+  const anchor = { ...companion("sys-0-s1", 0), rank: 0 };
+
+  const world = (over: Partial<Planet>): Planet =>
+    ({
+      id: "p",
+      systemId: "sys-0",
+      name: "P",
+      kind: "planet",
+      classId: "rocky",
+      variantId: "temperate",
+      habitability: 50,
+      slots: 8,
+      deposits: {},
+      orbitRadius: 130,
+      orbitAngle: 0,
+      inclination: 0,
+      ascendingNode: 0,
+      ...over,
+    }) as Planet;
+
+  const systemOf = (stars: CentralBody[], planets: Planet[]): StarSystem =>
+    ({
+      id: "sys-0",
+      name: "Sys",
+      x: 0,
+      y: 0,
+      z: 0,
+      stars,
+      planets,
+      belts: [],
+    }) as StarSystem;
+
+  it("en binaire serrée, la planète tourne autour du barycentre", () => {
+    // Son orbite englobe les deux étoiles : elle part donc de l'origine, comme avant le
+    // chantier, et le compagnon ne la décale pas.
+    const planet = world({ hostStarId: "sys-0-s1" });
+    const tight = systemOf([anchor, companion("sys-0-s2", 18)], [planet]);
+    const single = systemOf([anchor], [world({})]);
+    expect(bodyPositionAt(tight, planet, 0)).toEqual(
+      bodyPositionAt(single, single.planets[0]!, 0),
+    );
+  });
+
+  it("en binaire large, la planète suit son étoile hôte", () => {
+    const host = companion("sys-0-s2", 600);
+    const planet = world({ hostStarId: "sys-0-s2" });
+    const wide = systemOf([anchor, host], [planet]);
+    const at = bodyPositionAt(wide, planet, 0);
+    const hostAt = centralBodyPositionAt(host, 0);
+    // Le corps est à son rayon d'orbite de son HÔTE, pas de l'origine.
+    expect(
+      Math.hypot(at.x - hostAt.x, at.y - hostAt.y, at.z - hostAt.z),
+    ).toBeCloseTo(planet.orbitRadius, 5);
+    expect(Math.hypot(at.x, at.y, at.z)).toBeGreaterThan(
+      planet.orbitRadius * 2,
+    );
+  });
+
+  it("une lune suit sa planète, elle-même autour de son hôte", () => {
+    // La composition va à trois niveaux : barycentre → étoile hôte → planète → lune.
+    const host = companion("sys-0-s2", 600);
+    const planet = world({ id: "p1", hostStarId: "sys-0-s2" });
+    const moon = world({
+      id: "p1-m1",
+      kind: "moon",
+      parentPlanetId: "p1",
+      orbitRadius: 20,
+      hostStarId: "sys-0-s2",
+    });
+    const wide = systemOf([anchor, host], [planet, moon]);
+    const planetAt = bodyPositionAt(wide, planet, 0);
+    const moonAt = bodyPositionAt(wide, moon, 0);
+    expect(
+      Math.hypot(
+        moonAt.x - planetAt.x,
+        moonAt.y - planetAt.y,
+        moonAt.z - planetAt.z,
+      ),
+    ).toBeCloseTo(moon.orbitRadius, 5);
+  });
+
+  it("l'ancre ne bouge pas, un compagnon oui", () => {
+    expect(centralBodyPositionAt(anchor, 500)).toEqual({ x: 0, y: 0, z: 0 });
+    const moving = centralBodyPositionAt(companion("s", 600), 500);
+    expect(Math.hypot(moving.x, moving.y, moving.z)).toBeCloseTo(600, 5);
+  });
+
+  it("un hôte introuvable ne fait pas disparaître le corps", () => {
+    // Données incohérentes : mieux vaut un corps au barycentre qu'une vue qui refuse de se
+    // rendre.
+    const orphan = world({ hostStarId: "n'existe pas" });
+    const wide = systemOf([anchor, companion("sys-0-s2", 600)], [orphan]);
+    expect(bodyPositionAt(wide, orphan, 0)).toEqual(
+      bodyPositionAt(systemOf([anchor], [world({})]), world({}), 0),
+    );
   });
 });

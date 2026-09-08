@@ -5,9 +5,15 @@ import { BrowserRouter } from "react-router-dom";
 import { App } from "./App.js";
 import { AuthView } from "./AuthView.js";
 import { i18n } from "./i18n.js";
+import { loadAstroOverrides } from "./state/astro-content.js";
 import { useAuth } from "./useAuth.js";
 import "@spacesim/ui/styles.css";
 import "./styles.css";
+
+// Les surcharges de catalogues astronomiques sont récupérées avant le premier rendu de
+// scène, et sans bloquer : un échec laisse le client sur ses définitions intégrées
+// (chantier 45.4).
+void loadAstroOverrides();
 
 // `<html lang>` suit la locale active plutôt que le "fr" en dur d'index.html (chantier 27.16).
 document.documentElement.lang = i18n.language;

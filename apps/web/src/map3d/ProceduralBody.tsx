@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Color } from "three";
+import { bodyStructure, type BodyRef } from "@spacesim/shared";
 import { bodyAppearance, seedOf } from "./appearance.js";
 
 /**
@@ -68,14 +69,15 @@ const FRAGMENT = /* glsl */ `
 
 export function ProceduralBody({
   id,
-  type,
+  body,
   radius,
 }: {
   id: string;
-  type: string;
+  /** Le corps, et pas ses deux identifiants : `kind` décide des catalogues à lire. */
+  body: BodyRef;
   radius: number;
 }) {
-  const look = bodyAppearance(type);
+  const look = bodyAppearance(body);
   const segments = radius < 4 ? 12 : radius < 8 ? 20 : 32;
   const uniforms = useMemo(
     () => ({
@@ -83,12 +85,13 @@ export function ProceduralBody({
       uAccent: { value: new Color(look.accent) },
       uRelief: { value: look.relief },
       uSeed: { value: seedOf(id) },
-      uBands: { value: type === "gas" ? 1 : 0 },
+      // Les bandes sont une affaire de STRUCTURE : une enveloppe gazeuse en a, un sol non.
+      uBands: { value: bodyStructure(body).colonizable ? 0 : 1 },
       // Piloté par `FadingGroup` (chantier 35.4) : un `material.opacity` ne veut rien
       // dire pour un shader dont le fragment écrit lui-même son alpha.
       uOpacity: { value: 1 },
     }),
-    [look.color, look.accent, look.relief, id, type],
+    [look.color, look.accent, look.relief, id, body.kind, body.classId],
   );
 
   return (

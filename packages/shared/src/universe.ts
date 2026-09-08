@@ -7,7 +7,44 @@ import {
   UNIVERSE_CENTER_X,
   UNIVERSE_CENTER_Y,
   UNIVERSE_DISC_THICKNESS,
+  TIGHT_BINARY,
+  WIDE_BINARY,
 } from "./constants.js";
+import {
+  BLACK_HOLE_TYPES,
+  type BlackHolePlacement,
+} from "./content/astro/black-hole-types.js";
+import { beltType, beltTypesForZone } from "./content/astro/belt-types.js";
+import {
+  GALAXY_TYPE_WEIGHTS,
+  galaxyType,
+  type GalaxyTypeDef,
+  type GalaxyTypeId,
+} from "./content/astro/galaxy-types.js";
+import {
+  WHITE_HOLE_TYPES,
+  whiteHoleType,
+} from "./content/astro/white-hole-types.js";
+import {
+  planetClass,
+  planetClassesForZone,
+} from "./content/astro/planet-classes.js";
+import { variantsFor } from "./content/astro/planet-variants.js";
+import {
+  type BodyRef,
+  bodyEnvironment,
+  bodyStructure,
+} from "./content/astro/body-defs.js";
+import {
+  moonClass,
+  moonClassesForParent,
+} from "./content/astro/moon-classes.js";
+import { moonVariantsFor } from "./content/astro/moon-variants.js";
+import {
+  STAR_COMPANION_WEIGHTS,
+  STAR_PRIMARY_WEIGHTS,
+  starClass,
+} from "./content/astro/star-classes.js";
 import { FACTION_IDS } from "./content/factions.js";
 import {
   createRng,
@@ -18,18 +55,29 @@ import {
   type Rng,
 } from "./rng.js";
 import {
-  galaxyAppearance,
-  galaxyMorphology,
-  type GalaxyAppearance,
-  type GalaxyMorphology,
-} from "./sim/exploration/stars.js";
+  atmosphereRetention,
+  auAt,
+  equilibriumTempK,
+  escapeVelocity,
+  flareErosion,
+  greenhouseK,
+  habitabilityOf,
+  irradianceAt,
+  lightingFor,
+  radiationAt,
+  surfaceGravity,
+  surfaceTempC,
+  zoneAt,
+} from "./sim/exploration/physics.js";
 import type {
   AsteroidBelt,
+  CentralBody,
+  CentralBodyKind,
   ClientUniverse,
   Deposits,
   Galaxy,
   Planet,
-  PlanetType,
+  OrbitZone,
   StarSystem,
   TradingPost,
   Universe,
@@ -42,7 +90,7 @@ import type {
  * bumper cette version vont ensemble, dans le même commit. Les galaxies déjà
  * matérialisées en DB gardent la version qui les a produites et ne changent jamais.
  */
-export const GENERATOR_VERSION = 3;
+export const GENERATOR_VERSION = 12;
 
 /** Part des systèmes accueillant un comptoir commercial PNJ. */
 const TRADING_POST_PROBABILITY = 0.35;
@@ -199,72 +247,151 @@ function seriesName(offset: number, index: number): string {
   return lap === 0 ? name : `${name} ${lap + 1}`;
 }
 
-const TYPE_WEIGHTS: readonly (readonly [PlanetType, number])[] = [
-  ["telluric", 3],
-  ["oceanic", 2],
-  ["arid", 3],
-  ["frozen", 3],
-  ["volcanic", 2],
-  ["gas", 3],
+/**
+ * Nombre de corps centraux d'un système.
+ *
+ * Environ la moitié des étoiles du ciel réel vivent en couple ou davantage. La table penche
+ * vers le simple sans l'imposer : un tiers des systèmes sont multiples, assez pour que le cas
+ * se rencontre, assez peu pour que la carte reste lisible.
+ */
+export const STAR_COUNT_WEIGHTS: readonly (readonly [number, number])[] = [
+  [1, 65],
+  [2, 28],
+  [3, 7],
 ];
 
-const MOON_TYPE_WEIGHTS: readonly (readonly [PlanetType, number])[] = [
-  ["frozen", 4],
-  ["arid", 3],
-  ["volcanic", 2],
-  ["telluric", 1],
-];
+/**
+ * Séparation d'un compagnon, en unités de scène — et le trou délibéré entre les deux bandes.
+ *
+ * Une binaire serrée voit ses planètes tourner autour du **barycentre** (orbites P), une
+ * binaire large voit chaque étoile garder les siennes (orbites S). Entre les deux, les orbites
+ * planétaires ne sont pas stables : la bande intermédiaire n'est jamais tirée, et `orbitsBary`
+ * devient non ambigu par construction plutôt que par prudence.
+ *
+ * La bande serrée s'arrête à 22 pour que trois fois la séparation reste sous la première
+ * orbite planétaire (70) : toute planète du système est alors circumbinaire et stable.
+ */
 
-/** [min, max] d'habitabilité par type de planète. */
-const HABITABILITY: Record<PlanetType, [number, number]> = {
-  telluric: [55, 90],
-  oceanic: [45, 80],
-  arid: [25, 55],
-  frozen: [10, 40],
-  volcanic: [5, 30],
-  gas: [0, 0],
-};
-
-/** Tendance des gisements par type : [ressource, proba, min, max]. */
-const DEPOSIT_TENDENCIES: Record<
-  PlanetType,
-  readonly (readonly ["ore" | "energy" | "food", number, number, number])[]
-> = {
-  telluric: [
-    ["ore", 0.8, 0.7, 1.2],
-    ["food", 0.9, 0.9, 1.4],
-    ["energy", 0.6, 0.8, 1.1],
-  ],
-  oceanic: [
-    ["food", 0.95, 1.1, 1.6],
-    ["ore", 0.4, 0.5, 0.9],
-    ["energy", 0.6, 0.8, 1.2],
-  ],
-  arid: [
-    ["ore", 0.85, 0.9, 1.4],
-    ["energy", 0.85, 1.0, 1.5],
-    ["food", 0.3, 0.4, 0.8],
-  ],
-  frozen: [
-    ["ore", 0.8, 0.9, 1.5],
-    ["energy", 0.4, 0.5, 0.9],
-    ["food", 0.2, 0.3, 0.6],
-  ],
-  volcanic: [
-    ["ore", 0.95, 1.2, 1.8],
-    ["energy", 0.9, 1.1, 1.6],
-    ["food", 0.1, 0.2, 0.4],
-  ],
-  gas: [["energy", 1.0, 1.3, 2.0]],
-};
+/**
+ * Part des systèmes dont l'ancre est une singularité, et part des compagnons qui en sont une
+ * (chantier 45.5).
+ *
+ * Volontairement basses. Un trou noir primaire éteint son système : ses mondes gèlent et son
+ * habitabilité tombe au plancher, si bien qu'un pour cent de plus se paie directement sur la
+ * part de systèmes viables que `habitability.calibration.test.ts` verrouille. À 1,5 %, une
+ * galaxie de cinq cents systèmes en compte sept ou huit — assez pour que le joueur en
+ * rencontre, trop peu pour que l'expansion en souffre.
+ *
+ * Les errants restent la forme la plus fréquente : ce sont des objets à traverser, pas des
+ * systèmes à exploiter.
+ */
+const SINGULARITY_PRIMARY_SHARE = 0.015;
+const SINGULARITY_COMPANION_SHARE = 0.02;
 
 function romanNumeral(n: number): string {
   return ["I", "II", "III", "IV", "V", "VI"][n - 1] ?? String(n);
 }
 
-function generateDeposits(rng: Rng, type: PlanetType, bonus = 1): Deposits {
+/**
+ * Corps centraux d'un système (chantier 45.2).
+ *
+ * Tirés **avant** les corps, et c'est tout le sujet : leur luminosité place la zone habitable
+ * et la ligne des glaces, qui décident ensuite de ce qu'on trouve à chaque orbite. L'ADR 0016
+ * faisait l'inverse — la classe d'étoile était lue d'après les planètes déjà posées, faute
+ * de pouvoir les causer.
+ */
+function generateStars(
+  rng: Rng,
+  system: Pick<StarSystem, "id" | "name">,
+): CentralBody[] {
+  const count = pickWeighted(rng, STAR_COUNT_WEIGHTS);
+  const letters = ["A", "B", "C", "D"];
+  const stars: CentralBody[] = [];
+  // La séparation est propre au SYSTÈME et non à chaque compagnon : deux étoiles d'une
+  // binaire serrée ne peuvent pas être à la fois serrées et larges.
+  const wide = count > 1 && rng() < 0.4;
+  const [sepMin, sepMax] = wide ? WIDE_BINARY : TIGHT_BINARY;
+
+  for (let i = 0; i < count; i++) {
+    // Une singularité peut tenir la place d'une étoile (chantier 45.5). Les catalogues
+    // déclaraient ces deux emplacements depuis le palier 1 et le générateur ne les produisait
+    // pas : `microquasar` et `torrent` n'existaient nulle part, `stellar` non plus.
+    //
+    // Un système à trou noir primaire n'éclaire rien : ses mondes sont gelés et son
+    // habitabilité tombe au plancher. C'est voulu — il ne se colonise pas pour sa population
+    // mais pour ce que son disque d'accrétion crache, et c'est le seul endroit où l'on
+    // extrait de la matière exotique sans quitter un système habitable.
+    const singular =
+      i === 0
+        ? rng() < SINGULARITY_PRIMARY_SHARE && PRIMARY_SINGULARITIES.length > 0
+        : rng() < SINGULARITY_COMPANION_SHARE &&
+          COMPANION_SINGULARITIES.length > 0;
+    if (singular) {
+      const picked = pickWeighted(
+        rng,
+        i === 0 ? PRIMARY_SINGULARITIES : COMPANION_SINGULARITIES,
+      );
+      const [minMass, maxMass] = picked.massRange;
+      stars.push({
+        id: `${system.id}-s${i + 1}`,
+        systemId: system.id,
+        name: `${system.name} ${letters[i] ?? i + 1}`,
+        kind: picked.kind,
+        typeId: picked.typeId,
+        rank: i,
+        mass: Math.round((minMass + rng() * (maxMass - minMass)) * 1000) / 1000,
+        orbitRadius:
+          i === 0 ? 0 : Math.round(sepMin + rng() * (sepMax - sepMin)),
+        orbitAngle: i === 0 ? 0 : rng() * Math.PI * 2,
+        inclination: i === 0 ? 0 : (rng() - 0.5) * 2 * MAX_INCLINATION,
+        ascendingNode: i === 0 ? 0 : rng() * Math.PI * 2,
+      });
+      continue;
+    }
+    const typeId = pickWeighted(
+      rng,
+      i === 0 ? STAR_PRIMARY_WEIGHTS : STAR_COMPANION_WEIGHTS,
+    );
+    const [minMass, maxMass] = starClass(typeId).massRange;
+    stars.push({
+      id: `${system.id}-s${i + 1}`,
+      systemId: system.id,
+      name: `${system.name} ${letters[i] ?? i + 1}`,
+      kind: "star",
+      typeId,
+      rank: i,
+      mass: Math.round((minMass + rng() * (maxMass - minMass)) * 1000) / 1000,
+      // L'ancre est à l'origine du repère, ce que `bodyPositionAt` suppose déjà.
+      orbitRadius: i === 0 ? 0 : Math.round(sepMin + rng() * (sepMax - sepMin)),
+      orbitAngle: i === 0 ? 0 : rng() * Math.PI * 2,
+      inclination: i === 0 ? 0 : (rng() - 0.5) * 2 * MAX_INCLINATION,
+      ascendingNode: i === 0 ? 0 : rng() * Math.PI * 2,
+    });
+  }
+  return stars;
+}
+
+/** Les gisements suivent l'ENVIRONNEMENT : c'est lui qui dit ce que la surface expose. */
+function generateDeposits(rng: Rng, ref: BodyRef, bonus = 1): Deposits {
+  return rollDeposits(rng, bodyEnvironment(ref).depositTendencies, bonus);
+}
+
+/**
+ * Le tirage lui-même, partagé par les corps et les ceintures : les deux portent la même forme
+ * de tendance — [ressource, probabilité, min, max] — sans partager de catalogue.
+ */
+function rollDeposits(
+  rng: Rng,
+  tendencies: readonly (readonly [
+    "ore" | "energy" | "food",
+    number,
+    number,
+    number,
+  ])[],
+  bonus = 1,
+): Deposits {
   const deposits: Deposits = {};
-  for (const [resource, prob, min, max] of DEPOSIT_TENDENCIES[type]) {
+  for (const [resource, prob, min, max] of tendencies) {
     if (rng() < prob) {
       deposits[resource] =
         Math.round((min + rng() * (max - min)) * bonus * 100) / 100;
@@ -273,31 +400,141 @@ function generateDeposits(rng: Rng, type: PlanetType, bonus = 1): Deposits {
   return deposits;
 }
 
+/**
+ * Tire une classe puis une variante de PLANÈTE pour une zone donnée.
+ *
+ * L'ordre importe : la structure d'abord — c'est elle qui décide de ce que le corps peut
+ * retenir — puis l'environnement parmi ceux que cette structure admet, pondéré par la zone.
+ * L'inverse aurait permis une géante gazeuse océanique.
+ */
+function pickPlanetType(rng: Rng, zone: OrbitZone): BodyRef {
+  const classes = planetClassesForZone(zone);
+  const classId = classes.length > 0 ? pickWeighted(rng, classes) : "rocky";
+  const variants = variantsFor(planetClass(classId).variants, zone);
+  const variantId =
+    variants.length > 0 ? pickWeighted(rng, variants) : "barren";
+  return { kind: "planet", classId, variantId };
+}
+
+/**
+ * Même tirage pour une LUNE, conditionné par sa planète et non par sa zone.
+ *
+ * C'est toute la différence entre les deux familles : une lune de géante est volcanique ou
+ * porte un océan sous sa glace parce que sa planète la pétrit, quelle que soit la distance à
+ * l'étoile. Tirer une lune dans les tables planétaires rendait tout cortège externe gelé.
+ */
+function pickMoonType(rng: Rng, parentClassId: string): BodyRef {
+  const classes = moonClassesForParent(parentClassId);
+  const classId = classes.length > 0 ? pickWeighted(rng, classes) : "regular";
+  const variants = moonVariantsFor(moonClass(classId).variants, parentClassId);
+  const variantId =
+    variants.length > 0 ? pickWeighted(rng, variants) : "airless";
+  return { kind: "moon", classId, variantId };
+}
+
+/**
+ * Habitabilité d'un corps, **calculée** par la chaîne physique et non tirée.
+ *
+ * C'est le point d'arrivée du chantier. La table `HABITABILITY` qui vivait ici donnait une
+ * fourchette par type de planète, indépendante de l'étoile : un monde tellurique naissait
+ * entre 55 et 90 qu'il tourne autour d'une naine brune ou d'une supergéante. La valeur tombe
+ * désormais de la température de surface, de la pression réellement retenue, de la gravité et
+ * du rayonnement reçu.
+ *
+ * Le tirage ne disparaît pas pour autant : rayon et densité restent tirés dans la fourchette
+ * du type, et c'est par eux que deux mondes du même type au même endroit ne se valent pas.
+ */
+function bodyHabitability(
+  rng: Rng,
+  ref: BodyRef,
+  stars: readonly CentralBody[],
+  orbitRadius: number,
+  hostStarId?: string,
+): { habitability: number; radiusEarth: number; density: number } {
+  // La CLASSE donne la structure, la VARIANTE l'environnement : c'est le croisement des deux
+  // qui décide, et c'est ce que l'énumération à plat ne pouvait pas exprimer. Planète ou lune,
+  // la chaîne est la même — seules les tables où se lisent les deux définitions changent.
+  const cls = bodyStructure(ref);
+  const env = bodyEnvironment(ref);
+  const radiusEarth = range(rng, cls.radiusRange);
+  const density = range(rng, cls.densityRange);
+  if (!cls.colonizable) return { habitability: 0, radiusEarth, density };
+
+  // En binaire large, c'est l'étoile HÔTE qui chauffe, pas la somme des deux.
+  const lighting = lightingFor(stars, hostStarId, orbitRadius);
+  const au = auAt(lighting, orbitRadius);
+  const equilibrium = equilibriumTempK(irradianceAt(lighting, au), env.albedo);
+  // La magnétosphère de la classe protège du vent stellaire ce que les éruptions décaperaient.
+  const shielded = 1 - (1 - flareErosion(lighting)) * (1 - cls.magnetosphere);
+  const retention =
+    atmosphereRetention(escapeVelocity(radiusEarth, density), equilibrium) *
+    shielded;
+  // Ce que le corps retient réellement de ce qu'il dégaze. Sous 0,15 il est nu quoi qu'il
+  // tente : c'est ce couplage qui fait qu'une naine sans gravité reste stérile même au bon
+  // endroit, et qu'un monde froid garde une atmosphère qu'un monde chaud aurait perdue.
+  const pressure = env.outgassingBar * Math.min(1.5, Math.max(0, retention));
+  const surface = surfaceTempC(
+    equilibrium,
+    greenhouseK(pressure, env.greenhousePerBar),
+  );
+  return {
+    habitability: habitabilityOf({
+      surfaceTempC: surface,
+      pressureBar: pressure,
+      gravityG: surfaceGravity(radiusEarth, density),
+      radiation: Math.max(radiationAt(lighting, au), env.hazard),
+      breathable: env.atmosphere === "breathable" && retention > 0.5,
+    }),
+    radiusEarth,
+    density,
+  };
+}
+
+function range(rng: Rng, [min, max]: readonly [number, number]): number {
+  return min + rng() * (max - min);
+}
+
 function generateMoons(
   rng: Rng,
   planet: Planet,
+  stars: readonly CentralBody[],
   depositBonus: number,
 ): Planet[] {
-  const maxMoons = planet.type === "gas" ? 3 : 2;
-  const count = Math.max(
-    0,
-    randInt(rng, planet.type === "gas" ? 1 : -1, maxMoons),
-  );
+  // Le cortège dépend de la CLASSE de la planète : une géante en garde plusieurs, une naine
+  // presque jamais.
+  const [minMoons, maxMoons] = planetClass(planet.classId).moonRange;
+  const count = randInt(rng, minMoons, maxMoons);
   const moons: Planet[] = [];
-  const letters = ["a", "b", "c"];
+  const letters = ["a", "b", "c", "d", "e", "f"];
+
   for (let i = 0; i < count; i++) {
-    const type = pickWeighted(rng, MOON_TYPE_WEIGHTS);
-    const [hMin, hMax] = HABITABILITY[type];
+    // C'est la PLANÈTE qui décide de ce qu'une lune peut être, pas la zone thermique : une
+    // géante pétrit ses lunes par effet de marée et les baigne dans sa ceinture de
+    // radiations, phénomènes qu'aucune orbite stellaire ne reproduit.
+    const ref = pickMoonType(rng, planet.classId);
+    const body = bodyHabitability(
+      rng,
+      ref,
+      stars,
+      planet.orbitRadius,
+      planet.hostStarId,
+    );
     moons.push({
       id: `${planet.id}-m${i + 1}`,
       systemId: planet.systemId,
-      name: `${planet.name} ${letters[i]}`,
+      name: `${planet.name} ${letters[i] ?? i + 1}`,
       kind: "moon",
       parentPlanetId: planet.id,
-      type,
-      habitability: Math.min(40, randInt(rng, hMin, hMax)),
-      slots: randInt(rng, 2, 5),
-      deposits: generateDeposits(rng, type, depositBonus),
+      classId: ref.classId,
+      variantId: ref.variantId,
+      ...(planet.hostStarId ? { hostStarId: planet.hostStarId } : {}),
+      // Plus de plafond arbitraire : les classes de lunes sont assez petites pour que la
+      // physique s'en charge seule. Mesuré sur trois galaxies, la meilleure lune de
+      // l'univers sort à 17 — un Titan, à 0,14 g et −179 °C, ne se colonise que sous dôme.
+      // Le `Math.min(40, …)` qui vivait ici ne se déclenchait plus jamais.
+      habitability: body.habitability,
+      slots: randInt(rng, ...moonClass(ref.classId).slotRange),
+      deposits: generateDeposits(rng, ref, depositBonus),
       orbitRadius: 16 + i * 10,
       orbitAngle: rng() * Math.PI * 2,
       inclination: (rng() - 0.5) * 2 * MAX_INCLINATION,
@@ -307,9 +544,22 @@ function generateMoons(
   return moons;
 }
 
+/**
+ * Corps d'un système, conditionnés par les étoiles qui l'éclairent (chantier 45.2).
+ *
+ * L'ordre s'est inversé : `stars` arrive en paramètre parce qu'il a été tiré avant. Chaque
+ * créneau orbital est traduit en unités astronomiques par `auAt`, classé en zone thermique
+ * par `zoneAt`, et c'est la zone qui décide des types tirables. Une orbite qui tombe dans la
+ * zone habitable d'une naine rouge est à 0,16 UA, celle d'une géante bleue à 92 UA — même
+ * créneau de scène, même zone, deux mondes possibles.
+ *
+ * L'échelle des orbites, elle, ne bouge pas : c'est le facteur de conversion qui porte la
+ * différence, pas la géométrie. Voir `HABITABLE_SCENE_RADIUS`.
+ */
 function generateBodies(
   rng: Rng,
   system: Pick<StarSystem, "id" | "name">,
+  stars: readonly CentralBody[],
   depositBonus: number,
 ): {
   planets: Planet[];
@@ -317,38 +567,77 @@ function generateBodies(
 } {
   const count = randInt(rng, 2, 5);
   const planets: Planet[] = [];
+
+  // Qui héberge le cortège.
+  //
+  // Dans une binaire SERRÉE — séparation sous la première orbite — les planètes englobent les
+  // deux étoiles et tournent autour du barycentre : leur hôte nominal est l'ancre, et
+  // `orbitsBarycenter` le lit de la géométrie. Dans une binaire LARGE, chaque étoile garde son
+  // propre cortège, et l'hôte se tire à la masse : une naine ne retient pas autant de mondes
+  // que sa compagne massive.
+  //
+  // Le générateur ne tire jamais de séparation entre les deux bandes, où l'un et l'autre
+  // seraient également plausibles — et où les orbites ne sont de toute façon pas stables.
+  const wide = stars.some((s) => s.orbitRadius >= WIDE_BINARY[0]);
+  const hostTable: readonly (readonly [string, number])[] = stars.map(
+    (s) => [s.id, s.mass] as const,
+  );
+
   for (let i = 1; i <= count; i++) {
-    const type = pickWeighted(rng, TYPE_WEIGHTS);
-    const [hMin, hMax] = HABITABILITY[type];
+    const host =
+      wide && hostTable.length > 0
+        ? pickWeighted(rng, hostTable)
+        : stars[0]?.id;
+    const orbitRadius = 70 + (i - 1) * 55 + randInt(rng, -8, 8);
+    const zone = zoneAt(lightingFor(stars, host, orbitRadius), orbitRadius);
+    const ref = pickPlanetType(rng, zone);
+    const body = bodyHabitability(rng, ref, stars, orbitRadius, host);
+    const cls = planetClass(ref.classId);
     const planet: Planet = {
       id: `${system.id}-p${i}`,
       systemId: system.id,
       name: `${system.name} ${romanNumeral(i)}`,
       kind: "planet",
-      type,
-      habitability: randInt(rng, hMin, hMax),
-      slots: type === "gas" ? randInt(rng, 2, 4) : randInt(rng, 6, 14),
-      deposits: generateDeposits(rng, type, depositBonus),
-      orbitRadius: 70 + (i - 1) * 55 + randInt(rng, -8, 8),
+      classId: ref.classId,
+      variantId: ref.variantId,
+      ...(host ? { hostStarId: host } : {}),
+      habitability: body.habitability,
+      slots: randInt(rng, cls.slotRange[0], cls.slotRange[1]),
+      deposits: generateDeposits(rng, ref, depositBonus),
+      orbitRadius,
       orbitAngle: rng() * Math.PI * 2,
       inclination: (rng() - 0.5) * 2 * MAX_INCLINATION,
       ascendingNode: rng() * Math.PI * 2,
     };
-    planets.push(planet, ...generateMoons(rng, planet, depositBonus));
+    planets.push(planet, ...generateMoons(rng, planet, stars, depositBonus));
   }
 
   const belts: AsteroidBelt[] = [];
   const beltCount = randInt(rng, 0, 2);
   for (let i = 1; i <= beltCount; i++) {
+    const orbitRadius = 70 + count * 55 + i * 40 + randInt(rng, -10, 10);
+    // Même conditionnement que les planètes : c'est la ligne des glaces qui sépare une
+    // ceinture silicatée d'une ceinture glacée, comme la principale et celle de Kuiper.
+    const zone = zoneAt(
+      lightingFor(stars, stars[0]?.id, orbitRadius),
+      orbitRadius,
+    );
+    const table = beltTypesForZone(zone);
+    const typeId = table.length > 0 ? pickWeighted(rng, table) : "silicate";
+    const def = beltType(typeId);
     belts.push({
       id: `${system.id}-b${i}`,
       systemId: system.id,
       name: `Ceinture ${system.name} ${romanNumeral(i)}`,
-      orbitRadius: 70 + count * 55 + i * 40 + randInt(rng, -10, 10),
+      typeId,
+      orbitRadius,
       inclination: (rng() - 0.5) * 2 * MAX_INCLINATION,
       ascendingNode: rng() * Math.PI * 2,
       deposits: {
-        ore: Math.round((1.2 + rng() * 0.8) * depositBonus * 100) / 100,
+        // Le minerai reste à part des tendances : c'est lui que lit `beltRichness`, et le
+        // seul chiffre qu'un avant-poste minier voie jamais.
+        ore: Math.round(range(rng, def.richness) * depositBonus * 100) / 100,
+        ...rollDeposits(rng, def.depositTendencies, depositBonus),
       },
     });
   }
@@ -486,8 +775,9 @@ function relaxPositions(points: Point[], minDist: number): void {
 function generatePositions(
   rng: Rng,
   count: number,
-  look: GalaxyAppearance,
-): Point[] {
+  look: GalaxyTypeDef,
+  drifterCount = 0,
+): { systems: Point[]; drifters: Point[] } {
   const radius = GALAXY_RADIUS_PER_ROOT_SYSTEM * Math.sqrt(count);
   // Orientation propre à la galaxie : sans elle, toutes les spirales de l'univers partiraient
   // du même angle.
@@ -498,16 +788,38 @@ function generatePositions(
   for (let i = 0; i < count; i++) {
     const t = (i + 0.5) / count;
 
+    if (look.ring > 0) {
+      // Annulaire : une collision frontale a chassé la matière vers l'extérieur. Les
+      // systèmes se concentrent sur un tore et le centre reste vide — ce qui en fait la
+      // seule morphologie dont le graphe de sauts est un anneau, donc au diamètre bien
+      // plus grand que sa taille ne le laisse croire.
+      const r = radius * (look.ring + gaussian(rng) * look.scatter);
+      const theta = rng() * Math.PI * 2;
+      points.push({
+        x: Math.cos(theta) * r,
+        y: Math.sin(theta) * r,
+        z: gaussian(rng) * halfDepth * 0.4,
+      });
+      continue;
+    }
+
     if (look.arms === 0) {
-      // Elliptique : aucun bras, un ellipsoïde dont la densité décroît vers le bord. Trois
-      // tirages indépendants, sinon le nuage se range sur une diagonale.
+      // Sans bras : un ellipsoïde dont la densité décroît vers le bord. Trois tirages
+      // indépendants, sinon le nuage se range sur une diagonale.
+      //
+      // `scatter` sert ici d'APLATISSEMENT, et non de dispersion perpendiculaire comme
+      // dans la branche des bras : c'est la seule grandeur qui distingue les trois
+      // morphologies sans bras l'une de l'autre. À 1 l'objet est sphéroïdal (elliptique),
+      // à 0,3 c'est un disque épais sans bras (lenticulaire). Sans cet usage, elliptique,
+      // naine et lenticulaire rendaient exactement la même forme.
+      const flatten = look.scatter;
       const r = radius * (0.1 + t ** 0.6 * 0.9);
       const theta = rng() * Math.PI * 2;
       const phi = Math.acos(2 * rng() - 1);
       points.push({
         x: Math.sin(phi) * Math.cos(theta) * r,
         y: Math.sin(phi) * Math.sin(theta) * r * 0.78,
-        z: Math.cos(phi) * r * 0.5,
+        z: Math.cos(phi) * r * 0.5 * flatten,
       });
       continue;
     }
@@ -543,6 +855,15 @@ function generatePositions(
       y = Math.sin(turn) * r + Math.sin(turn + Math.PI / 2) * spread * 0.4;
     }
 
+    // Queue de marée : une galaxie en interaction projette une partie de son disque
+    // externe très loin, en un filament. Réservé aux plus excentrés — une queue part du
+    // bord, jamais du bulbe — et tiré après la barre, sur laquelle il ne s'applique pas.
+    if (look.tidalTails && t > 0.75 && rng() < 0.25) {
+      const stretch = 1.6 + rng() * 1.2;
+      x *= stretch;
+      y *= stretch;
+    }
+
     points.push({
       x,
       y,
@@ -553,13 +874,78 @@ function generatePositions(
 
   relaxPositions(points, MIN_SYSTEM_DISTANCE);
 
+  // Les errants se posent APRÈS la relaxation, sur les positions définitives : les
+  // repousser avec les systèmes les aurait ramenés dans le disque, alors que tout leur
+  // intérêt est d'être ailleurs.
+  const drifters = placeDrifters(rng, drifterCount, points, radius, halfDepth);
+
   // Recentrage sur l'origine du repère de galaxie : le client y ramène déjà les coordonnées
   // (`systemScenePosition`), et les galaxies matérialisées avant le chantier 37 y sont.
-  return points.map((p) => ({
+  const toGalaxyFrame = (p: Point) => ({
     x: roundCoord(UNIVERSE_CENTER_X + p.x),
     y: roundCoord(UNIVERSE_CENTER_Y + p.y),
     z: roundCoord(p.z),
-  }));
+  });
+  return {
+    systems: points.map(toGalaxyFrame),
+    drifters: drifters.map(toGalaxyFrame),
+  };
+}
+
+/**
+ * Tentatives avant d'accepter une position d'errant trop proche d'un système.
+ *
+ * Plafonné, comme `RELAX_PASSES` et pour la même raison : le rejet-et-retire sans borne
+ * d'avant le chantier 37 saturait sans un message. Huit essais suffisent très largement
+ * dans un halo bien plus vaste que le disque ; au neuvième on accepte, parce qu'un errant
+ * un peu trop près reste préférable à une galaxie qui ne se génère pas.
+ */
+const DRIFTER_TRIES = 8;
+
+/**
+ * Positions des singularités errantes — hors des bras, dans le halo.
+ *
+ * Un errant n'est pas une entité nouvelle : c'est un **système** sans étoile ni monde, ce
+ * qui lui donne gratuitement tout ce qu'on attend de lui. `generateLinks` l'absorbe sans
+ * modification, l'invariant de connexité tient, le graphe de sauts le voit comme une
+ * destination, la carte le rend et la base le stocke. Aucune machinerie parallèle.
+ *
+ * Ce qui le distingue tient donc à sa position et à son contenu, pas à son statut : posé
+ * entre 0,55 et 1,25 rayon, sur une épaisseur trois fois celle du disque, il se lit comme
+ * étant à l'écart — et il l'est aussi dans le graphe, puisque les liaisons se tirent des
+ * distances réelles.
+ */
+function placeDrifters(
+  rng: Rng,
+  count: number,
+  systems: readonly Point[],
+  radius: number,
+  halfDepth: number,
+): Point[] {
+  if (count <= 0) return [];
+  const grid = new SpatialGrid(MIN_SYSTEM_DISTANCE);
+  systems.forEach((p, i) => grid.add(i, p));
+
+  const out: Point[] = [];
+  for (let i = 0; i < count; i++) {
+    let candidate: Point | null = null;
+    for (let attempt = 0; attempt < DRIFTER_TRIES; attempt++) {
+      const r = radius * (0.55 + rng() * 0.7);
+      const theta = rng() * Math.PI * 2;
+      const p = {
+        x: Math.cos(theta) * r,
+        y: Math.sin(theta) * r,
+        z: gaussian(rng) * halfDepth * 1.5,
+      };
+      candidate = p;
+      const tooClose = grid
+        .around(p)
+        .some((j) => distance(p, systems[j]!) < MIN_SYSTEM_DISTANCE);
+      if (!tooClose) break;
+    }
+    out.push(candidate!);
+  }
+  return out;
 }
 
 /**
@@ -704,10 +1090,12 @@ export interface GalaxyDef {
   z: number;
   systems: number;
   /**
-   * Forme de la galaxie. Entrée du générateur depuis le chantier 37 : c'est elle qui décide
-   * où sont posés les systèmes, plus seulement à quoi ressemble le nuage qui les figure.
+   * Type de la galaxie. Entrée du générateur depuis le chantier 37 pour sa forme, et
+   * **antérieur à la taille** depuis le chantier 45 : le type est tiré d'abord, et sa
+   * `systemRange` contraint le nombre de systèmes. C'est l'inverse de `galaxyMorphology`,
+   * qui déduisait la forme d'une taille déjà tirée.
    */
-  morphology: GalaxyMorphology;
+  typeId: GalaxyTypeId;
   depositBonus: number;
 }
 
@@ -723,6 +1111,24 @@ export interface GalaxyDef {
  * précédentes (ADR 0002).
  * Richesse : croît avec l'éloignement (les anneaux lointains sont la récompense).
  */
+/**
+ * Type de la galaxie `index`, sur son propre flux RNG.
+ *
+ * La galaxie mère compte 520 systèmes (`HOME_GALAXY_SYSTEMS`) : son type se tire parmi les
+ * seuls qui admettent cette taille, faute de quoi elle n'aurait aucune forme possible. Une
+ * naine sphéroïdale à 520 systèmes n'est pas une naine. Les autres tirent dans toute la
+ * table — `astro.test.ts` vérifie qu'elle n'est jamais vide.
+ */
+function pickGalaxyType(seed: string, index: number): GalaxyTypeId {
+  const rng = createRng(`${seed}:galaxy-type:${index}`);
+  if (index !== 0) return pickWeighted(rng, GALAXY_TYPE_WEIGHTS);
+  const admits = GALAXY_TYPE_WEIGHTS.filter(([id]) => {
+    const [min, max] = galaxyType(id).systemRange;
+    return HOME_GALAXY_SYSTEMS >= min && HOME_GALAXY_SYSTEMS <= max;
+  });
+  return pickWeighted(rng, admits);
+}
+
 export function galaxyDefAt(seed: string, index: number): GalaxyDef {
   const radius = GALAXY_SPACING * Math.sqrt(index);
   const angle = index * GOLDEN_ANGLE;
@@ -730,13 +1136,18 @@ export function galaxyDefAt(seed: string, index: number): GalaxyDef {
   const nameOffset = hashSeed(`${seed}:galaxies`) % NAME_SPACE;
   const thickness =
     UNIVERSE_DISC_THICKNESS / (1 + (0.35 * radius) / GALAXY_SPACING);
+  // Le type se tire AVANT la taille, sur son propre flux — même idiome que `galaxy-size`,
+  // et pour la même raison : matérialiser une galaxie de frontière ne doit dépendre
+  // d'aucune de celles déjà tirées (ADR 0002).
+  const typeId = pickGalaxyType(seed, index);
+  const [typeMin, typeMax] = galaxyType(typeId).systemRange;
   const systems =
     index === 0
       ? HOME_GALAXY_SYSTEMS
       : randInt(
           createRng(`${seed}:galaxy-size:${index}`),
-          MIN_GALAXY_SYSTEMS,
-          MAX_GALAXY_SYSTEMS,
+          Math.max(MIN_GALAXY_SYSTEMS, typeMin),
+          Math.min(MAX_GALAXY_SYSTEMS, typeMax),
         );
   return {
     index,
@@ -745,7 +1156,7 @@ export function galaxyDefAt(seed: string, index: number): GalaxyDef {
     y: Math.round(UNIVERSE_CENTER_Y + Math.sin(angle) * radius),
     z: roundCoord(gaussian(createRng(`${seed}:galaxy-z:${index}`)) * thickness),
     systems,
-    morphology: galaxyMorphology(`gal-${index}`, systems),
+    typeId,
     depositBonus:
       index === 0
         ? 1
@@ -772,13 +1183,18 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
   // CONTENU (noms, planètes, gisements, comptoirs) du flux dérivé de la seed de partie.
   // C'est ce qui rendra les positions re-dérivables par le client sans lui livrer la seed —
   // et donc l'univers lointain transmissible en condensé plutôt qu'en entier.
-  const positions = generatePositions(
+  const type = galaxyType(def.typeId);
+  const drifterCount = Math.round(
+    (type.singularityDensity * def.systems) / 100,
+  );
+  const layout = generatePositions(
     createRng(`layout:${galaxyId}`),
     def.systems,
-    galaxyAppearance(def.morphology),
+    type,
+    drifterCount,
   );
   const nameOffset = Math.floor(rng() * NAME_SPACE);
-  const systems: StarSystem[] = positions.map((pos, i) => {
+  const systems: StarSystem[] = layout.systems.map((pos, i) => {
     const name = seriesName(nameOffset, i);
     const id = `${galaxyId}-sys-${i}`;
     const system: StarSystem = {
@@ -790,7 +1206,11 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
       planets: [],
       belts: [],
     };
-    const bodies = generateBodies(rng, system, def.depositBonus);
+    // Les étoiles AVANT les corps : c'est l'inversion de causalité de l'ADR 0021. Leur
+    // luminosité place la zone habitable, qui décide de ce qu'on trouve à chaque orbite.
+    const stars = generateStars(rng, system);
+    system.stars = stars;
+    const bodies = generateBodies(rng, system, stars, def.depositBonus);
     system.planets = bodies.planets;
     system.belts = bodies.belts;
     if (rng() < TRADING_POST_PROBABILITY) {
@@ -816,17 +1236,207 @@ function generateGalaxy(rng: Rng, def: GalaxyDef): Galaxy {
       : best,
   );
 
+  // Les errants s'ajoutent APRÈS l'ancre et le barycentre, et AVANT `generateLinks`.
+  //
+  // Après, parce qu'ils vivent dans le halo : le plus excentré des systèmes serait presque
+  // toujours l'un d'eux, et le point d'arrivée des portails inter-galactiques deviendrait
+  // un trou noir sans monde ni comptoir.
+  //
+  // Avant, parce que ce sont des destinations et non du décor — c'est le graphe de sauts
+  // qui le rend vrai. Leurs noms continuent la même suite bijective que les systèmes
+  // ordinaires, donc sans doublon.
+  const drifters = layout.drifters.map((pos, i) =>
+    makeDrifter(rng, galaxyId, seriesName(nameOffset, def.systems + i), pos, i),
+  );
+  systems.push(...drifters);
+  const links = generateLinks(systems);
+
   return {
     id: galaxyId,
     name: def.name,
     x: def.x,
     y: def.y,
     z: def.z,
+    typeId: def.typeId,
     systems,
-    links: generateLinks(systems),
+    links,
+    bridges: pairBridges(drifters, links),
     anchorSystemId: anchor.id,
     depositBonus: def.depositBonus,
   };
+}
+
+/**
+ * Types tirables pour un errant, **dérivés des catalogues** plutôt que redéclarés à côté
+ * d'eux : ajouter un type à `black-hole-types.ts` ou `white-hole-types.ts` avec un poids
+ * `drifter` suffit à le rendre tirable, sans penser à un second endroit.
+ */
+type SingularityDraw = readonly (readonly [
+  {
+    kind: CentralBodyKind;
+    typeId: string;
+    massRange: readonly [number, number];
+  },
+  number,
+])[];
+
+function singularitiesFor(placement: BlackHolePlacement): SingularityDraw {
+  return [
+    ...Object.values(BLACK_HOLE_TYPES)
+      .filter((d) => d.placements.includes(placement))
+      .map(
+        (d) =>
+          [
+            {
+              kind: "blackHole" as const,
+              typeId: d.id,
+              massRange: d.massRange,
+            },
+            d.weights[placement] ?? 0,
+          ] as const,
+      ),
+    ...Object.values(WHITE_HOLE_TYPES)
+      .filter((d) => d.placements.includes(placement))
+      .map(
+        (d) =>
+          [
+            {
+              kind: "whiteHole" as const,
+              typeId: d.id,
+              massRange: d.massRange,
+            },
+            d.weights[placement] ?? 0,
+          ] as const,
+      ),
+  ];
+}
+
+const DRIFTER_WEIGHTS = singularitiesFor("drifter");
+const PRIMARY_SINGULARITIES = singularitiesFor("primary");
+const COMPANION_SINGULARITIES = singularitiesFor("companion");
+
+/**
+ * Un errant : système sans étoile, sans monde et sans comptoir, dont l'unique corps central
+ * est une singularité.
+ *
+ * Il n'a ni planète ni ceinture à dessein — ce n'est pas un système appauvri mais un objet
+ * d'une autre nature, qui se traverse et s'exploite au lieu de se coloniser. Le brouillard
+ * le traite comme n'importe quel système : inexploré, il n'annonce rien de ce qu'il abrite.
+ */
+function makeDrifter(
+  rng: Rng,
+  galaxyId: string,
+  name: string,
+  pos: Point,
+  index: number,
+): StarSystem {
+  const pickedType = pickWeighted(rng, DRIFTER_WEIGHTS);
+  const id = `${galaxyId}-drift-${index}`;
+  const [minMass, maxMass] = pickedType.massRange;
+  return {
+    id,
+    name,
+    x: pos.x,
+    y: pos.y,
+    z: pos.z,
+    stars: [
+      {
+        id: `${id}-s1`,
+        systemId: id,
+        // Convention astronomique des systèmes multiples, tenue dès le premier corps :
+        // le palier 2 ajoutera B et C sans rien renommer.
+        name: `${name} A`,
+        kind: pickedType.kind,
+        typeId: pickedType.typeId,
+        rank: 0,
+        mass: Math.round((minMass + rng() * (maxMass - minMass)) * 100) / 100,
+        // Ancre : à l'origine du repère du système, ce que `bodyPositionAt` suppose déjà.
+        orbitRadius: 0,
+        orbitAngle: 0,
+        inclination: 0,
+        ascendingNode: 0,
+      },
+    ],
+    planets: [],
+    belts: [],
+  };
+}
+
+/**
+ * Apparie les bouches d'errants en ponts d'Einstein-Rosen.
+ *
+ * Un pont relie une fontaine blanche à un trou noir **de la même galaxie**, séparés d'un
+ * nombre de sauts qui tombe dans la `wormholeRange` du type de la fontaine : c'est ce qui
+ * fait qu'un pont est un raccourci et non un doublon d'une liaison existante. Sur un
+ * diamètre médian de 59 sauts (ADR 0018), une fontaine « stable » cherche entre 20 et 40.
+ *
+ * La distance se mesure en sauts et non en unités d'espace, parce que c'est en sauts que le
+ * joueur paie. Un BFS par fontaine, sur quelques fontaines et cinq cents nœuds : le coût
+ * est négligeable devant le reste de la génération, et il évite d'apparier deux bouches que
+ * trois sauts séparent déjà.
+ *
+ * Une fontaine sans partenaire à portée reste une fontaine — elle rend sa matière exotique
+ * sans ouvrir de passage. C'est un résultat acceptable, pas un échec à réessayer.
+ */
+function pairBridges(
+  drifters: readonly StarSystem[],
+  links: readonly [string, string][],
+): [string, string][] {
+  const mouths = drifters.filter((d) => d.stars?.[0]?.kind === "whiteHole");
+  const sinks = drifters.filter((d) => d.stars?.[0]?.kind === "blackHole");
+  if (mouths.length === 0 || sinks.length === 0) return [];
+
+  const adjacency = new Map<string, string[]>();
+  for (const [a, b] of links) {
+    (adjacency.get(a) ?? adjacency.set(a, []).get(a)!).push(b);
+    (adjacency.get(b) ?? adjacency.set(b, []).get(b)!).push(a);
+  }
+
+  const taken = new Set<string>();
+  const bridges: [string, string][] = [];
+  for (const mouth of mouths) {
+    const [minHops, maxHops] = whiteHoleType(
+      mouth.stars![0]!.typeId,
+    ).wormholeRange;
+    const candidates = new Set(
+      sinks.filter((s) => !taken.has(s.id)).map((s) => s.id),
+    );
+    if (candidates.size === 0) break;
+
+    // BFS borné : au-delà de `maxHops` aucun candidat ne convient plus, inutile de
+    // parcourir le reste de la galaxie.
+    const seen = new Set([mouth.id]);
+    let frontier = [mouth.id];
+    let hops = 0;
+    let partner: string | null = null;
+    while (frontier.length > 0 && hops < maxHops && partner === null) {
+      hops++;
+      const next: string[] = [];
+      for (const id of frontier) {
+        for (const neighbor of adjacency.get(id) ?? []) {
+          if (seen.has(neighbor)) continue;
+          seen.add(neighbor);
+          if (hops >= minHops && candidates.has(neighbor)) {
+            partner = neighbor;
+            break;
+          }
+          next.push(neighbor);
+        }
+        if (partner !== null) break;
+      }
+      frontier = next;
+    }
+
+    if (partner !== null) {
+      taken.add(partner);
+      // Paire canonique (a < b), comme `generateLinks` la produit — la clé primaire de
+      // `universe_bridges` en dépend.
+      bridges.push(
+        mouth.id < partner ? [mouth.id, partner] : [partner, mouth.id],
+      );
+    }
+  }
+  return bridges;
 }
 
 function makeTradingPost(

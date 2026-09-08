@@ -1,13 +1,31 @@
 export { RESOURCES, type ResourceId } from "./model/resources.js";
 export {
-  PLANET_TYPES,
-  type PlanetType,
+  PLANET_CLASSES,
+  type PlanetClass,
+  PLANET_VARIANTS,
+  type PlanetVariant,
+  BELT_TYPES,
+  type BeltType,
+  MOON_CLASSES,
+  type MoonClass,
+  MOON_VARIANTS,
+  type MoonVariant,
   type Deposits,
   type Planet,
   type AsteroidBelt,
   type TradingPost,
+  CENTRAL_BODY_KINDS,
+  type CentralBodyKind,
+  type CentralBody,
+  ATMOSPHERES,
+  type Atmosphere,
+  ORBIT_ZONES,
+  type OrbitZone,
   type StarSystem,
   systemCountOf,
+  starsOf,
+  primaryOf,
+  isDrifter,
   type Galaxy,
   type Gateway,
   type ClientUniverse,
@@ -118,6 +136,9 @@ export {
   FRONTIER_GALAXIES,
   MAX_EMPIRES_PER_GALAXY,
   STARTER_CLUSTER_RADIUS,
+  MAX_CENTRAL_BODIES,
+  TIGHT_BINARY,
+  WIDE_BINARY,
   MAX_GALAXIES,
   SYSTEM_VIEW_SIZE,
   BASE_STORAGE,
@@ -166,6 +187,7 @@ export {
 } from "./rng.js";
 export {
   GENERATOR_VERSION,
+  STAR_COUNT_WEIGHTS,
   galaxyDefAt,
   generateGalaxyAt,
   generateUniverse,
@@ -264,6 +286,105 @@ export {
   type InstallationGrant,
 } from "./content/installations.js";
 export {
+  BLACK_HOLE_PLACEMENTS,
+  BLACK_HOLE_TYPE_IDS,
+  BLACK_HOLE_TYPES,
+  blackHoleType,
+  type BlackHolePlacement,
+  type BlackHoleTypeId,
+  type BlackHoleTypeDef,
+  type StaticBlackHoleTypeDef,
+} from "./content/astro/black-hole-types.js";
+export {
+  WHITE_HOLE_TYPE_IDS,
+  WHITE_HOLE_TYPES,
+  whiteHoleType,
+  type WhiteHoleTypeId,
+  type WhiteHoleTypeDef,
+  type StaticWhiteHoleTypeDef,
+} from "./content/astro/white-hole-types.js";
+export {
+  PLANET_CLASS_DEFS,
+  planetClass,
+  planetClassesForZone,
+  type BodyStructureDef,
+  type PlanetClassDef,
+  type StaticPlanetClassDef,
+} from "./content/astro/planet-classes.js";
+export {
+  PLANET_VARIANT_DEFS,
+  planetVariant,
+  variantsFor,
+  type BodyEnvironmentDef,
+  type PlanetVariantDef,
+  type StaticPlanetVariantDef,
+} from "./content/astro/planet-variants.js";
+export {
+  MOON_CLASS_DEFS,
+  moonClass,
+  moonClassesForParent,
+  type MoonClassDef,
+  type StaticMoonClassDef,
+} from "./content/astro/moon-classes.js";
+export {
+  MOON_VARIANT_DEFS,
+  moonVariant,
+  moonVariantsFor,
+  type MoonVariantDef,
+  type StaticMoonVariantDef,
+} from "./content/astro/moon-variants.js";
+export {
+  bodyEnvironment,
+  bodyStructure,
+  type BodyRef,
+} from "./content/astro/body-defs.js";
+export {
+  systemProfile,
+  type Arrangement,
+  type SystemGroup,
+  type SystemProfile,
+} from "./sim/exploration/system-profile.js";
+export {
+  ASTRO_FAMILIES,
+  NO_ASTRO_OVERRIDES,
+  patched,
+  type AstroFamily,
+  type AstroOverrides,
+  type BeltEffects,
+  type BlackHoleEffects,
+  type EnvironmentEffects,
+  type GalaxyEffects,
+  type StarEffects,
+  type StructureEffects,
+  type WhiteHoleEffects,
+} from "./content/astro/overrides.js";
+export {
+  BELT_TYPE_DEFS,
+  beltType,
+  beltTypesForZone,
+  type BeltTypeDef,
+  type StaticBeltTypeDef,
+} from "./content/astro/belt-types.js";
+export {
+  STAR_CLASS_IDS,
+  STAR_CLASSES,
+  STAR_PRIMARY_WEIGHTS,
+  STAR_COMPANION_WEIGHTS,
+  starClass,
+  type StarClassId,
+  type StarClassDef,
+  type StaticStarClassDef,
+} from "./content/astro/star-classes.js";
+export {
+  GALAXY_TYPE_IDS,
+  GALAXY_TYPES,
+  GALAXY_TYPE_WEIGHTS,
+  galaxyType,
+  type GalaxyTypeId,
+  type GalaxyTypeDef,
+  type StaticGalaxyTypeDef,
+} from "./content/astro/galaxy-types.js";
+export {
   ROUNDS_PER_PHASE,
   WARSHIP_COMBAT_DEFS,
   DEFAULT_COMBAT_TUNING,
@@ -357,10 +478,8 @@ export {
   type FrontierConfig,
 } from "./sim/exploration/expansion.js";
 export {
-  ATMOSPHERES,
   bodyPhysicals,
   isBreathable,
-  type Atmosphere,
   type BodyPhysicals,
 } from "./sim/exploration/bodies.js";
 export {
@@ -487,19 +606,38 @@ export {
   type SystemSite,
 } from "./sim/exploration/sites.js";
 export {
-  GALAXY_MORPHOLOGIES,
-  STAR_CLASSES,
   galacticCoreDisc,
   galacticCoreHorizon,
-  galaxyAppearance,
-  galaxyMorphology,
-  galaxyMorphologyOf,
-  isDarkStar,
-  starClassOf,
-  type GalaxyAppearance,
-  type GalaxyMorphology,
-  type StarClass,
 } from "./sim/exploration/stars.js";
+export {
+  luminosityOf,
+  systemLuminosity,
+  habitableZone,
+  iceLine,
+  radiationAt,
+  irradianceAt,
+  surfaceGravity,
+  escapeVelocity,
+  equilibriumTempK,
+  atmosphereRetention,
+  greenhouseK,
+  surfaceTempC,
+  habitabilityOf,
+  astroYield,
+  exoticHarvest,
+  systemHazard,
+  hazardFuelMult,
+  flareErosion,
+  auPerSceneUnit,
+  auAt,
+  zoneAt,
+  NEUTRAL_ASTRO,
+  HABITABLE_SCENE_RADIUS,
+  orbitsBarycenter,
+  lightingFor,
+  type AstroYield,
+  type SurfaceConditions,
+} from "./sim/exploration/physics.js";
 export {
   galaxyGraph,
   universeGraph,
@@ -517,6 +655,7 @@ export {
 export {
   angularSpeedOf,
   bodyPositionAt,
+  centralBodyPositionAt,
   distance3,
   orbitalPeriodTicks,
   orbitPosition,

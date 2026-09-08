@@ -28,6 +28,10 @@ function digestGalaxy(galaxy: Galaxy): Galaxy {
     ...galaxy,
     systems: [],
     links: [],
+    // Les ponts relient des systèmes qui ne sont plus transmis : les garder livrerait des
+    // identifiants pointant dans le vide, et dirait au passage où sont les singularités
+    // d'une galaxie qu'on ne peut même pas atteindre.
+    bridges: [],
     systemCount: galaxy.systems.length,
     cloud,
   };
@@ -66,7 +70,19 @@ export function redactUniverse(
             systems: galaxy.systems.map((sys) =>
               exploredSystemIds.has(sys.id)
                 ? sys
-                : { ...sys, planets: [], belts: [], station: undefined },
+                : {
+                    ...sys,
+                    planets: [],
+                    belts: [],
+                    // Les corps centraux se taisent comme le reste (chantier 45.1) : un
+                    // système inexploré ne doit pas annoncer qu'il abrite un trou noir, et
+                    // c'est ce qui rend la variété du ciel récompense d'exploration plutôt
+                    // que décor offert au premier regard. C'est aussi ce qui empêche les
+                    // corps centraux de peser sur la charge utile d'une galaxie détaillée
+                    // mais largement inexplorée — voir `universe.payload.test.ts`.
+                    stars: undefined,
+                    station: undefined,
+                  },
             ),
           },
     ),

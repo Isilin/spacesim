@@ -9,6 +9,8 @@ export default defineConfig({
       "/ws": { target: "ws://127.0.0.1:3001", ws: true },
       "/auth": { target: "http://127.0.0.1:3001" },
       "/health": { target: "http://127.0.0.1:3001" },
+      // Contenu publié au client (chantier 45.4) : les surcharges de catalogues astronomiques.
+      "/api": { target: "http://127.0.0.1:3001" },
       // Outils de dev (spawnpirate, grant, fastforward…) — hors production.
       "/dev": { target: "http://127.0.0.1:3001" },
     },

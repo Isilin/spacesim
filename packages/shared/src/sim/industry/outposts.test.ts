@@ -12,6 +12,7 @@ const belt: AsteroidBelt = {
   id: "b1",
   systemId: "s1",
   name: "Ceinture Test",
+  typeId: "silicate",
   orbitRadius: 300,
   inclination: 0,
   ascendingNode: 0,

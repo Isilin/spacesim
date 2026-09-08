@@ -3114,6 +3114,317 @@ dépasse cinq secondes. Ce qui est vérifiable, et vérifié, est le risque du g
 recule l'horloge en base d'une heure, recharge, et exige que le rattrapage rende ses
 720 ticks. La CI tranche pour le reste.
 
+## Chantier 45 — Le ciel devient une donnée de jeu (07/09/2026)
+
+**Question de départ.** Un joueur qui traverse cinq cents systèmes voit-il autre chose que la
+même chose ? Le ciel comptait **seize types en tout** : six types de planètes en une
+énumération qui confondait une taille et un climat, six classes d'étoiles dérivées et
+explicitement cosmétiques, quatre morphologies de galaxie, une étoile implicite par système,
+des ceintures d'astéroïdes sans **aucun** champ de type, deux notions de trou noir sans
+parenté, et pas de trou blanc.
+
+La demande n'était pas « plus de types » mais « des types qui comptent ». C'est ce qui a fait
+basculer l'ADR [0016](adr/0016-classes-d-etoiles-derivees.md), qui s'était réservé le droit de
+décider ce point : « si une classe devait un jour modifier un rendement ou une portée, il
+faudrait la persister ». L'ADR [0021](adr/0021-le-ciel-devient-une-donnee-de-jeu.md) la
+remplace et renverse au passage la décision 3 de l'ADR
+[0018](adr/0018-morphologie-de-galaxie-structurante.md).
+
+Trois paliers : socle et galaxies et singularités (45.1), étoiles et systèmes (45.2 — la chaîne
+physique), corps et bascule CMS (45.3).
+
+### Palier 1 — socle, galaxies, singularités
+
+- **45.1** Trois catalogues dans `content/astro/` — huit types de galaxies, sept de trous
+  noirs, quatre de trous blancs. Chaque définition porte la frontière de l'ADR 0021 dans sa
+  structure : entrées de génération gelées d'un côté, effets et habillage éditables de l'autre.
+  Aucun cas particulier, c'est ce qui la rend tenable.
+- **45.2** Le type de galaxie précède et **contraint** la taille, au lieu d'en être déduit. La
+  galaxie mère tire parmi les seuls types qui admettent ses 520 systèmes.
+- **45.3** `CentralBody` : un système compte un à quatre corps centraux, étoiles ou
+  singularités. Vide au palier 1, sauf pour les errants.
+- **45.4** Un errant est un **système** sans étoile ni monde, posé dans le halo. Ce choix lui
+  donne gratuitement le graphe de sauts, la carte, la base et le brouillard : aucune machinerie
+  parallèle.
+- **45.5** Les ponts d'Einstein-Rosen apparient une fontaine blanche à un trou noir de la même
+  galaxie, à une distance en **sauts** qui tombe dans la portée du type. Nommés ainsi parce que
+  `parentIndex` emploie déjà « trou de ver » pour l'arbre inter-galactique.
+- **45.6** Migration 0025 : `type_id` sur les galaxies, tables `universe_stars` et
+  `universe_bridges`.
+- **45.7** Le brouillard vide `stars` sur un système inexploré, au même titre que `planets` :
+  la variété du ciel reste une récompense d'exploration.
+- **45.8** Au palier univers, la teinte d'une galaxie vient de son type quand aucun état n'est
+  à signaler. Le cœur galactique lit sa couleur du `coreClassId` de sa galaxie.
+
+### Ce que la mesure a démenti
+
+**L'échelle d'orbites est fausse, et la physique le dit.** La zone habitable réelle vaut
+`0,95√L` à `1,67√L` UA. Le générateur pose les orbites à `70 + (i−1)×55` **quelle que soit
+l'étoile**. Pour une naine rouge (`L ≈ 0,015`) la zone habitable tombe à 0,12–0,20 UA, très en
+deçà de la première orbite. Sans correction, **aucune naine rouge n'aurait de monde habitable**
+— et elles sont 76 % des étoiles. Le palier 2 pose donc les orbites *relativement* à la zone
+habitable, et sépare distance physique et distance de scène.
+
+**Trois de mes huit morphologies rendaient la même forme.** La branche `arms === 0` de
+`generatePositions` ne lisait ni `bar` ni `scatter` : elliptique, naine et lenticulaire
+sortaient identiques. `scatter` y vaut désormais aplatissement — sphéroïde à 1, disque épais à
+0,3. Le défaut ne se voyait dans aucun type et dans aucun test.
+
+**Les fontaines blanches étaient quatre fois trop nombreuses.** Mesuré en base sur un univers
+neuf : dix-huit fontaines pour cinq trous noirs errants, alors que le catalogue annonce la
+fontaine comme « le plus rare que le joueur puisse rencontrer ». Le rapport bridait aussi les
+ponts, chacun exigeant un trou noir. Rien dans les types ni dans les tests ne le disait — seule
+l'exécution. Poids inversés, et un test qui verrouille désormais l'intention.
+
+**`JUMP_REFERENCE_LENGTH` : 205 → 174.** Le mélange de morphologies ayant changé, la longueur
+d'arête moyenne est tombée de 205 à 157 (deux seeds indépendantes) et le rapport coût/sauts à
+0,851. La constante ne suit pas la moyenne directement — Dijkstra pondéré ne prend pas le
+chemin du moins de sauts.
+
+### Ce que ce chantier a appris sur la vérification
+
+**Un test peut cesser de mesurer ce qu'il croit sans jamais casser.** « Le condensé divise par
+trois » était vrai quand une galaxie sur quatre pesait un quart du contenu. Les tailles étant
+désormais bornées par le type, la galaxie mère pèse près d'un tiers de l'univers à elle seule :
+le facteur trois devenait inatteignable par arithmétique, sans que le condensé ait rien perdu.
+Il vérifie maintenant sa vraie promesse — les galaxies hors de portée coûtent moins d'un
+dixième de leur version complète. Verrou plus serré, pas plus lâche.
+
+**Un défaut latent n'est pas un défaut.** `galaxyMorphologyOf` lisait `galaxy.systems.length`
+au lieu de `systemCountOf` : une galaxie condensée aurait résolu la mauvaise morphologie. La
+fonction n'avait aucun appelant de production. Persister le type l'a rendu impossible plutôt
+que corrigé — c'est moins cher, et ça ne laisse pas le piège en place.
+
+**La base a trouvé ce que les tests ne cherchaient pas.** Le déséquilibre des fontaines et la
+FK manquante dans l'ordre de purge sont apparus en faisant tourner un univers neuf, pas en
+lisant du code. Les catalogues étaient cohérents, typés et testés ; ils étaient aussi
+déséquilibrés.
+
+### Relevés (palier 1)
+
+| | avant | après |
+|---|---|---|
+| Types astronomiques | 16 | 30 (57 à la fin du chantier) |
+| Morphologies de galaxie | 4, dérivées | 8, persistées |
+| Formes de galaxie réellement distinctes | 4 | 8 |
+| Singularités par galaxie | 1 (le cœur) | 1 + 3 à 7 errants |
+| Ponts par galaxie | — | ~1 |
+| Longueur d'arête moyenne | 205 | 157 |
+| `JUMP_REFERENCE_LENGTH` | 205 | 174 |
+
+### Palier 2 — l'étoile devient une cause
+
+- **45.9** Onze classes d'étoiles, et la **chaîne physique** : luminosité, irradiance, zone
+  habitable, ligne des glaces, albédo, température d'équilibre, gravité, vitesse de
+  libération, rétention atmosphérique, pression, effet de serre, température de surface,
+  rayonnement. Un seul sens de lecture, aucune boucle, rien de persisté.
+- **45.10** Le générateur s'inverse : corps centraux d'abord, puis les corps que leur lumière
+  autorise. `starClassOf` disparaît avec sa logique de reliques.
+- **45.11** L'habitabilité cesse d'être tirée : elle tombe de la chaîne.
+- **45.12** `bodyPhysicals` perd ses trois béquilles, et le registre d'apparence du client sa
+  table de six classes — les catalogues font foi des deux côtés.
+- **45.13** Un système compte un à quatre corps centraux, avec deux bandes de séparation et un
+  trou délibéré entre elles : serrée (orbites circumbinaires) ou large (orbites autour d'une
+  étoile), jamais l'entre-deux instable.
+
+### Ce que la mesure a démenti (palier 2)
+
+**La chaîne, plausible étape par étape et validée sur le système solaire, a vidé la galaxie.**
+Premier jet : **6,6 % des systèmes** avec un monde viable, contre ~70 % avant. Trois causes,
+aucune visible dans les types ni dans les tests unitaires.
+
+*L'échelle d'orbites ancrée sur le milieu de la zone habitable.* Sa moitié externe exige une
+atmosphère de gaz carbonique épaisse que la plupart des mondes n'ont pas — la Terre est à 3 %
+du bord **interne**. Un monde tempéré sortait à −13 °C.
+
+*Le rayonnement en `1/d²`.* La zone habitable d'une naine rouge est à 0,13 UA, donc `1/d²` y
+vaut cinquante-neuf : toute naine rouge devenait létale chez elle, et elles sont 40 % du ciel.
+Or une zone habitable est **par définition** l'endroit où le flux est comparable d'une étoile à
+l'autre. Le rayonnement suit donc le flux — sauf pour un pulsar ou une naine blanche, dont le
+faisceau vient de la rotation et non de la fusion.
+
+*Des bandes de vivabilité tombant à zéro, et un produit sec.* Dans ce jeu l'habitabilité mesure
+à quel point l'environnement **aide** une colonie, pas s'il s'agit de la Terre : l'ancien modèle
+donnait 10 à 40 à un monde gelé, et on y colonisait sous dôme. Le zéro est désormais réservé à
+ce qui n'a pas de sol.
+
+**Une échelle de scène et une échelle physique ne sont pas la même chose.** Poser les orbites en
+unités astronomiques aurait fait varier l'étendue d'un système d'un facteur cinq cents, et avec
+elle le coût de trajet, le cadrage et les plans de coupe. C'est le facteur de **conversion** qui
+dépend de l'étoile, pas la géométrie.
+
+### Relevés (palier 2)
+
+| | premier jet | après calibration | avant le chantier |
+|---|---|---|---|
+| Systèmes avec un monde viable | 6,6 % | 59,5 % | ~70 % |
+| Meilleur monde d'un système médian | 3 | 58 | — |
+| Corps sans habitabilité | 89 % | 7 % (les géantes) | — |
+| Classes d'étoiles | 6, dérivées | 11, persistées | 6 |
+| Corps centraux par système | 1, implicite | 1 à 3 | 1 |
+| Systèmes multiples | — | 36,7 % | 0 % |
+
+### Palier 3 — les corps, les lunes, les ceintures
+
+- **45.14** `PLANET_TYPES` laisse la place à **deux axes** : cinq classes structurelles ×
+  dix variantes d'environnement. Six entrées couvraient trente combinaisons en en interdisant
+  vingt-quatre ; la matrice de compatibilité vit maintenant en un seul endroit, dans les
+  `variants` de chaque classe, et se croise avec l'affinité de zone de chaque variante.
+- **45.15** Les lunes reçoivent leur **propre taxonomie** — quatre classes, six variantes —
+  tirée de la planète parente et non de la zone thermique. `bodyStructure()` et
+  `bodyEnvironment()` tranchent sur `kind` une fois, pour la vingtaine d'appelants.
+- **45.16** Les ceintures reçoivent une composition, la première fois que ce type existe : six
+  entrées, un seul axe, une richesse et un danger qui leur sont propres.
+- **45.17** Migrations 0027 et 0028 : `class_id` + `variant_id` remplacent `type`, `type_id`
+  arrive sur les ceintures.
+
+### Ce que les deux axes ont fait tomber
+
+**Un plafond qui ne plafonnait plus.** `Math.min(40, …)` bornait l'habitabilité d'une lune
+« pour que le monde principal d'un système reste le monde principal ». Les classes de lunes
+portant de vrais rayons de lune — 0,02 à 0,46 rayon terrestre — la meilleure lune de l'univers
+sort à 17 sur trois galaxies mesurées. La physique plafonne mieux qu'un nombre.
+
+**Un facteur d'échelle qui cachait un désaccord.** `MOON_SCALE = 0,28` rétrécissait le rayon
+d'une classe planétaire pour en faire une lune, mais seulement dans la fiche de corps : le
+générateur, lui, calculait l'habitabilité sur le rayon **plein**. Les deux lisaient la même
+table et n'en tiraient pas la même chose. La taxonomie de lunes supprime la question.
+
+**Une teinte qui ne disait qu'un mot.** `asteroidTint` se déduisait du gisement dominant.
+Toutes les ceintures portant du minerai, toutes sortaient de la même couleur — la table de cinq
+teintes par ressource n'en servait qu'une seule.
+
+**Le zéro d'habitabilité fuyait.** Une super-Terre à effet de serre emballé sort à 594 °C sous
+135 bars : son score tombait sous 0,005 et l'arrondi la rendait indiscernable d'une géante
+gazeuse. Le verrou de calibration l'a vu, et lui seul — le zéro est réservé à ce qui n'a pas de
+sol, et cette planète en a un.
+
+**Deux tests de contrat dépendaient du hasard.** Le carburant d'un convoi dépend du nombre de
+sauts **et** du danger du système d'arrivée : aucune avance de temps fixe ne le couvre. Ils
+interrogent maintenant le moteur au lieu de deviner — une acceptation qui manque de carburant
+ne mute rien, elle sert de sonde. Le test de faction dotait par ailleurs 400 unités de cargaison
+quand la pénurie en demande 40 à 120, saturant l'orbite au point que le carburant n'y entrait
+plus.
+
+### Relevés (palier 3)
+
+| | avant | après |
+|---|---|---|
+| Types de corps | 6, un seul axe | 5 × 10 planétaires, 4 × 6 lunaires |
+| Types de ceinture | 0 | 6 |
+| Types astronomiques du chantier | 16 | 61 |
+| Rayon de rendu d'une lune | 1,8, uniforme | 1,2 à 3,0 selon la classe |
+| Habitabilité lunaire (max mesuré) | 40, par plafond | 17, par la physique |
+| Richesse d'une ceinture | 1,2 à 2,0 | 0,6 à 3,0 selon la composition |
+
+### Palier 4 — la bascule CMS et la publication sur le fil
+
+- **45.18** Les neuf catalogues astronomiques deviennent éditables. Un domaine CMS, pas neuf :
+  ce sont neuf déclinaisons d'un même objet — un type qui porte des multiplicateurs et des
+  couleurs — là où un vaisseau de guerre et un jalon n'ont rien en commun.
+- **45.19** La table `content_astro` ne stocke pas le contenu mais un **correctif**. Les
+  définitions restent intégrées au code ; la base ne dit que ce qu'une édition a changé.
+- **45.20** `GET /api/content/astro` publie ces surcharges au client joueur, sans
+  authentification et hors du fil mesuré par `universe.payload.test.ts`. Solde la dette
+  consignée depuis le chantier 31.22 : « `apps/web` ne voit pas l'apparence éditée ».
+- **45.21** Migration 0029.
+
+### La frontière cesse d'être une convention
+
+L'ADR 0021 coupait chaque catalogue en deux moitiés — entrées de génération gelées, effets
+relus à l'usage — et la coupure ne vivait que dans des commentaires. Elle vit maintenant dans
+trois endroits qui se vérifient l'un l'autre : un `Pick` par famille dans `AstroOverrides`, que
+le compilateur fait respecter ; un schéma Zod `.strict()` par famille, qui **refuse** au lieu
+d'ignorer ; et un test qui envoie une entrée de génération et attend un 400.
+
+Le `.strict()` n'est pas cosmétique. Zod écarte silencieusement les clés inconnues : sans lui,
+une requête corrigeant une fourchette de masse aurait reçu un 200 et n'aurait rien fait. Une
+frontière qu'on ne peut pas franchir mais qui ne le dit pas est une frontière qu'on croit avoir
+franchie.
+
+### Ce que la mise en œuvre a corrigé dans l'ADR
+
+Le critère écrit valait « lu au moment de l'usage ». Il est faux : le rayonnement d'une étoile
+est lu à l'usage par `systemHazard` **et** à la génération par `bodyHabitability`, dont le
+résultat est persisté. L'exposer aurait fait diverger la fiche d'un corps de son habitabilité en
+base — la contradiction exacte que le palier 2 avait supprimée en retirant les trois béquilles
+de `bodyPhysicals`. Le critère devient « lu à l'usage **et jamais par le générateur** », et la
+surface éditable se réduit d'un tiers : rendements, dangers de trajet, habillage.
+
+### Relevés (palier 4)
+
+| | avant | après |
+|---|---|---|
+| Domaines CMS | 12 | 13 |
+| Catalogues éditables | 0 | 9 |
+| Champs éditables | 0 | 46 |
+| Champs gelés par le contrat | — | tout le reste, refusé en 400 |
+| Contenu vu par `apps/web` | aucun | les surcharges, au chargement |
+
+### Palier 5 — deux emplacements morts, et une ressource promise
+
+Deux manques trouvés en relisant le chantier, pas en le codant.
+
+- **45.22** `generateStars` ne tirait que dans les tables d'étoiles : les emplacements
+  `primary` et `companion`, déclarés par les catalogues depuis le palier 1 et choisis
+  explicitement, n'étaient **jamais produits**. Mesuré sur 1427 systèmes avant correction :
+  `primary` 0, `companion` 0. `microquasar` et `torrent` n'existaient nulle part.
+- **45.23** La matière exotique entre dans `RESOURCES`. Le catalogue portait depuis le palier
+  1 un `exoticYield` et le commentaire « la ressource n'existe pas encore […] c'est le palier
+  3 qui le fera ». Le palier 3 ne l'a pas fait.
+- **45.24** `exoticBias`, posé au palier 1 et resté sans lecteur, en devient le multiplicateur
+  de galaxie.
+
+### Ce qu'un test ne cherchait pas
+
+**Rien ne signalait deux emplacements morts.** Les types étaient cohérents, `placements` et
+`weights` étaient lus par les tests de catalogue, et la table déclarait fidèlement des
+positions que personne ne remplissait. Il n'existe pas de test qui échoue quand une donnée
+n'est *pas* consommée. Le garde-fou ajouté compte les quatre emplacements sur un univers
+généré et exige les quatre — c'est la seule forme qui puisse attraper ça.
+
+**`isDrifter` s'est mis à mentir.** Il lisait « l'ancre n'est pas une étoile », ce qui devient
+faux dès qu'un système ordinaire est ancré par une singularité. Conséquence immédiate et
+silencieuse : la galaxie mère perdait dix des cinq cent vingt systèmes qu'elle doit avoir,
+parce que le compte des systèmes ordinaires excluait les nouveaux. Quatre tests l'ont dit
+d'un coup. La définition rejoint sa propre documentation — sans étoile **ni monde**.
+
+### Une ressource dont la rareté est géographique
+
+La matière exotique ne s'extrait d'aucun gisement et aucun bâtiment ne la fabrique : elle se
+récolte du seul fait de partager un système avec une singularité. C'est une **addition** et non
+un multiplicateur — il n'y a rien à multiplier quand il n'y a pas de source.
+
+Elle donne une raison de coloniser un monde gelé autour d'un trou noir, là où la chaîne
+physique ne laisse qu'une habitabilité au plancher : le système ne nourrit personne, mais il
+est le seul à produire ce qu'un portail inter-galactique réclame. Les fontaines blanches sont
+le raccourci intra-galactique ; ce qu'elles crachent paie le passage inter-galactique.
+
+Hors marché, comme les crédits et la science. Un prix aurait remplacé une rareté géographique
+par une rareté monétaire, que n'importe quel empire riche contourne.
+
+**Le piège évité :** une exigence de portail trop forte aurait fait dépendre le seul chemin de
+progression inter-galactique d'un tirage. Mesuré sur dix-huit galaxies de trois seeds, chacune
+compte de 4 à 15 systèmes exploitables ; un test verrouille un plancher de trois, et un autre
+vérifie qu'une seule colonie bien placée couvre le coût d'un portail en un temps de
+méga-projet.
+
+**Trois listes écrites à la main** — cargaison de convoi, affichage de colonie, ascenseur
+orbital — auraient laissé la ressource produite, invisible et inexpédiable. Les panneaux qui
+dérivent de `MARKET_RESOURCES` ou de `GATEWAY_COST` se sont mis à jour seuls ; ceux qui
+énumèrent, non. C'est le coût d'une liste littérale, et il ne se voit qu'en la cherchant.
+
+### Relevés (palier 5)
+
+| | avant | après |
+|---|---|---|
+| Emplacements de singularité produits | 2 sur 4 | 4 sur 4 |
+| Singularités hors cœur (1427 systèmes) | 17 | 50 |
+| Systèmes ancrés par une singularité | 0 | ~20 |
+| Ressources | 8 | 9 |
+| Systèmes exploitables par galaxie | — | 4 à 15 (18 galaxies mesurées) |
+| Part de systèmes viables | 0,595 | 0,583 |
+
 ## Chantier 46 — vite 8, et pourquoi deux montées n'étaient pas des bumps (06/09/2026, corrigé le 08/09/2026)
 
 Planification. Ouvert par le tri des PR Dependabot du 06/09/2026 : deux d'entre elles ne
@@ -3156,3 +3467,120 @@ seule dans son chantier.
 n'a plus bougé : cinq PR dormantes ont tenu la file un mois, et Dependabot n'a jamais pu ouvrir
 celle de vite — la montée bloquante était retenue par les PR qu'elle bloquait. Ni `jsdom`, ni
 `biome`, ni `pnpm` n'ont jamais été proposés non plus. Le plafond est passé à dix.
+
+## Chantier 47 — Le ciel livré devient le ciel visible (08/09/2026)
+
+**Question de départ.** Le chantier 45 vient de livrer neuf catalogues, une chaîne physique de
+treize étapes et cinq paliers verts. Un audit après coup a cherché les **champs** de catalogue
+sans lecteur : il en a trouvé deux, corrigés au 45.5. Il est passé à côté d'une famille plus
+grave — les **lecteurs qui retombent silencieusement sur un repli**.
+
+Un champ mort se voit par `grep`. Un lecteur qui lit la mauvaise entrée et rend une valeur
+plausible ne se voit qu'à l'écran. Six défauts, tous introduits par le chantier 45 lui-même,
+tous invisibles à ses tests.
+
+### Ce que le joueur voyait vraiment
+
+- **46.1** `GalaxyLayer` lisait `starsOf(system)[0]` sans regarder son `kind` et envoyait toute
+  étoile dans `blackHoleType()`, dont le repli est le trou noir stellaire : **tout système
+  exploré rendait son orange**. Écrit au 45.1 quand seuls les errants portaient des corps
+  centraux ; le 45.2 en a donné à tous.
+- **46.1** La table i18n `starClass` portait les six identifiants **dérivés d'avant le 45**.
+  Dix classes d'étoiles sur onze et les onze types de singularité s'affichaient en snake_case
+  anglais dans une interface française.
+- **46.2** Une singularité rendait `radius: 0.55, corona: 1.6` en dur — les proportions du trou
+  noir stellaire. Les onze types avaient **la même taille**, alors que leurs trois rayons sont
+  éditables au CMS.
+- **46.2** Un **dormant** éclairait son système et portait un disque, alors que son catalogue
+  dit `intensity: 0` et `discRadius: 0` — « son danger étant qu'on ne le voit pas venir ». Une
+  **fontaine blanche** rendait une sphère absolument noire.
+- **46.3** `SystemLayer` ne dessinait que l'ancre : une **binaire large montrait une seule
+  étoile**, son second cortège tournant autour d'un point vide.
+- **46.4** `galaxyGraph` ne lisait pas `galaxy.bridges` : **aucun pont d'Einstein-Rosen n'était
+  franchissable**. Générés, persistés, testés, inutilisables — le rôle n°1 de la famille des
+  fontaines blanches.
+
+### La leçon, et elle est une
+
+**Les six défauts vivaient dans du code qu'aucun test ne pouvait atteindre** : trois `useMemo`
+de composant, deux tables de constantes en ligne, une signature promise dans un commentaire.
+Le correctif systématique n'est pas la clause manquante, c'est l'extraction — `systemNodeColor`,
+`centralBodySlots`, `pairReadingScale`, `systemProfile` sont des fonctions pures, et chacune
+porte le cas qui aurait attrapé son défaut le jour où il est apparu.
+
+**Un repli silencieux masque ce qu'il rattrape.** `centralBodyLabel` retombe sur l'identifiant
+brut quand la traduction manque, et c'est voulu — mais c'est exactement ce qui a caché la table
+périmée pendant tout le chantier 45. Le verrou n'est pas de supprimer le repli, c'est de
+comparer les deux listes : les identifiants que les catalogues produisent et les clés que les
+traductions déclarent. Vérifié mordant en renommant une clé.
+
+**Il n'existe pas de test qui échoue quand une donnée n'est PAS consommée.** C'est ce qui a
+laissé `exoticYield` inerte pendant cinq paliers, puis `bridges` pendant un chantier entier. La
+seule forme qui l'attrape est un comptage sur un univers généré — celui des quatre emplacements
+de singularité (45.5), celui de la borne des corps centraux (46.3).
+
+### Ce que la mesure a dit
+
+**Le pire disque en système recouvre UNE orbite, pas deux.** `intermediate`, `torrent` et
+`microquasar` portent 120, 96 et 88 contre une première orbite à 70 ± 8. Le `supermassive`
+(300) en recouvrirait cinq mais n'est jamais primaire. Rien à clamper : un disque d'accrétion
+qui engloutit son système interne est juste, et le brider reviendrait à re-coder en dur ce
+qu'on venait de libérer.
+
+**La binaire de contact, que personne n'avait vue.** `TIGHT_BINARY` sépare de 10 à 22 unités ;
+une étoile se rend à 13 de rayon. Deux naines jaunes à 10 unités sont **une seule boule** — on
+aurait corrigé « une seule étoile visible » par un correctif qui en montre toujours une. La
+bande ne peut pas s'élargir (22 est le maximum pour que les orbites circumbinaires restent
+stables), donc c'est au rendu de le dire.
+
+**Un pont pour quatre galaxies, mais un facteur 13,4 sur le trajet.** Le raccourci est réel et
+spectaculaire. Mais le journal du 45.1 annonçait « ~1 pont par galaxie » et la réalité en donne
+quatre fois moins : les fontaines blanches errantes sont rares parmi les errants. Une mécanique
+qui se rencontre une fois sur quatre galaxies est à la limite d'exister. C'est un réglage de
+génération, donc un bump de version — noté, pas fait.
+
+**Le test de calibration passait par chance.** Son modèle de référence décrivait un graphe sans
+ponts pendant que le sujet en avait : le rapport serait tombé pour toute paire qu'un pont
+raccourcit, sans qu'il y ait de défaut. Les ponts entrent dans les deux membres.
+
+### Les trous de ver inter-galactiques restent hors périmètre
+
+La question ne se posait pas tant que le raccourci **intra**-galactique ne fonctionnait pas.
+Elle a un sens depuis le 46.4, et la réponse reste non, pour quatre raisons.
+
+1. **La progression inter-galactique a déjà son axe, et il est neuf.** Le 45.5 l'a posé : les
+   fontaines blanches sont le raccourci intra-galactique, ce qu'elles crachent paie le passage
+   inter-galactique. Un pont gratuit court-circuiterait le seul puits de la matière exotique.
+2. **`wormholeRange` n'a pas de sens hors d'une galaxie** : c'est une distance en **sauts**,
+   calibrée sur le diamètre médian de 59 sauts de l'ADR 0018. Entre deux galaxies il n'y a pas
+   de graphe de sauts.
+3. **La matérialisation est paresseuse, par galaxie.** `pairBridges` tourne dans
+   `generateGalaxy`, `universe_bridges` est indexée par galaxie, et le client reçoit les
+   galaxies hors de portée en condensé. Un pont inter-galactique devrait nommer un système
+   d'une galaxie qui n'existe pas encore : ce n'est pas une difficulté, c'est une contradiction
+   avec l'ADR 0002.
+4. Ça bumperait `GENERATOR_VERSION` pour doubler une mécanique existante.
+
+La décision est déjà écrite au bon endroit — `white-hole-types.ts` : « l'inter-galactique reste
+le domaine des `Gateway` : le modèle ne l'interdit pas, le générateur ne le produit pas ». Pas
+d'ADR : c'est une décision de portée, pas une décision structurante, et écrire 0022 pour dire
+« on ne fait pas » créerait une dette de relecture pour rien.
+
+### Relevés
+
+| | avant | après |
+|---|---|---|
+| Systèmes explorés rendus orange | 100 % | 0 |
+| Types de singularité à taille distincte | 1 | 11 |
+| Lumières au palier système | variable | constante (`MAX_CENTRAL_BODIES`) |
+| Corps centraux dessinés par système | 1 | jusqu'à 3 |
+| Corps centraux nommés dans la liste | 0 | tous les compagnons |
+| Ponts empruntables | 0 | tous |
+| Champs éditables au CMS sans effet | 7 | 0 |
+| Classes d'étoiles traduites | 1 sur 11 | 11 sur 11 |
+| Types de singularité traduits | 0 sur 11 | 11 sur 11 |
+| Corps nommés par la fiche d'un système | 1 | tous |
+
+Aucune tranche ne touche la sortie du générateur : `GENERATOR_VERSION` reste à 12, la fixture
+n'a pas bougé — y compris au déplacement de `TIGHT_BINARY`/`WIDE_BINARY`, dont elle est la
+preuve de pureté.

@@ -4,7 +4,13 @@ import {
   HOSTILE_SYSTEM_PENALTY,
   JUMP_REFERENCE_LENGTH,
 } from "../../constants.js";
-import type { ClientUniverse, Galaxy } from "../../model/universe.js";
+import {
+  primaryOf,
+  type ClientUniverse,
+  type Galaxy,
+  type StarSystem,
+} from "../../model/universe.js";
+import { whiteHoleType } from "../../content/astro/white-hole-types.js";
 import { distance3 } from "./geometry.js";
 
 /**
@@ -39,8 +45,39 @@ function addArc(
   graph.set(b, [...(graph.get(b) ?? []), { to: a, weight, gate }]);
 }
 
-/** Graphe d'une galaxie seule — aucun portail, donc aucune arête de portail. */
-export function galaxyGraph(galaxy: Galaxy): Graph {
+/**
+ * Coût forfaitaire d'un pont d'Einstein-Rosen, en équivalent-saut (chantier 47).
+ *
+ * Forfaitaire pour la même raison qu'un portail : la longueur 3D d'un pont n'a aucun sens,
+ * ses deux bouches étant appariées par leur distance en SAUTS et non par leur position. Le
+ * modèle le dit déjà — « une arête de saut est pondérée par sa longueur 3D réelle, ce qui n'a
+ * aucun sens pour un pont ».
+ *
+ * Deux fois moins cher qu'un portail (`GATEWAY_JUMP_WEIGHT`) : un portail franchit un abîme
+ * inter-galactique et se construit, un pont se trouve. Reste au-dessus d'un saut ordinaire —
+ * traverser une singularité n'est pas gratuit.
+ */
+const BRIDGE_WEIGHT = 2;
+
+/**
+ * Surcoût d'une bouche instable.
+ *
+ * `permanent` était le dernier champ de catalogue sans lecteur après le chantier 45.5 : « ce
+ * qui distingue un raccourci fiable d'une curiosité » ne distinguait rien. Une fontaine
+ * naissante reste franchissable, mais l'attente d'une ouverture se paie dans le prix — le
+ * lecteur le moins cher qui soit honnête, et qui ne demande aucun modèle temporel.
+ */
+const INTERMITTENT_BRIDGE = 1.8;
+
+/**
+ * Graphe d'une galaxie seule — aucun portail, donc aucune arête de portail.
+ *
+ * `bridges` par défaut à **faux**, comme `extraLinks` l'est pour les portails, et pour la même
+ * raison : `travel.calibration.test.ts` mesure la géométrie de base contre un compte de sauts,
+ * et des raccourcis ajoutés d'un seul côté feraient chuter le rapport sans qu'il y ait de
+ * défaut. Le jeu passe `true`, la calibration garde le graphe nu.
+ */
+export function galaxyGraph(galaxy: Galaxy, bridges = false): Graph {
   const byId = new Map(galaxy.systems.map((s) => [s.id, s]));
   const graph: Graph = new Map();
   for (const [a, b] of galaxy.links) {
@@ -49,7 +86,38 @@ export function galaxyGraph(galaxy: Galaxy): Graph {
     if (sa && sb)
       addArc(graph, a, b, distance3(sa, sb) / JUMP_REFERENCE_LENGTH, false);
   }
+  if (bridges)
+    for (const [a, b] of galaxy.bridges) addBridge(graph, byId, a, b);
   return graph;
+}
+
+/**
+ * Un pont, si ses deux bouches existent.
+ *
+ * Le poids se lit de la bouche de FONTAINE : c'est elle qui s'ouvre ou non, un trou noir
+ * n'étant jamais intermittent. `pairBridges` garantit une paire fontaine ↔ trou noir, mais le
+ * sens n'est pas fixé dans la donnée — on cherche donc laquelle des deux l'est.
+ */
+function addBridge(
+  graph: Graph,
+  byId: Map<string, StarSystem>,
+  a: string,
+  b: string,
+): void {
+  const sa = byId.get(a);
+  const sb = byId.get(b);
+  if (!sa || !sb) return;
+  const mouth = [sa, sb]
+    .map((s) => primaryOf(s))
+    .find((body) => body?.kind === "whiteHole");
+  const stable = mouth ? whiteHoleType(mouth.typeId).permanent : true;
+  addArc(
+    graph,
+    a,
+    b,
+    BRIDGE_WEIGHT * (stable ? 1 : INTERMITTENT_BRIDGE),
+    false,
+  );
 }
 
 /**
@@ -60,6 +128,7 @@ export function galaxyGraph(galaxy: Galaxy): Graph {
 export function universeGraph(
   universe: ClientUniverse,
   extraLinks: readonly [string, string][] = [],
+  bridges = false,
 ): Graph {
   const byId = new Map(
     universe.galaxies.flatMap((g) => g.systems.map((s) => [s.id, s] as const)),
@@ -73,6 +142,9 @@ export function universeGraph(
         addArc(graph, a, b, distance3(sa, sb) / JUMP_REFERENCE_LENGTH, false);
     }
   }
+  if (bridges)
+    for (const galaxy of universe.galaxies)
+      for (const [a, b] of galaxy.bridges) addBridge(graph, byId, a, b);
   for (const [a, b] of extraLinks)
     addArc(graph, a, b, GATEWAY_JUMP_WEIGHT, true);
   return graph;

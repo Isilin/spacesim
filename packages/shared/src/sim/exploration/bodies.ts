@@ -1,193 +1,166 @@
+import {
+  bodyEnvironment,
+  bodyStructure,
+} from "../../content/astro/body-defs.js";
+import type { Atmosphere, CentralBody, Planet } from "../../model/universe.js";
 import { createRng, type Rng } from "../../rng.js";
-import type { Planet, PlanetType } from "../../model/universe.js";
-
-/** Type d'atmosphère, du vide au voile écrasant. */
-export const ATMOSPHERES = [
-  "none",
-  "thin",
-  "breathable",
-  "toxic",
-  "dense",
-] as const;
-
-export type Atmosphere = (typeof ATMOSPHERES)[number];
+import {
+  atmosphereRetention,
+  auAt,
+  equilibriumTempK,
+  escapeVelocity,
+  flareErosion,
+  greenhouseK,
+  irradianceAt,
+  lightingFor,
+  surfaceGravity,
+  surfaceTempC,
+} from "./physics.js";
 
 /**
- * Fiche physique d'un corps — habillage, sans effet sur la simulation.
+ * Fiche physique d'un corps (chantier 10, réécrite au chantier 45.2).
  *
- * Volontairement **dérivée de l'id du corps** plutôt que produite par le générateur
- * d'univers : la fiche s'ajoute sans toucher au générateur, donc sans invalider les
- * parties en cours, et se recalcule identiquement côté client comme côté serveur.
+ * ## Les trois béquilles qui ont disparu
+ *
+ * Ce module portait trois correctifs, documentés comme tels et tous nés du même défaut —
+ * l'habitabilité était tirée INDÉPENDAMMENT de la physique, et il fallait ensuite les
+ * réconcilier :
+ *
+ * 1. `BASE_TEMP[type]` donnait la température, et la distance à l'étoile ne l'écartait que de
+ *    ±45 °C, « à dessein : le type du corps doit rester lisible ». Une glacée en orbite
+ *    serrée restait donc glaciale.
+ * 2. `temperatePull` tirait la fiche vers 15 °C quand l'habitabilité était haute, « pour que
+ *    la fiche corrobore la donnée de jeu, pas la contredise ».
+ * 3. `pickAtmosphere` pondérait l'atmosphère par l'habitabilité, pour la même raison.
+ *
+ * L'habitabilité tombant désormais de la physique (`physics.ts`), il n'y a plus rien à
+ * réconcilier : la fiche et la donnée de jeu viennent de la même source. Les trois sont
+ * supprimées, pas adaptées.
+ *
+ * ## Ce qui reste ici
+ *
+ * Ce qui n'appartient pas à la chaîne : la durée du jour, la période de révolution, et la
+ * mise en forme. Le reste n'est plus qu'un appel à `physics.ts`.
+ *
+ * Toujours **dérivée de l'id du corps**, donc identique côté client et côté serveur, et
+ * recalculable sans toucher au générateur (ADR 0002).
  */
 export interface BodyPhysicals {
   radiusKm: number;
   /** Gravité de surface en g (1 = Terre). */
   gravityG: number;
-  /** Température moyenne de surface, en °C. */
+  /** Vitesse de libération, en km/s — ce qui décide de l'atmosphère retenue. */
+  escapeVelocityKms: number;
+  /** Température moyenne de surface, en °C : équilibre radiatif + effet de serre. */
   meanTempC: number;
+  /** Température d'équilibre, avant toute atmosphère — utile pour lire la serre. */
+  equilibriumTempC: number;
   atmosphere: Atmosphere;
+  /** Pression au sol, en bars. Zéro quand le corps ne retient rien. */
+  pressureBar: number;
+  /** Flux stellaire reçu, en constantes solaires (la Terre en reçoit 1). */
+  irradiance: number;
   /** Durée de rotation, en heures. */
   dayLengthHours: number;
   /** Période de révolution autour du corps parent, en jours. */
   orbitPeriodDays: number;
 }
 
-/** [min, max] de rayon (km) par type, pour une planète. */
-const RADIUS_RANGE: Record<PlanetType, [number, number]> = {
-  telluric: [4800, 8200],
-  oceanic: [5200, 7600],
-  arid: [3400, 6800],
-  frozen: [2600, 6000],
-  volcanic: [3000, 6400],
-  gas: [38000, 82000],
-};
+/** Rayon terrestre, en kilomètres — le pont entre les unités de la chaîne et la fiche. */
+const EARTH_RADIUS_KM = 6371;
 
-/** [min, max] de densité relative (Terre = 1) : une gazeuse est immense mais légère. */
-const DENSITY_RANGE: Record<PlanetType, [number, number]> = {
-  telluric: [0.9, 1.1],
-  oceanic: [0.8, 1.0],
-  arid: [0.85, 1.05],
-  frozen: [0.5, 0.8],
-  volcanic: [0.95, 1.25],
-  gas: [0.15, 0.3],
-};
+/** Seuils de rétention : ce qu'un corps garde de ce qu'il dégaze. */
+const RETENTION_NONE = 0.15;
+const RETENTION_TRACE = 0.4;
+const RETENTION_THIN = 0.8;
 
-/** Température de référence par type (°C), avant correction par la distance à l'étoile. */
-const BASE_TEMP: Record<PlanetType, number> = {
-  telluric: 14,
-  oceanic: 12,
-  arid: 38,
-  frozen: -80,
-  volcanic: 240,
-  gas: -130,
-};
-
-/** Atmosphères plausibles par type, pondérées. */
-const ATMOSPHERE_WEIGHTS: Record<
-  PlanetType,
-  readonly (readonly [Atmosphere, number])[]
-> = {
-  telluric: [
-    ["breathable", 5],
-    ["thin", 3],
-    ["toxic", 2],
-  ],
-  oceanic: [
-    ["breathable", 6],
-    ["dense", 2],
-    ["thin", 1],
-  ],
-  arid: [
-    ["thin", 5],
-    ["none", 3],
-    ["toxic", 2],
-  ],
-  frozen: [
-    ["none", 5],
-    ["thin", 4],
-    ["toxic", 1],
-  ],
-  volcanic: [
-    ["toxic", 6],
-    ["dense", 3],
-    ["thin", 1],
-  ],
-  gas: [["dense", 1]],
-};
-
-/** Orbite de référence : la distance où la température de base s'applique telle quelle. */
-const REFERENCE_ORBIT = 180;
-
-/**
- * Amplitude maximale (°C) de l'écart dû à la distance à l'étoile. Bornée à dessein :
- * le type du corps doit rester lisible — une glacée proche reste glaciale, une
- * volcanique lointaine reste brûlante.
- */
-const TEMP_DISTANCE_SPREAD = 45;
-
-/** Température de confort vers laquelle tend un monde très habitable. */
-const TEMPERATE_C = 15;
-
-function range(rng: Rng, [min, max]: [number, number]): number {
+function range(rng: Rng, [min, max]: readonly [number, number]): number {
   return min + rng() * (max - min);
 }
 
 /**
- * Atmosphère tirée dans les possibilités du type, **pondérée par l'habitabilité** :
- * un monde très habitable respire, un monde hostile étouffe. Sans ce lien, la fiche
- * contredisait la donnée de jeu (planète à 90 d'habitabilité annoncée « toxique »).
+ * Ce qui survit de l'atmosphère proposée par le type, une fois la rétention appliquée.
+ *
+ * Le type dit ce que le corps **tenterait** de tenir ; la physique dit ce qu'il en garde. Un
+ * monde volcanique dégaze une atmosphère toxique, mais s'il est trop léger et trop chaud il
+ * reste nu — c'est le couplage qu'aucune table par type ne pouvait exprimer, et c'est lui qui
+ * fait qu'une lune et une super-Terre de même nature ne se ressemblent pas.
  */
-function pickAtmosphere(
-  rng: Rng,
-  type: PlanetType,
-  habitability: number,
+function retainedAtmosphere(
+  proposed: Atmosphere,
+  retention: number,
 ): Atmosphere {
-  const bias = Math.max(0.2, habitability / 50);
-  const entries = ATMOSPHERE_WEIGHTS[type].map(([value, weight]) => {
-    if (value === "breathable") return [value, weight * bias * bias] as const;
-    if (value === "none" || value === "toxic")
-      return [value, weight / bias] as const;
-    return [value, weight] as const;
-  });
-  const total = entries.reduce((s, [, w]) => s + w, 0);
-  let r = rng() * total;
-  for (const [value, weight] of entries) {
-    r -= weight;
-    if (r <= 0) return value;
+  if (proposed === "none" || retention < RETENTION_NONE) return "none";
+  if (retention < RETENTION_TRACE) return "trace";
+  if (retention < RETENTION_THIN) {
+    // Une atmosphère qui fuit perd d'abord ce qu'elle a de plus léger : il en reste un
+    // voile, quelle que soit la composition qu'elle visait.
+    return proposed === "breathable" ? "thin" : proposed;
   }
-  return entries[entries.length - 1]![0];
+  return proposed;
 }
 
 /**
- * Caractéristiques physiques d'une planète ou d'une lune. Déterministe : même corps,
- * même fiche, sans état ni cache.
+ * Caractéristiques physiques d'une planète ou d'une lune. Déterministe : même corps, même
+ * fiche, sans état ni cache.
  *
- * La température décroît avec l'éloignement de l'étoile (loi en 1/√r, calquée sur
- * l'équilibre radiatif) ; une lune hérite du rayon orbital de sa planète, transmis
- * par `parentOrbitRadius`.
+ * `stars` porte les corps centraux du système : c'est d'eux que viennent l'irradiance et donc
+ * la température. Un système sans étoile — un errant — rend une fiche glacée, ce qui est la
+ * bonne réponse. Une lune hérite de la distance orbitale de sa planète, transmise par
+ * `parentOrbitRadius` : c'est celle-là qui la chauffe, pas son orbite propre.
  */
 export function bodyPhysicals(
   planet: Planet,
+  stars: readonly CentralBody[] = [],
   parentOrbitRadius?: number,
 ): BodyPhysicals {
   const rng = createRng(`body:${planet.id}`);
   const isMoon = planet.kind === "moon";
+  // `bodyStructure` choisit la table selon `kind` : une lune se lit dans les catalogues de
+  // lunes, dont les rayons sont déjà des rayons de lune (0,02 à 0,46 rayon terrestre).
+  //
+  // Le facteur 0,28 qui vivait ici disparaît avec eux, et avec lui un désaccord silencieux :
+  // le générateur calculait l'habitabilité d'une lune sur le rayon PLEIN de sa classe
+  // planétaire quand cette fiche en affichait 28 %. Les deux lisent maintenant la même table.
+  const cls = bodyStructure(planet);
+  const env = bodyEnvironment(planet);
 
-  // Une lune est un corps réduit : rayon et gravité à l'échelle d'un satellite.
-  const moonScale = isMoon ? 0.28 : 1;
-  const radiusKm = Math.round(
-    range(rng, RADIUS_RANGE[planet.type]) * moonScale,
-  );
-  const density = range(rng, DENSITY_RANGE[planet.type]);
-  // g ∝ densité × rayon (à densité égale, un corps deux fois plus gros pèse deux fois plus).
-  const gravityG = Math.round(density * (radiusKm / 6371) * 100) / 100;
+  const radiusEarth = range(rng, cls.radiusRange);
+  const density = range(rng, cls.densityRange);
+  const gravityG = surfaceGravity(radiusEarth, density);
+  const escapeKms = escapeVelocity(radiusEarth, density);
 
-  // Distance à l'étoile : pour une lune, celle de sa planète.
-  const starDistance = Math.max(
-    20,
-    isMoon ? (parentOrbitRadius ?? REFERENCE_ORBIT) : planet.orbitRadius,
-  );
-  // Écart logarithmique borné : proche = plus chaud, loin = plus froid, sans jamais
-  // renverser la nature du corps.
-  const distanceOffset =
-    TEMP_DISTANCE_SPREAD *
-    Math.max(
-      -1,
-      Math.min(1, Math.log(REFERENCE_ORBIT / starDistance) / Math.log(4)),
-    );
-  const raw = BASE_TEMP[planet.type] + distanceOffset + range(rng, [-8, 8]);
-  // Un monde très habitable est forcément tempéré : la fiche doit corroborer la donnée
-  // de jeu, pas la contredire.
-  const temperatePull = (planet.habitability / 100) ** 2 * 0.7;
-  const meanTempC = Math.round(
-    raw * (1 - temperatePull) + TEMPERATE_C * temperatePull,
+  const orbitRadius = isMoon
+    ? (parentOrbitRadius ?? planet.orbitRadius)
+    : planet.orbitRadius;
+  // En binaire large, seule l'étoile hôte chauffe : compter la compagne lointaine
+  // déplacerait la zone habitable et rendrait la fiche fausse.
+  const lighting = lightingFor(stars, planet.hostStarId, orbitRadius);
+  const irradiance = irradianceAt(lighting, auAt(lighting, orbitRadius));
+  const equilibrium = equilibriumTempK(irradiance, env.albedo);
+
+  const retention =
+    atmosphereRetention(escapeKms, equilibrium) *
+    (1 - (1 - flareErosion(lighting)) * (1 - cls.magnetosphere));
+  const atmosphere = retainedAtmosphere(env.atmosphere, retention);
+  const pressureBar =
+    atmosphere === "none"
+      ? 0
+      : env.outgassingBar * Math.min(1.5, Math.max(0, retention));
+  const meanTempC = surfaceTempC(
+    equilibrium,
+    greenhouseK(pressureBar, env.greenhousePerBar),
   );
 
   return {
-    radiusKm,
-    gravityG,
-    meanTempC,
-    atmosphere: pickAtmosphere(rng, planet.type, planet.habitability),
+    radiusKm: Math.round(radiusEarth * EARTH_RADIUS_KM),
+    gravityG: Math.round(gravityG * 100) / 100,
+    escapeVelocityKms: Math.round(escapeKms * 100) / 100,
+    meanTempC: Math.round(meanTempC),
+    equilibriumTempC: Math.round(equilibrium - 273.15),
+    atmosphere,
+    pressureBar: Math.round(pressureBar * 1000) / 1000,
+    irradiance: Math.round(irradiance * 1000) / 1000,
     dayLengthHours:
       Math.round(range(rng, isMoon ? [40, 700] : [8, 90]) * 10) / 10,
     // Période orbitale : loi de Kepler (T ∝ r^1.5) autour du corps parent.

@@ -1,9 +1,14 @@
-import type {
-  GalaxyMorphology,
-  PlanetType,
-  ResourceId,
-  StarClass,
+import {
+  blackHoleType,
+  bodyEnvironment,
+  bodyStructure,
+  beltType,
+  starClass,
+  whiteHoleType,
+  type BodyRef,
+  type CentralBody,
 } from "@spacesim/shared";
+import { astroOverrides } from "../state/astro-content.js";
 
 /**
  * Registre d'apparence (chantier 31.18). Traduit une donnée de jeu — type de planète,
@@ -27,39 +32,27 @@ export interface BodyAppearance {
   relief: number;
 }
 
-const GENERIC_BODY: BodyAppearance = {
-  color: "#8a8f98",
-  accent: "#6b7078",
-  roughness: 0.85,
-  relief: 0.35,
-};
-
-const BODIES: Record<PlanetType, BodyAppearance> = {
-  telluric: {
-    color: "#5f8f52",
-    accent: "#8fae6a",
-    roughness: 0.9,
-    relief: 0.55,
-  },
-  oceanic: {
-    color: "#2f6f9f",
-    accent: "#7fc8e8",
-    roughness: 0.35,
-    relief: 0.3,
-  },
-  volcanic: {
-    color: "#7a2f28",
-    accent: "#e0762f",
-    roughness: 0.95,
-    relief: 0.75,
-  },
-  frozen: { color: "#9fbcd4", accent: "#e8f4ff", roughness: 0.5, relief: 0.4 },
-  arid: { color: "#a8874a", accent: "#d8b877", roughness: 0.95, relief: 0.6 },
-  gas: { color: "#8f6fb0", accent: "#d8b0e0", roughness: 0.15, relief: 0.2 },
-};
-
-export function bodyAppearance(type: string): BodyAppearance {
-  return BODIES[type as PlanetType] ?? GENERIC_BODY;
+/**
+ * Apparence d'un corps, lue des DEUX axes (chantier 45.3).
+ *
+ * La **variante** donne la couleur — c'est le climat qui fait qu'un monde est vert, bleu ou
+ * rouge, pas sa taille. La **classe** donne le relief et la rugosité : une géante est lisse,
+ * une naine criblée de cratères. La table qui vivait ici confondait les deux, faute d'axes
+ * séparés dans le modèle.
+ *
+ * Le corps passe en entier plutôt que ses deux identifiants : c'est `kind` qui décide si on
+ * lit les catalogues de planètes ou ceux de lunes, et l'appelant n'a pas à le savoir.
+ */
+export function bodyAppearance(body: BodyRef): BodyAppearance {
+  const overrides = astroOverrides();
+  const cls = bodyStructure(body, overrides);
+  const env = bodyEnvironment(body, overrides);
+  return {
+    color: env.color,
+    accent: env.accent,
+    roughness: cls.roughness,
+    relief: cls.relief,
+  };
 }
 
 /** Teinte d'un site découvert au scan (chantier 31.11). */
@@ -104,118 +97,115 @@ const GENERIC_STAR: StarAppearance = {
   churn: 1,
 };
 
-const STARS: Record<StarClass, StarAppearance> = {
-  redDwarf: {
-    core: "#ffb27a",
-    edge: "#d8452a",
-    halo: "#e0603a",
-    radius: 0.62,
-    corona: 0.8,
-    light: "#ffb089",
-    intensity: 2,
-    churn: 0.55,
-  },
-  mainSequence: GENERIC_STAR,
-  giant: {
-    core: "#ffd9a0",
-    edge: "#e05a2a",
-    halo: "#ff8a4a",
-    radius: 1.7,
-    corona: 1.5,
-    light: "#ffd0a0",
-    intensity: 3.6,
-    churn: 0.4,
-  },
-  whiteDwarf: {
-    core: "#f2f8ff",
-    edge: "#9fc4ff",
-    halo: "#cfe2ff",
-    radius: 0.34,
-    corona: 0.55,
-    light: "#dceaff",
-    intensity: 2.4,
-    churn: 1.8,
-  },
-  pulsar: {
-    core: "#eaf4ff",
-    edge: "#7aa8ff",
-    halo: "#9fd0ff",
-    radius: 0.3,
-    corona: 0.5,
-    light: "#cfe4ff",
-    intensity: 2.6,
-    churn: 2.6,
-  },
-  blackHole: {
-    // L'horizon ne rend rien de tout cela — c'est le disque qui porte la teinte, et la
-    // lumière qu'il émet, chaude et faible, remplace celle d'une étoile absente.
-    core: "#000000",
-    edge: "#000000",
-    halo: "#ff8a3d",
-    radius: 0.55,
-    corona: 1.6,
-    light: "#ffb37a",
-    intensity: 1.1,
-    churn: 1,
-  },
-};
-
-export function starAppearance(starClass: string): StarAppearance {
-  return STARS[starClass as StarClass] ?? GENERIC_STAR;
+/**
+ * Ce qu'une SINGULARITÉ demande au rendu — un jeu de champs distinct de celui d'une étoile.
+ *
+ * Ses deux rayons sont en **unités de scène**, tels que les catalogues les portent : 7,15
+ * d'horizon pour un stellaire, 51 pour un supermassif. Ceux d'une `StarAppearance` sont des
+ * FACTEURS sans dimension, multipliés par la taille de lecture du palier système.
+ *
+ * C'est cette confusion d'unités qui a produit le défaut du chantier 45 : un unique champ
+ * `radius` servant aux deux, une singularité y était écrite `0.55` en dur — soit très
+ * exactement `7,15 / 13`, les proportions du trou noir stellaire. Les onze types rendaient
+ * donc la même taille, et les trois rayons du catalogue, pourtant éditables au CMS, ne
+ * changeaient rien.
+ */
+export interface SingularityAppearance {
+  /** Rayon de l'horizon, en unités de scène. */
+  horizonRadius: number;
+  /** Rayon externe du disque d'accrétion. **Zéro veut dire « pas de disque »** — un dormant. */
+  discRadius: number;
+  /** Teinte de la bouche : noire pour un trou, claire pour une fontaine, qui rend ce qu'elle a pris. */
+  mouth: string;
+  halo: string;
+  light: string;
+  intensity: number;
 }
 
 /**
- * Apparence d'une galaxie selon sa morphologie (chantier 35.10). `arms` à zéro décrit un
- * nuage sans bras — c'est ce qui distingue une elliptique d'une spirale.
+ * Apparence d'un corps central — étoile ou singularité (chantiers 45.2 puis 46).
+ *
+ * La table qui vivait ici dupliquait, pour six classes dérivées, ce que les catalogues de
+ * `content/astro/` portent désormais pour vingt-deux types persistés. Elle est remplacée par
+ * une lecture : c'est le même doublon que `galaxyAppearance` avait créé, et qu'on ne
+ * reproduit pas.
+ *
+ * **Une union discriminée**, et non un type unique : les deux familles ne demandent pas les
+ * mêmes grandeurs, et prétendre le contraire a coûté le défaut décrit sur
+ * `SingularityAppearance`. Le compilateur force désormais l'appelant à traiter les deux
+ * branches — une troisième famille de `kind` ne pourra plus retomber en silence sur des
+ * valeurs stellaires.
+ *
+ * Un corps absent — système redacté par le brouillard — rend l'étoile la plus banale : ce que
+ * le joueur n'a pas visité ne doit rien lui annoncer.
  */
-export interface GalaxyAppearance {
-  arms: number;
-  /** Nombre de tours parcourus par un bras, en radians. */
-  winding: number;
-  /** Longueur de la barre centrale, en part du rayon. Zéro pour une spirale simple. */
-  bar: number;
-  /** Dispersion perpendiculaire aux bras, en part du rayon. */
-  scatter: number;
+export type CentralBodyLook =
+  | { kind: "star"; star: StarAppearance }
+  | { kind: "singularity"; singularity: SingularityAppearance };
+
+export function centralBodyAppearance(
+  body: CentralBody | undefined,
+): CentralBodyLook {
+  if (!body || body.kind === "star") {
+    return {
+      kind: "star",
+      star: body ? starAppearance(body.typeId) : GENERIC_STAR,
+    };
+  }
+
+  // Une singularité ne rend ni cœur ni bord : c'est son disque qui porte la teinte, et la
+  // lumière qu'il émet remplace celle d'une étoile absente. Une fontaine blanche, elle,
+  // brille — d'où une bouche claire là où un trou noir en a une noire.
+  const overrides = astroOverrides();
+  // La bouche d'une fontaine et l'horizon d'un trou noir sont le même objet de scène : la
+  // frontière d'où plus rien ne revient, ou d'où tout sort. Les catalogues les nomment
+  // différemment parce que ce ne sont pas la même chose en physique.
+  const def =
+    body.kind === "blackHole"
+      ? blackHoleType(body.typeId, overrides)
+      : whiteHoleType(body.typeId, overrides);
+  const horizonRadius =
+    body.kind === "blackHole"
+      ? blackHoleType(body.typeId, overrides).horizonRadius
+      : whiteHoleType(body.typeId, overrides).mouthRadius;
+  return {
+    kind: "singularity",
+    singularity: {
+      horizonRadius,
+      discRadius: def.discRadius,
+      mouth: body.kind === "whiteHole" ? "#f2f7ff" : "#000000",
+      halo: def.halo,
+      light: def.light,
+      intensity: def.intensity,
+    },
+  };
 }
 
-const GENERIC_GALAXY: GalaxyAppearance = {
-  arms: 2,
-  winding: Math.PI * 3,
-  bar: 0,
-  scatter: 0.28,
-};
-
-const GALAXIES: Record<GalaxyMorphology, GalaxyAppearance> = {
-  spiral: GENERIC_GALAXY,
-  barred: { arms: 2, winding: Math.PI * 2.2, bar: 0.42, scatter: 0.22 },
-  elliptical: { arms: 0, winding: 0, bar: 0, scatter: 1 },
-  irregular: { arms: 3, winding: Math.PI * 1.2, bar: 0, scatter: 0.75 },
-};
-
-export function galaxyAppearance(morphology: string): GalaxyAppearance {
-  return GALAXIES[morphology as GalaxyMorphology] ?? GENERIC_GALAXY;
+/** Apparence d'une classe d'étoile par son identifiant seul, quand le corps n'est pas là. */
+export function starAppearance(typeId: string): StarAppearance {
+  const def = starClass(typeId, astroOverrides());
+  return {
+    core: def.core,
+    edge: def.edge,
+    halo: def.halo,
+    radius: def.radius,
+    corona: def.corona,
+    light: def.light,
+    intensity: def.intensity,
+    churn: def.churn,
+  };
 }
 
 /**
- * Teinte d'une ceinture selon ce qu'on y extrait (chantier 35.10). Une ceinture de fer ne
- * doit pas ressembler à une ceinture de glace : c'est la seule information qu'elle porte, et
- * elle était invisible.
+ * Teinte d'une ceinture, lue de sa COMPOSITION depuis le chantier 45.3.
+ *
+ * Elle se déduisait du gisement dominant, ce qui ne pouvait dire qu'une chose : « du
+ * minerai ». Toutes les ceintures sortaient donc de la même couleur, puisque toutes en
+ * portaient. Le type dit ce dont elles sont faites, et une glacée ne ressemble plus à un
+ * champ de débris.
  */
-const ORES: Record<string, string> = {
-  ore: "#8a7458",
-  metals: "#8f9aa6",
-  components: "#9a86c4",
-  energy: "#c4a86a",
-  food: "#7e9463",
-};
-
-export function asteroidTint(
-  deposits: Partial<Record<ResourceId, number>>,
-): string {
-  const best = Object.entries(deposits).sort(
-    (a, b) => (b[1] ?? 0) - (a[1] ?? 0),
-  )[0];
-  return (best && ORES[best[0]]) ?? "#6b5a44";
+export function asteroidTint(belt: { typeId: string }): string {
+  return beltType(belt.typeId, astroOverrides()).tint;
 }
 
 /**

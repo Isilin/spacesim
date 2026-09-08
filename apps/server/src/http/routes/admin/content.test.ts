@@ -23,6 +23,7 @@ beforeEach(async () => {
   await db.delete(schema.contentMilestones);
   await db.delete(schema.contentZoneTypes);
   await db.delete(schema.contentInstallations);
+  await db.delete(schema.contentAstro);
 });
 
 const VALID_WARSHIP_BODY = {
@@ -1301,5 +1302,83 @@ describe("/api/admin/content/installations", () => {
       payload: VALID_INSTALLATION_BODY,
     });
     expect(res.statusCode).toBe(403);
+  });
+});
+
+describe("/api/admin/content/astro", () => {
+  /**
+   * Le seul domaine dont la ressource est une PAIRE et dont le corps est un correctif.
+   * Ces cas vérifient les deux conséquences : la moitié gelée de l'ADR 0021 est refusée par le
+   * contrat, et une surcharge acceptée ressort par la route de publication du client.
+   */
+  const admin = async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const { token, accountId } = await registerTestAccount(
+      app,
+      "astro@exemple.fr",
+    );
+    await setTestRole(accountId, "admin");
+    return { app, token };
+  };
+
+  it("écrit une surcharge d'effet et la relit", async () => {
+    const { app, token } = await admin();
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/astro/belt/icy",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { family: "belt", hazard: 4, tint: "#123456" },
+    });
+    expect(res.statusCode).toBe(200);
+    const row = res
+      .json<{ astro: { family: string; id: string; payload: unknown }[] }>()
+      .astro.find((r) => r.family === "belt" && r.id === "icy");
+    expect(row?.payload).toEqual({ hazard: 4, tint: "#123456" });
+  });
+
+  it("refuse une entrée de génération, que l'ADR 0021 gèle", async () => {
+    // `richness` est tirée puis persistée dans `universe_belts.deposits` : l'éditer ferait
+    // diverger le rendement affiché du rendement en base. Le contrat le refuse, ce qui rend
+    // la frontière vérifiable plutôt que conventionnelle.
+    const { app, token } = await admin();
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/astro/belt/icy",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { family: "belt", richness: [9, 9] },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("une famille inconnue est refusée par le chemin", async () => {
+    const { app, token } = await admin();
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/astro/comètes/halley",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { family: "belt", hazard: 1 },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("la surcharge écrite part au client par la route de publication", async () => {
+    // La dette de `design.md` (chantier 31.22) : sans cette route, une couleur éditée en
+    // admin ne quittait jamais le serveur.
+    const { app, token } = await admin();
+    await app.inject({
+      method: "PUT",
+      url: "/api/admin/content/astro/planetVariant/temperate",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { family: "planetVariant", color: "#abcdef" },
+    });
+    // Aucune authentification : c'est du contenu de jeu.
+    const published = await app.inject({
+      method: "GET",
+      url: "/api/content/astro",
+    });
+    expect(published.statusCode).toBe(200);
+    expect(published.json()).toEqual({
+      astro: { planetVariant: { temperate: { color: "#abcdef" } } },
+    });
   });
 });

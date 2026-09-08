@@ -12,6 +12,16 @@ export const GATEWAY_COST: Partial<Record<ResourceId, number>> = {
   components: 800,
   energy: 1500,
   credits: 1000,
+  /**
+   * L'unique emploi de la matière exotique (chantier 45.5), et la seule ligne de ce coût
+   * qu'on ne peut pas produire chez soi : il faut tenir un système à singularité.
+   *
+   * Modeste à dessein. Chaque galaxie en compte de quatre à quinze exploitables — mesuré sur
+   * dix-huit galaxies, verrouillé par un test — mais une exigence forte ferait dépendre le
+   * seul chemin de progression inter-galactique d'un tirage. Elle se veut ressentie, pas
+   * bloquante.
+   */
+  exotic: 40,
 };
 
 /** Surcoût par rang d'éloignement : viser loin coûte plus cher (chantier 9). */

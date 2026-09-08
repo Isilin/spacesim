@@ -2,11 +2,15 @@ import { useFrame } from "@react-three/fiber";
 import {
   bodyPositionAt,
   sitePosition,
-  starClassOf,
+  bodyStructure,
+  starsOf,
+  orbitsBarycenter,
+  centralBodyPositionAt,
   type Fleet,
   type ForeignFleet,
   type ForeignStation,
   type MiningOutpost,
+  type CentralBody,
   type Planet,
   type StarSystem,
   type Station,
@@ -20,9 +24,16 @@ import {
   factionTint,
   seedOf,
   siteColor,
-  starAppearance,
+  centralBodyAppearance,
 } from "./appearance.js";
+import { astroOverrides } from "../state/astro-content.js";
 import { focusOf, type Focus } from "./bounds.js";
+import {
+  centralBodySlots,
+  pairReadingScale,
+  STAR_CORE,
+  STAR_CORONA,
+} from "./centralBodies.js";
 import { hasRings, PlanetRings } from "./PlanetRings.js";
 import { ProceduralBody } from "./ProceduralBody.js";
 import { BlackHole } from "./BlackHole.js";
@@ -32,9 +43,8 @@ import { TradingPostModel } from "./TradingPostModel.js";
 import { orbitColor } from "./theme.js";
 import type { Vec3 } from "./tiers.js";
 
-/** Rayon du coeur de l'étoile et de sa couronne la plus externe. */
-export const STAR_CORE = 13;
-export const STAR_CORONA = 26;
+/** Ré-exportés depuis `centralBodies` : `MapScene` les importe d'ici depuis le chantier 37. */
+export { STAR_CORE, STAR_CORONA };
 
 /**
  * Rayon de rendu d'un corps (chantier 37.14).
@@ -64,8 +74,9 @@ export const STAR_CORONA = 26;
  * cette réduction : voir `bodyLabelExtent`.
  */
 export function bodyRadiusOf(planet: Planet): number {
-  if (planet.kind === "moon") return 1.8;
-  return planet.type === "gas" ? 8 : 4.5;
+  // Le 1,8 uniforme des lunes disparaît au chantier 45.3 : elles ont leurs propres classes,
+  // et une capturée de deux pour cent de rayon terrestre ne se lit plus comme un Titan.
+  return bodyStructure(planet, astroOverrides()).renderRadius;
 }
 
 /**
@@ -77,8 +88,7 @@ export function bodyRadiusOf(planet: Planet): number {
  * lisibilité de la carte. Ces valeurs sont celles d'avant le chantier 37.14.
  */
 export function bodyLabelExtent(planet: Planet): number {
-  if (planet.kind === "moon") return 5;
-  return planet.type === "gas" ? 14 : 9;
+  return bodyStructure(planet, astroOverrides()).labelExtent;
 }
 
 /**
@@ -91,9 +101,19 @@ export function systemExtent(
   system: StarSystem,
   sites: readonly SystemSite[],
 ): number {
+  // Une binaire large s'étale bien au-delà de sa dernière orbite : sa compagne est à
+  // plusieurs centaines d'unités, et son propre cortège tourne autour d'elle — un monde y
+  // atteint donc `séparation + rayon d'orbite`. Sans ce décalage, le cadrage coupait la
+  // moitié du système (chantier 45.2).
+  const stars = starsOf(system);
+  const offsetOf = (body: Planet) => {
+    if (!body.hostStarId || orbitsBarycenter(stars, body.orbitRadius)) return 0;
+    return stars.find((s) => s.id === body.hostStarId)?.orbitRadius ?? 0;
+  };
   return Math.max(
     STAR_CORONA * 2.2,
-    ...system.planets.map((p) => p.orbitRadius + bodyRadiusOf(p)),
+    ...stars.map((s) => s.orbitRadius + STAR_CORONA * 1.2),
+    ...system.planets.map((p) => offsetOf(p) + p.orbitRadius + bodyRadiusOf(p)),
     ...system.belts.map((b) => b.orbitRadius),
     ...sites.map((s) => s.orbitRadius),
   );
@@ -155,11 +175,7 @@ function OrbitingBody({
           focusable ni clavier — le chemin accessible est la liste DOM parallèle
           (chantier 31.16). */}
       <group onClick={onSelect} onDoubleClick={onOpen}>
-        <ProceduralBody
-          id={body.id}
-          type={body.type}
-          radius={bodyRadiusOf(body)}
-        />
+        <ProceduralBody id={body.id} body={body} radius={bodyRadiusOf(body)} />
         {hasRings(body) && (
           <PlanetRings body={body} radius={bodyRadiusOf(body)} />
         )}
@@ -195,7 +211,7 @@ function AsteroidBelt({ belt }: { belt: StarSystem["belts"][number] }) {
       ),
     [belt.id],
   );
-  const tint = asteroidTint(belt.deposits);
+  const tint = asteroidTint(belt);
   const perShape = Math.ceil(ASTEROIDS / ASTEROID_SHAPES);
 
   useEffect(() => {
@@ -243,17 +259,48 @@ function AsteroidBelt({ belt }: { belt: StarSystem["belts"][number] }) {
 }
 
 /** Anneau d'orbite, tracé dans le plan du corps puis incliné comme lui. */
-function OrbitRing({ body }: { body: Planet }) {
+/**
+ * Anneau d'orbite.
+ *
+ * Centré sur l'origine — le barycentre — sauf pour une orbite de type S, où il suit son
+ * étoile hôte (chantier 45.2). Sans ce décalage, le cortège d'une binaire large tournerait
+ * visiblement autour d'un anneau qui n'est pas le sien.
+ *
+ * L'anneau est fixe et l'hôte se déplace : on le pose à la position de l'hôte au tick courant,
+ * ce que `useFrame` rafraîchit déjà pour les corps eux-mêmes.
+ */
+function OrbitRing({
+  body,
+  system,
+  tickAt,
+}: {
+  body: Planet;
+  system: StarSystem;
+  tickAt: () => number;
+}) {
+  const ref = useRef<Group>(null);
+  const host = starsOf(system).find((s) => s.id === body.hostStarId);
+  const follows =
+    host !== undefined && !orbitsBarycenter(starsOf(system), body.orbitRadius);
+
+  useFrame(() => {
+    if (!ref.current || !follows || !host) return;
+    const p = centralBodyPositionAt(host, tickAt());
+    ref.current.position.set(p.x, p.y, p.z);
+  });
+
   return (
-    <mesh rotation={[body.inclination, 0, body.ascendingNode]}>
-      <ringGeometry
-        args={[body.orbitRadius - 0.35, body.orbitRadius + 0.35, 96]}
-      />
-      {/* Relevé au chantier 33.8 : `#1e2a38` à 0,7 sur le fond plat `#080b10` se
-          distinguait à peine — l'anneau porte pourtant la lecture de la géométrie du
-          système. La teinte vient du jeton de bordure claire, comme les filets du HUD. */}
-      <meshBasicMaterial color={orbitColor()} transparent opacity={0.85} />
-    </mesh>
+    <group ref={ref}>
+      <mesh rotation={[body.inclination, 0, body.ascendingNode]}>
+        <ringGeometry
+          args={[body.orbitRadius - 0.35, body.orbitRadius + 0.35, 96]}
+        />
+        {/* Relevé au chantier 33.8 : `#1e2a38` à 0,7 sur le fond plat `#080b10` se
+            distinguait à peine — l'anneau porte pourtant la lecture de la géométrie du
+            système. La teinte vient du jeton de bordure claire, comme les filets du HUD. */}
+        <meshBasicMaterial color={orbitColor()} transparent opacity={0.85} />
+      </mesh>
+    </group>
   );
 }
 
@@ -337,6 +384,111 @@ interface Props {
  * coexistent, l'étoile n'est plus à l'origine de la scène mais à la position du système
  * dans sa galaxie. Elle appartient donc au contenu, pas au socle de rendu.
  */
+
+/**
+ * Les corps centraux d'un système, et toute sa lumière (chantier 47).
+ *
+ * ## Ce qui manquait
+ *
+ * Le chantier 45.2 a donné un à trois corps centraux à chaque système, avec de vraies orbites
+ * S et P. Ce composant n'en dessinait qu'un — le primaire. Une binaire large montrait donc une
+ * seule étoile, et son second cortège tournait autour d'un point vide. Depuis le 45.5, un
+ * compagnon peut même être un trou noir, c'est-à-dire la source de matière exotique du
+ * système : rien ne le montrait ni ne le nommait.
+ *
+ * ## Le nombre de lumières est constant, et c'est le point
+ *
+ * `centralBodySlots` rend toujours `MAX_CENTRAL_BODIES` emplacements, trous compris, et chacun
+ * porte sa `<pointLight>` — à intensité nulle là où il n'y a personne. Un nombre VARIABLE de
+ * sources fait recompiler tous les matériaux de la scène par three.js, le compte entrant dans
+ * les *defines* du programme : l'à-coup se verrait à chaque entrée dans un système au nombre
+ * d'étoiles différent.
+ *
+ * C'est aussi pourquoi `BlackHole` reçoit `light={false}` : sa lumière interne rendrait le
+ * compte variable, une par singularité présente. Le pool possède toutes les sources.
+ *
+ * ## Les positions s'écrivent par image, pas par état
+ *
+ * Comme pour les planètes : un `setState` par image et par corps re-rendrait tout l'arbre
+ * soixante fois par seconde. `centralBodyPositionAt` rend `{0,0,0}` pour l'ancre, qui n'est
+ * donc pas un cas particulier.
+ */
+function CentralBodies({
+  system,
+  tickAt,
+}: {
+  system: StarSystem;
+  tickAt: () => number;
+}) {
+  const slots = centralBodySlots(system);
+  const groups = useRef<(Group | null)[]>([]);
+  // Une paire serrée se rend rétrécie, sans quoi ses deux corps se fondent en une boule :
+  // voir `pairReadingScale`. Les POSITIONS ne bougent pas — elles sont de la donnée.
+  const scale = pairReadingScale(starsOf(system));
+
+  useFrame(() => {
+    const tick = tickAt();
+    slots.forEach((body, index) => {
+      const group = groups.current[index];
+      if (!group || !body) return;
+      const p = centralBodyPositionAt(body, tick);
+      group.position.set(p.x, p.y, p.z);
+    });
+  });
+
+  return (
+    <>
+      {slots.map((body, index) => {
+        const look = centralBodyAppearance(body);
+        const key = body?.id ?? `slot-${index}`;
+        return (
+          <group
+            key={key}
+            ref={(g) => {
+              groups.current[index] = g;
+            }}
+          >
+            <pointLight
+              color={
+                look.kind === "singularity"
+                  ? look.singularity.light
+                  : look.star.light
+              }
+              // L'emplacement vide reste MONTÉ, à intensité nulle : c'est ce qui garde le
+              // compte de sources constant d'un système à l'autre.
+              intensity={
+                body === undefined
+                  ? 0
+                  : look.kind === "singularity"
+                    ? look.singularity.intensity
+                    : look.star.intensity
+              }
+              decay={0.4}
+            />
+            {body === undefined ? null : look.kind === "singularity" ? (
+              <BlackHole
+                id={body.id}
+                radius={look.singularity.horizonRadius * scale}
+                discRadius={look.singularity.discRadius * scale}
+                color={look.singularity.halo}
+                mouth={look.singularity.mouth}
+                light={false}
+              />
+            ) : (
+              <StarBody
+                id={body.id}
+                radius={STAR_CORE * look.star.radius * scale}
+                coronaRadius={STAR_CORONA * look.star.corona * scale}
+                starClass={body.typeId}
+              />
+            )}
+          </group>
+        );
+      })}
+    </>
+  );
+}
+
 export function SystemLayer({
   system,
   sites,
@@ -357,41 +509,17 @@ export function SystemLayer({
   const beltById = new Map(system.belts.map((b) => [b.id, b]));
   const here = <T extends { systemId: string }>(list: T[]) =>
     list.filter((x) => x.systemId === system.id);
-  const starClass = starClassOf(system);
-  const look = starAppearance(starClass);
-
   return (
     <>
-      {/* L'étoile, et la lumière du système. Elle prend sa teinte et son intensité de sa
-          classe (chantier 35.10) : une naine rouge éclaire peu et rouge. Un trou noir
-          n'éclaire pas du tout — c'est son disque d'accrétion qui s'en charge, et il porte
-          donc sa propre lumière. */}
-      {starClass === "blackHole" ? (
-        <BlackHole
-          id={system.id}
-          radius={STAR_CORE * look.radius}
-          discRadius={STAR_CORONA * look.corona}
-          color={look.halo}
-        />
-      ) : (
-        <>
-          <pointLight
-            position={[0, 0, 0]}
-            color={look.light}
-            intensity={look.intensity}
-            decay={0.4}
-          />
-          <StarBody
-            id={system.id}
-            radius={STAR_CORE}
-            coronaRadius={STAR_CORONA}
-            starClass={starClass}
-          />
-        </>
-      )}
+      <CentralBodies system={system} tickAt={tickAt} />
 
       {planets.map((planet) => (
-        <OrbitRing key={`ring-${planet.id}`} body={planet} />
+        <OrbitRing
+          key={`ring-${planet.id}`}
+          body={planet}
+          system={system}
+          tickAt={tickAt}
+        />
       ))}
 
       {system.belts.map((belt) => (
@@ -540,6 +668,15 @@ export function SystemLayer({
       })}
     </>
   );
+}
+
+/** Position d'un corps CENTRAL dans le repère de son système, au tick fractionnaire donné. */
+export function centralBodyLocalPosition(
+  body: CentralBody,
+  tick: number,
+): Vec3 {
+  const p = centralBodyPositionAt(body, tick);
+  return [p.x, p.y, p.z];
 }
 
 /** Position d'un corps dans le repère de son système, au tick fractionnaire donné. */

@@ -21,6 +21,14 @@ import type {
 } from "@tanstack/react-query";
 
 import { customFetch } from "../mutator";
+export type GetApiContentAstro200Astro = {
+  [key: string]: { [key: string]: { [key: string]: unknown } };
+};
+
+export type GetApiContentAstro200 = {
+  astro: GetApiContentAstro200Astro;
+};
+
 export type GetApiAdminAudit200EntriesItemAction =
   (typeof GetApiAdminAudit200EntriesItemAction)[keyof typeof GetApiAdminAudit200EntriesItemAction];
 
@@ -57,6 +65,8 @@ export const GetApiAdminAudit200EntriesItemAction = {
   contentzoneTypeswrite: "content.zoneTypes.write",
   contentinstallationsread: "content.installations.read",
   contentinstallationswrite: "content.installations.write",
+  contentastroread: "content.astro.read",
+  contentastrowrite: "content.astro.write",
   opsread: "ops.read",
 } as const;
 
@@ -2161,6 +2171,283 @@ export type PutApiAdminContentInstallationsId200 = {
   installations: PutApiAdminContentInstallationsId200InstallationsItem[];
 };
 
+export type GetApiAdminContentAstro200AstroItemFamily =
+  (typeof GetApiAdminContentAstro200AstroItemFamily)[keyof typeof GetApiAdminContentAstro200AstroItemFamily];
+
+export const GetApiAdminContentAstro200AstroItemFamily = {
+  galaxy: "galaxy",
+  star: "star",
+  blackHole: "blackHole",
+  whiteHole: "whiteHole",
+  planetClass: "planetClass",
+  planetVariant: "planetVariant",
+  moonClass: "moonClass",
+  moonVariant: "moonVariant",
+  belt: "belt",
+} as const;
+
+export type GetApiAdminContentAstro200AstroItemPayload = {
+  [key: string]: unknown;
+};
+
+export type GetApiAdminContentAstro200AstroItem = {
+  family: GetApiAdminContentAstro200AstroItemFamily;
+  id: string;
+  payload: GetApiAdminContentAstro200AstroItemPayload;
+};
+
+export type GetApiAdminContentAstro200 = {
+  astro: GetApiAdminContentAstro200AstroItem[];
+};
+
+export type PutApiAdminContentAstroFamilyIdBody =
+  | {
+      depositBias?: { [key: string]: number };
+      /** @pattern ^#[0-9a-fA-F]{6}$ */
+      tint?: string;
+      family: "galaxy";
+    }
+  | {
+      /**
+       * @minimum 0
+       * @maximum 10
+       */
+      depositMult?: number;
+      /**
+       * @minimum 0
+       * @maximum 10
+       */
+      energyMult?: number;
+      dark?: boolean;
+      /** @pattern ^#[0-9a-fA-F]{6}$ */
+      core?: string;
+      /** @pattern ^#[0-9a-fA-F]{6}$ */
+      edge?: string;
+      /** @pattern ^#[0-9a-fA-F]{6}$ */
+      halo?: string;
+      /**
+       * @maximum 100
+       * @exclusiveMinimum 0
+       */
+      radius?: number;
+      /**
+       * @minimum 0
+       * @maximum 10
+       */
+      corona?: number;
+      /** @pattern ^#[0-9a-fA-F]{6}$ */
+      light?: string;
+      /**
+       * @minimum 0
+       * @maximum 20
+       */
+      intensity?: number;
+      /**
+       * @minimum 0
+       * @maximum 10
+       */
+      churn?: number;
+      family: "star";
+    }
+  | {
+      /**
+       * @minimum 0
+       * @maximum 10
+       */
+      depositMult?: number;
+      /**
+       * @minimum 0
+       * @maximum 10
+       */
+      energyMult?: number;
+      /**
+       * @minimum 0
+       * @maximum 10
+       */
+      exoticYield?: number;
+      /**
+       * @minimum 0
+       * @maximum 5
+       */
+      hazard?: number;
+      /**
+       * @minimum 0
+       * @maximum 200
+       */
+      discRadius?: number;
+      /**
+       * @minimum 0
+       * @maximum 200
+       */
+      horizonRadius?: number;
+      /** @pattern ^#[0-9a-fA-F]{6}$ */
+      halo?: string;
+      /** @pattern ^#[0-9a-fA-F]{6}$ */
+      light?: string;
+      /**
+       * @minimum 0
+       * @maximum 20
+       */
+      intensity?: number;
+      family: "blackHole";
+    }
+  | {
+      /**
+       * @minimum 0
+       * @maximum 10
+       */
+      depositMult?: number;
+      /**
+       * @minimum 0
+       * @maximum 10
+       */
+      energyMult?: number;
+      /**
+       * @minimum 0
+       * @maximum 10
+       */
+      exoticYield?: number;
+      /**
+       * @minimum 0
+       * @maximum 5
+       */
+      hazard?: number;
+      /**
+       * @minimum 0
+       * @maximum 200
+       */
+      discRadius?: number;
+      /**
+       * @minimum 0
+       * @maximum 200
+       */
+      mouthRadius?: number;
+      /** @pattern ^#[0-9a-fA-F]{6}$ */
+      halo?: string;
+      /** @pattern ^#[0-9a-fA-F]{6}$ */
+      light?: string;
+      /**
+       * @minimum 0
+       * @maximum 20
+       */
+      intensity?: number;
+      family: "whiteHole";
+    }
+  | {
+      /**
+       * @maximum 50
+       * @exclusiveMinimum 0
+       */
+      renderRadius?: number;
+      /**
+       * @maximum 100
+       * @exclusiveMinimum 0
+       */
+      labelExtent?: number;
+      /**
+       * @minimum 0
+       * @maximum 1
+       */
+      ringChance?: number;
+      /**
+       * @minimum 0
+       * @maximum 2
+       */
+      relief?: number;
+      /**
+       * @minimum 0
+       * @maximum 2
+       */
+      roughness?: number;
+      family: "planetClass";
+    }
+  | {
+      /**
+       * @maximum 50
+       * @exclusiveMinimum 0
+       */
+      renderRadius?: number;
+      /**
+       * @maximum 100
+       * @exclusiveMinimum 0
+       */
+      labelExtent?: number;
+      /**
+       * @minimum 0
+       * @maximum 1
+       */
+      ringChance?: number;
+      /**
+       * @minimum 0
+       * @maximum 2
+       */
+      relief?: number;
+      /**
+       * @minimum 0
+       * @maximum 2
+       */
+      roughness?: number;
+      family: "moonClass";
+    }
+  | {
+      /** @pattern ^#[0-9a-fA-F]{6}$ */
+      color?: string;
+      /** @pattern ^#[0-9a-fA-F]{6}$ */
+      accent?: string;
+      family: "planetVariant";
+    }
+  | {
+      /** @pattern ^#[0-9a-fA-F]{6}$ */
+      color?: string;
+      /** @pattern ^#[0-9a-fA-F]{6}$ */
+      accent?: string;
+      family: "moonVariant";
+    }
+  | {
+      /**
+       * @minimum 0
+       * @maximum 5
+       */
+      hazard?: number;
+      /** @pattern ^#[0-9a-fA-F]{6}$ */
+      tint?: string;
+      /**
+       * @minimum 0
+       * @maximum 1
+       */
+      density?: number;
+      family: "belt";
+    };
+
+export type PutApiAdminContentAstroFamilyId200AstroItemFamily =
+  (typeof PutApiAdminContentAstroFamilyId200AstroItemFamily)[keyof typeof PutApiAdminContentAstroFamilyId200AstroItemFamily];
+
+export const PutApiAdminContentAstroFamilyId200AstroItemFamily = {
+  galaxy: "galaxy",
+  star: "star",
+  blackHole: "blackHole",
+  whiteHole: "whiteHole",
+  planetClass: "planetClass",
+  planetVariant: "planetVariant",
+  moonClass: "moonClass",
+  moonVariant: "moonVariant",
+  belt: "belt",
+} as const;
+
+export type PutApiAdminContentAstroFamilyId200AstroItemPayload = {
+  [key: string]: unknown;
+};
+
+export type PutApiAdminContentAstroFamilyId200AstroItem = {
+  family: PutApiAdminContentAstroFamilyId200AstroItemFamily;
+  id: string;
+  payload: PutApiAdminContentAstroFamilyId200AstroItemPayload;
+};
+
+export type PutApiAdminContentAstroFamilyId200 = {
+  astro: PutApiAdminContentAstroFamilyId200AstroItem[];
+};
+
 export type GetApiAdminOpsEmpires200 = {
   empires: unknown;
 };
@@ -2829,6 +3116,155 @@ export function useGetAuthMe<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export const getGetApiContentAstroUrl = () => {
+  return `/api/content/astro`;
+};
+
+export const getApiContentAstro = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<GetApiContentAstro200> => {
+  return customFetch<GetApiContentAstro200>(getGetApiContentAstroUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetApiContentAstroQueryKey = () => {
+  return [`/api/content/astro`] as const;
+};
+
+export const getGetApiContentAstroQueryOptions = <
+  TData = Awaited<ReturnType<typeof getApiContentAstro>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof getApiContentAstro>>,
+      TError,
+      TData
+    >
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetApiContentAstroQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getApiContentAstro>>
+  > = ({ signal }) => getApiContentAstro({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getApiContentAstro>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetApiContentAstroQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getApiContentAstro>>
+>;
+export type GetApiContentAstroQueryError = unknown;
+
+export function useGetApiContentAstro<
+  TData = Awaited<ReturnType<typeof getApiContentAstro>>,
+  TError = unknown,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getApiContentAstro>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiContentAstro>>,
+          TError,
+          Awaited<ReturnType<typeof getApiContentAstro>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetApiContentAstro<
+  TData = Awaited<ReturnType<typeof getApiContentAstro>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getApiContentAstro>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiContentAstro>>,
+          TError,
+          Awaited<ReturnType<typeof getApiContentAstro>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetApiContentAstro<
+  TData = Awaited<ReturnType<typeof getApiContentAstro>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getApiContentAstro>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function useGetApiContentAstro<
+  TData = Awaited<ReturnType<typeof getApiContentAstro>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getApiContentAstro>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetApiContentAstroQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export const getPostDevGrantUrl = () => {
   return `/dev/grant`;
 };
@@ -3293,6 +3729,84 @@ export const usePostDevTriggerworldevent = <
 > => {
   return useMutation(
     getPostDevTriggerworldeventMutationOptions(options),
+    queryClient,
+  );
+};
+
+export const getPostDevFoundstationUrl = () => {
+  return `/dev/foundstation`;
+};
+
+export const postDevFoundstation = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<void> => {
+  return customFetch<void>(getPostDevFoundstationUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getPostDevFoundstationMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postDevFoundstation>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postDevFoundstation>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["postDevFoundstation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postDevFoundstation>>,
+    void
+  > = () => {
+    return postDevFoundstation(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostDevFoundstationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postDevFoundstation>>
+>;
+
+export type PostDevFoundstationMutationError = unknown;
+
+export const usePostDevFoundstation = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof postDevFoundstation>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof postDevFoundstation>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(
+    getPostDevFoundstationMutationOptions(options),
     queryClient,
   );
 };
@@ -7323,6 +7837,337 @@ export const usePutApiAdminContentInstallationsId = <
 > => {
   return useMutation(
     getPutApiAdminContentInstallationsIdMutationOptions(options),
+    queryClient,
+  );
+};
+
+export const getGetApiAdminContentAstroUrl = () => {
+  return `/api/admin/content/astro`;
+};
+
+export const getApiAdminContentAstro = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<GetApiAdminContentAstro200> => {
+  return customFetch<GetApiAdminContentAstro200>(
+    getGetApiAdminContentAstroUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetApiAdminContentAstroQueryKey = () => {
+  return [`/api/admin/content/astro`] as const;
+};
+
+export const getGetApiAdminContentAstroQueryOptions = <
+  TData = Awaited<ReturnType<typeof getApiAdminContentAstro>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof getApiAdminContentAstro>>,
+      TError,
+      TData
+    >
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetApiAdminContentAstroQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getApiAdminContentAstro>>
+  > = ({ signal }) => getApiAdminContentAstro({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getApiAdminContentAstro>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetApiAdminContentAstroQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getApiAdminContentAstro>>
+>;
+export type GetApiAdminContentAstroQueryError = unknown;
+
+export function useGetApiAdminContentAstro<
+  TData = Awaited<ReturnType<typeof getApiAdminContentAstro>>,
+  TError = unknown,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getApiAdminContentAstro>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiAdminContentAstro>>,
+          TError,
+          Awaited<ReturnType<typeof getApiAdminContentAstro>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetApiAdminContentAstro<
+  TData = Awaited<ReturnType<typeof getApiAdminContentAstro>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getApiAdminContentAstro>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiAdminContentAstro>>,
+          TError,
+          Awaited<ReturnType<typeof getApiAdminContentAstro>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetApiAdminContentAstro<
+  TData = Awaited<ReturnType<typeof getApiAdminContentAstro>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getApiAdminContentAstro>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function useGetApiAdminContentAstro<
+  TData = Awaited<ReturnType<typeof getApiAdminContentAstro>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getApiAdminContentAstro>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetApiAdminContentAstroQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getPutApiAdminContentAstroFamilyIdUrl = (
+  family:
+    | "galaxy"
+    | "star"
+    | "blackHole"
+    | "whiteHole"
+    | "planetClass"
+    | "planetVariant"
+    | "moonClass"
+    | "moonVariant"
+    | "belt",
+  id: string,
+) => {
+  return `/api/admin/content/astro/${family}/${id}`;
+};
+
+export const putApiAdminContentAstroFamilyId = async (
+  family:
+    | "galaxy"
+    | "star"
+    | "blackHole"
+    | "whiteHole"
+    | "planetClass"
+    | "planetVariant"
+    | "moonClass"
+    | "moonVariant"
+    | "belt",
+  id: string,
+  putApiAdminContentAstroFamilyIdBody: PutApiAdminContentAstroFamilyIdBody,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<PutApiAdminContentAstroFamilyId200> => {
+  return customFetch<PutApiAdminContentAstroFamilyId200>(
+    getPutApiAdminContentAstroFamilyIdUrl(family, id),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(putApiAdminContentAstroFamilyIdBody),
+    },
+  );
+};
+
+export const getPutApiAdminContentAstroFamilyIdMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putApiAdminContentAstroFamilyId>>,
+    TError,
+    {
+      family:
+        | "galaxy"
+        | "star"
+        | "blackHole"
+        | "whiteHole"
+        | "planetClass"
+        | "planetVariant"
+        | "moonClass"
+        | "moonVariant"
+        | "belt";
+      id: string;
+      data: PutApiAdminContentAstroFamilyIdBody;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof putApiAdminContentAstroFamilyId>>,
+  TError,
+  {
+    family:
+      | "galaxy"
+      | "star"
+      | "blackHole"
+      | "whiteHole"
+      | "planetClass"
+      | "planetVariant"
+      | "moonClass"
+      | "moonVariant"
+      | "belt";
+    id: string;
+    data: PutApiAdminContentAstroFamilyIdBody;
+  },
+  TContext
+> => {
+  const mutationKey = ["putApiAdminContentAstroFamilyId"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof putApiAdminContentAstroFamilyId>>,
+    {
+      family:
+        | "galaxy"
+        | "star"
+        | "blackHole"
+        | "whiteHole"
+        | "planetClass"
+        | "planetVariant"
+        | "moonClass"
+        | "moonVariant"
+        | "belt";
+      id: string;
+      data: PutApiAdminContentAstroFamilyIdBody;
+    }
+  > = (props) => {
+    const { family, id, data } = props ?? {};
+
+    return putApiAdminContentAstroFamilyId(family, id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PutApiAdminContentAstroFamilyIdMutationResult = NonNullable<
+  Awaited<ReturnType<typeof putApiAdminContentAstroFamilyId>>
+>;
+export type PutApiAdminContentAstroFamilyIdMutationBody =
+  PutApiAdminContentAstroFamilyIdBody;
+export type PutApiAdminContentAstroFamilyIdMutationError = unknown;
+
+export const usePutApiAdminContentAstroFamilyId = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof putApiAdminContentAstroFamilyId>>,
+      TError,
+      {
+        family:
+          | "galaxy"
+          | "star"
+          | "blackHole"
+          | "whiteHole"
+          | "planetClass"
+          | "planetVariant"
+          | "moonClass"
+          | "moonVariant"
+          | "belt";
+        id: string;
+        data: PutApiAdminContentAstroFamilyIdBody;
+      },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof putApiAdminContentAstroFamilyId>>,
+  TError,
+  {
+    family:
+      | "galaxy"
+      | "star"
+      | "blackHole"
+      | "whiteHole"
+      | "planetClass"
+      | "planetVariant"
+      | "moonClass"
+      | "moonVariant"
+      | "belt";
+    id: string;
+    data: PutApiAdminContentAstroFamilyIdBody;
+  },
+  TContext
+> => {
+  return useMutation(
+    getPutApiAdminContentAstroFamilyIdMutationOptions(options),
     queryClient,
   );
 };

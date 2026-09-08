@@ -26,7 +26,10 @@ export function travelCostInGalaxy(
   toSystemId: string,
 ): number {
   if (fromSystemId === toSystemId) return 0;
-  const graph = galaxyGraph(galaxy);
+  // Les ponts comptent pour un trajet réel (chantier 47) : c'est le rôle n°1 des fontaines
+  // blanches, et ils étaient générés, persistés et testés sans qu'aucun joueur puisse en
+  // emprunter un.
+  const graph = galaxyGraph(galaxy, true);
   const path = shortestPath(graph, fromSystemId, toSystemId);
   const priced = path && priceOf(graph, path);
   return priced ? priced.cost : -1;
@@ -53,7 +56,9 @@ export function travelCostInUniverse(
   if (from.id === to.id && extraLinks.length === 0) {
     return travelCostInGalaxy(from, fromSystemId, toSystemId);
   }
-  const graph = universeGraph(universe, extraLinks);
+  // Les ponts comptent (chantier 47). C'est ICI que ça se joue : tous les appelants de
+  // production passent par cette fonction, `travelCostInGalaxy` n'en ayant aucun.
+  const graph = universeGraph(universe, extraLinks, true);
   const path = shortestPath(graph, fromSystemId, toSystemId);
   const priced = path && priceOf(graph, path);
   return priced ? priced.cost : -1;

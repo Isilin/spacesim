@@ -4,11 +4,12 @@ import {
   type Galaxy,
   type Planet,
   type StarSystem,
+  type SystemProfile,
 } from "@spacesim/shared";
 import { Button, Popover } from "@spacesim/ui";
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { planetTypeLabel, starClassLabel } from "../labels.js";
+import { bodyVariantLabel, systemProfileLabel } from "../labels.js";
 
 /** Ce que l'infobox sait décrire — les trois natures d'objet que la carte sait viser. */
 export type MapTarget =
@@ -18,8 +19,15 @@ export type MapTarget =
       system: StarSystem;
       explored: boolean;
       colonized: boolean;
-      /** Classe de l'étoile, dérivée du système (chantier 35.10). */
-      starClass: string;
+      /**
+       * Fiche de lecture du système (chantier 47).
+       *
+       * Elle remplace un `starClass: string` qui ne pouvait dire qu'une chose d'un système
+       * qui en compte jusqu'à trois — un champ, un type — et qui rendait de surcroît un
+       * identifiant brut, la table i18n portant encore les six classes dérivées d'avant le
+       * chantier 45.
+       */
+      profile: SystemProfile;
     }
   | { kind: "body"; body: Planet; moons: number }
   /**
@@ -99,15 +107,7 @@ export function MapInfobox({ target, portal, onOpen, onClose }: Props) {
           )}
           {target.kind === "system" && (
             <p className="small muted">
-              {starClassLabel(target.starClass)}
-              {" · "}
-              {t("mapInfobox.systemBodies", {
-                planets: target.system.planets.filter(
-                  (p) => p.kind === "planet",
-                ).length,
-                moons: target.system.planets.filter((p) => p.kind === "moon")
-                  .length,
-              })}
+              {systemProfileLabel(target.profile)}
               {" · "}
               {target.colonized
                 ? t("galaxyMap.colonized")
@@ -121,7 +121,7 @@ export function MapInfobox({ target, portal, onOpen, onClose }: Props) {
               {target.body.kind === "moon"
                 ? t("bodyView.moon")
                 : t("bodyView.planet")}{" "}
-              {planetTypeLabel(target.body.type).toLowerCase()}
+              {bodyVariantLabel(target.body).toLowerCase()}
               {" · "}
               {t("systemView.habitability", {
                 value: target.body.habitability,

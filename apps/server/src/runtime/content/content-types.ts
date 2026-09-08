@@ -6,6 +6,7 @@ import {
   SLOT_TYPES,
   TECH_BRANCHES,
 } from "@spacesim/protocol";
+import type { AstroOverrides } from "@spacesim/shared";
 import type {
   CombatCategory,
   CombatDirective,
@@ -264,4 +265,14 @@ export interface ContentBundle {
   milestones: Record<string, ContentMilestone>;
   zoneTypes: Record<string, ContentZoneType>;
   installations: Record<string, ContentInstallation>;
+  /**
+   * Surcharges des catalogues astronomiques (chantier 45.4).
+   *
+   * La seule entrée du paquet qui ne soit pas un contenu COMPLET mais un correctif : les
+   * neuf catalogues de `content/astro/` restent intégrés au code, et la base ne stocke que
+   * ce qu'une édition a changé. C'est la conséquence directe de l'ADR 0021 — la moitié
+   * « entrées de génération » ne doit jamais pouvoir venir de la base, et une table qui
+   * porterait l'entrée entière le permettrait par accident.
+   */
+  astro: AstroOverrides;
 }
