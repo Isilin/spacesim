@@ -7,6 +7,8 @@ import {
   UNIVERSE_CENTER_X,
   UNIVERSE_CENTER_Y,
   UNIVERSE_DISC_THICKNESS,
+  TIGHT_BINARY,
+  WIDE_BINARY,
 } from "./constants.js";
 import {
   BLACK_HOLE_TYPES,
@@ -269,8 +271,6 @@ export const STAR_COUNT_WEIGHTS: readonly (readonly [number, number])[] = [
  * La bande serrée s'arrête à 22 pour que trois fois la séparation reste sous la première
  * orbite planétaire (70) : toute planète du système est alors circumbinaire et stable.
  */
-const TIGHT_BINARY = [10, 22] as const;
-const WIDE_BINARY = [420, 900] as const;
 
 /**
  * Part des systèmes dont l'ancre est une singularité, et part des compagnons qui en sont une

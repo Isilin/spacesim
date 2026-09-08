@@ -322,3 +322,21 @@ export const STANDING_TRADE_MIN = 3;
  * table ne dépasse pas cette borne.
  */
 export const MAX_CENTRAL_BODIES = 3;
+
+/**
+ * Séparation d'un compagnon, en unités de scène — et le trou délibéré entre les deux bandes.
+ *
+ * Une binaire serrée voit ses planètes tourner autour du **barycentre** (orbites P), une
+ * binaire large voit chaque étoile garder les siennes (orbites S). Entre les deux, les orbites
+ * planétaires ne sont pas stables : la bande intermédiaire n'est jamais tirée, et
+ * `orbitsBarycenter` devient non ambigu par construction plutôt que par prudence.
+ *
+ * La bande serrée s'arrête à 22 pour que trois fois la séparation reste sous la première
+ * orbite planétaire (70) : toute planète du système est alors circumbinaire et stable.
+ *
+ * Ici et non dans `universe.ts` depuis le chantier 47 : le générateur les tire, mais la fiche
+ * de lecture d'un système et le rendu les LISENT pour dire de quelle sorte de binaire il
+ * s'agit. Les redéclarer d'un côté ou de l'autre aurait fait un doublon de seuil.
+ */
+export const TIGHT_BINARY = [10, 22] as const;
+export const WIDE_BINARY = [420, 900] as const;

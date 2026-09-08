@@ -1,5 +1,6 @@
 import type {
   BodyRef,
+  SystemProfile,
   BuildingId,
   CentralBodyKind,
   ChassisId,
@@ -27,7 +28,9 @@ import { i18n } from "./i18n.js";
  *  clés (ids stables de `@spacesim/shared`) vivent dans `src/i18n/content.ts`. Le ton/icône
  *  des badges reste en code (pas de texte affiché, donc rien à traduire). */
 
-const t = (key: string) => i18n.t(key);
+/** Interpolation admise : la fiche de lecture d'un système compte des mondes et des lunes. */
+const t = (key: string, options?: Record<string, unknown>) =>
+  i18n.t(key, options);
 
 /** Humeur de faction (chantier 15) : nom + ton d'affichage (neutre/positif/négatif). */
 export function factionMoodLabel(mood: FactionMood): {
@@ -266,4 +269,63 @@ export function centralBodyLabel(body: {
         ? "blackHoleType"
         : "whiteHoleType";
   return i18n.t(`${table}.${body.typeId}`, { defaultValue: body.typeId });
+}
+
+/**
+ * Fiche de lecture d'un système, en une ligne (chantier 47).
+ *
+ * La dérivation vit dans `shared` (`systemProfile`) parce qu'elle doit être la même dans
+ * l'infobox de la carte et dans le panneau de système. La PHRASE vit ici parce que les
+ * accords, les pluriels et l'ordre des segments sont de la langue.
+ *
+ * Elle nomme les deux corps d'une binaire et ne choisit pas — ce que le champ `starClass`
+ * qu'elle remplace était structurellement incapable de faire : un champ, un type.
+ *
+ * Deux corps identiques se rendent « Naine rouge ×2 » et non « deux naines rouges » : le
+ * pluriel d'un nom composé français demanderait une forme `_one`/`_other` pour chacun des
+ * vingt-deux types, dans les deux langues, à tenir à jour à chaque type ajouté. Un compteur
+ * dit la même chose, dans un relevé où il se lit sans effort.
+ *
+ * Un système inexploré ne rend qu'« Inexploré » : la fiche se tait plutôt que d'annoncer
+ * « 0 monde », qui affirmerait quelque chose de faux.
+ */
+export function systemProfileLabel(profile: SystemProfile): string {
+  if (!profile.known) return t("systemProfile.unknown");
+
+  const segments: string[] = [];
+
+  const bodies = profile.groups
+    .map((group) =>
+      group.count > 1
+        ? t("systemProfile.several", {
+            count: group.count,
+            name: centralBodyLabel(group),
+          })
+        : centralBodyLabel(group),
+    )
+    .join(t("systemProfile.and"));
+
+  if (profile.drifter) {
+    segments.push(t("systemProfile.drifter"), bodies);
+  } else {
+    if (profile.arrangement !== "single") {
+      segments.push(t(`systemProfile.${profile.arrangement}`));
+    }
+    segments.push(bodies);
+  }
+
+  if (profile.planets > 0) {
+    const worlds = t("systemProfile.worlds", { count: profile.planets });
+    segments.push(
+      profile.moons > 0
+        ? `${worlds}${t("systemProfile.moonsSuffix", { count: profile.moons })}`
+        : worlds,
+    );
+  }
+  if (profile.belts > 0)
+    segments.push(t("systemProfile.belts", { count: profile.belts }));
+  // En dernier, parce que c'est la seule information de la fiche qui change une décision.
+  if (profile.exotic) segments.push(t("systemProfile.exotic"));
+
+  return segments.join(" · ");
 }

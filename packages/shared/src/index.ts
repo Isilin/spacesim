@@ -137,6 +137,8 @@ export {
   MAX_EMPIRES_PER_GALAXY,
   STARTER_CLUSTER_RADIUS,
   MAX_CENTRAL_BODIES,
+  TIGHT_BINARY,
+  WIDE_BINARY,
   MAX_GALAXIES,
   SYSTEM_VIEW_SIZE,
   BASE_STORAGE,
@@ -336,6 +338,12 @@ export {
   bodyStructure,
   type BodyRef,
 } from "./content/astro/body-defs.js";
+export {
+  systemProfile,
+  type Arrangement,
+  type SystemGroup,
+  type SystemProfile,
+} from "./sim/exploration/system-profile.js";
 export {
   ASTRO_FAMILIES,
   NO_ASTRO_OVERRIDES,

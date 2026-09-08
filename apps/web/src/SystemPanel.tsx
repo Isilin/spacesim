@@ -6,6 +6,7 @@ import {
   OUTPOST_COST,
   OUTPOST_STOCK_CAP,
   PROBE_COST_CREDITS,
+  systemProfile,
   type EmpireEffects,
   type Planet,
   type ResourceId,
@@ -16,7 +17,11 @@ import { Button, Panel } from "@spacesim/ui";
 import { useTranslation } from "react-i18next";
 import { BodyActions, COLONY_SHIP_COST_TEXT } from "./BodyActions.js";
 import { formatDuration } from "./format.js";
-import { bodyVariantLabel, resourceLabel } from "./labels.js";
+import {
+  bodyVariantLabel,
+  resourceLabel,
+  systemProfileLabel,
+} from "./labels.js";
 import { StationMarketPanel } from "./StationMarketPanel.js";
 import { TradingPostPanel } from "./TradingPostPanel.js";
 import { useGameStore } from "./state/game-store.js";
@@ -184,14 +189,11 @@ export function SystemPanel({
   return (
     <>
       <Panel title={system.name}>
+        {/* Une seule source pour la fiche d'un système, partagée avec l'infobox de la carte
+            (chantier 47) : la ligne de comptes qui vivait ici en était une seconde, et elle
+            ne disait rien des corps centraux. */}
         <p className="muted">
-          {t("systemPanel.planetsCount", { count: planets.length })}
-          {moonCount > 0
-            ? t("systemPanel.moonsSuffix", { count: moonCount })
-            : ""}
-          {system.belts.length > 0
-            ? t("systemPanel.beltsSuffix", { count: system.belts.length })
-            : ""}
+          {systemProfileLabel(systemProfile(system))}
           {system.station ? t("systemPanel.stationSuffix") : ""}
         </p>
         {scanned ? (

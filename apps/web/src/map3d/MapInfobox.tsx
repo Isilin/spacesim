@@ -1,15 +1,15 @@
 import { Html } from "@react-three/drei";
 import {
   systemCountOf,
-  type CentralBody,
   type Galaxy,
   type Planet,
   type StarSystem,
+  type SystemProfile,
 } from "@spacesim/shared";
 import { Button, Popover } from "@spacesim/ui";
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { bodyVariantLabel, centralBodyLabel } from "../labels.js";
+import { bodyVariantLabel, systemProfileLabel } from "../labels.js";
 
 /** Ce que l'infobox sait décrire — les trois natures d'objet que la carte sait viser. */
 export type MapTarget =
@@ -20,14 +20,14 @@ export type MapTarget =
       explored: boolean;
       colonized: boolean;
       /**
-       * Corps central d'ancrage, ou `undefined` sous le brouillard (chantier 47).
+       * Fiche de lecture du système (chantier 47).
        *
-       * Le corps et non sa seule classe : « stellar » nomme un trou noir quand « pulsar »
-       * nomme une étoile, et `centralBodyLabel` a besoin de `kind` pour choisir sa table.
-       * Le champ `starClass: string` qui vivait ici ne pouvait pas non plus dire qu'un
-       * système en compte plusieurs — c'est ce que la fiche de lecture corrigera.
+       * Elle remplace un `starClass: string` qui ne pouvait dire qu'une chose d'un système
+       * qui en compte jusqu'à trois — un champ, un type — et qui rendait de surcroît un
+       * identifiant brut, la table i18n portant encore les six classes dérivées d'avant le
+       * chantier 45.
        */
-      anchor: CentralBody | undefined;
+      profile: SystemProfile;
     }
   | { kind: "body"; body: Planet; moons: number }
   /**
@@ -107,15 +107,7 @@ export function MapInfobox({ target, portal, onOpen, onClose }: Props) {
           )}
           {target.kind === "system" && (
             <p className="small muted">
-              {target.anchor ? centralBodyLabel(target.anchor) : ""}
-              {target.anchor ? " · " : ""}
-              {t("mapInfobox.systemBodies", {
-                planets: target.system.planets.filter(
-                  (p) => p.kind === "planet",
-                ).length,
-                moons: target.system.planets.filter((p) => p.kind === "moon")
-                  .length,
-              })}
+              {systemProfileLabel(target.profile)}
               {" · "}
               {target.colonized
                 ? t("galaxyMap.colonized")

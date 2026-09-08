@@ -2,10 +2,11 @@ import {
   BLACK_HOLE_TYPE_IDS,
   STAR_CLASS_IDS,
   WHITE_HOLE_TYPE_IDS,
+  type SystemProfile,
 } from "@spacesim/shared";
 import { describe, expect, it } from "vitest";
 import { i18n } from "./i18n.js";
-import { centralBodyLabel } from "./labels.js";
+import { centralBodyLabel, systemProfileLabel } from "./labels.js";
 
 /**
  * Couverture des libellés de corps centraux (chantier 47).
@@ -70,5 +71,79 @@ describe("libellés des corps centraux", () => {
     expect(centralBodyLabel({ kind: "star", typeId: "inventée" })).toBe(
       "inventée",
     );
+  });
+});
+
+describe("fiche de lecture d'un système", () => {
+  /**
+   * La phrase, et surtout ce que le champ `starClass: string` qu'elle remplace ne pouvait pas
+   * dire : un système compte jusqu'à trois corps centraux, et un champ n'en nomme qu'un.
+   */
+  const profile = (over: Partial<SystemProfile>): SystemProfile => ({
+    known: true,
+    arrangement: "single",
+    bodies: [],
+    groups: [],
+    planets: 0,
+    moons: 0,
+    belts: 0,
+    drifter: false,
+    exotic: false,
+    bestHabitability: -1,
+    ...over,
+  });
+
+  it("nomme les deux corps d'une binaire, et ne choisit pas", () => {
+    const line = systemProfileLabel(
+      profile({
+        arrangement: "wide",
+        groups: [
+          { kind: "star", typeId: "yellow_dwarf", count: 1 },
+          { kind: "blackHole", typeId: "stellar", count: 1 },
+        ],
+        planets: 5,
+        moons: 2,
+        exotic: true,
+      }),
+    );
+    expect(line).toContain("Naine jaune");
+    expect(line).toContain("Trou noir stellaire");
+    expect(line).toContain("Binaire large");
+    expect(line).toContain("5 mondes");
+    expect(line).toContain("2 lunes");
+    // Le segment qui change une décision de jeu.
+    expect(line).toContain("matière exotique");
+  });
+
+  it("groupe au lieu de répéter", () => {
+    const line = systemProfileLabel(
+      profile({
+        arrangement: "tight",
+        groups: [{ kind: "star", typeId: "red_dwarf", count: 2 }],
+        planets: 3,
+      }),
+    );
+    // « Naine rouge ×2 » plutôt qu'un pluriel composé : voir `systemProfileLabel`.
+    expect(line).toContain("Naine rouge ×2");
+    expect(line).not.toContain("Naine rouge et Naine rouge");
+  });
+
+  it("un système inexploré ne dit que ça", () => {
+    // Surtout pas « 0 monde », qui affirmerait du faux et trahirait le brouillard.
+    const line = systemProfileLabel(profile({ known: false }));
+    expect(line).toBe("Inexploré");
+    expect(line).not.toContain("0");
+  });
+
+  it("un errant se nomme errant", () => {
+    const line = systemProfileLabel(
+      profile({
+        drifter: true,
+        exotic: true,
+        groups: [{ kind: "whiteHole", typeId: "stable", count: 1 }],
+      }),
+    );
+    expect(line).toContain("Errant");
+    expect(line).toContain("Fontaine stable");
   });
 });

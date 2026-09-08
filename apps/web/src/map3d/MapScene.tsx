@@ -19,6 +19,7 @@ import {
   primaryOf,
   starsOf,
   systemCountOf,
+  systemProfile,
 } from "@spacesim/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -402,7 +403,7 @@ export function MapScene({
             system: s,
             explored: explored.has(s.id),
             colonized: colonizedSystemIds.has(s.id),
-            anchor: primaryOf(s),
+            profile: systemProfile(s),
           }),
           openId: s.id,
           descendable: true,
@@ -893,7 +894,7 @@ export function MapScene({
           system: picked,
           explored: explored.has(picked.id),
           colonized: colonizedSystemIds.has(picked.id),
-          anchor: primaryOf(picked),
+          profile: systemProfile(picked),
         },
         at: () => at,
       };

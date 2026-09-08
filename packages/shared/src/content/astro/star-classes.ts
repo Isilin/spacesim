@@ -115,8 +115,13 @@ export interface StarClassDef {
   // ── Information ──
 
   /**
-   * Part réelle de cette classe dans le ciel, pour la fiche. Volontairement distincte de
-   * `weight` : voir l'en-tête du fichier.
+   * Part réelle de cette classe dans le ciel. Volontairement distincte de `weight` : voir
+   * l'en-tête du fichier.
+   *
+   * **Documentation, pas donnée de jeu.** Elle disait « pour la fiche » ; aucune fiche ne
+   * l'affiche, et la fiche de lecture d'un système (chantier 47) tient en une ligne où elle
+   * n'aurait pas sa place. Sa valeur est de rendre lisible, à côté des poids, l'écart assumé
+   * entre le ciel réel et celui qu'on tire — 40 % de naines rouges contre 76 %.
    */
   realShare: string;
 
