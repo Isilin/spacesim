@@ -128,6 +128,25 @@ describe("buildApp — routes HTTP", () => {
     );
   });
 
+  it("CORS : le préflight autorise DELETE, méthode hors liste sûre", async () => {
+    const app = await buildApp(await GameEngine.loadOrBootstrap());
+    const res = await app.inject({
+      method: "OPTIONS",
+      url: "/health",
+      headers: {
+        origin: "http://localhost:5173",
+        "access-control-request-method": "DELETE",
+      },
+    });
+    // Le test au-dessus ne regarde qu'un GET, donc il ne voit pas les méthodes : il
+    // passait aussi bien avec @fastify/cors 10 qu'avec 11, qui a pourtant réduit son
+    // défaut aux seules méthodes de la liste sûre (GET/HEAD/POST). Le serveur déclare
+    // vingt-six routes DELETE et treize PUT ; sans cette assertion, la montée les
+    // aurait rendues inatteignables depuis une autre origine sans rien casser en
+    // apparence — la CI et l'e2e passent par le proxy Vite, donc en même origine.
+    expect(res.headers["access-control-allow-methods"]).toContain("DELETE");
+  });
+
   it("rate-limit : /auth/login renvoie 429 au-delà du quota strict (chantier 20.5)", async () => {
     const app = await buildApp(await GameEngine.loadOrBootstrap());
     const attempt = () =>

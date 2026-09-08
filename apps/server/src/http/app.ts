@@ -54,7 +54,14 @@ export async function buildApp(
   // l'univers part en entier à chaque `hello` et à chaque changement d'exploration, sans
   // aucune pagination. À rouvrir si la mesure change, avec le même A/B pour juge.
   await app.register(websocket);
-  await app.register(cors, { origin: config.corsOrigin });
+  // `methods` explicite depuis @fastify/cors 11 : son défaut s'est réduit aux méthodes
+  // de la liste sûre (GET/HEAD/POST), ce qui rendait inatteignables depuis une autre
+  // origine les vingt-six routes DELETE et treize PUT du serveur. Rien ne l'aurait
+  // signalé — la CI et l'e2e passent par le proxy Vite, donc en même origine.
+  await app.register(cors, {
+    origin: config.corsOrigin,
+    methods: ["GET", "HEAD", "POST", "PUT", "DELETE"],
+  });
   // Global généreux (config, défaut 100/min) ; `/auth/*` a sa propre limite plus stricte,
   // en plus (pas à la place) du blocage par IP déjà géré par `auth.ts` (isRateLimited).
   await app.register(rateLimit, {
