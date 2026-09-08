@@ -12,6 +12,13 @@ RUN corepack enable
 
 WORKDIR /app
 
-# Version alignée sur @playwright/test dans apps/web/package.json — à mettre à
-# jour ensemble si l'une des deux change.
-RUN npx -y playwright@1.62.1 install-deps chromium
+# La version est LUE dans apps/web/package.json, jamais recopiée ici : elle y était
+# écrite deux fois, et rien ne vérifiait l'accord. Un bump Dependabot de
+# @playwright/test désynchronisait donc les dépendances système en silence — la CI
+# GitHub ne s'en aperçoit pas, elle installe via `playwright install --with-deps`.
+# Copier ce seul manifeste garde le cache de couche : il n'est invalidé que quand
+# apps/web change de dépendances.
+COPY apps/web/package.json /tmp/web-package.json
+RUN PLAYWRIGHT_VERSION="$(node -p "require('/tmp/web-package.json').devDependencies['@playwright/test']")" \
+  && npx -y "playwright@${PLAYWRIGHT_VERSION}" install-deps chromium \
+  && rm /tmp/web-package.json

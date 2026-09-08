@@ -8,6 +8,12 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Le défaut est de cinq. Il a été atteint le 4 août et n'a plus bougé : cinq PR
+    # dormantes ont tenu la file pendant un mois, et les montées qu'elles ne
+    # contenaient pas — vite, jsdom, biome — sont restées INVISIBLES, jamais
+    # proposées. Deux d'entre elles exigeaient justement vite, qu'on ne voyait pas.
+    # Un plafond n'est pas neutre : il choisit ce qu'on ne verra pas.
+    open-pull-requests-limit: 10
     groups:
       minor-and-patch:
         update-types:

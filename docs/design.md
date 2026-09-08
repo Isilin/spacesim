@@ -3114,23 +3114,45 @@ dépasse cinq secondes. Ce qui est vérifiable, et vérifié, est le risque du g
 recule l'horloge en base d'une heure, recharge, et exige que le rattrapage rende ses
 720 ticks. La CI tranche pour le reste.
 
-## Chantier 46 — vite 7, et pourquoi deux montées n'étaient pas des bumps (06/09/2026)
+## Chantier 46 — vite 8, et pourquoi deux montées n'étaient pas des bumps (06/09/2026, corrigé le 08/09/2026)
 
 Planification. Ouvert par le tri des PR Dependabot du 06/09/2026 : deux d'entre elles ne
 pouvaient pas passer, et pour la même raison.
 
-`vite` est en `^5.4.0` dans `apps/web` et `apps/admin`. `@vitejs/plugin-react@6` exige vite 7,
-`vitest@4` exige vite ≥ 6. Les deux PR proposaient donc une montée dont la dépendance réelle
-n'était pas dans le diff — et la CI l'a dit à sa façon : `quality` rouge sur vitest 4,
-`e2e` rouge sur plugin-react 6, chacune verte sur l'autre travail. Fermées toutes les deux.
+`vite` est en `^5.4.0` dans `apps/web` et `apps/admin`. `@vitejs/plugin-react@6.1.1` exige
+`vite ^8`, `vitest@5` exige vite ≥ 6.4. Les deux PR proposaient donc une montée dont la
+dépendance réelle n'était pas dans le diff — et la CI l'a dit à sa façon : `quality` rouge sur
+vitest, `e2e` rouge sur plugin-react, chacune verte sur l'autre travail.
 
-Ce que la montée touche : `vite` dans deux `package.json`, `vitest` dans cinq, les deux
-`vite.config.ts` et les deux `vitest.config.ts`. La surface de configuration de vitest 4 a
-bougé — c'est ce qui range ceci dans un chantier plutôt que dans un `chore(deps)` : la
-vérification n'est pas « la CI passe », c'est « les suites mesurent encore la même chose ».
+*Cette entrée disait vite 7 le 06/09.* Elle avait tort deux jours plus tard : Dependabot a
+rejoué sa passe et rouvert les mêmes montées une majeure plus haut — vitest 4 → 5,
+plugin-react 6.1.0 → 6.1.1, dont le pair est passé de vite 7 à vite 8. Une cible différée
+n'attend pas ; elle monte.
 
-Un effet de bord du tri mérite d'être noté : `.github/dependabot.yml` ne fixe pas
-`open-pull-requests-limit`, donc le défaut de cinq s'applique. Cinq PR npm dormaient ouvertes
-depuis un mois, et Dependabot n'a jamais pu ouvrir celle de vite 7 — la montée bloquante était
-retenue par les PR qu'elle bloquait. Une file laissée pleine n'est pas neutre : elle cache ce
-qu'on ne verra pas.
+**La surface, mesurée plutôt qu'estimée.** Les deux `vite.config.ts` tiennent en un plugin
+React et un proxy de dev : ni sass, ni `manualChunks`, ni `splitVendorChunkPlugin`, aucun
+`postcss.config`. Rien de ce que vite 6, 7 et 8 ont retiré n'est utilisé ici. Côté tests, 101
+fichiers et zéro `vi.mock`, zéro `vi.hoisted`, zéro `.sequential(` — les trois suppressions de
+vitest 5 ne mordent nulle part ; dix fichiers seulement touchent à `vi.fn`/`vi.spyOn`, seuls
+concernés par le passage de `clearMocks` à `true` par défaut.
+
+Restent deux vrais risques, tous deux invisibles dans un diff de `package.json` : Lightning CSS
+devient le minifieur par défaut en vite 8, face à vingt-trois `*.module.css` qui portent tout le
+design system ; et les assertions asynchrones non attendues échouent désormais au lieu de passer
+en silence — ce qui est un gain, mais un gain qui peut rendre rouge une suite verte.
+
+C'est ce qui range la montée dans un chantier plutôt que dans un `chore(deps)` : la
+vérification n'est pas « la CI passe », c'est « les suites mesurent encore la même chose, et le
+HUD rend encore pareil ». Node 22 satisfait déjà toutes les exigences de moteur (vite 8 et
+vitest 5 demandent ≥ 22.12, jsdom 30 ≥ 22.22.2) — la montée ne dépend d'aucun autre chantier.
+
+Périmètre : `vite`, `@vitejs/plugin-react`, `vitest` et `jsdom` d'un seul bloc, dans cinq
+`package.json`. Biome 2 et pnpm 12 sont deux autres montées majeures en attente, chacune assez
+bruyante — reformatage du dépôt entier pour l'une, format de lockfile pour l'autre — pour rester
+seule dans son chantier.
+
+**Un plafond choisit ce qu'on ne verra pas.** `.github/dependabot.yml` ne fixait pas
+`open-pull-requests-limit`, donc le défaut de cinq s'appliquait. Il a été atteint le 4 août et
+n'a plus bougé : cinq PR dormantes ont tenu la file un mois, et Dependabot n'a jamais pu ouvrir
+celle de vite — la montée bloquante était retenue par les PR qu'elle bloquait. Ni `jsdom`, ni
+`biome`, ni `pnpm` n'ont jamais été proposés non plus. Le plafond est passé à dix.
