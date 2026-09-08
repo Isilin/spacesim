@@ -17,11 +17,12 @@ import {
   galacticCoreDisc,
   sitePosition,
   primaryOf,
+  starsOf,
   systemCountOf,
 } from "@spacesim/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { resourceLabel } from "../labels.js";
+import { centralBodyLabel, resourceLabel } from "../labels.js";
 import { BodyLayer, moonsOf } from "./BodyLayer.js";
 import { seedOf } from "./appearance.js";
 import { type Focus } from "./bounds.js";
@@ -40,6 +41,7 @@ import { Picker } from "./Picker.js";
 import { SelectionMark } from "./SelectionMark.js";
 import {
   bodyLocalPosition,
+  centralBodyLocalPosition,
   bodyLabelExtent,
   bodyRadiusOf,
   STAR_CORE,
@@ -465,6 +467,23 @@ export function MapScene({
       openId: system.id,
       descendable: false,
     });
+
+    // Les COMPAGNONS — rang ≥ 1 — deviennent visibles à la liste (chantier 47). Dessinés
+    // depuis la tranche précédente, ils restaient absents de `selectables`, donc invisibles au
+    // clavier et aux lecteurs d'écran : `MapList` est le seul chemin accessible vers la scène,
+    // et le commentaire de `Selectable` cite déjà « le cœur galactique était nommé mais pas
+    // cliquable » comme sa raison d'être. Depuis le 45.5, un compagnon peut par ailleurs être
+    // la source de matière exotique du système.
+    //
+    // L'ANCRE, elle, n'entre pas : la fiche du système la décrit déjà, et deux entrées pour le
+    // même centre embrouilleraient la liste.
+    for (const companion of starsOf(system).filter((b) => b.rank > 0)) {
+      out.push(
+        feature(companion.id, companion.name, centralBodyLabel(companion), () =>
+          under(home, centralBodyLocalPosition(companion, tickAt())),
+        ),
+      );
+    }
 
     const post = system.station;
     if (post)

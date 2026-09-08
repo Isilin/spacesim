@@ -10,6 +10,7 @@ import {
   type ForeignFleet,
   type ForeignStation,
   type MiningOutpost,
+  type CentralBody,
   type Planet,
   type StarSystem,
   type Station,
@@ -667,6 +668,15 @@ export function SystemLayer({
       })}
     </>
   );
+}
+
+/** Position d'un corps CENTRAL dans le repère de son système, au tick fractionnaire donné. */
+export function centralBodyLocalPosition(
+  body: CentralBody,
+  tick: number,
+): Vec3 {
+  const p = centralBodyPositionAt(body, tick);
+  return [p.x, p.y, p.z];
 }
 
 /** Position d'un corps dans le repère de son système, au tick fractionnaire donné. */
