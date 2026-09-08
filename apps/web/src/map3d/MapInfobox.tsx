@@ -1,6 +1,7 @@
 import { Html } from "@react-three/drei";
 import {
   systemCountOf,
+  type CentralBody,
   type Galaxy,
   type Planet,
   type StarSystem,
@@ -8,7 +9,7 @@ import {
 import { Button, Popover } from "@spacesim/ui";
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { bodyVariantLabel, starClassLabel } from "../labels.js";
+import { bodyVariantLabel, centralBodyLabel } from "../labels.js";
 
 /** Ce que l'infobox sait décrire — les trois natures d'objet que la carte sait viser. */
 export type MapTarget =
@@ -18,8 +19,15 @@ export type MapTarget =
       system: StarSystem;
       explored: boolean;
       colonized: boolean;
-      /** Classe de l'étoile, dérivée du système (chantier 35.10). */
-      starClass: string;
+      /**
+       * Corps central d'ancrage, ou `undefined` sous le brouillard (chantier 47).
+       *
+       * Le corps et non sa seule classe : « stellar » nomme un trou noir quand « pulsar »
+       * nomme une étoile, et `centralBodyLabel` a besoin de `kind` pour choisir sa table.
+       * Le champ `starClass: string` qui vivait ici ne pouvait pas non plus dire qu'un
+       * système en compte plusieurs — c'est ce que la fiche de lecture corrigera.
+       */
+      anchor: CentralBody | undefined;
     }
   | { kind: "body"; body: Planet; moons: number }
   /**
@@ -99,8 +107,8 @@ export function MapInfobox({ target, portal, onOpen, onClose }: Props) {
           )}
           {target.kind === "system" && (
             <p className="small muted">
-              {starClassLabel(target.starClass)}
-              {" · "}
+              {target.anchor ? centralBodyLabel(target.anchor) : ""}
+              {target.anchor ? " · " : ""}
               {t("mapInfobox.systemBodies", {
                 planets: target.system.planets.filter(
                   (p) => p.kind === "planet",

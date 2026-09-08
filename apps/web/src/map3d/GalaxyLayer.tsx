@@ -12,8 +12,6 @@ import {
   type StarSystem,
   type Station,
   type Territory,
-  starsOf,
-  whiteHoleType,
 } from "@spacesim/shared";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useLayoutEffect, useMemo, useRef } from "react";
@@ -32,6 +30,7 @@ import { BlackHole } from "./BlackHole.js";
 import { focusOf, type Focus } from "./bounds.js";
 import { FOV } from "./MapCanvas.js";
 import { worldPerPixel, type Vec3 } from "./tiers.js";
+import { systemNodeColor } from "./systemNodeColor.js";
 
 /**
  * Emprise d'un système dans le repère de la galaxie — ce que le palier système remplit
@@ -361,32 +360,21 @@ export function GalaxyLayer({
    * Teintes des nœuds. Un nœud EST une étoile : il doit se lire comme une lumière, pas
    * comme une pastille (chantier 37.12).
    *
-   * Les deux teintes neutres ont été relevées. Elles valaient `#7f95ad` et `#3a4757` quand
-   * une galaxie comptait quatorze systèmes largement espacés ; à cinq cents, la vue se
-   * remplit surtout d'inexplorés, et un gris ardoise à 22 % de luminance rendait la galaxie
-   * éteinte. L'ORDRE est conservé — un système exploré reste plus clair qu'un inexploré,
-   * c'est ce que la couleur dit ici — mais le plancher se situe désormais au-dessus du seuil
-   * où un point cesse de ressembler à une étoile.
+   * La décision vit dans `systemNodeColor`, fonction pure et testée : elle était en ligne ici
+   * jusqu'au chantier 47, donc hors de portée de tout test — et c'est ce qui a laissé passer
+   * six mois de nœuds orange.
    */
   const colors = useMemo(
     () =>
-      galaxy.systems.map((system) => {
-        if (system.id === selectedId) return "#8fd8ff";
-        if (colonized.has(system.id)) return "#7cf09a";
-        if (withStation.has(system.id)) return "#f5cf7a";
-        const territory = territoryColor.get(system.id);
-        if (territory) return territory;
-        // Un errant n'est pas une étoile : il porte la teinte de sa singularité, et le
-        // brouillard la lui retire tant qu'il n'est pas exploré — un système inexploré
-        // n'annonce jamais ce qu'il abrite (`redactUniverse` vide `stars`).
-        const singularity = starsOf(system)[0];
-        if (singularity) {
-          return singularity.kind === "whiteHole"
-            ? whiteHoleType(singularity.typeId).halo
-            : blackHoleType(singularity.typeId).halo;
-        }
-        return explored.has(system.id) ? "#dce8f5" : "#8ea4bb";
-      }),
+      galaxy.systems.map((system) =>
+        systemNodeColor(system, {
+          selected: system.id === selectedId,
+          colonized: colonized.has(system.id),
+          withStation: withStation.has(system.id),
+          territory: territoryColor.get(system.id),
+          explored: explored.has(system.id),
+        }),
+      ),
     [galaxy, selectedId, colonized, withStation, territoryColor, explored],
   );
 

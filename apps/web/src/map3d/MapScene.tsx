@@ -400,7 +400,7 @@ export function MapScene({
             system: s,
             explored: explored.has(s.id),
             colonized: colonizedSystemIds.has(s.id),
-            starClass: primaryOf(s)?.typeId ?? "",
+            anchor: primaryOf(s),
           }),
           openId: s.id,
           descendable: true,
@@ -874,7 +874,7 @@ export function MapScene({
           system: picked,
           explored: explored.has(picked.id),
           colonized: colonizedSystemIds.has(picked.id),
-          starClass: primaryOf(picked)?.typeId ?? "",
+          anchor: primaryOf(picked),
         },
         at: () => at,
       };

@@ -77,9 +77,11 @@ export interface BlackHoleTypeDef {
   /** Multiplicateur de rendement énergétique. Un disque d'accrétion est un réacteur. */
   energyMult: number;
   /**
-   * Rendement en matière exotique. La ressource n'existe pas encore dans `RESOURCES` —
-   * l'ajouter touche marché, PNJ et équilibrage, et c'est le palier 3 qui le fera. La
-   * valeur est posée ici pour que la table soit complète le jour où elle sera branchée.
+   * Rendement en matière exotique, lu par `exoticHarvest` (chantier 45.5).
+   *
+   * Une colonie qui partage son système avec cette singularité en récolte chaque tick, à
+   * raison de `EXOTIC_PER_TICK` par point, pondéré par l'`exoticBias` de la galaxie. C'est
+   * une ADDITION et non un multiplicateur : rien ne produit cette matière ailleurs.
    */
   exoticYield: number;
   /**

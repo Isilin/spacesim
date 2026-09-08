@@ -387,19 +387,25 @@ describe("GameEngine — contrats de faction (chantier 15)", () => {
     // 280 inutiles remplissait l'orbite, le complément d'énergie n'entrait plus, et le
     // convoi restait à quai pour une raison qui ne se lisait nulle part.
     //
-    // La marge de 60 n'est pas décorative non plus : la colonie CONSOMME la ressource
-    // pendant les trente ticks d'ascension, et une dotation à la quantité exacte arrivait
-    // en orbite amputée de deux unités — assez pour faire refuser l'acceptation.
+    // La marge de 15 couvre ce que la colonie CONSOMME pendant les trente ticks d'ascension
+    // — deux unités, mesurées — sans mordre sur la place du carburant. Elle valait 60, et le
+    // pire cas passait alors à un cheveu : `FACTION_CONTRACT_QUANTITY_MAX` (120) + 60 + 225
+    // d'énergie déjà hissée = 405 sur 600, soit 420 d'énergie atteignable au total contre
+    // ~410 réclamés par un convoi lointain à cette quantité. Un tirage à pile ou face.
     //
-    // Plafond du pire cas : `FACTION_CONTRACT_QUANTITY_MAX` (120) + 60 + 225 d'énergie déjà
-    // hissée = 405 sur 600, de quoi loger le carburant du convoi le plus lointain.
+    // Le carburant croît AVEC la quantité (`fuel ≈ 320 + 0,75 × qty`, mesuré) : une marge
+    // large sur la cargaison se paie donc deux fois, en place occupée et en carburant dû.
     const qty = contract.quantity;
     engine.devGrant({
       energy: 400,
-      [contract.resource]: qty + 60,
+      [contract.resource]: qty + 15,
     } as Record<string, number>);
+    // `keepGround: 0` hissait TOUT le stock au sol, production de la colonie comprise :
+    // mesuré 188 unités montées pour une quantité de 78, soit cent unités d'orbite prises
+    // à rien. La consigne ne laisse donc monter que ce que le contrat demande, marge incluse.
+    const ground = homeColony(engine, empire).resources[contract.resource] ?? 0;
     engine.logistics.setLiftRule(empire, colony.id, contract.resource, {
-      keepGround: 0,
+      keepGround: Math.max(0, ground - (qty + 15)),
       direction: "up",
     });
     advanceTicks(engine, 30);

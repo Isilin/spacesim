@@ -69,7 +69,7 @@ export interface WhiteHoleTypeDef {
 
   depositMult: number;
   energyMult: number;
-  /** Voir `BlackHoleTypeDef.exoticYield` : la ressource arrive au palier 3. */
+  /** Même rendement que pour un trou noir — voir `BlackHoleTypeDef.exoticYield`. */
   exoticYield: number;
   hazard: number;
   radiation: number;

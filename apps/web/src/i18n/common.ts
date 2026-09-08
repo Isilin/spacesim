@@ -52,14 +52,6 @@ export const commonFr = {
     claimed: "Revendiqués",
     rank: "Rang {{rank}} · gisements ×{{bonus}}",
   },
-  starClass: {
-    redDwarf: "Naine rouge",
-    mainSequence: "Séquence principale",
-    giant: "Géante rouge",
-    whiteDwarf: "Naine blanche",
-    pulsar: "Pulsar",
-    blackHole: "Trou noir",
-  },
   mapList: {
     toggle_one: "{{count}} objet",
     toggle_other: "{{count}} objets",
@@ -757,14 +749,6 @@ export const commonEn: typeof commonFr = {
     colonized: "Colonized",
     claimed: "Claimed",
     rank: "Rank {{rank}} · deposits ×{{bonus}}",
-  },
-  starClass: {
-    redDwarf: "Red dwarf",
-    mainSequence: "Main sequence",
-    giant: "Red giant",
-    whiteDwarf: "White dwarf",
-    pulsar: "Pulsar",
-    blackHole: "Black hole",
   },
   mapList: {
     toggle_one: "{{count}} object",

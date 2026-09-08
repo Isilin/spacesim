@@ -14,6 +14,42 @@ export const contentFr = {
     science: "Science",
     exotic: "Matière exotique",
   },
+  /**
+   * Corps centraux — trois familles, trois tables (chantier 47).
+   *
+   * Les clés sont les ids des catalogues de `content/astro/`, en snake_case. La table qui
+   * vivait dans `common.ts` portait les six identifiants DÉRIVÉS d'avant le chantier 45
+   * (`redDwarf`, `mainSequence`…) : depuis que les classes sont persistées, aucune clé ne
+   * correspondait plus et l'infobox affichait `orange_dwarf` en anglais.
+   */
+  starClass: {
+    red_dwarf: "Naine rouge",
+    orange_dwarf: "Naine orange",
+    yellow_dwarf: "Naine jaune",
+    yellow_white: "Blanc-jaune",
+    blue_white: "Bleu-blanc",
+    blue_giant: "Géante bleue",
+    red_giant: "Géante rouge",
+    supergiant: "Supergéante",
+    white_dwarf: "Naine blanche",
+    brown_dwarf: "Naine brune",
+    pulsar: "Pulsar",
+  },
+  blackHoleType: {
+    stellar: "Trou noir stellaire",
+    intermediate: "Trou noir intermédiaire",
+    supermassive: "Trou noir supermassif",
+    primordial: "Trou noir primordial",
+    dormant: "Trou noir dormant",
+    xray_binary: "Binaire X",
+    microquasar: "Microquasar",
+  },
+  whiteHoleType: {
+    nascent: "Fontaine naissante",
+    stable: "Fontaine stable",
+    torrent: "Fontaine en torrent",
+    echo: "Fontaine résiduelle",
+  },
   planetClass: {
     rocky: "Rocheuse",
     super_earth: "Super-Terre",
@@ -647,6 +683,34 @@ export const contentEn: typeof contentFr = {
     credits: "Credits",
     science: "Science",
     exotic: "Exotic matter",
+  },
+  starClass: {
+    red_dwarf: "Red dwarf",
+    orange_dwarf: "Orange dwarf",
+    yellow_dwarf: "Yellow dwarf",
+    yellow_white: "Yellow-white",
+    blue_white: "Blue-white",
+    blue_giant: "Blue giant",
+    red_giant: "Red giant",
+    supergiant: "Supergiant",
+    white_dwarf: "White dwarf",
+    brown_dwarf: "Brown dwarf",
+    pulsar: "Pulsar",
+  },
+  blackHoleType: {
+    stellar: "Stellar black hole",
+    intermediate: "Intermediate black hole",
+    supermassive: "Supermassive black hole",
+    primordial: "Primordial black hole",
+    dormant: "Dormant black hole",
+    xray_binary: "X-ray binary",
+    microquasar: "Microquasar",
+  },
+  whiteHoleType: {
+    nascent: "Nascent fountain",
+    stable: "Stable fountain",
+    torrent: "Torrent fountain",
+    echo: "Residual fountain",
   },
   planetClass: {
     rocky: "Rocky",

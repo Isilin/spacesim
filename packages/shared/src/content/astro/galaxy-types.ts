@@ -105,7 +105,7 @@ export interface GalaxyTypeDef {
    * vaut 1 — la forme `Partial<Record<ResourceId, number>>` est celle de tout le dépôt.
    */
   depositBias: Partial<Record<ResourceId, number>>;
-  /** Voir `BlackHoleTypeDef.exoticYield` : la ressource arrive au palier 3. */
+  /** Multiplicateur de galaxie sur la récolte exotique — voir `BlackHoleTypeDef.exoticYield`. */
   exoticBias: number;
 
   // ── Habillage ──

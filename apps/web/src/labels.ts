@@ -1,6 +1,7 @@
 import type {
   BodyRef,
   BuildingId,
+  CentralBodyKind,
   ChassisId,
   CombatDirective,
   FactionId,
@@ -242,9 +243,27 @@ export function installationLabel(id: InstallationId): {
 }
 
 /**
- * Libellé d'une classe d'étoile (chantier 35.10). Repli sur la classe brute plutôt que sur
- * du vide : une classe ajoutée sans traduction doit rester lisible.
+ * Libellé d'un corps central — étoile, trou noir ou fontaine blanche (chantiers 35.10 puis 46).
+ *
+ * Le corps entier plutôt que son seul identifiant, et pour la même raison que
+ * `bodyClassLabel` : c'est `kind` qui dit dans quel catalogue lire, et « stellar » nomme un
+ * trou noir quand « pulsar » nomme une étoile. Un identifiant seul ne pouvait pas trancher.
+ *
+ * Repli sur l'identifiant brut plutôt que sur du vide : un type ajouté sans traduction doit
+ * rester lisible. C'est aussi ce qui a masqué le défaut que ce chantier corrige — la table
+ * i18n portait encore les six identifiants dérivés d'avant le chantier 45, aucune clé ne
+ * correspondait, et l'infobox rendait `orange_dwarf` sans que rien ne signale l'absence.
+ * D'où le test de couverture qui accompagne ces tables.
  */
-export function starClassLabel(starClass: string): string {
-  return i18n.t(`starClass.${starClass}`, { defaultValue: starClass });
+export function centralBodyLabel(body: {
+  kind: CentralBodyKind;
+  typeId: string;
+}): string {
+  const table =
+    body.kind === "star"
+      ? "starClass"
+      : body.kind === "blackHole"
+        ? "blackHoleType"
+        : "whiteHoleType";
+  return i18n.t(`${table}.${body.typeId}`, { defaultValue: body.typeId });
 }
