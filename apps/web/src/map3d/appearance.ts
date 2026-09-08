@@ -99,52 +99,86 @@ const GENERIC_STAR: StarAppearance = {
 };
 
 /**
- * Apparence d'un corps central — étoile ou singularité (chantier 45.2).
+ * Ce qu'une SINGULARITÉ demande au rendu — un jeu de champs distinct de celui d'une étoile.
+ *
+ * Ses deux rayons sont en **unités de scène**, tels que les catalogues les portent : 7,15
+ * d'horizon pour un stellaire, 51 pour un supermassif. Ceux d'une `StarAppearance` sont des
+ * FACTEURS sans dimension, multipliés par la taille de lecture du palier système.
+ *
+ * C'est cette confusion d'unités qui a produit le défaut du chantier 45 : un unique champ
+ * `radius` servant aux deux, une singularité y était écrite `0.55` en dur — soit très
+ * exactement `7,15 / 13`, les proportions du trou noir stellaire. Les onze types rendaient
+ * donc la même taille, et les trois rayons du catalogue, pourtant éditables au CMS, ne
+ * changeaient rien.
+ */
+export interface SingularityAppearance {
+  /** Rayon de l'horizon, en unités de scène. */
+  horizonRadius: number;
+  /** Rayon externe du disque d'accrétion. **Zéro veut dire « pas de disque »** — un dormant. */
+  discRadius: number;
+  /** Teinte de la bouche : noire pour un trou, claire pour une fontaine, qui rend ce qu'elle a pris. */
+  mouth: string;
+  halo: string;
+  light: string;
+  intensity: number;
+}
+
+/**
+ * Apparence d'un corps central — étoile ou singularité (chantiers 45.2 puis 46).
  *
  * La table qui vivait ici dupliquait, pour six classes dérivées, ce que les catalogues de
  * `content/astro/` portent désormais pour vingt-deux types persistés. Elle est remplacée par
  * une lecture : c'est le même doublon que `galaxyAppearance` avait créé, et qu'on ne
  * reproduit pas.
  *
+ * **Une union discriminée**, et non un type unique : les deux familles ne demandent pas les
+ * mêmes grandeurs, et prétendre le contraire a coûté le défaut décrit sur
+ * `SingularityAppearance`. Le compilateur force désormais l'appelant à traiter les deux
+ * branches — une troisième famille de `kind` ne pourra plus retomber en silence sur des
+ * valeurs stellaires.
+ *
  * Un corps absent — système redacté par le brouillard — rend l'étoile la plus banale : ce que
  * le joueur n'a pas visité ne doit rien lui annoncer.
  */
+export type CentralBodyLook =
+  | { kind: "star"; star: StarAppearance }
+  | { kind: "singularity"; singularity: SingularityAppearance };
+
 export function centralBodyAppearance(
   body: CentralBody | undefined,
-): StarAppearance {
-  if (!body) return GENERIC_STAR;
-
-  if (body.kind === "star") {
-    const def = starClass(body.typeId, astroOverrides());
+): CentralBodyLook {
+  if (!body || body.kind === "star") {
     return {
-      core: def.core,
-      edge: def.edge,
-      halo: def.halo,
-      radius: def.radius,
-      corona: def.corona,
-      light: def.light,
-      intensity: def.intensity,
-      churn: def.churn,
+      kind: "star",
+      star: body ? starAppearance(body.typeId) : GENERIC_STAR,
     };
   }
 
   // Une singularité ne rend ni cœur ni bord : c'est son disque qui porte la teinte, et la
   // lumière qu'il émet remplace celle d'une étoile absente. Une fontaine blanche, elle,
-  // brille — d'où un cœur clair là où un trou noir en a un noir.
+  // brille — d'où une bouche claire là où un trou noir en a une noire.
+  const overrides = astroOverrides();
+  // La bouche d'une fontaine et l'horizon d'un trou noir sont le même objet de scène : la
+  // frontière d'où plus rien ne revient, ou d'où tout sort. Les catalogues les nomment
+  // différemment parce que ce ne sont pas la même chose en physique.
   const def =
     body.kind === "blackHole"
-      ? blackHoleType(body.typeId, astroOverrides())
-      : whiteHoleType(body.typeId, astroOverrides());
-  const glowing = body.kind === "whiteHole";
+      ? blackHoleType(body.typeId, overrides)
+      : whiteHoleType(body.typeId, overrides);
+  const horizonRadius =
+    body.kind === "blackHole"
+      ? blackHoleType(body.typeId, overrides).horizonRadius
+      : whiteHoleType(body.typeId, overrides).mouthRadius;
   return {
-    core: glowing ? "#ffffff" : "#000000",
-    edge: glowing ? def.halo : "#000000",
-    halo: def.halo,
-    radius: 0.55,
-    corona: 1.6,
-    light: def.light,
-    intensity: def.intensity,
-    churn: 1,
+    kind: "singularity",
+    singularity: {
+      horizonRadius,
+      discRadius: def.discRadius,
+      mouth: body.kind === "whiteHole" ? "#f2f7ff" : "#000000",
+      halo: def.halo,
+      light: def.light,
+      intensity: def.intensity,
+    },
   };
 }
 

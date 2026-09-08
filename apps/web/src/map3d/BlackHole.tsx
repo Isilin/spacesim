@@ -121,15 +121,30 @@ export function BlackHole({
   radius,
   discRadius,
   color,
+  mouth = "#000000",
+  lightColor,
+  lightIntensity = 1.1,
   light = true,
   tilt = STELLAR_TILT,
 }: {
   id: string;
   /** Rayon de l'horizon. */
   radius: number;
-  /** Rayon externe du disque d'accrétion. */
+  /**
+   * Rayon externe du disque d'accrétion. **Zéro veut dire « pas de disque »** : un trou noir
+   * dormant n'accrète rien, et c'est son lore — on ne le voit pas venir.
+   */
   discRadius: number;
   color: string;
+  /**
+   * Teinte de la frontière : noire pour un horizon, claire pour la bouche d'une fontaine
+   * blanche (chantier 47). Elle était codée en dur, si bien qu'une fontaine — « rien n'y
+   * tombe, tout en sort » — rendait une sphère absolument noire.
+   */
+  mouth?: string;
+  /** Teinte et puissance de la lumière du disque, du catalogue. Défaut : l'ancien `1.1`. */
+  lightColor?: string;
+  lightIntensity?: number;
   /**
    * Émet la lumière du disque. À couper là où rien n'est éclairé : au palier galaxie les
    * nœuds de systèmes sont en `meshBasicMaterial`, insensibles à toute lumière, et cette
@@ -146,6 +161,20 @@ export function BlackHole({
   const disc = useRef<ShaderMaterial>(null);
   const seed = seedOf(id);
 
+  /**
+   * Y a-t-il un disque à dessiner ?
+   *
+   * `> radius * 1.05` et non `> 0` : c'est la borne interne que le shader emploie déjà, et
+   * en deçà l'anneau aurait un rayon interne supérieur à son rayon externe. Un disque qui
+   * tiendrait sous l'horizon n'est pas un disque.
+   *
+   * Sans cette question, un `discRadius` nul donnait `Infinity` dans un uniforme, une
+   * géométrie d'anneau dégénérée et une échelle nulle — trois façons de casser dont deux
+   * silencieuses. Elle n'existait pas parce que rien ne lisait le catalogue : tout se
+   * rendait au disque du trou noir stellaire.
+   */
+  const hasDisc = discRadius > radius * 1.05;
+
   const discUniforms = useMemo(
     () => ({
       uInner: { value: new Color("#dfe9ff") },
@@ -153,9 +182,9 @@ export function BlackHole({
       uTime: { value: 0 },
       uSeed: { value: seed },
       uOpacity: { value: 1 },
-      uInnerR: { value: (radius * 1.05) / discRadius },
+      uInnerR: { value: hasDisc ? (radius * 1.05) / discRadius : 0 },
     }),
-    [color, seed, radius, discRadius],
+    [color, seed, radius, discRadius, hasDisc],
   );
   const rimUniforms = useMemo(
     () => ({ uColor: { value: new Color(color) }, uOpacity: { value: 1 } }),
@@ -173,7 +202,7 @@ export function BlackHole({
           l'atteigne. Une sphère noire éclairée n'est pas noire. */}
       <mesh>
         <sphereGeometry args={[radius, 32, 32]} />
-        <meshBasicMaterial color="#000000" />
+        <meshBasicMaterial color={mouth} />
       </mesh>
 
       {/* Sphère de photons : un liseré, pas un halo. */}
@@ -194,21 +223,32 @@ export function BlackHole({
           rotation.
           Construit en rayon UNITAIRE puis mis à l'échelle — le shader raisonne en parts du
           disque, pas en unités de scène, et n'a donc pas à connaître la taille du système. */}
-      <mesh raycast={NO_RAYCAST} rotation={[tilt, 0, 0]} scale={discRadius}>
-        <ringGeometry args={[(radius * 1.05) / discRadius, 1, 96, 8]} />
-        <shaderMaterial
-          ref={disc}
-          vertexShader={DISC_VERTEX}
-          fragmentShader={DISC_FRAGMENT}
-          uniforms={discUniforms}
-          transparent
-          depthWrite={false}
-          blending={AdditiveBlending}
-        />
-      </mesh>
+      {hasDisc && (
+        <mesh raycast={NO_RAYCAST} rotation={[tilt, 0, 0]} scale={discRadius}>
+          <ringGeometry args={[(radius * 1.05) / discRadius, 1, 96, 8]} />
+          <shaderMaterial
+            ref={disc}
+            vertexShader={DISC_VERTEX}
+            fragmentShader={DISC_FRAGMENT}
+            uniforms={discUniforms}
+            transparent
+            depthWrite={false}
+            blending={AdditiveBlending}
+          />
+        </mesh>
+      )}
 
-      {/* La lumière du système vient du disque, pas d'une étoile absente. */}
-      {light ? <pointLight color={color} intensity={1.1} decay={0.4} /> : null}
+      {/* La lumière du système vient du disque, pas d'une étoile absente — donc pas de
+          lumière quand il n'y a pas de disque. Un dormant porte `intensity: 0` et
+          `light: "#000000"` au catalogue : « son danger étant qu'on ne le voit pas venir ».
+          Les deux étaient codés en dur avant le chantier 47, et il éclairait comme un autre. */}
+      {light && hasDisc ? (
+        <pointLight
+          color={lightColor ?? color}
+          intensity={lightIntensity}
+          decay={0.4}
+        />
+      ) : null}
     </group>
   );
 }

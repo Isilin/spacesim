@@ -1,3 +1,6 @@
+import { blackHoleType } from "../../content/astro/black-hole-types.js";
+import type { AstroOverrides } from "../../content/astro/overrides.js";
+
 /**
  * Cœur galactique (chantier 39).
  *
@@ -53,9 +56,9 @@
 const CORE_DISC_PER_SYSTEM = 0.25;
 
 /**
- * Rapport de l'horizon au disque. Repris tel quel du trou noir stellaire (7,15 / 41,6, cf.
- * `STARS.blackHole` côté web) : le shader d'accrétion raisonne en parts du disque et n'a été
- * calé que dans ce domaine.
+ * Rapport de l'horizon au disque, si le type du cœur ne dit rien. Repris du trou noir
+ * stellaire (7,15 / 41,6) : le shader d'accrétion raisonne en parts du disque et n'a été calé
+ * que dans ce domaine.
  */
 const CORE_HORIZON_SHARE = 0.17;
 
@@ -64,7 +67,29 @@ export function galacticCoreDisc(systemCount: number): number {
   return CORE_DISC_PER_SYSTEM * systemCount;
 }
 
-/** Rayon de l'horizon du cœur d'une galaxie, dans le repère de galaxie. */
-export function galacticCoreHorizon(systemCount: number): number {
-  return CORE_HORIZON_SHARE * galacticCoreDisc(systemCount);
+/**
+ * Rayon de l'horizon du cœur d'une galaxie, dans le repère de galaxie.
+ *
+ * La **taille** reste dérivée du nombre de systèmes — c'est la relation M–σ, et le cœur est le
+ * seul objet du chantier 45 sans mécanique, donc le seul qui ait le droit de rester dérivé.
+ * La **proportion**, elle, vient du catalogue depuis le chantier 47 : `CORE_HORIZON_SHARE`
+ * avouait dupliquer le rapport du trou noir stellaire, alors que `supermassive` porte
+ * 51 / 300 = 0,17 exactement. Le doublon disparaît sans qu'aucune valeur ne change, et un
+ * éditeur qui retouche les deux rayons d'un type de cœur en voit enfin la forme bouger.
+ *
+ * Les rayons du catalogue ne sont pas repris tels quels : calibrés dans le repère d'un
+ * SYSTÈME, 300 unités dans une galaxie de rayon ~2 170 rendraient un cœur trois fois trop
+ * petit.
+ */
+export function galacticCoreHorizon(
+  systemCount: number,
+  coreTypeId?: string,
+  overrides?: AstroOverrides,
+): number {
+  const def = coreTypeId ? blackHoleType(coreTypeId, overrides) : undefined;
+  const share =
+    def && def.discRadius > 0
+      ? def.horizonRadius / def.discRadius
+      : CORE_HORIZON_SHARE;
+  return share * galacticCoreDisc(systemCount);
 }

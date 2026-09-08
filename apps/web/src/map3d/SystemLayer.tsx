@@ -412,25 +412,38 @@ export function SystemLayer({
           Le discriminant est la NATURE du corps et non sa classe : depuis le chantier 45,
           un trou noir et une fontaine blanche sont deux familles distinctes, et comparer un
           identifiant à `"blackHole"` n'aurait plus rien attrapé. */}
-      {primary && primary.kind !== "star" ? (
-        <BlackHole
-          id={system.id}
-          radius={STAR_CORE * look.radius}
-          discRadius={STAR_CORONA * look.corona}
-          color={look.halo}
-        />
+      {look.kind === "singularity" ? (
+        <>
+          <pointLight
+            position={[0, 0, 0]}
+            color={look.singularity.light}
+            intensity={look.singularity.intensity}
+            decay={0.4}
+          />
+          <BlackHole
+            id={system.id}
+            radius={look.singularity.horizonRadius}
+            discRadius={look.singularity.discRadius}
+            color={look.singularity.halo}
+            mouth={look.singularity.mouth}
+            // La lumière vient du `pointLight` ci-dessus, jamais de celle du composant : le
+            // nombre de sources du palier système doit rester constant, sans quoi three.js
+            // recompile tous les matériaux de la scène à chaque entrée dans un système.
+            light={false}
+          />
+        </>
       ) : (
         <>
           <pointLight
             position={[0, 0, 0]}
-            color={look.light}
-            intensity={look.intensity}
+            color={look.star.light}
+            intensity={look.star.intensity}
             decay={0.4}
           />
           <StarBody
             id={system.id}
-            radius={STAR_CORE}
-            coronaRadius={STAR_CORONA}
+            radius={STAR_CORE * look.star.radius}
+            coronaRadius={STAR_CORONA * look.star.corona}
             starClass={primary?.typeId ?? ""}
           />
         </>

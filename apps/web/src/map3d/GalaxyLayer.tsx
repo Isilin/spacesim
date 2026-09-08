@@ -30,6 +30,7 @@ import { BlackHole } from "./BlackHole.js";
 import { focusOf, type Focus } from "./bounds.js";
 import { FOV } from "./MapCanvas.js";
 import { worldPerPixel, type Vec3 } from "./tiers.js";
+import { astroOverrides } from "../state/astro-content.js";
 import { systemNodeColor } from "./systemNodeColor.js";
 
 /**
@@ -447,6 +448,8 @@ export function GalaxyLayer({
   // `systemCountOf` et non `galaxy.systems.length` : une galaxie condensée n'a pas ses
   // systèmes, mais elle a son compte — et donc son cœur, quand tout le reste est redacté.
   const systemCount = systemCountOf(galaxy);
+  // Le type du cœur donne sa teinte ET, depuis le chantier 47, la proportion de son horizon.
+  const coreClassId = galaxyType(galaxy.typeId, astroOverrides()).coreClassId;
 
   const systemAt = (event: ThreeEvent<MouseEvent>): StarSystem | null =>
     event.instanceId === undefined
@@ -487,9 +490,13 @@ export function GalaxyLayer({
       <group onClick={onSelectCore} onDoubleClick={onOpenCore}>
         <BlackHole
           id={`${galaxy.id}:core`}
-          radius={galacticCoreHorizon(systemCount)}
+          radius={galacticCoreHorizon(
+            systemCount,
+            coreClassId,
+            astroOverrides(),
+          )}
           discRadius={galacticCoreDisc(systemCount)}
-          color={blackHoleType(galaxyType(galaxy.typeId).coreClassId).halo}
+          color={blackHoleType(coreClassId, astroOverrides()).halo}
           light={false}
           tilt={0}
         />
