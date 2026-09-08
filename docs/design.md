@@ -3467,3 +3467,120 @@ seule dans son chantier.
 n'a plus bougé : cinq PR dormantes ont tenu la file un mois, et Dependabot n'a jamais pu ouvrir
 celle de vite — la montée bloquante était retenue par les PR qu'elle bloquait. Ni `jsdom`, ni
 `biome`, ni `pnpm` n'ont jamais été proposés non plus. Le plafond est passé à dix.
+
+## Chantier 47 — Le ciel livré devient le ciel visible (08/09/2026)
+
+**Question de départ.** Le chantier 45 vient de livrer neuf catalogues, une chaîne physique de
+treize étapes et cinq paliers verts. Un audit après coup a cherché les **champs** de catalogue
+sans lecteur : il en a trouvé deux, corrigés au 45.5. Il est passé à côté d'une famille plus
+grave — les **lecteurs qui retombent silencieusement sur un repli**.
+
+Un champ mort se voit par `grep`. Un lecteur qui lit la mauvaise entrée et rend une valeur
+plausible ne se voit qu'à l'écran. Six défauts, tous introduits par le chantier 45 lui-même,
+tous invisibles à ses tests.
+
+### Ce que le joueur voyait vraiment
+
+- **46.1** `GalaxyLayer` lisait `starsOf(system)[0]` sans regarder son `kind` et envoyait toute
+  étoile dans `blackHoleType()`, dont le repli est le trou noir stellaire : **tout système
+  exploré rendait son orange**. Écrit au 45.1 quand seuls les errants portaient des corps
+  centraux ; le 45.2 en a donné à tous.
+- **46.1** La table i18n `starClass` portait les six identifiants **dérivés d'avant le 45**.
+  Dix classes d'étoiles sur onze et les onze types de singularité s'affichaient en snake_case
+  anglais dans une interface française.
+- **46.2** Une singularité rendait `radius: 0.55, corona: 1.6` en dur — les proportions du trou
+  noir stellaire. Les onze types avaient **la même taille**, alors que leurs trois rayons sont
+  éditables au CMS.
+- **46.2** Un **dormant** éclairait son système et portait un disque, alors que son catalogue
+  dit `intensity: 0` et `discRadius: 0` — « son danger étant qu'on ne le voit pas venir ». Une
+  **fontaine blanche** rendait une sphère absolument noire.
+- **46.3** `SystemLayer` ne dessinait que l'ancre : une **binaire large montrait une seule
+  étoile**, son second cortège tournant autour d'un point vide.
+- **46.4** `galaxyGraph` ne lisait pas `galaxy.bridges` : **aucun pont d'Einstein-Rosen n'était
+  franchissable**. Générés, persistés, testés, inutilisables — le rôle n°1 de la famille des
+  fontaines blanches.
+
+### La leçon, et elle est une
+
+**Les six défauts vivaient dans du code qu'aucun test ne pouvait atteindre** : trois `useMemo`
+de composant, deux tables de constantes en ligne, une signature promise dans un commentaire.
+Le correctif systématique n'est pas la clause manquante, c'est l'extraction — `systemNodeColor`,
+`centralBodySlots`, `pairReadingScale`, `systemProfile` sont des fonctions pures, et chacune
+porte le cas qui aurait attrapé son défaut le jour où il est apparu.
+
+**Un repli silencieux masque ce qu'il rattrape.** `centralBodyLabel` retombe sur l'identifiant
+brut quand la traduction manque, et c'est voulu — mais c'est exactement ce qui a caché la table
+périmée pendant tout le chantier 45. Le verrou n'est pas de supprimer le repli, c'est de
+comparer les deux listes : les identifiants que les catalogues produisent et les clés que les
+traductions déclarent. Vérifié mordant en renommant une clé.
+
+**Il n'existe pas de test qui échoue quand une donnée n'est PAS consommée.** C'est ce qui a
+laissé `exoticYield` inerte pendant cinq paliers, puis `bridges` pendant un chantier entier. La
+seule forme qui l'attrape est un comptage sur un univers généré — celui des quatre emplacements
+de singularité (45.5), celui de la borne des corps centraux (46.3).
+
+### Ce que la mesure a dit
+
+**Le pire disque en système recouvre UNE orbite, pas deux.** `intermediate`, `torrent` et
+`microquasar` portent 120, 96 et 88 contre une première orbite à 70 ± 8. Le `supermassive`
+(300) en recouvrirait cinq mais n'est jamais primaire. Rien à clamper : un disque d'accrétion
+qui engloutit son système interne est juste, et le brider reviendrait à re-coder en dur ce
+qu'on venait de libérer.
+
+**La binaire de contact, que personne n'avait vue.** `TIGHT_BINARY` sépare de 10 à 22 unités ;
+une étoile se rend à 13 de rayon. Deux naines jaunes à 10 unités sont **une seule boule** — on
+aurait corrigé « une seule étoile visible » par un correctif qui en montre toujours une. La
+bande ne peut pas s'élargir (22 est le maximum pour que les orbites circumbinaires restent
+stables), donc c'est au rendu de le dire.
+
+**Un pont pour quatre galaxies, mais un facteur 13,4 sur le trajet.** Le raccourci est réel et
+spectaculaire. Mais le journal du 45.1 annonçait « ~1 pont par galaxie » et la réalité en donne
+quatre fois moins : les fontaines blanches errantes sont rares parmi les errants. Une mécanique
+qui se rencontre une fois sur quatre galaxies est à la limite d'exister. C'est un réglage de
+génération, donc un bump de version — noté, pas fait.
+
+**Le test de calibration passait par chance.** Son modèle de référence décrivait un graphe sans
+ponts pendant que le sujet en avait : le rapport serait tombé pour toute paire qu'un pont
+raccourcit, sans qu'il y ait de défaut. Les ponts entrent dans les deux membres.
+
+### Les trous de ver inter-galactiques restent hors périmètre
+
+La question ne se posait pas tant que le raccourci **intra**-galactique ne fonctionnait pas.
+Elle a un sens depuis le 46.4, et la réponse reste non, pour quatre raisons.
+
+1. **La progression inter-galactique a déjà son axe, et il est neuf.** Le 45.5 l'a posé : les
+   fontaines blanches sont le raccourci intra-galactique, ce qu'elles crachent paie le passage
+   inter-galactique. Un pont gratuit court-circuiterait le seul puits de la matière exotique.
+2. **`wormholeRange` n'a pas de sens hors d'une galaxie** : c'est une distance en **sauts**,
+   calibrée sur le diamètre médian de 59 sauts de l'ADR 0018. Entre deux galaxies il n'y a pas
+   de graphe de sauts.
+3. **La matérialisation est paresseuse, par galaxie.** `pairBridges` tourne dans
+   `generateGalaxy`, `universe_bridges` est indexée par galaxie, et le client reçoit les
+   galaxies hors de portée en condensé. Un pont inter-galactique devrait nommer un système
+   d'une galaxie qui n'existe pas encore : ce n'est pas une difficulté, c'est une contradiction
+   avec l'ADR 0002.
+4. Ça bumperait `GENERATOR_VERSION` pour doubler une mécanique existante.
+
+La décision est déjà écrite au bon endroit — `white-hole-types.ts` : « l'inter-galactique reste
+le domaine des `Gateway` : le modèle ne l'interdit pas, le générateur ne le produit pas ». Pas
+d'ADR : c'est une décision de portée, pas une décision structurante, et écrire 0022 pour dire
+« on ne fait pas » créerait une dette de relecture pour rien.
+
+### Relevés
+
+| | avant | après |
+|---|---|---|
+| Systèmes explorés rendus orange | 100 % | 0 |
+| Types de singularité à taille distincte | 1 | 11 |
+| Lumières au palier système | variable | constante (`MAX_CENTRAL_BODIES`) |
+| Corps centraux dessinés par système | 1 | jusqu'à 3 |
+| Corps centraux nommés dans la liste | 0 | tous les compagnons |
+| Ponts empruntables | 0 | tous |
+| Champs éditables au CMS sans effet | 7 | 0 |
+| Classes d'étoiles traduites | 1 sur 11 | 11 sur 11 |
+| Types de singularité traduits | 0 sur 11 | 11 sur 11 |
+| Corps nommés par la fiche d'un système | 1 | tous |
+
+Aucune tranche ne touche la sortie du générateur : `GENERATOR_VERSION` reste à 12, la fixture
+n'a pas bougé — y compris au déplacement de `TIGHT_BINARY`/`WIDE_BINARY`, dont elle est la
+preuve de pureté.

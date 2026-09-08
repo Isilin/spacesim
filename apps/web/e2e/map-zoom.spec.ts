@@ -685,9 +685,13 @@ test("la carte montre tout ce que le système contient, pas seulement ses corps"
 
   // Attendre le panneau : il ne décrit le système qu'une fois la vue arrivée dessus, et
   // lire son texte avant lèverait sur un panneau encore vide.
+  //
+  // « mondes » depuis le chantier 47 : la ligne de comptes du panneau a laissé place à la
+  // fiche de lecture du système, partagée avec l'infobox de la carte — une seule source pour
+  // les deux, là où c'en était deux.
   const summaryRow = page
     .locator("aside")
-    .getByText(/planètes/)
+    .getByText(/mondes?/)
     .first();
   await expect(summaryRow).toBeVisible({ timeout: 20_000 });
   const summary = await summaryRow.innerText();
