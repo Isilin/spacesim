@@ -252,7 +252,7 @@ function seriesName(offset: number, index: number): string {
  * vers le simple sans l'imposer : un tiers des systèmes sont multiples, assez pour que le cas
  * se rencontre, assez peu pour que la carte reste lisible.
  */
-const STAR_COUNT_WEIGHTS: readonly (readonly [number, number])[] = [
+export const STAR_COUNT_WEIGHTS: readonly (readonly [number, number])[] = [
   [1, 65],
   [2, 28],
   [3, 7],

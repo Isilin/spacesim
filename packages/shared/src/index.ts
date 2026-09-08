@@ -136,6 +136,7 @@ export {
   FRONTIER_GALAXIES,
   MAX_EMPIRES_PER_GALAXY,
   STARTER_CLUSTER_RADIUS,
+  MAX_CENTRAL_BODIES,
   MAX_GALAXIES,
   SYSTEM_VIEW_SIZE,
   BASE_STORAGE,
@@ -184,6 +185,7 @@ export {
 } from "./rng.js";
 export {
   GENERATOR_VERSION,
+  STAR_COUNT_WEIGHTS,
   galaxyDefAt,
   generateGalaxyAt,
   generateUniverse,

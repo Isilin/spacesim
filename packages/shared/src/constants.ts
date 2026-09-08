@@ -306,3 +306,19 @@ export const MAIL_MAX_BODY = 4000;
 export const STANDING_MIN = -10;
 export const STANDING_MAX = 10;
 export const STANDING_TRADE_MIN = 3;
+
+/**
+ * Nombre maximal de corps centraux d'un système (chantier 47).
+ *
+ * Il gouverne le RENDU, pas la génération : `SystemLayer` monte toujours autant de sources de
+ * lumière, quelles que soient les étoiles présentes, celles qui manquent restant à intensité
+ * nulle. Un nombre variable de lumières fait recompiler tous les matériaux de la scène par
+ * three.js — le compte entre dans les *defines* du programme — soit un à-coup visible à chaque
+ * entrée dans un système au nombre d'étoiles différent.
+ *
+ * Trois plutôt que « le maximum de `STAR_COUNT_WEIGHTS` » écrit en dur dans le rendu : la
+ * table peut gagner une ligne `[4, 2]` sans que personne ne pense au client, et la quatrième
+ * étoile serait alors noire sans que rien ne le dise. `universe.test.ts` verrouille que la
+ * table ne dépasse pas cette borne.
+ */
+export const MAX_CENTRAL_BODIES = 3;

@@ -2,7 +2,6 @@ import { useFrame } from "@react-three/fiber";
 import {
   bodyPositionAt,
   sitePosition,
-  primaryOf,
   bodyStructure,
   starsOf,
   orbitsBarycenter,
@@ -28,6 +27,12 @@ import {
 } from "./appearance.js";
 import { astroOverrides } from "../state/astro-content.js";
 import { focusOf, type Focus } from "./bounds.js";
+import {
+  centralBodySlots,
+  pairReadingScale,
+  STAR_CORE,
+  STAR_CORONA,
+} from "./centralBodies.js";
 import { hasRings, PlanetRings } from "./PlanetRings.js";
 import { ProceduralBody } from "./ProceduralBody.js";
 import { BlackHole } from "./BlackHole.js";
@@ -37,9 +42,8 @@ import { TradingPostModel } from "./TradingPostModel.js";
 import { orbitColor } from "./theme.js";
 import type { Vec3 } from "./tiers.js";
 
-/** Rayon du coeur de l'étoile et de sa couronne la plus externe. */
-export const STAR_CORE = 13;
-export const STAR_CORONA = 26;
+/** Ré-exportés depuis `centralBodies` : `MapScene` les importe d'ici depuis le chantier 37. */
+export { STAR_CORE, STAR_CORONA };
 
 /**
  * Rayon de rendu d'un corps (chantier 37.14).
@@ -379,6 +383,111 @@ interface Props {
  * coexistent, l'étoile n'est plus à l'origine de la scène mais à la position du système
  * dans sa galaxie. Elle appartient donc au contenu, pas au socle de rendu.
  */
+
+/**
+ * Les corps centraux d'un système, et toute sa lumière (chantier 47).
+ *
+ * ## Ce qui manquait
+ *
+ * Le chantier 45.2 a donné un à trois corps centraux à chaque système, avec de vraies orbites
+ * S et P. Ce composant n'en dessinait qu'un — le primaire. Une binaire large montrait donc une
+ * seule étoile, et son second cortège tournait autour d'un point vide. Depuis le 45.5, un
+ * compagnon peut même être un trou noir, c'est-à-dire la source de matière exotique du
+ * système : rien ne le montrait ni ne le nommait.
+ *
+ * ## Le nombre de lumières est constant, et c'est le point
+ *
+ * `centralBodySlots` rend toujours `MAX_CENTRAL_BODIES` emplacements, trous compris, et chacun
+ * porte sa `<pointLight>` — à intensité nulle là où il n'y a personne. Un nombre VARIABLE de
+ * sources fait recompiler tous les matériaux de la scène par three.js, le compte entrant dans
+ * les *defines* du programme : l'à-coup se verrait à chaque entrée dans un système au nombre
+ * d'étoiles différent.
+ *
+ * C'est aussi pourquoi `BlackHole` reçoit `light={false}` : sa lumière interne rendrait le
+ * compte variable, une par singularité présente. Le pool possède toutes les sources.
+ *
+ * ## Les positions s'écrivent par image, pas par état
+ *
+ * Comme pour les planètes : un `setState` par image et par corps re-rendrait tout l'arbre
+ * soixante fois par seconde. `centralBodyPositionAt` rend `{0,0,0}` pour l'ancre, qui n'est
+ * donc pas un cas particulier.
+ */
+function CentralBodies({
+  system,
+  tickAt,
+}: {
+  system: StarSystem;
+  tickAt: () => number;
+}) {
+  const slots = centralBodySlots(system);
+  const groups = useRef<(Group | null)[]>([]);
+  // Une paire serrée se rend rétrécie, sans quoi ses deux corps se fondent en une boule :
+  // voir `pairReadingScale`. Les POSITIONS ne bougent pas — elles sont de la donnée.
+  const scale = pairReadingScale(starsOf(system));
+
+  useFrame(() => {
+    const tick = tickAt();
+    slots.forEach((body, index) => {
+      const group = groups.current[index];
+      if (!group || !body) return;
+      const p = centralBodyPositionAt(body, tick);
+      group.position.set(p.x, p.y, p.z);
+    });
+  });
+
+  return (
+    <>
+      {slots.map((body, index) => {
+        const look = centralBodyAppearance(body);
+        const key = body?.id ?? `slot-${index}`;
+        return (
+          <group
+            key={key}
+            ref={(g) => {
+              groups.current[index] = g;
+            }}
+          >
+            <pointLight
+              color={
+                look.kind === "singularity"
+                  ? look.singularity.light
+                  : look.star.light
+              }
+              // L'emplacement vide reste MONTÉ, à intensité nulle : c'est ce qui garde le
+              // compte de sources constant d'un système à l'autre.
+              intensity={
+                body === undefined
+                  ? 0
+                  : look.kind === "singularity"
+                    ? look.singularity.intensity
+                    : look.star.intensity
+              }
+              decay={0.4}
+            />
+            {body === undefined ? null : look.kind === "singularity" ? (
+              <BlackHole
+                id={body.id}
+                radius={look.singularity.horizonRadius * scale}
+                discRadius={look.singularity.discRadius * scale}
+                color={look.singularity.halo}
+                mouth={look.singularity.mouth}
+                light={false}
+              />
+            ) : (
+              <StarBody
+                id={body.id}
+                radius={STAR_CORE * look.star.radius * scale}
+                coronaRadius={STAR_CORONA * look.star.corona * scale}
+                starClass={body.typeId}
+              />
+            )}
+          </group>
+        );
+      })}
+    </>
+  );
+}
+
 export function SystemLayer({
   system,
   sites,
@@ -399,55 +508,9 @@ export function SystemLayer({
   const beltById = new Map(system.belts.map((b) => [b.id, b]));
   const here = <T extends { systemId: string }>(list: T[]) =>
     list.filter((x) => x.systemId === system.id);
-  const primary = primaryOf(system);
-  const look = centralBodyAppearance(primary);
-
   return (
     <>
-      {/* Le corps central, et la lumière du système. Il prend sa teinte et son intensité de
-          son type (chantiers 35.10 puis 45.2) : une naine rouge éclaire peu et rouge. Une
-          singularité n'éclaire pas — c'est son disque qui s'en charge, et il porte donc sa
-          propre lumière.
-
-          Le discriminant est la NATURE du corps et non sa classe : depuis le chantier 45,
-          un trou noir et une fontaine blanche sont deux familles distinctes, et comparer un
-          identifiant à `"blackHole"` n'aurait plus rien attrapé. */}
-      {look.kind === "singularity" ? (
-        <>
-          <pointLight
-            position={[0, 0, 0]}
-            color={look.singularity.light}
-            intensity={look.singularity.intensity}
-            decay={0.4}
-          />
-          <BlackHole
-            id={system.id}
-            radius={look.singularity.horizonRadius}
-            discRadius={look.singularity.discRadius}
-            color={look.singularity.halo}
-            mouth={look.singularity.mouth}
-            // La lumière vient du `pointLight` ci-dessus, jamais de celle du composant : le
-            // nombre de sources du palier système doit rester constant, sans quoi three.js
-            // recompile tous les matériaux de la scène à chaque entrée dans un système.
-            light={false}
-          />
-        </>
-      ) : (
-        <>
-          <pointLight
-            position={[0, 0, 0]}
-            color={look.star.light}
-            intensity={look.star.intensity}
-            decay={0.4}
-          />
-          <StarBody
-            id={system.id}
-            radius={STAR_CORE * look.star.radius}
-            coronaRadius={STAR_CORONA * look.star.corona}
-            starClass={primary?.typeId ?? ""}
-          />
-        </>
-      )}
+      <CentralBodies system={system} tickAt={tickAt} />
 
       {planets.map((planet) => (
         <OrbitRing

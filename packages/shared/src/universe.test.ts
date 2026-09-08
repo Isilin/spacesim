@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { GALAXY_SPACING, INITIAL_GALAXIES } from "./constants.js";
+import {
+  GALAXY_SPACING,
+  INITIAL_GALAXIES,
+  MAX_CENTRAL_BODIES,
+} from "./constants.js";
 import {
   GALAXY_TYPE_IDS,
   GALAXY_TYPES,
@@ -15,6 +19,7 @@ import {
   galaxyDefAt,
   generateGalaxyAt,
   generateUniverse,
+  STAR_COUNT_WEIGHTS,
 } from "./universe.js";
 
 describe("generateUniverse", () => {
@@ -408,6 +413,30 @@ describe("les quatre emplacements de singularité (chantier 45.5)", () => {
           placement,
         );
       }
+    }
+  });
+});
+
+describe("corps centraux et rendu (chantier 47)", () => {
+  it("le générateur ne produit jamais plus de corps que le rendu n'en monte", () => {
+    // `SystemLayer` monte exactement `MAX_CENTRAL_BODIES` sources de lumière, quelles que
+    // soient les étoiles présentes : un nombre variable ferait recompiler tous les matériaux
+    // de la scène à chaque entrée dans un système.
+    //
+    // Le lien entre les deux est ce test, et lui seul. Une ligne `[4, 2]` ajoutée à la table
+    // de tirage ferait naître des systèmes à quatre corps dont le quatrième serait noir, sans
+    // que rien d'autre ne le signale — le client lirait un emplacement qui n'existe pas.
+    const most = Math.max(...STAR_COUNT_WEIGHTS.map(([count]) => count));
+    expect(most).toBeLessThanOrEqual(MAX_CENTRAL_BODIES);
+  });
+
+  it("un système généré ne dépasse jamais cette borne", () => {
+    // L'invariant sur les données, et non plus seulement sur la table : `generateStars` tire
+    // aussi des singularités, et rien n'oblige a priori le total à respecter le compte.
+    for (const system of allSystems(generateUniverse("corps-centraux-46", 3))) {
+      expect(starsOf(system).length, system.id).toBeLessThanOrEqual(
+        MAX_CENTRAL_BODIES,
+      );
     }
   });
 });
