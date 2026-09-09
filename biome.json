@@ -6,6 +6,7 @@
   "files": {
     "ignore": [
       ".pnpm-store/**",
+      "**/dist/**",
       "apps/server/drizzle/meta/**",
       "apps/server/drizzle/*.sql",
       "apps/web/test-results/**",
