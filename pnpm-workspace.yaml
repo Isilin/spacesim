@@ -2,6 +2,16 @@ packages:
   - "packages/*"
   - "apps/*"
 
+# pnpm 10 a cessé d'exécuter les scripts d'installation des dépendances par défaut, et pnpm 12
+# ne lit plus ces réglages depuis le champ "pnpm" de package.json — ils vivent ici.
+# `esbuild` est le seul à en avoir besoin : son `postinstall` pose le binaire de plateforme,
+# sans quoi vite et vitest ne démarrent pas. `better-sqlite3`, que `auto-install-peers` tire
+# comme pair optionnel de drizzle-orm alors que le chantier 20.3 l'a abandonné, n'y est
+# justement PAS : il cesse d'être compilé de lui-même, ce qui rend inutile le
+# `neverBuiltDependencies` qui le visait.
+allowBuilds:
+  esbuild: true
+
 catalog:
   react: ^19.0.0
   react-dom: ^19.0.0

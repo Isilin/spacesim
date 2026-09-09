@@ -2,7 +2,7 @@
   "name": "spacesim",
   "private": true,
   "version": "0.1.0",
-  "packageManager": "pnpm@9.15.0",
+  "packageManager": "pnpm@12.3.4",
   "scripts": {
     "dev:server": "pnpm --filter @spacesim/server dev",
     "dev:web": "pnpm --filter @spacesim/web dev",
@@ -16,10 +16,5 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
     "typescript": "catalog:"
-  },
-  "pnpm": {
-    "neverBuiltDependencies": [
-      "better-sqlite3"
-    ]
   }
 }
