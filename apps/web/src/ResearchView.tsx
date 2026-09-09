@@ -207,6 +207,7 @@ export function ResearchView({ game, colonies, now, send }: Props) {
               const state = stateOf(id);
               const dimmed = focus && !focusChain.has(id);
               return (
+                // biome-ignore lint/a11y/noStaticElementInteractions: l'arbre technologique se clique sur des <g> SVG, sans équivalent clavier aujourd'hui. Biome 1.9 ne voyait pas ces cas ; les rendre navigables est un chantier d'accessibilité à part entière, pas une ligne de suppression.
                 <g
                   key={id}
                   className={`tech-node ${state} ${selected === id ? "selected" : ""} ${

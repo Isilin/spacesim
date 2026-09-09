@@ -14,10 +14,12 @@
     "format:check": "biome format ."
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
+    "@biomejs/biome": "^2.5.12",
     "typescript": "catalog:"
   },
   "pnpm": {
-    "neverBuiltDependencies": ["better-sqlite3"]
+    "neverBuiltDependencies": [
+      "better-sqlite3"
+    ]
   }
 }

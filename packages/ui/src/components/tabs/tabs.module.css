@@ -22,7 +22,9 @@
     0 100%,
     0 var(--cut-sm)
   );
-  transition: color var(--motion-fast), background var(--motion-fast);
+  transition:
+    color var(--motion-fast),
+    background var(--motion-fast);
 }
 .tab:hover {
   color: var(--text);
@@ -31,5 +33,7 @@
 .tab[data-active="true"] {
   color: var(--cyan);
   background: var(--cyan-dim);
-  box-shadow: inset 0 0 0 1px var(--cyan), var(--glow-cyan);
+  box-shadow:
+    inset 0 0 0 1px var(--cyan),
+    var(--glow-cyan);
 }

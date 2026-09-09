@@ -1,18 +1,18 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  "organizeImports": {
-    "enabled": false
-  },
+  "$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
+  "assist": { "actions": { "source": { "organizeImports": "off" } } },
   "files": {
-    "ignore": [
-      ".pnpm-store/**",
-      "**/dist/**",
-      "apps/server/drizzle/meta/**",
-      "apps/server/drizzle/*.sql",
-      "apps/web/test-results/**",
-      "apps/web/playwright-report/**",
-      "pnpm-lock.yaml",
-      "packages/shared/src/universe.fixture.json"
+    "includes": [
+      "**",
+      "!**/.pnpm-store/**",
+      "!**/dist/**",
+      "!**/apps/server/drizzle/meta/**",
+      "!**/apps/server/drizzle/**/*.sql",
+      "!**/apps/web/test-results/**",
+      "!**/apps/web/playwright-report/**",
+      "!**/packages/ui/design/**",
+      "!**/pnpm-lock.yaml",
+      "!**/packages/shared/src/universe.fixture.json"
     ]
   },
   "formatter": {
@@ -24,16 +24,16 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": false,
+      "preset": "none",
       "correctness": {
-        "recommended": true,
+        "preset": "recommended",
         "useExhaustiveDependencies": "off",
         "noUnusedVariables": "error",
         "noUnusedImports": "error",
         "noUnusedPrivateClassMembers": "error"
       },
       "a11y": {
-        "recommended": true
+        "preset": "recommended"
       },
       "suspicious": {
         "noDebugger": "error"

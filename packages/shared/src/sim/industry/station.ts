@@ -86,7 +86,7 @@ export function enqueueZone(
   // « 15-20 points d'appel »). Retirer le paramètre changerait une signature publique pour
   // cacher un travail qui reste à faire. La directive est en DERNIÈRE ligne : biome
   // n'attache une suppression qu'à ce qui la suit immédiatement (chantier 40).
-  // biome-ignore lint/correctness/noUnusedVariables: voir ci-dessus.
+  // biome-ignore lint/correctness/noUnusedFunctionParameters: voir ci-dessus.
   balance: BalanceConstants = DEFAULT_BALANCE,
 ): EnqueueZoneResult {
   const def = zoneTypes[zoneTypeId];
@@ -182,7 +182,7 @@ export function enqueueInstallation(
   // « 15-20 points d'appel »). Retirer le paramètre changerait une signature publique pour
   // cacher un travail qui reste à faire. La directive est en DERNIÈRE ligne : biome
   // n'attache une suppression qu'à ce qui la suit immédiatement (chantier 40).
-  // biome-ignore lint/correctness/noUnusedVariables: voir ci-dessus.
+  // biome-ignore lint/correctness/noUnusedFunctionParameters: voir ci-dessus.
   balance: BalanceConstants = DEFAULT_BALANCE,
 ): EnqueueInstallationResult {
   const def = installations[installationId];

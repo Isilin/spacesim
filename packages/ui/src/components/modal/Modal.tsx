@@ -67,11 +67,12 @@ const ModalDialog = ({
   };
 
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: fond cliquable pour fermer, Échap (géré ci-dessous sur le dialogue) est déjà l'équivalent clavier.
+    // biome-ignore lint/a11y/noStaticElementInteractions: fond cliquable pour fermer, Échap (géré ci-dessous sur le dialogue) est déjà l'équivalent clavier.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: même raison — biome 2 sépare en deux règles ce que la 1.9 signalait une fois.
     <div className={styles.overlay} onClick={onClose}>
+      {/* <dialog> natif imposerait showModal()/close() et son propre focus/backdrop ; role="dialog" sur un div garde le piège à focus/l'animation gérés à la main (motif standard Radix/react-aria/MUI). */}
       <div
         ref={dialogRef}
-        // biome-ignore lint/a11y/useSemanticElements: <dialog> natif imposerait showModal()/close() et son propre focus/backdrop ; role="dialog" sur un div garde le piège à focus/l'animation gérés à la main (motif standard Radix/react-aria/MUI).
         className={styles.modal}
         role="dialog"
         aria-modal="true"

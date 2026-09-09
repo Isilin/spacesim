@@ -68,7 +68,11 @@ function Gauge({
   label,
   used,
   max,
-}: { label: string; used: number; max: number }) {
+}: {
+  label: string;
+  used: number;
+  max: number;
+}) {
   const over = used > max;
   return (
     <div className="gauge">

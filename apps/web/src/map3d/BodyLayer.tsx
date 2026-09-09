@@ -99,7 +99,7 @@ function OrbitingMoon({
   });
   return (
     <group ref={ref}>
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: objet de scène three.js, ni
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: objet de scène three.js, ni
           focusable ni clavier — le chemin accessible est la liste DOM parallèle
           (chantier 31.16). */}
       <group onClick={onSelect} onDoubleClick={onOpen}>
@@ -161,7 +161,7 @@ export function BodyLayer({
 
   return (
     <>
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: objet de scène three.js, ni
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: objet de scène three.js, ni
           focusable ni clavier — le chemin accessible est la liste DOM parallèle. */}
       <group
         onClick={() => onSelectBody(body)}

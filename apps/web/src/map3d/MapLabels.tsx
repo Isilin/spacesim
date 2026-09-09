@@ -262,7 +262,7 @@ export function MapLabels({
         // actions. La directive ci-dessous doit rester la DERNIÈRE ligne avant l'élément —
         // biome n'attache une suppression qu'à la ligne qui la suit immédiatement, et deux
         // lignes de commentaire s'étaient glissées entre les deux (chantier 40).
-        // biome-ignore lint/a11y/useKeyWithClickEvents: voir ci-dessus.
+        // biome-ignore lint/a11y/noStaticElementInteractions: voir ci-dessus.
         <sprite
           key={item.id}
           ref={(node) => {

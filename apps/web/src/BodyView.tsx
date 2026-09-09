@@ -191,7 +191,10 @@ export function BodyView({ system, body, effects, now }: Props) {
 function SlotGrid({
   body,
   colony,
-}: { body: Planet; colony: Colony | undefined }) {
+}: {
+  body: Planet;
+  colony: Colony | undefined;
+}) {
   const { t } = useTranslation();
   const built: BuildingId[] = [];
   for (const [id, count] of Object.entries(colony?.buildings ?? {}) as [

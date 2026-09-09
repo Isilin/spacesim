@@ -167,6 +167,7 @@ export function StationDiagram({
           const label =
             zoneTypeLabel(z.zoneTypeId as ZoneTypeId)?.name ?? z.zoneTypeId;
           return (
+            // biome-ignore lint/a11y/noStaticElementInteractions: zones de station cliquées sur des <g> SVG, sans équivalent clavier aujourd'hui — voir ResearchView, même chantier d'accessibilité en attente.
             <g
               key={key}
               transform={`translate(${pos.x} ${pos.y})`}
@@ -212,6 +213,7 @@ export function StationDiagram({
             selectedGrowthPoint?.q === p.q && selectedGrowthPoint?.r === p.r;
           const clickable = !!onSelectGrowthPoint;
           return (
+            // biome-ignore lint/a11y/noStaticElementInteractions: points de croissance cliqués sur des <g> SVG, sans équivalent clavier aujourd'hui — voir ResearchView, même chantier d'accessibilité en attente.
             <g
               key={hexKey(p.q, p.r)}
               transform={`translate(${pos.x} ${pos.y})`}

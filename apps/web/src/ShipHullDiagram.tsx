@@ -458,6 +458,7 @@ export function ShipHullDiagram({
             const selected =
               selectedSlot?.type === type && selectedSlot.index === i;
             return (
+              // biome-ignore lint/a11y/noStaticElementInteractions: emplacements de coque cliqués sur des <g> SVG, sans équivalent clavier aujourd'hui — voir ResearchView, même chantier d'accessibilité en attente.
               <g
                 key={`${type}-${i}`}
                 transform={`translate(${pos.x} ${pos.y})`}

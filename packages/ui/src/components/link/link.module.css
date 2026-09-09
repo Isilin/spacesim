@@ -38,7 +38,9 @@
     0 100%,
     0 var(--cut-sm)
   );
-  transition: color var(--motion-fast), background var(--motion-fast);
+  transition:
+    color var(--motion-fast),
+    background var(--motion-fast);
 }
 .link[data-variant="nav"]:hover {
   color: var(--text);
@@ -47,7 +49,9 @@
 .link[data-variant="nav"][data-active="true"] {
   color: var(--cyan);
   background: var(--cyan-dim);
-  box-shadow: inset 0 0 0 1px var(--cyan), var(--glow-cyan);
+  box-shadow:
+    inset 0 0 0 1px var(--cyan),
+    var(--glow-cyan);
 }
 .link[data-variant="nav"][aria-disabled="true"] {
   color: var(--dim);

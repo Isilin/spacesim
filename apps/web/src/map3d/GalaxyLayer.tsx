@@ -502,7 +502,7 @@ export function GalaxyLayer({
           `light={false}` : rien ici n'est éclairé, les nœuds sont en `meshBasicMaterial`.
           `tilt={0}` : le disque d'accrétion d'un cœur galactique est le plan de la galaxie,
           là où celui d'un trou noir stellaire se présente de biais. */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: objet de scène three.js — le chemin
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: objet de scène three.js — le chemin
           accessible est la liste DOM parallèle rendue par `MapScene`. */}
       <group onClick={onSelectCore} onDoubleClick={onOpenCore}>
         <BlackHole
@@ -545,7 +545,7 @@ export function GalaxyLayer({
           </mesh>
         );
       })}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: objet de scène three.js, ni
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: objet de scène three.js, ni
           focusable ni clavier — le chemin accessible est la liste DOM parallèle rendue à
           côté (chantier 31.16). */}
       <instancedMesh
