@@ -20,10 +20,10 @@
     "@testing-library/user-event": "^14.6.7",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "jsdom": "^25.0.0",
+    "jsdom": "^30.0.1",
     "react": "catalog:",
     "react-dom": "catalog:",
     "typescript": "catalog:",
-    "vitest": "^2.1.0"
+    "vitest": "^5.0.0"
   }
 }

@@ -1,5 +1,5 @@
 import { MAX_CATCHUP_TICKS, TICK_MS } from "@spacesim/shared";
-import { bench, beforeAll, describe } from "vitest";
+import { beforeAll, describe, test } from "vitest";
 import { db, schema } from "../db/index.js";
 import { GameEngine } from "../game.js";
 
@@ -22,10 +22,12 @@ import { GameEngine } from "../game.js";
  * publie des contrats, arbitre des prix et fait voyager des convois à chaque tick : c'est
  * lui qui remplit un tick, et il manquait à la mesure.
  *
- * Le `beforeAll` est au niveau du FICHIER et non dans le `describe` : sous `vitest bench`,
- * un hook de `describe` ne s'applique pas aux benches qu'il contient, et le montage ne
- * tourne jamais — la mesure échoue alors sur un moteur `undefined` plutôt que de mentir,
- * ce qui est déjà ça, mais le piège vaut d'être écrit.
+ * Vitest 5 a supprimé le `bench()` de portée module : un benchmark s'enregistre désormais
+ * depuis le contexte d'un `test()` ordinaire et se déclenche par `.run()`. Le piège que
+ * cette entête signalait — un hook de `describe` qui ne s'appliquait pas aux benches, donc
+ * un montage qui ne tournait jamais — disparaît avec lui : les hooks valent ici ce qu'ils
+ * valent pour n'importe quel test. Le `beforeAll` reste au niveau du FICHIER parce que le
+ * montage doit tourner une fois, pas parce qu'il le faut.
  */
 let engine: GameEngine;
 
@@ -37,11 +39,17 @@ beforeAll(async () => {
 });
 
 describe("rattrapage au boot", () => {
-  bench(
-    `catchUp() sur ${MAX_CATCHUP_TICKS} ticks (24h simulées, TICK_MS=${TICK_MS}), PNJ compris`,
-    () => {
-      engine.devFastForward(24 * 3600);
-    },
-    { time: 0, iterations: 3, warmupTime: 0, warmupIterations: 0 },
-  );
+  test(`catchUp() sur ${MAX_CATCHUP_TICKS} ticks (24h simulées), PNJ compris`, async ({
+    bench,
+  }) => {
+    // `time`, `iterations` et les `warmup*` sont des options d'EXÉCUTION en vitest 5 :
+    // elles passent à `.run()`, le deuxième argument de `bench()` ne portant plus que les
+    // hooks de cycle de vie du benchmark.
+    await bench(
+      `catchUp() sur ${MAX_CATCHUP_TICKS} ticks (24h simulées, TICK_MS=${TICK_MS}), PNJ compris`,
+      () => {
+        engine.devFastForward(24 * 3600);
+      },
+    ).run({ time: 0, iterations: 3, warmupTime: 0, warmupIterations: 0 });
+  });
 });
