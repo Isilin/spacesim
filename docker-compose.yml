@@ -30,7 +30,7 @@ services:
   # l'autre, dans le volume nommé `pgdata` — le seul reset volontaire reste
   # `docker compose down -v` (jamais un `rm` de fichier comme avec SQLite).
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_DB: spacesim
       POSTGRES_USER: spacesim
@@ -124,7 +124,7 @@ services:
   # Postgres jetable pour le harnais de charge (chantier 27.7) : jamais le volume
   # `pgdata` de dev — les données de charge ne doivent pas polluer l'univers de dev.
   postgres_loadtest:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_DB: spacesim
       POSTGRES_USER: spacesim
