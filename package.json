@@ -16,5 +16,8 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "typescript": "catalog:"
+  },
+  "pnpm": {
+    "neverBuiltDependencies": ["better-sqlite3"]
   }
 }
