@@ -24,3 +24,18 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+
+  # Les images Docker n'étaient surveillées par rien, et c'est exactement pour ça que le
+  # runtime est resté en Node 22 pendant que la 24 passait en maintenance, et Postgres en 17
+  # pendant qu'une majeure sortait. Aucune alerte : le fichier ne déclarait que npm et les
+  # actions. Dependabot expose deux écosystèmes SÉPARÉS, il faut donc les deux — `docker`
+  # ne lit pas les fichiers Compose, et `docker-compose` ne lit pas les Dockerfile.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
