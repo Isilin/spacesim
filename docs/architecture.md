@@ -187,7 +187,9 @@ sous `AppData\Local\Programs\DockerDesktop\` n'existe plus.
 
 `docker compose up app` sert Postgres + serveur (3001) + web (5173) + admin (5174) — les trois
 ports client sont exposés et documentés en tête de `docker-compose.yml`. `Dockerfile` = toolchain
-(node 22 + pnpm via corepack, épinglé par `packageManager`). `Dockerfile.e2e` l'étend avec les
+(node 26 + pnpm via corepack, épinglé par `packageManager`) — Node 26 ne livrant plus corepack,
+il est installé depuis npm, pour que la version de pnpm reste écrite à un seul endroit.
+`Dockerfile.e2e` l'étend avec les
 dépendances système de Chromium (service `e2e` seulement, pour ne pas alourdir
 `app`/`test`/`typecheck` — binaire installé au premier `docker compose run e2e`, caché dans le
 volume nommé `playwright_browsers`).
