@@ -38,7 +38,6 @@ import {
   zoneTypeDefsFromContent,
 } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
-import type { Logger } from "../logger.js";
 import { StationRepository } from "../repositories/station-repository.js";
 
 /** Résultat de la validation d'accès à un marché de station (chantier 25) — partagé
@@ -77,7 +76,6 @@ export class StationService {
   constructor(
     private readonly runtime: GameRuntime,
     private readonly notify: () => void,
-    private readonly logger: Logger,
     private readonly persistColony: (colony: Colony) => void,
     private readonly reserveShip: (
       empire: Empire,

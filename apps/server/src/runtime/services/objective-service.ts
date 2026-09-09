@@ -23,7 +23,6 @@ export class ObjectiveService {
 
   constructor(
     private readonly runtime: GameRuntime,
-    private readonly notify: () => void,
     private readonly logger: Logger,
     private readonly persistColony: (colony: Colony) => void,
     private readonly emit: (draft: EmpireEventDraft) => void,

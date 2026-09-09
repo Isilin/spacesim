@@ -32,7 +32,6 @@ import {
   shipDefsFromContent,
 } from "../content/content-service.js";
 import type { GameRuntime } from "../game-runtime.js";
-import type { Logger } from "../logger.js";
 import { ContractRepository } from "../repositories/contract-repository.js";
 
 /**
@@ -48,7 +47,6 @@ export class ContractService {
   constructor(
     private readonly runtime: GameRuntime,
     private readonly notify: () => void,
-    private readonly logger: Logger,
     private readonly persistColony: (colony: Colony) => void,
     private readonly reserveShip: (
       empire: Empire,

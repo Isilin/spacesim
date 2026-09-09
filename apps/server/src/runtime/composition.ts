@@ -116,7 +116,6 @@ export function composeEngine(
   contract = new ContractService(
     runtime,
     notify,
-    logger,
     (colony) => industry.persistColony(colony),
     (empire, colony, busyUntil) =>
       logistics.reserveShip(empire, colony, busyUntil),
@@ -232,7 +231,6 @@ export function composeEngine(
   );
   const objective = new ObjectiveService(
     runtime,
-    notify,
     logger,
     (colony) => industry.persistColony(colony),
     emit,
@@ -240,7 +238,6 @@ export function composeEngine(
   station = new StationService(
     runtime,
     notify,
-    logger,
     (colony) => industry.persistColony(colony),
     (empire, colony, busyUntil) =>
       logistics.reserveShip(empire, colony, busyUntil),
@@ -303,7 +300,7 @@ export function composeEngine(
     persister,
     logger,
   );
-  const devService = new DevService(runtime, notify, logger, {
+  const devService = new DevService(runtime, notify, {
     gateway,
     diplomacy,
     market,

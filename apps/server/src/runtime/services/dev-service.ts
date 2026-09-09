@@ -22,7 +22,6 @@ import {
 import { randomUUID } from "node:crypto";
 import type { Empire } from "../../empire.js";
 import type { GameRuntime } from "../game-runtime.js";
-import type { Logger } from "../logger.js";
 import type { BootstrapService } from "./bootstrap-service.js";
 import type { DiplomacyService } from "./diplomacy-service.js";
 import type { ExplorationService } from "./exploration-service.js";
@@ -60,7 +59,6 @@ export class DevService {
   constructor(
     private readonly runtime: GameRuntime,
     private readonly notify: () => void,
-    private readonly logger: Logger,
     private readonly services: DevServices,
   ) {}
 
