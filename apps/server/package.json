@@ -27,7 +27,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^26.4.1",
     "@types/pg": "^8.23.1",
     "@types/ws": "^8.5.13",
     "autocannon": "^8.0.0",
