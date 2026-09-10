@@ -3680,3 +3680,106 @@ par un outil.
 | Hooks git | aucun | aucun (déclaration prête) |
 
 Le générateur n'est pas touché : `GENERATOR_VERSION` et la fixture d'univers ne bougent pas.
+
+## Chantier 49 — Huit faiblesses laissées par le passage à Vite+ (10/09/2026)
+
+**Question de départ.** « Tu vois des choses à améliorer dans la stack ? » Le chantier 48
+avait mis toute la chaîne sous `vp` ; l'inventaire d'après en a sorti huit points, dont une
+omission du chantier précédent lui-même. Une branche, un lot par point, dans l'ordre de
+coût croissant.
+
+### Ce que le chantier 48 avait promis sans le livrer
+
+La couverture. Le plan la prévoyait, `grep coverage` sur les configs ne rendait rien : la
+mesure n'existait pas du tout. `@vitest/coverage-v8` doit être épinglé EXACTEMENT sur le
+vitest qu'embarque Vite+ — un décalage fait échouer `vp test --coverage` au démarrage.
+Aucun seuil n'est posé : une porte se décide sur des chiffres, et il n'y en avait pas.
+
+### La dérive de versions était à trois branches, pas deux
+
+Trois déclarations devaient bouger ensemble et rien ne le vérifiait : le CLI dans
+`package.json`, le tag des deux images, et — depuis la couverture — le fournisseur, qui
+suit le vitest embarqué. **Le caret suffisait à casser l'accord** : `pnpm update` passait le
+CLI en 0.4.x pendant que les images restaient en 0.3.1, et Vite+ imposant une copie unique
+de vitest, le décalage ne se voyait qu'à l'exécution.
+
+Le dépôt avait déjà résolu cette classe de problème pour Playwright, en LISANT la version
+dans le manifeste. Un `FROM` ne peut pas lire un fichier ; le même esprit passe donc par une
+vérification, au démarrage de chaque conteneur et en CI. Les trois modes d'échec ont été
+déclenchés volontairement plutôt que supposés corrects.
+
+### Le bundle web tenait en un seul morceau
+
+1 587 kB, 450 kB gzip, et rolldown avertissait à chaque build. Trois arêtes d'import, toutes
+dans `App.tsx`, y mettaient three.js, fiber, drei et use-gesture. `MapPage` vivait dans
+`App.tsx` même — tant qu'il y restait, `/map` ne pouvait pas être paresseuse.
+
+    chunk d'entrée   1 587,08 kB → 289,96 kB   (450,01 → 89,80 kB gzip)
+
+three.js part dans un chunk de 905 kB, hors chemin critique. Il garde l'avertissement de
+taille, et c'est voulu : `chunkSizeWarningLimit` n'est pas touché, l'avertissement reste le
+signal.
+
+### Les budgets d'images mesuraient ce qui n'est pas livré
+
+La suite Playwright servait `vp dev`. Les seuils `> 20` — le garde-fou explicite du rendu 3D
+depuis le chantier 32.17 — gardaient donc du code non minifié, sans tree-shaking ni
+Lightning CSS. Elle tourne désormais contre un build. Vite n'héritant pas `server.proxy`
+dans `preview`, le proxy est extrait en constante et posé aux deux endroits — sans quoi la
+sonde de disponibilité, qui tape `/health`, n'aurait plus rien trouvé.
+
+Relevé sur le build : univers 55, galaxie 30, système 45, transition 61, aperçu vaisseau 59
+images/s. **Les seuils ne bougent pas** — monter un seuil masque une régression, le chantier
+32.17 l'avait déjà refusé.
+
+### Le montage des tests : mesurer avant de concevoir
+
+159 s sur 213 s. Trente fichiers isolés, trente amorçages de cluster PGlite, trente rejeux
+des trente migrations.
+
+Trois mesures dans le conteneur ont décidé de la forme : amorçage d'un cluster nu 1 964 ms,
+`dumpDataDir` 71 ms, restauration par `loadDataDir` **296 ms**. La restauration bat un
+amorçage nu, migrations mises à part, parce qu'elle saute aussi `initdb`. Un `globalSetup`
+produit donc l'archive une fois ; chaque fichier fait naître sa base depuis elle.
+
+Le rejeu des migrations derrière la restauration a été retiré **après mesure** : l'archive
+est reconstruite à chaque exécution, donc une archive périmée n'existe pas le temps d'une
+suite, et ce rejeu relisait le journal et les trente fichiers SQL par fichier. Il coûtait
+40 s à lui seul.
+
+**Ce qui n'a PAS été fait, et pourquoi.** Le plan prévoyait aussi de hisser en `beforeAll` le
+bootstrap de `content.test.ts`, qui fait 66 bootstraps pour 69 tests. L'inspection a montré
+que l'app neuve de chaque test porte DEUX comportements et pas un : le ré-amorçage du
+contenu — soluble, `engine.loadContent()` est public — et des compteurs de quota neufs. Or
+`app.test.ts:150` teste précisément le 429 du quota. Hisser demanderait de repenser la
+gestion des comptes du fichier : chantier de test, pas d'outillage.
+
+### Le serveur n'avait aucun chemin de production
+
+Ni build, ni `start`, ni image. Il n'est pas empaqueté et ne le sera pas — six obstacles,
+détaillés en ADR 0023, dont le dossier de migrations résolu en relatif d'`import.meta.url`
+et lu par `fs` à l'intérieur de drizzle. Ce qui manquait n'était pas une compilation mais un
+chemin d'EXÉCUTION reproductible.
+
+Les deux moitiés sont vérifiées en conditions réelles : base neuve sans
+`SPACESIM_BOOTSTRAP`, le démarrage échoue sur « Aucun univers en base » — l'invariant du
+serveur officiel devient exécutable ; avec le drapeau, il amorce, instancie les empires PNJ
+et sert sur 3001.
+
+### Relevés
+
+| | avant | après |
+|---|---|---|
+| Fournisseur de couverture | aucun | v8, épinglé sur le vitest embarqué |
+| Épinglages Vite+ vérifiés | 0 sur 3 | 3 sur 3, au démarrage et en CI |
+| Paquets hors volumes nommés | 2 | 0 |
+| Build en CI | non | oui |
+| Chunk d'entrée web | 1 587,08 kB | 289,96 kB |
+| Cible de la suite e2e | serveur de dev | build de production |
+| Montage des tests serveur | 159 s | 27,8 s |
+| Suite serveur | 226,5 s | 164,9 s |
+| Suite complète | 213 s | 181,6 s |
+| Fichiers / tests | 101 / 1134 | 101 / 1134 |
+| Chemin de production serveur | aucun | image + smoke en CI |
+
+Le générateur n'est pas touché : `GENERATOR_VERSION` et la fixture d'univers ne bougent pas.
