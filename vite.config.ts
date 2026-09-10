@@ -1,4 +1,4 @@
-import { defineConfig } from "vite-plus";
+import { coverageConfigDefaults, defineConfig } from "vite-plus";
 
 /**
  * Config du workspace (chantier 48). Un seul point d'entrée `vp` remplace `pnpm -r`,
@@ -20,6 +20,7 @@ const ignorePatterns = [
   "**/packages/ui/design/**",
   "**/pnpm-lock.yaml",
   "**/packages/shared/src/universe.fixture.json",
+  "**/coverage/**",
 ];
 
 export default defineConfig({
@@ -58,6 +59,39 @@ export default defineConfig({
     // `vi.fn`/`vi.spyOn` — sans cette ligne, la descente de majeure changerait ce que
     // mesurent les suites, en silence.
     clearMocks: true,
+
+    /**
+     * Le dépôt n'avait AUCUN fournisseur de couverture — la mesure n'existait tout
+     * simplement pas. `@vitest/coverage-v8` est épinglé EXACTEMENT sur le vitest
+     * qu'embarque Vite+ (4.1.11) : un décalage fait échouer `vp test --coverage` au
+     * démarrage, et `scripts/check-toolchain.sh` vérifie cet accord.
+     *
+     * Aucun seuil n'est posé. Une porte se décide sur des chiffres, et il n'y en a
+     * pas encore — `pnpm coverage` sert à les produire, pas à faire échouer la CI.
+     */
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      reportsDirectory: "coverage",
+      exclude: [
+        ...coverageConfigDefaults.exclude,
+        "**/*.config.ts",
+        "**/*.bench.ts",
+        "apps/web/e2e/**",
+        "apps/server/loadtest/**",
+        "apps/admin/scripts/**",
+        "packages/ui/design/**",
+        // Client orval, régénéré depuis le spec OpenAPI du serveur : 8 000 lignes que
+        // personne n'écrit, et dont la couverture ne dit rien de ce dépôt.
+        "apps/admin/src/api/generated/**",
+        // Échafaudage de test. Le compter reviendrait à mesurer la couverture du
+        // thermomètre.
+        "**/test-setup.ts",
+        "**/test-global-setup.ts",
+        "**/test-harness.ts",
+        "**/test-helpers.ts",
+      ],
+    },
   },
 
   /**

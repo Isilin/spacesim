@@ -46,6 +46,10 @@ Design et roadmap : [docs/design.md](docs/design.md). Référence technique prof
 - **Une seule chaîne d'outils, `vp`** — Vite+ tient le build, les tests (vitest 4.1 qu'il
   épingle), le format, le lint type-aware et l'orchestration. Il n'y a plus ni Biome, ni
   `pnpm -r`, ni `tsc --noEmit`. Voir [ADR 0022](docs/adr/0022-vite-plus-comme-chaine-unique.md).
+- **Le serveur n'est pas empaqueté** — il tourne depuis ses sources, y compris en
+  production (`Dockerfile.server`, tâche `start`). Six obstacles écartent le bundling ;
+  la porte de réouverture est `vp pack` sur les paquets du workspace. Voir
+  [ADR 0023](docs/adr/0023-le-serveur-tourne-depuis-ses-sources.md).
 - Code en anglais, UI en français.
 
 ## Workflow de changement (règles Karpathy)
@@ -64,7 +68,7 @@ Design et roadmap : [docs/design.md](docs/design.md). Référence technique prof
 pnpm dev                                # les trois serveurs en parallèle (vp run -r)
 pnpm dev:server / dev:web / dev:admin   # ports 3001 / 5173 / 5174
 pnpm check                              # format + lint + types en une passe
-pnpm test / bench
+pnpm test / bench / coverage         # coverage : rapport, pas une porte — aucun seuil
 pnpm typecheck / format / format:check / lint   # les morceaux de `check`, séparément
 ```
 
@@ -81,8 +85,15 @@ ouvrir une est un chantier de code à part entière.
 docker compose up app              # Postgres + serveur + web + admin, hot reload
 docker compose run --rm test       # tests unitaires
 docker compose run --rm typecheck
-docker compose run --rm e2e        # Playwright
+docker compose run --rm e2e        # Playwright (contre un BUILD, pas le serveur de dev)
+
+docker compose --profile prod up server_prod   # le serveur en conditions de production
 ```
+
+Les services `test`/`typecheck`/`e2e`/`loadtest` sont en profil `tools` : après toute
+modification d'un `Dockerfile`, il faut `docker compose --profile tools build`. Un
+`docker compose build` seul les laisse sur une image périmée, et l'erreur qui en sort n'a
+rien à voir avec le changement qu'on vient de faire.
 
 `Dev Containers: Reopen in Container` (VS Code) attache au service `app` existant, où le
 serveur TypeScript résout les vraies dépendances (`node_modules` en volumes nommés, jamais sur

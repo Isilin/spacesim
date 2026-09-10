@@ -11,7 +11,8 @@
 # Elle tourne en utilisateur non-root `vp` (uid 1000). C'est un gain pour l'e2e —
 # le bac à sable de Chromium reste actif — et la seule contrainte est que les
 # volumes nommés de node_modules doivent lui appartenir : voir docker-entrypoint.sh.
-FROM ghcr.io/voidzero-dev/vite-plus:0.3.1
+ARG VP_VERSION=0.3.1
+FROM ghcr.io/voidzero-dev/vite-plus:${VP_VERSION}
 
 USER root
 COPY docker-entrypoint.sh /usr/local/bin/spacesim-entrypoint

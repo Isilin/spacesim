@@ -21,6 +21,8 @@ x-base: &base
     - root_modules:/app/node_modules
     - shared_modules:/app/packages/shared/node_modules
     - protocol_modules:/app/packages/protocol/node_modules
+    - ui_modules:/app/packages/ui/node_modules
+    - i18n_config_modules:/app/packages/i18n-config/node_modules
     - server_modules:/app/apps/server/node_modules
     - web_modules:/app/apps/web/node_modules
     - admin_modules:/app/apps/admin/node_modules
@@ -118,6 +120,8 @@ services:
       - root_modules:/app/node_modules
       - shared_modules:/app/packages/shared/node_modules
       - protocol_modules:/app/packages/protocol/node_modules
+      - ui_modules:/app/packages/ui/node_modules
+      - i18n_config_modules:/app/packages/i18n-config/node_modules
       - server_modules:/app/apps/server/node_modules
       - web_modules:/app/apps/web/node_modules
       - playwright_browsers:/home/vp/.cache/ms-playwright
@@ -127,6 +131,30 @@ services:
              pnpm --filter @spacesim/web exec playwright install chromium &&
              pnpm --filter @spacesim/web e2e"
     profiles: ["tools"]
+
+  # Serveur de jeu en conditions de PRODUCTION (chantier 49). Image autonome, sans bind
+  # mount ni volume de node_modules : c'est ce qui rend le chemin reproductible ailleurs.
+  #
+  #   docker compose --profile prod up server_prod
+  #
+  # `NODE_ENV=production` fait passer le boot par `GameEngine.load()` : sur une base vide,
+  # le démarrage ÉCHOUE, et c'est voulu. Créer l'univers demande `SPACESIM_BOOTSTRAP=1`
+  # explicite, jamais un défaut — le serveur officiel ne repart jamais de zéro.
+  server_prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    environment:
+      DATABASE_URL: postgres://spacesim:spacesim@postgres:5432/spacesim
+      HOST: "0.0.0.0"
+      SPACESIM_BOOTSTRAP: "${SPACESIM_BOOTSTRAP:-0}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Même port que le service `app` : les deux ne sont pas faits pour tourner ensemble.
+    ports:
+      - "${SPACESIM_SERVER_PORT:-3001}:3001"
+    profiles: ["prod"]
 
   # Postgres jetable pour le harnais de charge (chantier 27.7) : jamais le volume
   # `pgdata` de dev — les données de charge ne doivent pas polluer l'univers de dev.
@@ -165,6 +193,8 @@ volumes:
   vp_toolchain:
   shared_modules:
   protocol_modules:
+  ui_modules:
+  i18n_config_modules:
   server_modules:
   web_modules:
   admin_modules:

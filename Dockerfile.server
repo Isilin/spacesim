@@ -1,0 +1,30 @@
+# Image de PRODUCTION du serveur de jeu (chantier 49).
+#
+# `apps/server` n'a pas de build, et n'en aura pas : il tourne depuis ses sources.
+# Six obstacles concrets écartent le bundling, tous vérifiés — le dossier de migrations
+# résolu en relatif d'`import.meta.url` et lu par `fs` dans drizzle, le WASM de PGlite,
+# les pairs optionnels de `pg` et `drizzle-orm`, l'identité des greffons Fastify, les
+# paquets du workspace exportés en TypeScript brut, et un défaut de chemin relatif au
+# répertoire courant. Voir docs/adr/0023.
+#
+# Ce qui manquait n'était donc pas un build mais un chemin d'EXÉCUTION reproductible :
+# une image autonome, sans bind mount ni volume de node_modules, qui démarre le serveur
+# comme le ferait un hébergeur.
+ARG VP_VERSION=0.3.1
+FROM ghcr.io/voidzero-dev/vite-plus:${VP_VERSION}
+
+WORKDIR /app
+
+# Un seul étage, volontairement : il n'y a aucun artefact de build à faire passer d'un
+# étage à l'autre. `tsx` est une dépendance de développement et reste nécessaire à
+# l'exécution, donc l'installation est complète.
+COPY --chown=vp:vp . /app
+RUN pnpm install --frozen-lockfile
+
+# `NODE_ENV=production` change le comportement du boot : `GameEngine.load()` au lieu de
+# `loadOrBootstrap()`, et les routes `/dev/*` ne sont plus montées. Un univers ne se crée
+# alors QUE sur `SPACESIM_BOOTSTRAP=1` explicite — jamais par défaut, c'est l'invariant du
+# serveur officiel.
+ENV NODE_ENV=production
+
+CMD ["vp", "run", "-F", "@spacesim/server", "start"]

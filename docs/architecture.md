@@ -204,8 +204,18 @@ dans `node_modules/.pnpm-store` et qu'une tête déjà réattribuée peut garder
 Deux volumes s'ajoutent : `vp_toolchain` (sinon Node serait retéléchargé à chaque `run`) et le
 cache navigateur, passé de `/root` à `/home/vp`.
 
+**Mise en production du serveur** (chantier 49) : `Dockerfile.server` construit une image
+autonome — sans bind mount ni volume de `node_modules` — qui exécute les SOURCES via la
+tâche `start` (`tsx src/index.ts`). Le serveur n'est pas empaqueté, et ne le sera pas :
+voir [ADR 0023](adr/0023-le-serveur-tourne-depuis-ses-sources.md) pour les six obstacles.
+Le service Compose `server_prod` (profil `prod`) le fait tourner localement contre le
+Postgres de dev. `NODE_ENV=production` fait passer le boot par `GameEngine.load()` : sur
+une base vide, le démarrage échoue — créer l'univers demande `SPACESIM_BOOTSTRAP=1`
+explicite. Un job de CI vérifie les deux moitiés à chaque PR.
+
 Pas de Node/pnpm natif attendu sur l'hôte : `node_modules` vivent dans des volumes nommés
-(binaires Linux isolés de l'hôte Windows). Après un changement de dépendances, l'install se
+(binaires Linux isolés de l'hôte Windows) — **les huit paquets**, `packages/ui` et
+`packages/i18n-config` ayant rejoint les six autres au chantier 49. Après un changement de dépendances, l'install se
 relance au prochain `up`/`run` (lockfile figé). C'est aussi pourquoi aucun hook git n'est
 installé : `vp hooks` poserait un hook qui s'exécute sur l'hôte, où `vp` n'existe pas. La
 déclaration `staged` est prête dans `vite.config.ts`, le hook n'est pas posé.

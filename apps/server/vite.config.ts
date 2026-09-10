@@ -12,6 +12,9 @@ export default defineConfig({
       // et sous Playwright. `tsx` reste l'exécuteur — c'est un pair optionnel supporté
       // de vite-plus-core, pas un contournement.
       dev: { command: "tsx watch src/index.ts", cache: false },
+      // Le pendant sans `watch`, pour l'image de production (Dockerfile.server,
+      // chantier 49). Même exécuteur, mêmes sources : il n'y a pas de build à part.
+      start: { command: "tsx src/index.ts", cache: false },
     },
   },
   test: {
@@ -24,6 +27,9 @@ export default defineConfig({
       NODE_ENV: "test",
     },
     setupFiles: ["./src/test-setup.ts"],
+    // Produit une fois l'archive de schéma que `test-setup.ts` restaure par fichier
+    // (chantier 49), au lieu de rejouer trente migrations trente fois.
+    globalSetup: ["./src/test-global-setup.ts"],
     // Un bootstrap de test grave l'univers complet dans PGlite : quatre galaxies, soit
     // ~5 900 systèmes et ~24 000 corps depuis le chantier 37 (contre ~40 et ~290 avant).
     // Le défaut de 5 s tenait pour l'ancien volume ; sous la contention des workers, le

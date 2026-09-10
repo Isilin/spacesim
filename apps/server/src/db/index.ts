@@ -3,32 +3,20 @@ import {
   drizzle as drizzlePglite,
   type PgliteDatabase,
 } from "drizzle-orm/pglite";
-import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
 import {
   drizzle as drizzlePg,
   type NodePgDatabase,
 } from "drizzle-orm/node-postgres";
-import { migrate as migratePg } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { readFileSync } from "node:fs";
 import { config } from "../config.js";
 import * as schema from "./schema.js";
+import { isPostgresUrl, runMigrations } from "./migrator.js";
+
+export { runMigrations };
 
 type Schema = typeof schema;
 export type Db = NodePgDatabase<Schema> | PgliteDatabase<Schema>;
-
-const migrationsFolder = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-  "drizzle",
-);
-
-/** `postgres://…`/`postgresql://…` → vrai serveur ; tout le reste → PGlite (chantier 20.3). */
-function isPostgresUrl(url: string): boolean {
-  return url.startsWith("postgres://") || url.startsWith("postgresql://");
-}
 
 /**
  * Ouvre la connexion et construit le client drizzle — ne migre pas (chantier 20.1).
@@ -36,29 +24,30 @@ function isPostgresUrl(url: string): boolean {
  * embarqué) : `:memory:` pour tests/e2e, un chemin de dossier pour le dev local sans
  * serveur Postgres. Même dialecte SQL dans les trois cas (chantier 20.3).
  */
+/**
+ * Préfixe réservé aux tests (chantier 49) : `snapshot:<chemin>` restaure une archive de
+ * datadir PGlite au lieu d'amorcer un cluster vide.
+ *
+ * Trente fichiers de test isolés amorçaient chacun un cluster puis rejouaient les trente
+ * migrations, soit ~5,3 s par fichier. Mesuré ici : amorçage nu 1 964 ms, restauration
+ * d'archive 296 ms — `loadDataDir` saute `initdb` EN PLUS des migrations. La base reste
+ * en mémoire dans les deux cas ; seule sa façon de naître change.
+ */
+const SNAPSHOT_PREFIX = "snapshot:";
+
 export function createDb(url: string): Db {
   if (isPostgresUrl(url)) {
     return drizzlePg(new Pool({ connectionString: url }), { schema });
   }
+  if (url.startsWith(SNAPSHOT_PREFIX)) {
+    const archive = readFileSync(url.slice(SNAPSHOT_PREFIX.length));
+    return drizzlePglite(new PGlite({ loadDataDir: new Blob([archive]) }), {
+      schema,
+    });
+  }
   return drizzlePglite(new PGlite(url === ":memory:" ? undefined : url), {
     schema,
   });
-}
-
-/**
- * Applique les migrations en attente (drizzle-kit, dossier `apps/server/drizzle`).
- * Appel explicite (chantier 20.1), fait depuis le boot réel (`index.ts`) ou le setup de
- * test (`test-setup.ts`). `url` doit être celle utilisée pour construire `database`
- * (même routage pg/PGlite que `createDb`) — les deux migrateurs ne sont pas interchangeables.
- */
-export async function runMigrations(url: string, database: Db): Promise<void> {
-  if (isPostgresUrl(url)) {
-    await migratePg(database as NodePgDatabase<Schema>, { migrationsFolder });
-  } else {
-    await migratePglite(database as PgliteDatabase<Schema>, {
-      migrationsFolder,
-    });
-  }
 }
 
 // Singleton consommé par les repositories et la plupart des tests (import direct de
