@@ -420,9 +420,10 @@ export function FleetsView({
                 const won = report.winner === "attacker";
                 return (
                   <li key={b.id} className="queue-item">
-                    {/* biome-ignore lint/a11y/useSemanticElements: un <button> natif hériterait du chrome navigateur (fond/bordure/padding) sur cette ligne badge+texte — role="button" + clavier est le motif WAI-ARIA APG documenté pour ce cas plutôt qu'une passe de reset CSS hors sujet ici. */}
+                    {/* un <button> natif hériterait du chrome navigateur (fond/bordure/padding) sur cette ligne badge+texte — role="button" + clavier est le motif WAI-ARIA APG documenté pour ce cas plutôt qu'une passe de reset CSS hors sujet ici. */}
                     <div
                       className="queue-head battle-head"
+                      // oxlint-disable-next-line prefer-tag-over-role -- voir ci-dessus.
                       role="button"
                       tabIndex={0}
                       onClick={() =>

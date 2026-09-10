@@ -12,7 +12,7 @@
   },
   "customizations": {
     "vscode": {
-      "extensions": ["biomejs.biome"]
+      "extensions": ["VoidZero.vite-plus-extension-pack"]
     }
   }
 }

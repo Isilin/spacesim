@@ -7,10 +7,6 @@
     "./styles.css": "./src/styles.css",
     "./tokens": "./src/tokens.ts"
   },
-  "scripts": {
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit"
-  },
   "peerDependencies": {
     "react": "catalog:",
     "react-dom": "catalog:"
@@ -23,7 +19,6 @@
     "jsdom": "^30.0.1",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "^5.0.0"
+    "typescript": "catalog:"
   }
 }

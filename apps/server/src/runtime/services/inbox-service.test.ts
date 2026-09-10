@@ -1,6 +1,6 @@
 import { EMPIRE_EVENT_KEEP, EMPIRE_EVENT_PAGE } from "@spacesim/shared";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { db, schema } from "../../db/index.js";
 import { GameEngine } from "../../game.js";
 import { empireFor, resetDb, WARSHIP } from "../../test-harness.js";

@@ -96,7 +96,6 @@ export function StationDiagram({
     const minY = Math.min(...ys) - PADDING;
     const maxY = Math.max(...ys) + PADDING;
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [station.zones, growthPoints]);
 
   return (
@@ -167,7 +166,7 @@ export function StationDiagram({
           const label =
             zoneTypeLabel(z.zoneTypeId as ZoneTypeId)?.name ?? z.zoneTypeId;
           return (
-            // biome-ignore lint/a11y/noStaticElementInteractions: zones de station cliquées sur des <g> SVG, sans équivalent clavier aujourd'hui — voir ResearchView, même chantier d'accessibilité en attente.
+            // a11y, non signalé par oxlint (chantier 48) : zones de station cliquées sur des <g> SVG, sans équivalent clavier aujourd'hui — voir ResearchView, même chantier d'accessibilité en attente.
             <g
               key={key}
               transform={`translate(${pos.x} ${pos.y})`}
@@ -213,7 +212,7 @@ export function StationDiagram({
             selectedGrowthPoint?.q === p.q && selectedGrowthPoint?.r === p.r;
           const clickable = !!onSelectGrowthPoint;
           return (
-            // biome-ignore lint/a11y/noStaticElementInteractions: points de croissance cliqués sur des <g> SVG, sans équivalent clavier aujourd'hui — voir ResearchView, même chantier d'accessibilité en attente.
+            // a11y, non signalé par oxlint (chantier 48) : points de croissance cliqués sur des <g> SVG, sans équivalent clavier aujourd'hui — voir ResearchView, même chantier d'accessibilité en attente.
             <g
               key={hexKey(p.q, p.r)}
               transform={`translate(${pos.x} ${pos.y})`}

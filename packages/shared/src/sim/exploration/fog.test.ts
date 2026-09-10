@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { DEFAULT_BALANCE } from "../../balance.js";
 import type { ClientUniverse, Galaxy } from "../../model/universe.js";
 import { allSystems, generateUniverse } from "../../universe.js";

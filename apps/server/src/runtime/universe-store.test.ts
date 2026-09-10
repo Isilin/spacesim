@@ -1,6 +1,6 @@
 import { generateGalaxyAt, generateUniverse } from "@spacesim/shared";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { db, schema } from "../db/index.js";
 import {
   appendGalaxies,

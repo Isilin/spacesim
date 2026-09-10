@@ -1,6 +1,6 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { MapList, readPanelOpen, writePanelOpen } from "./MapList.js";
 // Le composant ne tire aucun module de traduction par transitivité : sans cet import,
 // l'instance i18next n'existerait pas sous test et `t()` rendrait ses clés. `main.tsx`

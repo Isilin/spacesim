@@ -3584,3 +3584,99 @@ d'ADR : c'est une décision de portée, pas une décision structurante, et écri
 Aucune tranche ne touche la sortie du générateur : `GENERATOR_VERSION` reste à 12, la fixture
 n'a pas bougé — y compris au déplacement de `TIGHT_BINARY`/`WIDE_BINARY`, dont elle est la
 preuve de pureté.
+
+## Chantier 48 — Passage complet à Vite+ (10/09/2026)
+
+**Question de départ.** « Passage complet à vite+ monorepo ? » L'évaluation a d'abord dit non,
+sur deux chiffres : le paquet cœur de Vite+ embarque vite 8.2.2 et rolldown 1.2.7, soit
+exactement ce que le dépôt résolvait déjà — gain de build nul — et `vite-plus@0.3.1` épingle
+`vitest` à 4.1.11 en dépendance dure, alors que le chantier 46 venait de monter en 5.0.0 trois
+jours plus tôt. La décision a été prise en connaissance de ce coût : on passe quand même, et le
+recul d'une majeure sur les tests est assumé plutôt que subi.
+
+Le reste de l'outillage justifiait le chantier à lui seul. Il n'y avait aucun orchestrateur
+(`pnpm -r` lançait six processus vitest sans rapport commun), aucun cache de tâches, aucun hook
+git, aucune couverture, Biome d'un côté et six `tsc --noEmit` de l'autre, et **deux
+déclarations indépendantes de la version de Node** — le tag de l'image Docker et le
+`node-version:` du workflow — que rien ne vérifiait.
+
+### Ce que la descente en vitest 4.1 a coûté, et ce qu'elle a fallu compenser
+
+Deux différences de la 4.1 changeaient ce que mesurent les suites, en silence :
+
+- `clearMocks` n'y est plus activé par défaut. Reposé explicitement à la racine, pour les dix
+  fichiers qui utilisent `vi.fn`/`vi.spyOn`.
+- Le `bench()` de portée module revient, options d'exécution en troisième argument. **Le piège
+  du chantier 46 revient avec lui** : un hook déclaré dans le `describe` ne s'applique pas aux
+  benchmarks, et un bench dont le montage n'a pas tourné passe pour vert. Le `beforeAll` reste
+  donc au niveau du fichier, et la vérification porte sur le CHIFFRE : 7 345 ms pour 24 h
+  simulées, l'ordre de grandeur « PNJ compris » du 43.5, pas les 2,9 s d'un bootstrap nu.
+
+Une chose ne se compense pas : les assertions asynchrones non attendues repassent en silence au
+lieu d'échouer. C'est la ligne à rouvrir quand l'issue #2405 livre vitest 5 chez Vite+.
+
+### La panne que l'épinglage a révélée
+
+`devEngines` fait résoudre Node par pnpm, qui l'épingle dans le lockfile avec intégrité par
+plateforme. La version obtenue — 26.8.2 — a fait tomber 14 tests de `apps/web` et `apps/admin`,
+tous sur `localStorage`.
+
+Node 26.8 définit `globalThis.localStorage` : un accesseur qui AVERTIT et rend `undefined` tant
+que `--localstorage-file` n'est pas donné. Dans l'environnement jsdom de vitest, `window` EST
+`globalThis` — cette propriété propre l'emporte donc sur celle de jsdom, qui en fournit pourtant
+un parfaitement fonctionnel.
+
+**Le dépôt n'y échappait que par accident** : l'image `node:26-bookworm-slim` en cache local
+portait un patch antérieur. La CI, elle, aurait pris la panne au prochain run. Épingler n'a pas
+créé le problème, il l'a rendu reproductible — c'est exactement ce qu'on lui demande.
+`--no-experimental-webstorage` retire le global et rend la main à jsdom ; le drapeau est répété
+dans les trois projets jsdom, `execArgv` ne descendant pas de la config racine aux projets.
+
+### Le lint change de forme, pas seulement d'outil
+
+La catégorie `correctness` d'oxlint est plus large que celle de Biome. Premier passage : 76
+diagnostics. Deux d'entre eux étaient de la parité pure — les deux paramètres `balance`
+inutilisés, déjà suppressés chez Biome — et douze relevaient de l'accessibilité, traduits site
+par site en reprenant la justification existante.
+
+Les 61 autres appartiennent à des familles que ce dépôt n'a jamais fait passer : 26 règles du
+compilateur React (pureté, mutation, refs) et 34 règles type-aware. Elles sont listées et
+désactivées **avec leur volume**, comme le 43.4 l'avait fait pour `useExhaustiveDependencies` :
+l'axe de découpe utile est la règle, pas la zone. Les ouvrir touche les couches three.js dont
+les budgets FPS e2e sont le garde-fou, ou les types du serveur et de l'admin — un chantier de
+code, pas d'outillage.
+
+**Une perte de couverture, dite plutôt que masquée.** oxlint ne signale pas les `<g>` SVG ni les
+objets de scène three.js que Biome signalait. Douze directives y devenaient inutiles : elles ont
+été retirées, leur justification reste en prose. Cette dette d'accessibilité n'est plus tenue
+par un outil.
+
+### Ce que le chantier n'a pas fait
+
+- **`vp pack`** — les quatre `packages/*` s'exportent en TypeScript brut via
+  `exports: "./src/index.ts"`. Les empaqueter est une décision d'architecture, pas un effet de
+  bord d'une montée d'outillage.
+- **Le hook pré-commit** — `vp hooks` pose un hook qui s'exécute sur l'HÔTE, où il n'y a ni Node
+  ni pnpm. Il bloquerait chaque commit. La déclaration `staged` est prête dans la config, le
+  hook n'est pas posé.
+- **Le mode navigateur de Vitest** — Playwright garde l'e2e.
+- **Le cache distant de `vp run`** — pas livré avant la 1.0. En CI, un cache GitHub Actions
+  dédié prend sa place.
+
+### Relevés
+
+| | avant | après |
+|---|---|---|
+| Processus vitest | 6 (`pnpm -r`) | 1 (projets) |
+| Paquets sautés en silence | 1 (`i18n-config`) | 0 |
+| Fichiers de test / tests | 101 / 1134 | 101 / 1134 |
+| Suite complète (conteneur) | 4 min 03 s | 3 min 49 s |
+| Format + lint + types | Biome + 6 × `tsc` | `vp check`, 0,5 s + 4,6 s |
+| Règles de lint appliquées | Biome, préréglage restreint | 165, dont type-aware |
+| Cache de tâches | aucun | `vp run -r build` : 2/2 |
+| Déclarations de la version de Node | 2, non vérifiées | 1 (`devEngines`), épinglée au lockfile |
+| Copies de vitest installées | 2 | 1 |
+| Cache navigateur Playwright en CI | aucun | oui |
+| Hooks git | aucun | aucun (déclaration prête) |
+
+Le générateur n'est pas touché : `GENERATOR_VERSION` et la fixture d'univers ne bougent pas.

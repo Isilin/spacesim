@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { layerOpacity } from "./FadingGroup.js";
 import { TIER_ORDER } from "./tiers.js";
 

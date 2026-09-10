@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { Station } from "../../model/industry.js";
 import type { RelationState } from "../../model/social.js";
 import { emptyStationResources } from "../industry/station.js";

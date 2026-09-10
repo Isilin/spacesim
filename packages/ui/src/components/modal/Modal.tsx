@@ -41,7 +41,6 @@ const ModalDialog = ({
     return () => {
       previouslyFocused.current?.focus?.();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -67,13 +66,14 @@ const ModalDialog = ({
   };
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: fond cliquable pour fermer, Échap (géré ci-dessous sur le dialogue) est déjà l'équivalent clavier.
-    // biome-ignore lint/a11y/useKeyWithClickEvents: même raison — biome 2 sépare en deux règles ce que la 1.9 signalait une fois.
+    // oxlint-disable-next-line no-static-element-interactions, click-events-have-key-events -- fond cliquable pour fermer, Échap (géré ci-dessous sur le dialogue) est déjà l'équivalent clavier.
     <div className={styles.overlay} onClick={onClose}>
       {/* <dialog> natif imposerait showModal()/close() et son propre focus/backdrop ; role="dialog" sur un div garde le piège à focus/l'animation gérés à la main (motif standard Radix/react-aria/MUI). */}
+      {/* oxlint-disable-next-line no-noninteractive-element-interactions -- le piège à focus est géré à la main, voir ci-dessus. */}
       <div
         ref={dialogRef}
         className={styles.modal}
+        // oxlint-disable-next-line prefer-tag-over-role -- <dialog> natif imposerait showModal()/close(), voir ci-dessus.
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

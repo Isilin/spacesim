@@ -3,11 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "test": "vitest run",
-    "bench": "vitest bench --run",
     "loadtest": "tsx loadtest/run.mjs",
-    "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio"
   },
@@ -34,7 +30,6 @@
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.23.13",
     "typescript": "catalog:",
-    "vitest": "^5.0.0",
     "ws": "^8.21.3"
   }
 }

@@ -186,23 +186,36 @@ binaire vit sous `C:\Program Files\Docker\Docker\resources\bin\docker.exe` — l
 sous `AppData\Local\Programs\DockerDesktop\` n'existe plus.
 
 `docker compose up app` sert Postgres + serveur (3001) + web (5173) + admin (5174) — les trois
-ports client sont exposés et documentés en tête de `docker-compose.yml`. `Dockerfile` = toolchain
-(node 26 + pnpm via corepack, épinglé par `packageManager`) — Node 26 ne livrant plus corepack,
-il est installé depuis npm, pour que la version de pnpm reste écrite à un seul endroit.
-`Dockerfile.e2e` l'étend avec les
-dépendances système de Chromium (service `e2e` seulement, pour ne pas alourdir
-`app`/`test`/`typecheck` — binaire installé au premier `docker compose run e2e`, caché dans le
-volume nommé `playwright_browsers`).
+ports client sont exposés et documentés en tête de `docker-compose.yml`. `Dockerfile` part de
+l'image officielle `ghcr.io/voidzero-dev/vite-plus`, épinglée à la version du CLI (chantier 48) :
+`vp` y est déjà installé, et la version de Node vient de `devEngines` du `package.json` racine —
+la MÊME source que la CI, au lieu des deux déclarations indépendantes d'avant (tag d'image
+`node:26` / `node-version:` du workflow) que rien ne vérifiait. pnpm 12 épingle alors Node dans
+le lockfile, avec intégrité par plateforme. `Dockerfile.e2e` l'étend avec les dépendances
+système de Chromium (service `e2e` seulement, pour ne pas alourdir `app`/`test`/`typecheck` —
+binaire installé au premier `docker compose run e2e`, caché dans le volume nommé
+`playwright_browsers`).
+
+Cette image tourne en utilisateur non-root `vp` (uid 1000). C'est un gain pour l'e2e — le bac à
+sable de Chromium reste actif — mais Docker crée les volumes nommés appartenant à root :
+`docker-entrypoint.sh` les réattribue une fois par volume, repéré par un fichier témoin. Le
+témoin, plutôt qu'un test sur le propriétaire du dossier de tête, parce que le magasin pnpm vit
+dans `node_modules/.pnpm-store` et qu'une tête déjà réattribuée peut garder des enfants root.
+Deux volumes s'ajoutent : `vp_toolchain` (sinon Node serait retéléchargé à chaque `run`) et le
+cache navigateur, passé de `/root` à `/home/vp`.
 
 Pas de Node/pnpm natif attendu sur l'hôte : `node_modules` vivent dans des volumes nommés
 (binaires Linux isolés de l'hôte Windows). Après un changement de dépendances, l'install se
-relance au prochain `up`/`run` (lockfile figé).
+relance au prochain `up`/`run` (lockfile figé). C'est aussi pourquoi aucun hook git n'est
+installé : `vp hooks` poserait un hook qui s'exécute sur l'hôte, où `vp` n'existe pas. La
+déclaration `staged` est prête dans `vite.config.ts`, le hook n'est pas posé.
 
 **Édition locale (VS Code)** : sans Node/pnpm sur l'hôte, un VS Code ouvert directement sur le
 dossier ne peut résoudre ni les imports `@spacesim/*` ni les dépendances externes.
 `.devcontainer/devcontainer.json` référence le service `app` existant :
 `Dev Containers: Reopen in Container` (extension `ms-vscode-remote.remote-containers`) attache
-VS Code à ce conteneur, où le serveur TypeScript et Biome trouvent les vraies dépendances.
+VS Code à ce conteneur, où le serveur TypeScript et l'extension Oxc trouvent les vraies
+dépendances.
 `shutdownAction: "none"` évite qu'une fermeture de VS Code n'arrête la pile.
 
 Le bind mount hôte Windows → conteneur (Docker Desktop/WSL2) ne fait pas remonter les

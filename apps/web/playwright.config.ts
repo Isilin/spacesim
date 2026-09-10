@@ -43,7 +43,7 @@ export default defineConfig({
       // `AUTH_RATE_LIMIT_MAX` relevé ICI seulement (chantier 32.17) : la suite inscrit
       // une dizaine d'empires depuis la même boucle locale en moins d'une minute, ce que
       // le quota de production (10/min/IP) refuse à juste titre.
-      'sh -c "(cd ../.. && SPACESIM_DB=:memory: AUTH_RATE_LIMIT_MAX=200 pnpm --filter @spacesim/server dev) & pnpm exec vite --host 127.0.0.1"',
+      'sh -c "(cd ../.. && SPACESIM_DB=:memory: AUTH_RATE_LIMIT_MAX=200 vp run -F @spacesim/server dev) & vp dev --host 127.0.0.1"',
     // Attendre /health (proxifié vers le serveur de jeu) et non la racine Vite :
     // Vite répond en ~250 ms quand le serveur migre encore et génère son univers,
     // et les workers partaient alors sur un ECONNREFUSED sur /auth/register.

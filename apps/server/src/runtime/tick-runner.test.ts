@@ -4,7 +4,7 @@ import {
   emptyResources,
   generateUniverse,
 } from "@spacesim/shared";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { db, schema } from "../db/index.js";
 import { Empire } from "../empire.js";
 import { GameRuntime } from "./game-runtime.js";

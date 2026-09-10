@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { TECH_IDS, TECHS, type TechId } from "../../content/techs.js";
 import {
   descendants,

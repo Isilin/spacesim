@@ -13,26 +13,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      # Remplace `pnpm/action-setup` ET `actions/setup-node` (chantier 48) : la version
+      # de Node vient de `devEngines` du package.json racine, la même source que l'image
+      # Docker. Les deux déclarations indépendantes qui pouvaient diverger en silence
+      # n'existent plus. `cache: true` couvre les données du gestionnaire de paquets.
+      - uses: voidzero-dev/setup-vp@v1.19.0
         with:
-          node-version: 26
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm format:check
-      - run: pnpm lint
-      - run: pnpm test
-      - run: pnpm typecheck
+          cache: true
+      # Le cache de tâches est un cache SÉPARÉ : sans lui, `vp run` ne sert à rien en CI,
+      # où chaque job part d'un runner neuf. Le remote cache de Vite+ n'est pas livré
+      # avant la 1.0 ; c'est le seul mécanisme disponible aujourd'hui.
+      - uses: actions/cache@v4
+        with:
+          path: node_modules/.vite/task-cache
+          key: vite-task-${{ runner.os }}-${{ github.sha }}
+          restore-keys: vite-task-${{ runner.os }}-
+      - run: vp install
+      # Format, lint et types en une passe, à la place de `format:check` + `lint` +
+      # six `tsc --noEmit`.
+      - run: vp check
+      - run: vp test
 
   e2e:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: voidzero-dev/setup-vp@v1.19.0
         with:
-          node-version: 26
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @spacesim/web exec playwright install --with-deps chromium
-      - run: pnpm --filter @spacesim/web e2e
+          cache: true
+      # Chromium était retéléchargé à chaque run — rien ne le cachait. La clé suit le
+      # lockfile, où la version de @playwright/test est épinglée exactement.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: vp install
+      # Les dépendances système passent par apt et ne se cachent pas ; le binaire, si.
+      - run: vp -C apps/web exec playwright install-deps chromium
+      - run: vp -C apps/web exec playwright install chromium
+      - run: vp run -F @spacesim/web e2e

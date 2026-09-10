@@ -3,18 +3,34 @@
   "private": true,
   "version": "0.1.0",
   "packageManager": "pnpm@12.3.4",
+  "//devEngines": "Le dépôt n'avait aucun champ engines : l'image Docker déclarait node 26 d'un côté, le workflow CI de l'autre, et rien ne vérifiait l'accord. `vp env` lit ce champ dans les deux, ce qui en fait la seule source.",
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^26.0.0",
+      "onFail": "download"
+    },
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.3.4",
+      "onFail": "download"
+    }
+  },
   "scripts": {
-    "dev:server": "pnpm --filter @spacesim/server dev",
-    "dev:web": "pnpm --filter @spacesim/web dev",
-    "dev:admin": "pnpm --filter @spacesim/admin dev",
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
-    "lint": "biome lint .",
-    "format": "biome format --write .",
-    "format:check": "biome format ."
+    "dev": "vp run -r --parallel dev",
+    "dev:server": "vp run -F @spacesim/server dev",
+    "dev:web": "vp run -F @spacesim/web dev",
+    "dev:admin": "vp run -F @spacesim/admin dev",
+    "test": "vp test",
+    "bench": "vp test bench --project @spacesim/server",
+    "check": "vp check",
+    "typecheck": "vp check --no-fmt --no-lint",
+    "lint": "vp lint",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.12",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vite-plus": "^0.3.1"
   }
 }

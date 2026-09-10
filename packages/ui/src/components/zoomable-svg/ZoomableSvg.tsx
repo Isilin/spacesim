@@ -89,7 +89,6 @@ export function ZoomableSvg({
   useEffect(() => {
     setView(home);
     // `home` est recréé à chaque rendu par l'appelant : on ne suit que ses valeurs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [home.x, home.y, home.width, home.height]);
 
   // Cadrage imposé par la navigation (recherche, « ma capitale »…).
@@ -220,6 +219,7 @@ export function ZoomableSvg({
 
   return (
     <div className={styles.zoomable}>
+      {/* oxlint-disable-next-line no-noninteractive-element-interactions -- role="application" ci-dessous en fait un widget clavier, pas une image. */}
       <svg
         ref={svgRef}
         className={className}
@@ -227,7 +227,7 @@ export function ZoomableSvg({
         // "application" (pas "img") : depuis le clavier ajouté au chantier 27.21, ce n'est plus une image statique mais un widget avec son propre modèle d'interaction (flèches/±/0).
         role="application"
         aria-label={ariaLabel}
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: svg n'est pas nativement interactif, mais role="application" ci-dessus en fait justement un widget clavier à part entière (pan/zoom) — le tabIndex est l'affordance requise, pas une erreur.
+        // oxlint-disable-next-line no-noninteractive-tabindex -- svg n'est pas nativement interactif, mais role="application" ci-dessus en fait justement un widget clavier à part entière (pan/zoom) — le tabIndex est l'affordance requise, pas une erreur.
         tabIndex={0}
         onWheel={onWheel}
         onPointerDown={onPointerDown}

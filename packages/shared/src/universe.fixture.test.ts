@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { isDrifter, primaryOf } from "./model/universe.js";
 import { hashSeed } from "./rng.js";
 import { GENERATOR_VERSION, generateUniverse } from "./universe.js";

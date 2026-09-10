@@ -3,7 +3,7 @@ import {
   type CentralBody,
   type StarSystem,
 } from "@spacesim/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   centralBodySlots,
   pairReadingScale,

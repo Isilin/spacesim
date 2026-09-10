@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   BLACK_HOLE_PLACEMENTS,
   BLACK_HOLE_TYPE_IDS,

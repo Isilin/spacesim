@@ -1,3 +1,6 @@
 {
-  "recommendations": ["biomejs.biome", "ms-vscode-remote.remote-containers"]
+  "recommendations": [
+    "VoidZero.vite-plus-extension-pack",
+    "ms-vscode-remote.remote-containers"
+  ]
 }

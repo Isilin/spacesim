@@ -259,10 +259,8 @@ export function MapLabels({
       {items.map((item, index) => (
         // Un sprite est un objet de scène three.js, ni focusable ni clavier : le chemin
         // accessible est la liste DOM parallèle (chantier 31.16), qui porte les mêmes
-        // actions. La directive ci-dessous doit rester la DERNIÈRE ligne avant l'élément —
-        // biome n'attache une suppression qu'à la ligne qui la suit immédiatement, et deux
-        // lignes de commentaire s'étaient glissées entre les deux (chantier 40).
-        // biome-ignore lint/a11y/noStaticElementInteractions: voir ci-dessus.
+        // actions. oxlint ne signale pas les objets de scène ; la justification reste ici
+        // en prose, plus en directive (chantier 48).
         <sprite
           key={item.id}
           ref={(node) => {

@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { Popover } from "./Popover.js";
 
 afterEach(cleanup);
@@ -8,7 +8,7 @@ afterEach(cleanup);
 /**
  * `Popover` est le jumeau NON modal de `Modal` (chantier 27.21), et c'est toute la
  * difficulté : il porte lui aussi `role="dialog"` sur un `div`, avec une suppression
- * `biome-ignore` qui justifie de ne pas prendre `<dialog>` natif — précisément parce que
+ * `oxlint-disable` qui justifie de ne pas prendre `<dialog>` natif — précisément parce que
  * celui-ci est modal par défaut. Ce qui distingue les deux composants ne se voit donc que
  * dans leur comportement : pas de piège à focus ici, pas de restauration, juste Échap.
  *

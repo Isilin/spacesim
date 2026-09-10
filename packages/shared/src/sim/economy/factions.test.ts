@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { Rng } from "../../rng.js";
 import type { FactionState } from "../../model/social.js";
 import {

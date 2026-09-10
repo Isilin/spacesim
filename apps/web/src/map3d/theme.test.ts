@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { zoneColorToken } from "../zonePalette.js";
 import { resetThemeCache, slotColor, themeColor, zoneColor } from "./theme.js";
 

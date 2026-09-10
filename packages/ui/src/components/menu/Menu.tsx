@@ -53,6 +53,7 @@ export function Menu({ items = [], style, onClose }: MenuProps) {
   };
 
   return (
+    // oxlint-disable-next-line interactive-supports-focus -- le focus vit sur les éléments de menu, pas sur le conteneur ; la navigation clavier est gérée par handleKeyDown.
     <div
       ref={menuRef}
       role="menu"

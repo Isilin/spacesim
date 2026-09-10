@@ -1,6 +1,6 @@
 import type { CentralBody, StarSystem } from "@spacesim/shared";
 import { blackHoleType, whiteHoleType } from "@spacesim/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { systemNodeColor } from "./systemNodeColor.js";
 
 /**

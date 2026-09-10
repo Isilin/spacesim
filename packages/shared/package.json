@@ -5,12 +5,7 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "scripts": {
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit"
-  },
   "devDependencies": {
-    "typescript": "catalog:",
-    "vitest": "^5.0.0"
+    "typescript": "catalog:"
   }
 }
