@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { type BatchPart, buildBatches } from "./HoloBatch.js";
 import { buildGeometry } from "./partGeometry.js";
 

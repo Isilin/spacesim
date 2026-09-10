@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { DEFAULT_BALANCE } from "../../balance.js";
 import { BASE_STORAGE, MAX_QUEUE_LENGTH } from "../../constants.js";
 import { BUILDINGS } from "../../content/buildings.js";

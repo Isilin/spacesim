@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { Galaxy } from "../../model/universe.js";
 import { createRng } from "../../rng.js";
 import { generateUniverse } from "../../universe.js";

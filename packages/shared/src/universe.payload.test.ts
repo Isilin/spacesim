@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { redactUniverse } from "./sim/exploration/fog.js";
 import { generateUniverse } from "./universe.js";
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { CentralBody, Planet, StarSystem } from "../../model/universe.js";
 import {
   angularSpeedOf,

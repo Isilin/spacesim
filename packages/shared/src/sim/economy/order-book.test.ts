@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { MarketOrder } from "../../model/social.js";
 import { bestPrices, matchOrders } from "./order-book.js";
 

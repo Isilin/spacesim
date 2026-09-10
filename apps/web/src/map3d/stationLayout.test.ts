@@ -1,5 +1,5 @@
 import { INSTALLATIONS, type Station } from "@spacesim/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { stationLayout } from "./stationLayout.js";
 
 function station(over: Partial<Station> = {}): Station {

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { db, schema } from "../db/index.js";
 import { GameEngine } from "../game.js";
 import { ALL_TABLES } from "../test-harness.js";

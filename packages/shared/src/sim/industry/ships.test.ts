@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { SHIPS } from "../../content/ships.js";
 import type { Colony } from "../../model/industry.js";
 import type { Route } from "../../model/transport.js";

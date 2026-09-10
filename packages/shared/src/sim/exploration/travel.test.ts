@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   GATEWAY_JUMP_WEIGHT,
   JUMP_REFERENCE_LENGTH,

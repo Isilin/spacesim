@@ -4,7 +4,7 @@ import {
   WHITE_HOLE_TYPE_IDS,
   type SystemProfile,
 } from "@spacesim/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { i18n } from "./i18n.js";
 import { centralBodyLabel, systemProfileLabel } from "./labels.js";
 

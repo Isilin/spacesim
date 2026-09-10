@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { MAX_EMPIRES_PER_GALAXY } from "../../constants.js";
 import { planetClass } from "../../content/astro/planet-classes.js";
 import { isDrifter, starsOf } from "../../model/universe.js";

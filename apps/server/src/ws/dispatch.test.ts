@@ -1,5 +1,5 @@
 import { ClientMessageSchema, type ClientMessage } from "@spacesim/protocol";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { GameEngine } from "../game.js";
 import { resetDb } from "../test-harness.js";
 import { dispatchClientMessage } from "./dispatch.js";

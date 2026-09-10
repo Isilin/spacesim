@@ -1,6 +1,6 @@
 import type { ServerMessage } from "@spacesim/protocol";
 import { renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { useGameStore } from "../state/game-store.js";
 import { useGameConnection } from "./useGameConnection.js";
 

@@ -1,5 +1,5 @@
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   plugins: [react()],
@@ -10,5 +10,8 @@ export default defineConfig({
       "/health": { target: "http://127.0.0.1:3001" },
       "/api/admin": { target: "http://127.0.0.1:3001" },
     },
+  },
+  test: {
+    environment: "jsdom",
   },
 });

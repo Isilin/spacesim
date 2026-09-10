@@ -3,7 +3,7 @@ import {
   emptyResources,
   generateUniverse,
 } from "@spacesim/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { Empire } from "../empire.js";
 import { GameRuntime } from "./game-runtime.js";
 import {

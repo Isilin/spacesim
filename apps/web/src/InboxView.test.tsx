@@ -1,7 +1,7 @@
 import type { Colony, EmpireEvent, ClientUniverse } from "@spacesim/shared";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { InboxView } from "./InboxView.js";
 import { useGameStore } from "./state/game-store.js";
 

@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig } from "vite-plus";
 
 // Tests moteur : DB SQLite en mémoire, jamais le fichier de partie réel.
 // `env` est appliqué avant l'import des modules de test, donc avant que

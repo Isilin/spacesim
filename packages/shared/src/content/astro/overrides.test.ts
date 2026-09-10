@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { beltType } from "./belt-types.js";
 import { bodyEnvironment, bodyStructure } from "./body-defs.js";
 import { moonVariant } from "./moon-variants.js";

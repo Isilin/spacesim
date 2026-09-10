@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { INSTALLATIONS } from "../../content/installations.js";
 import { ZONE_TYPES } from "../../content/zone-types.js";
 import type { Station } from "../../model/industry.js";

@@ -5,17 +5,16 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "vitest run",
     "e2e": "playwright test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@react-three/drei": "catalog:",
+    "@react-three/fiber": "catalog:",
     "@spacesim/i18n-config": "workspace:*",
     "@spacesim/protocol": "workspace:*",
     "@spacesim/shared": "workspace:*",
     "@spacesim/ui": "workspace:*",
-    "@react-three/drei": "catalog:",
-    "@react-three/fiber": "catalog:",
     "@use-gesture/react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
@@ -26,16 +25,15 @@
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
-    "@types/three": "catalog:",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@types/three": "catalog:",
     "@vitejs/plugin-react": "^6.1.1",
     "jsdom": "^30.0.1",
     "typescript": "catalog:",
-    "vite": "^8.2.2",
-    "vitest": "^5.0.0"
+    "vite": "^8.2.2"
   }
 }

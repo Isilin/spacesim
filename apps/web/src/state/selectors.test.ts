@@ -5,7 +5,7 @@ import type {
   StarSystem,
   ClientUniverse,
 } from "@spacesim/shared";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { useGameStore } from "./game-store.js";
 import {
   findBodyById,

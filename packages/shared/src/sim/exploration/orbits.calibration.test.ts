@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { DEFAULT_BALANCE } from "../../balance.js";
 import { TICK_MS } from "../../constants.js";
 import { generateUniverse } from "../../universe.js";

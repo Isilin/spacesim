@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { Colony } from "../../model/industry.js";
 import { emptyResources } from "../industry/colony.js";
 import { emptyOrbital } from "../industry/orbital.js";

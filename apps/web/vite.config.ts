@@ -1,5 +1,5 @@
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { configDefaults, defineConfig } from "vite-plus";
 
 export default defineConfig({
   plugins: [react()],
@@ -14,5 +14,11 @@ export default defineConfig({
       // Outils de dev (spawnpirate, grant, fastforward…) — hors production.
       "/dev": { target: "http://127.0.0.1:3001" },
     },
+  },
+  test: {
+    environment: "jsdom",
+    // e2e/ est la suite Playwright (chantier 5.3) : specs `*.spec.ts` distinctes
+    // des tests unitaires, jamais chargées par vitest.
+    exclude: [...configDefaults.exclude, "e2e/**"],
   },
 });

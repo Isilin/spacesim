@@ -1,5 +1,5 @@
 import { RESOURCES, type Station } from "@spacesim/shared";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { GameEngine } from "../../game.js";
 import { empireFor, resetDb } from "../../test-harness.js";
 
