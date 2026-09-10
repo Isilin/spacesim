@@ -16,3 +16,6 @@ backups/
 # Playwright (chantier 5.3)
 apps/web/test-results/
 apps/web/playwright-report/
+
+# Couverture (chantier 49) : rapport local, jamais commis.
+coverage/
