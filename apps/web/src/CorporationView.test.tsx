@@ -7,7 +7,14 @@ import type {
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 import { CorporationView } from "./CorporationView.js";
 // La vue ne tire aucun module de traduction par transitivité (elle n'utilise pas
 // `labels.js`), donc l'instance i18next n'existerait pas sous test et `t()` renverrait
