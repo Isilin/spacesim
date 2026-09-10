@@ -94,13 +94,13 @@ services:
       - "${SPACESIM_ADMIN_PORT:-5174}:5174"
       - "${SPACESIM_SERVER_PORT:-3001}:3001"
 
-  # Tests unitaires de la simulation (packages/shared).
+  # Suite complète : les sept paquets en projets d'un seul runner vitest (chantier 48).
   test:
     <<: *base
     command: sh -c "pnpm install --frozen-lockfile && pnpm test"
     profiles: ["tools"]
 
-  # Vérification de types sur les trois packages.
+  # Types seuls (tsgolint). `docker compose run --rm test pnpm check` fait format+lint+types.
   typecheck:
     <<: *base
     command: sh -c "pnpm install --frozen-lockfile && pnpm typecheck"

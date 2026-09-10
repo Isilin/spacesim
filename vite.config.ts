@@ -61,6 +61,19 @@ export default defineConfig({
   },
 
   /**
+   * Garde-fou pré-commit. Le dépôt n'avait AUCUN hook git : la qualité n'était tenue
+   * qu'en CI, et une branche partait rouge sans qu'on le sache avant le push.
+   *
+   * Le hook n'est volontairement PAS installé par défaut (`vp hooks`) : il s'exécute sur
+   * l'HÔTE, et cette machine n'a ni Node ni pnpm natifs — tout passe par Docker. Un hook
+   * qui appelle `vp` y bloquerait chaque commit. La déclaration reste ici, prête pour un
+   * poste qui a `vp` en natif, et `vp check --fix` reste disponible en conteneur.
+   */
+  staged: {
+    "*.{ts,tsx,js,jsx,mjs,json,css}": "vp check --fix",
+  },
+
+  /**
    * Reprise à l'identique des réglages de `biome.json`, en noms compatibles Prettier.
    * Deux défauts d'oxfmt sont neutralisés parce qu'ils feraient bouger des fichiers que
    * Biome ne touchait pas : le tri des `package.json`, et le tri des imports — que

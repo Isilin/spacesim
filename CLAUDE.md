@@ -42,7 +42,10 @@ Design et roadmap : [docs/design.md](docs/design.md). Référence technique prof
 - **Pas de conteneur DI** — composition explicite au boot (`composeEngine`). Voir
   [ADR 0001](docs/adr/0001-composition-explicite-sans-conteneur-di.md).
 - **Cette machine n'a pas Node/pnpm natif** — tout passe par Docker (backend WSL2), voir plus
-  bas.
+  bas. C'est aussi pourquoi aucun hook git n'est installé : il tournerait sur l'hôte.
+- **Une seule chaîne d'outils, `vp`** — Vite+ tient le build, les tests (vitest 4.1 qu'il
+  épingle), le format, le lint type-aware et l'orchestration. Il n'y a plus ni Biome, ni
+  `pnpm -r`, ni `tsc --noEmit`. Voir [ADR 0022](docs/adr/0022-vite-plus-comme-chaine-unique.md).
 - Code en anglais, UI en français.
 
 ## Workflow de changement (règles Karpathy)
@@ -58,12 +61,19 @@ Design et roadmap : [docs/design.md](docs/design.md). Référence technique prof
 ## Commandes
 
 ```
+pnpm dev                                # les trois serveurs en parallèle (vp run -r)
 pnpm dev:server / dev:web / dev:admin   # ports 3001 / 5173 / 5174
-pnpm test / typecheck / format / format:check / lint
+pnpm check                              # format + lint + types en une passe
+pnpm test / bench
+pnpm typecheck / format / format:check / lint   # les morceaux de `check`, séparément
 ```
 
-`format:check` est obligatoire sur tout le dépôt. Le lint est renforcé progressivement, zone
-par zone assainie.
+`pnpm check` est la porte : `vp check` enchaîne oxfmt, oxlint et tsgolint. Il est obligatoire
+sur tout le dépôt, et remplace les six `tsc --noEmit` d'avant le chantier 48.
+
+Le lint se découpe par RÈGLE, pas par zone : les familles qu'oxlint ouvre et que le dépôt n'a
+jamais fait passer sont listées et désactivées dans `vite.config.ts`, avec leur volume. En
+ouvrir une est un chantier de code à part entière.
 
 ## Docker (pas de Node/pnpm natif sur cette machine)
 
