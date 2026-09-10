@@ -1,6 +1,25 @@
 import react from "@vitejs/plugin-react";
 import { configDefaults, defineConfig } from "vite-plus";
 
+/**
+ * Le même proxy sert le serveur de dev ET `vp preview` — Vite n'hérite pas `server.proxy`
+ * dans `preview`, il faut le poser aux deux endroits.
+ *
+ * `preview` n'est pas un confort : depuis le chantier 49, la suite Playwright tourne contre
+ * un BUILD, pas contre le serveur de dev. Les budgets d'images par seconde gardaient
+ * jusque-là du code non minifié, sans tree-shaking ni Lightning CSS — ils ne mesuraient pas
+ * ce que le joueur reçoit.
+ */
+const proxy = {
+  "/ws": { target: "ws://127.0.0.1:3001", ws: true },
+  "/auth": { target: "http://127.0.0.1:3001" },
+  "/health": { target: "http://127.0.0.1:3001" },
+  // Contenu publié au client (chantier 45.4) : les surcharges de catalogues astronomiques.
+  "/api": { target: "http://127.0.0.1:3001" },
+  // Outils de dev (spawnpirate, grant, fastforward…) — hors production.
+  "/dev": { target: "http://127.0.0.1:3001" },
+};
+
 export default defineConfig({
   plugins: [react()],
   run: {
@@ -18,15 +37,12 @@ export default defineConfig({
     // serveur ne le connaît pas.
     host: process.env.HOST,
     port: 5173,
-    proxy: {
-      "/ws": { target: "ws://127.0.0.1:3001", ws: true },
-      "/auth": { target: "http://127.0.0.1:3001" },
-      "/health": { target: "http://127.0.0.1:3001" },
-      // Contenu publié au client (chantier 45.4) : les surcharges de catalogues astronomiques.
-      "/api": { target: "http://127.0.0.1:3001" },
-      // Outils de dev (spawnpirate, grant, fastforward…) — hors production.
-      "/dev": { target: "http://127.0.0.1:3001" },
-    },
+    proxy,
+  },
+  preview: {
+    host: process.env.HOST,
+    port: 5173,
+    proxy,
   },
   test: {
     environment: "jsdom",
