@@ -24,9 +24,9 @@ x-base: &base
     - server_modules:/app/apps/server/node_modules
     - web_modules:/app/apps/web/node_modules
     - admin_modules:/app/apps/admin/node_modules
-    # Vite+ télécharge la version de Node demandée par `devEngines` au premier lancement.
-    # Sans ce volume, chaque `docker compose run` la retéléchargerait.
-    - vp_toolchain:/home/vp/.local/share/vite-plus
+    # Vite+ range sa toolchain dans ~/.vite-plus et y télécharge la version de Node demandée
+    # par `devEngines`. Sans ce volume, chaque `docker compose run` la retéléchargerait.
+    - vp_toolchain:/home/vp/.vite-plus
 
 services:
   # Postgres de dev (chantier 20.4) : univers persistant d'une session Docker à
@@ -121,7 +121,7 @@ services:
       - server_modules:/app/apps/server/node_modules
       - web_modules:/app/apps/web/node_modules
       - playwright_browsers:/home/vp/.cache/ms-playwright
-      - vp_toolchain:/home/vp/.local/share/vite-plus
+      - vp_toolchain:/home/vp/.vite-plus
     command: >
       sh -c "pnpm install --frozen-lockfile &&
              pnpm --filter @spacesim/web exec playwright install chromium &&

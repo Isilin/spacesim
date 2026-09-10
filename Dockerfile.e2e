@@ -19,6 +19,12 @@ RUN PLAYWRIGHT_VERSION="$(node -p "require('/tmp/web-package.json').devDependenc
   && npx -y "playwright@${PLAYWRIGHT_VERSION}" install-deps chromium \
   && rm /tmp/web-package.json
 
+# `npx` passe par le shim de Vite+, qui installe au passage un runtime JS dans
+# `~/.vite-plus/js_runtime`. L'étape ci-dessus tourne en root : sans ce chown, `vp` ne
+# peut plus y écrire une fois revenu en `vp`, et l'e2e s'arrête sur « Failed to install
+# Node : Permission denied ».
+RUN chown -R vp:vp /home/vp/.vite-plus
+
 USER vp
 WORKDIR /app
 ENTRYPOINT ["/usr/local/bin/spacesim-entrypoint"]
