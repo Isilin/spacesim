@@ -60,3 +60,49 @@ jobs:
       - run: vp -C apps/web exec playwright install-deps chromium
       - run: vp -C apps/web exec playwright install chromium
       - run: vp run -F @spacesim/web e2e
+
+  # Le serveur n'a pas de build : il tourne depuis ses sources (ADR 0023). Ce qui manquait
+  # n'était donc pas une étape de compilation mais la PREUVE que le chemin de production
+  # démarre — `NODE_ENV=production` prend `GameEngine.load()`, un autre code que le
+  # `loadOrBootstrap()` de tous les autres jobs.
+  #
+  # L'image `Dockerfile.server` n'est pas construite ici : elle est mince, et c'est le
+  # chemin de code qu'on veut garder vert à chaque PR, pas la recette d'empaquetage.
+  server-prod-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: spacesim
+          POSTGRES_USER: spacesim
+          POSTGRES_PASSWORD: spacesim
+        options: >-
+          --health-cmd "pg_isready -U spacesim -d spacesim"
+          --health-interval 2s --health-timeout 3s --health-retries 10
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v7
+      - uses: voidzero-dev/setup-vp@v1.19.0
+        with:
+          cache: true
+      - run: vp install
+      - name: Amorcer et servir en conditions de production
+        env:
+          NODE_ENV: production
+          # Base neuve : sans ce drapeau le démarrage DOIT échouer, et c'est l'invariant.
+          # Ici on veut l'autre moitié — qu'il sache créer l'univers quand on le demande.
+          SPACESIM_BOOTSTRAP: "1"
+          DATABASE_URL: postgres://spacesim:spacesim@localhost:5432/spacesim
+        run: |
+          vp run -F @spacesim/server start &
+          for _ in $(seq 1 60); do
+            if curl -sf -o /dev/null http://127.0.0.1:3001/health; then
+              echo "le serveur répond sur /health"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "le serveur n'a pas répondu sur /health" >&2
+          exit 1

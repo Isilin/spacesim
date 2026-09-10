@@ -12,6 +12,9 @@ export default defineConfig({
       // et sous Playwright. `tsx` reste l'exécuteur — c'est un pair optionnel supporté
       // de vite-plus-core, pas un contournement.
       dev: { command: "tsx watch src/index.ts", cache: false },
+      // Le pendant sans `watch`, pour l'image de production (Dockerfile.server,
+      // chantier 49). Même exécuteur, mêmes sources : il n'y a pas de build à part.
+      start: { command: "tsx src/index.ts", cache: false },
     },
   },
   test: {
