@@ -2,7 +2,8 @@
 # système de Chromium, pour ne pas alourdir les services app/test/typecheck avec
 # les libs navigateur (~300 Mo). Le binaire Chromium lui-même s'installe au premier
 # `docker compose run e2e` (mis en cache dans le volume nommé playwright_browsers).
-FROM ghcr.io/voidzero-dev/vite-plus:0.3.1
+ARG VP_VERSION=0.3.1
+FROM ghcr.io/voidzero-dev/vite-plus:${VP_VERSION}
 
 USER root
 COPY docker-entrypoint.sh /usr/local/bin/spacesim-entrypoint

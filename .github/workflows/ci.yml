@@ -29,6 +29,11 @@ jobs:
           key: vite-task-${{ runner.os }}-${{ github.sha }}
           restore-keys: vite-task-${{ runner.os }}-
       - run: vp install
+      # Trois épinglages de Vite+ doivent bouger ensemble : le CLI, les deux tags
+      # d'image, et le fournisseur de couverture. Un décalage ne se voit qu'à
+      # l'exécution — ce contrôle le rend immédiat, ici comme au démarrage des
+      # conteneurs (docker-entrypoint.sh).
+      - run: sh scripts/check-toolchain.sh package.json
       # Format, lint et types en une passe, à la place de `format:check` + `lint` +
       # six `tsc --noEmit`.
       - run: vp check

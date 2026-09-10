@@ -28,4 +28,17 @@ for dir in /app/node_modules /app/packages/*/node_modules /app/apps/*/node_modul
   fi
 done
 
+# Les épinglages de Vite+ vivent à trois endroits (package.json, les deux tags d'image,
+# le fournisseur de couverture) et rien ne vérifiait leur accord. Le contrôle tourne ici
+# parce que c'est le seul point commun à tous les services, et avant toute installation.
+#
+# Le script est lu depuis le bind mount plutôt que copié dans l'image : il compare l'image
+# au dépôt, et une copie figée dans l'image pourrait mentir sur l'une des deux moitiés.
+# `sh` explicite — le bit d'exécution ne survit pas toujours à un checkout Windows.
+if [ -f /app/scripts/check-toolchain.sh ]; then
+  sh /app/scripts/check-toolchain.sh
+else
+  echo "entrypoint: scripts/check-toolchain.sh introuvable, accord de versions NON vérifié" >&2
+fi
+
 exec "$@"
