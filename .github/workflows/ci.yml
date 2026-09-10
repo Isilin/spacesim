@@ -37,6 +37,9 @@ jobs:
       # Format, lint et types en une passe, à la place de `format:check` + `lint` +
       # six `tsc --noEmit`.
       - run: vp check
+      # Rien ne construisait en CI : une casse de build atterrissait sur main sans
+      # bruit. Le cache de tâches rend les runs suivants gratuits.
+      - run: vp run -r build
       - run: vp test
 
   e2e:
