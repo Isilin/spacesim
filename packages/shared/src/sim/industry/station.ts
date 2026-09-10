@@ -84,9 +84,10 @@ export function enqueueZone(
   // `balance` seize fois. L'injection n'est pas encore descendue jusqu'aux zones et
   // installations de station — lacune consignée dans `docs/design.md` (chantier 23,
   // « 15-20 points d'appel »). Retirer le paramètre changerait une signature publique pour
-  // cacher un travail qui reste à faire. La directive est en DERNIÈRE ligne : biome
-  // n'attache une suppression qu'à ce qui la suit immédiatement (chantier 40).
-  // biome-ignore lint/correctness/noUnusedFunctionParameters: voir ci-dessus.
+  // cacher un travail qui reste à faire. La directive est en DERNIÈRE ligne : oxlint,
+  // comme biome avant lui, n'attache une suppression qu'à ce qui la suit immédiatement
+  // (chantier 40).
+  // oxlint-disable-next-line no-unused-vars -- voir ci-dessus.
   balance: BalanceConstants = DEFAULT_BALANCE,
 ): EnqueueZoneResult {
   const def = zoneTypes[zoneTypeId];
@@ -180,9 +181,10 @@ export function enqueueInstallation(
   // `balance` seize fois. L'injection n'est pas encore descendue jusqu'aux zones et
   // installations de station — lacune consignée dans `docs/design.md` (chantier 23,
   // « 15-20 points d'appel »). Retirer le paramètre changerait une signature publique pour
-  // cacher un travail qui reste à faire. La directive est en DERNIÈRE ligne : biome
-  // n'attache une suppression qu'à ce qui la suit immédiatement (chantier 40).
-  // biome-ignore lint/correctness/noUnusedFunctionParameters: voir ci-dessus.
+  // cacher un travail qui reste à faire. La directive est en DERNIÈRE ligne : oxlint,
+  // comme biome avant lui, n'attache une suppression qu'à ce qui la suit immédiatement
+  // (chantier 40).
+  // oxlint-disable-next-line no-unused-vars -- voir ci-dessus.
   balance: BalanceConstants = DEFAULT_BALANCE,
 ): EnqueueInstallationResult {
   const def = installations[installationId];

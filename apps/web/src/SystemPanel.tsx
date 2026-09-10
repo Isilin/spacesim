@@ -122,6 +122,7 @@ export function SystemPanel({
    */
   const renderBody = (p: (typeof system.planets)[number]) => {
     return (
+      // oxlint-disable-next-line no-noninteractive-element-interactions -- la ligne devient un bouton quand onOpenBody existe, avec role et tabIndex posés juste en dessous.
       <li
         key={p.id}
         className={`planet body-row ${p.kind === "moon" ? "moon-row" : ""}`}

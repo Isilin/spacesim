@@ -8,7 +8,7 @@ afterEach(cleanup);
 
 /**
  * Ce que ces tests protègent (chantier 43.7) : le travail d'accessibilité du 27.21, qui
- * n'avait aucune couverture. `Modal` porte deux suppressions `biome-ignore` justifiant de
+ * n'avait aucune couverture. `Modal` porte deux suppressions `oxlint-disable` justifiant de
  * ne PAS utiliser `<dialog>` natif — le prix de ce choix est que le piège à focus, Échap
  * et la restauration du focus sont écrits à la main. Écrits à la main et jamais vérifiés,
  * jusqu'ici.

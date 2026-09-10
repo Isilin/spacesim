@@ -57,8 +57,10 @@ export function Popover({
 
   return (
     // <dialog> natif est modal par défaut (backdrop, showModal()) ; ce panneau est volontairement non modal, role="dialog" sur un div est le motif standard pour ce cas.
+    // oxlint-disable-next-line no-noninteractive-element-interactions -- panneau non modal, le clavier est géré par handleKeyDown ci-dessous.
     <div
       ref={ref}
+      // oxlint-disable-next-line prefer-tag-over-role -- voir ci-dessus : <dialog> natif serait modal.
       role="dialog"
       aria-label={ariaLabel}
       className={styles.popover}

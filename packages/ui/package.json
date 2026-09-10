@@ -7,9 +7,6 @@
     "./styles.css": "./src/styles.css",
     "./tokens": "./src/tokens.ts"
   },
-  "scripts": {
-    "typecheck": "tsc --noEmit"
-  },
   "peerDependencies": {
     "react": "catalog:",
     "react-dom": "catalog:"

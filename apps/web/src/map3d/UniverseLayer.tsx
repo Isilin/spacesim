@@ -311,7 +311,7 @@ export function UniverseLayer({
                 tout objet invisible, et les galaxies deviendraient incliquables.
                 `depthWrite={false}` avec : un volume qui n'écrit rien en couleur mais
                 écrit en profondeur masquerait les étoiles derrière lui. */}
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: `mesh` est un objet de
+            {/* a11y, non signalé par oxlint (chantier 48) : `mesh` est un objet de
                 scène three.js, pas un nœud DOM — il ne peut recevoir ni focus ni
                 événement clavier. Le chemin accessible est la liste DOM parallèle
                 rendue à côté (chantier 31.16), qui porte les mêmes actions. */}

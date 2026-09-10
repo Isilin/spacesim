@@ -171,7 +171,7 @@ function OrbitingBody({
   });
   return (
     <group ref={ref}>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: objet de scène three.js, ni
+      {/* a11y, non signalé par oxlint (chantier 48) : objet de scène three.js, ni
           focusable ni clavier — le chemin accessible est la liste DOM parallèle
           (chantier 31.16). */}
       <group onClick={onSelect} onDoubleClick={onOpen}>

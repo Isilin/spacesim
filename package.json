@@ -9,13 +9,13 @@
     "dev:admin": "pnpm --filter @spacesim/admin dev",
     "test": "vp test",
     "bench": "vp test bench --project @spacesim/server",
-    "typecheck": "pnpm -r typecheck",
-    "lint": "biome lint .",
-    "format": "biome format --write .",
-    "format:check": "biome format ."
+    "check": "vp check",
+    "typecheck": "vp check --no-fmt --no-lint",
+    "lint": "vp lint",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.12",
     "typescript": "catalog:",
     "vite-plus": "^0.3.1"
   }

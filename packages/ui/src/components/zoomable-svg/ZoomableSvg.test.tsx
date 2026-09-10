@@ -34,7 +34,7 @@ describe("ZoomableSvg — pilotage clavier (chantier 27.21)", () => {
     );
     const svg = screen.getByRole("application", { name: "Carte de l'univers" });
     // `tabIndex` est l'affordance qui rend la promesse tenable : sans lui, aucun clavier
-    // n'atteint jamais le widget. C'est ce que justifie son `biome-ignore`.
+    // n'atteint jamais le widget. C'est ce que justifie son `oxlint-disable`.
     expect(svg.getAttribute("tabindex")).toBe("0");
     expect(viewBox()).toEqual([0, 0, 100, 100]);
   });

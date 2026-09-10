@@ -397,6 +397,7 @@ export function ShipHullDiagram({
         viewBox="0 0 160 220"
         width={size}
         height={size * 1.375}
+        // oxlint-disable-next-line prefer-tag-over-role -- <img> ne peut pas porter un SVG construit en JSX ; role="img" + aria-label est le motif pour un schéma inline.
         role="img"
         aria-label={t("shipHullDiagram.ariaLabel", {
           chassis: chassisLabel(chassis.id).name,
@@ -458,7 +459,7 @@ export function ShipHullDiagram({
             const selected =
               selectedSlot?.type === type && selectedSlot.index === i;
             return (
-              // biome-ignore lint/a11y/noStaticElementInteractions: emplacements de coque cliqués sur des <g> SVG, sans équivalent clavier aujourd'hui — voir ResearchView, même chantier d'accessibilité en attente.
+              // a11y, non signalé par oxlint (chantier 48) : emplacements de coque cliqués sur des <g> SVG, sans équivalent clavier aujourd'hui — voir ResearchView, même chantier d'accessibilité en attente.
               <g
                 key={`${type}-${i}`}
                 transform={`translate(${pos.x} ${pos.y})`}

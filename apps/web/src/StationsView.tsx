@@ -100,7 +100,6 @@ export function StationsView({ effects, universe, portalLinks }: Props) {
       );
       if (!stillBuilt) setSelection(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [station?.zones, station?.zoneQueue]);
 
   if (!station) {

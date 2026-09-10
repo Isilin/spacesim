@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "typecheck": "tsc --noEmit",
     "api:generate": "node scripts/generate-api.mjs"
   },
   "dependencies": {
