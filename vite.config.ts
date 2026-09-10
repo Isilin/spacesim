@@ -23,6 +23,22 @@ const ignorePatterns = [
 ];
 
 export default defineConfig({
+  /**
+   * Le dépôt n'avait aucun orchestrateur : `pnpm -r` lançait tout, dans l'ordre du
+   * workspace, sans graphe ni cache. Un script de `package.json` n'est PAS caché par
+   * défaut — déclarer une tâche dans la config est ce qui lui donne cache et
+   * `dependsOn` (voir `apps/web` et `apps/admin`).
+   */
+  run: {
+    cache: {
+      tasks: true,
+      // Les scripts qui restent (`dev:*`, `api:generate`, `loadtest`, `db:*`) démarrent
+      // un processus ou parlent à un service vivant : les cacher rendrait le résultat
+      // de la fois d'avant.
+      scripts: false,
+    },
+  },
+
   test: {
     /**
      * Les six paquets porteurs de tests tournaient dans six processus vitest lancés par

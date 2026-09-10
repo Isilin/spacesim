@@ -3,8 +3,6 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
     "api:generate": "node scripts/generate-api.mjs"
   },
   "dependencies": {
@@ -26,6 +24,6 @@
     "jsdom": "^30.0.1",
     "orval": "^8.30.0",
     "typescript": "catalog:",
-    "vite": "^8.2.2"
+    "vite": "npm:@voidzero-dev/vite-plus-core@^0.3.1"
   }
 }

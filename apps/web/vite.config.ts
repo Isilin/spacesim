@@ -3,7 +3,20 @@ import { configDefaults, defineConfig } from "vite-plus";
 
 export default defineConfig({
   plugins: [react()],
+  run: {
+    tasks: {
+      // Déclarées ici plutôt qu'en scripts : c'est ce qui leur donne le cache de
+      // tâches. `dev` sert un processus persistant, jamais cachable.
+      build: { command: "vp build", output: ["dist/**"] },
+      dev: { command: "vp dev", cache: false },
+    },
+  },
   server: {
+    // Compose pose HOST=0.0.0.0 — le serveur de jeu en a besoin pour publier son port.
+    // Web et admin le LISENT ici plutôt que de recevoir un `--host` sur la ligne de
+    // commande : `vp run -r --parallel dev` passerait ce drapeau aux trois tâches, et le
+    // serveur ne le connaît pas.
+    host: process.env.HOST,
     port: 5173,
     proxy: {
       "/ws": { target: "ws://127.0.0.1:3001", ws: true },

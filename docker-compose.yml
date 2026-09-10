@@ -54,9 +54,7 @@ services:
     <<: *base
     command: >
       sh -c "pnpm install --frozen-lockfile &&
-             (pnpm --filter @spacesim/server dev &
-              pnpm --filter @spacesim/web dev --host 0.0.0.0 &
-              pnpm --filter @spacesim/admin dev --host 0.0.0.0)"
+             vp run -r --parallel dev"
     environment:
       DATABASE_URL: postgres://spacesim:spacesim@postgres:5432/spacesim
       # Le serveur bind 127.0.0.1 par défaut (posture prod) ; en conteneur cela rend

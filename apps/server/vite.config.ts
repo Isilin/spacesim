@@ -6,6 +6,14 @@ import { defineConfig } from "vite-plus";
 // `setupFiles` applique les migrations une fois par fichier isolé (chantier 20.1 :
 // `db/index.ts` ne les lance plus automatiquement à l'import).
 export default defineConfig({
+  run: {
+    tasks: {
+      // Le serveur n'a pas de build : il tourne depuis les sources en dev, en conteneur
+      // et sous Playwright. `tsx` reste l'exécuteur — c'est un pair optionnel supporté
+      // de vite-plus-core, pas un contournement.
+      dev: { command: "tsx watch src/index.ts", cache: false },
+    },
+  },
   test: {
     env: {
       SPACESIM_DB: ":memory:",

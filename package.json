@@ -4,9 +4,10 @@
   "version": "0.1.0",
   "packageManager": "pnpm@12.3.4",
   "scripts": {
-    "dev:server": "pnpm --filter @spacesim/server dev",
-    "dev:web": "pnpm --filter @spacesim/web dev",
-    "dev:admin": "pnpm --filter @spacesim/admin dev",
+    "dev": "vp run -r --parallel dev",
+    "dev:server": "vp run -F @spacesim/server dev",
+    "dev:web": "vp run -F @spacesim/web dev",
+    "dev:admin": "vp run -F @spacesim/admin dev",
     "test": "vp test",
     "bench": "vp test bench --project @spacesim/server",
     "check": "vp check",
