@@ -15,5 +15,9 @@ import { defineConfig } from "vite-plus";
  * ces tests décrivent des COMPORTEMENTS (focus, clavier, rôles ARIA), jamais des classes.
  */
 export default defineConfig({
-  test: { environment: "jsdom" },
+  test: {
+    environment: "jsdom",
+    // Node 26.8 masque le `localStorage` de jsdom — voir apps/web/vite.config.ts.
+    execArgv: ["--no-experimental-webstorage"],
+  },
 });

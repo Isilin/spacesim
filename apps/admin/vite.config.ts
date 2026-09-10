@@ -21,5 +21,7 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // Node 26.8 masque le `localStorage` de jsdom — voir apps/web/vite.config.ts.
+    execArgv: ["--no-experimental-webstorage"],
   },
 });

@@ -30,6 +30,22 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    /**
+     * Node 26.8 définit `globalThis.localStorage` : un accesseur qui AVERTIT et rend
+     * `undefined` tant que `--localstorage-file` n'est pas donné. Dans l'environnement
+     * jsdom de vitest, `window` EST `globalThis` — cette propriété propre l'emporte donc
+     * sur celle de jsdom, et `localStorage` vaut `undefined` alors que jsdom en fournit
+     * un parfaitement fonctionnel. Le drapeau retire le global de Node et laisse jsdom
+     * poser le sien.
+     *
+     * Ce n'est pas une conséquence du chantier 48 : le dépôt y échappait parce que
+     * l'image `node:26-bookworm-slim` en cache local portait un patch antérieur.
+     * Épingler Node dans le lockfile a rendu la panne reproductible — c'est le but.
+     *
+     * `execArgv` ne descend PAS de la config racine aux projets : il est répété dans
+     * `apps/admin` et `packages/ui`, les deux autres projets jsdom.
+     */
+    execArgv: ["--no-experimental-webstorage"],
     // e2e/ est la suite Playwright (chantier 5.3) : specs `*.spec.ts` distinctes
     // des tests unitaires, jamais chargées par vitest.
     exclude: [...configDefaults.exclude, "e2e/**"],

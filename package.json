@@ -3,6 +3,19 @@
   "private": true,
   "version": "0.1.0",
   "packageManager": "pnpm@12.3.4",
+  "//devEngines": "Le dépôt n'avait aucun champ engines : l'image Docker déclarait node 26 d'un côté, le workflow CI de l'autre, et rien ne vérifiait l'accord. `vp env` lit ce champ dans les deux, ce qui en fait la seule source.",
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^26.0.0",
+      "onFail": "download"
+    },
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.3.4",
+      "onFail": "download"
+    }
+  },
   "scripts": {
     "dev": "vp run -r --parallel dev",
     "dev:server": "vp run -F @spacesim/server dev",
