@@ -81,6 +81,15 @@ export default defineConfig({
         "apps/server/loadtest/**",
         "apps/admin/scripts/**",
         "packages/ui/design/**",
+        // Client orval, régénéré depuis le spec OpenAPI du serveur : 8 000 lignes que
+        // personne n'écrit, et dont la couverture ne dit rien de ce dépôt.
+        "apps/admin/src/api/generated/**",
+        // Échafaudage de test. Le compter reviendrait à mesurer la couverture du
+        // thermomètre.
+        "**/test-setup.ts",
+        "**/test-global-setup.ts",
+        "**/test-harness.ts",
+        "**/test-helpers.ts",
       ],
     },
   },
