@@ -21,6 +21,8 @@ x-base: &base
     - root_modules:/app/node_modules
     - shared_modules:/app/packages/shared/node_modules
     - protocol_modules:/app/packages/protocol/node_modules
+    - ui_modules:/app/packages/ui/node_modules
+    - i18n_config_modules:/app/packages/i18n-config/node_modules
     - server_modules:/app/apps/server/node_modules
     - web_modules:/app/apps/web/node_modules
     - admin_modules:/app/apps/admin/node_modules
@@ -118,6 +120,8 @@ services:
       - root_modules:/app/node_modules
       - shared_modules:/app/packages/shared/node_modules
       - protocol_modules:/app/packages/protocol/node_modules
+      - ui_modules:/app/packages/ui/node_modules
+      - i18n_config_modules:/app/packages/i18n-config/node_modules
       - server_modules:/app/apps/server/node_modules
       - web_modules:/app/apps/web/node_modules
       - playwright_browsers:/home/vp/.cache/ms-playwright
@@ -165,6 +169,8 @@ volumes:
   vp_toolchain:
   shared_modules:
   protocol_modules:
+  ui_modules:
+  i18n_config_modules:
   server_modules:
   web_modules:
   admin_modules:
