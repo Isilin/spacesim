@@ -1,7 +1,9 @@
 import { useFrame } from "@react-three/fiber";
 import {
+  angularSpeedAt,
   bodyPhysicals,
   bodyPositionAt,
+  PLANET_KEPLER_CONSTANT,
   sitePosition,
   spinAngleAt,
   bodyStructure,
@@ -18,7 +20,7 @@ import {
   type Station,
   type SystemSite,
 } from "@spacesim/shared";
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useMemo, useRef, type ReactNode } from "react";
 import { type Group, type InstancedMesh, type Mesh, Object3D } from "three";
 import { ASTEROID_SHAPES, asteroidGeometry } from "./asteroids.js";
 import {
@@ -42,7 +44,7 @@ import { BlackHole } from "./BlackHole.js";
 import { Crossers } from "./Crossers.js";
 import { StarBody } from "./StarBody.js";
 import { StationModel } from "./StationModel.js";
-import { TradingPostModel } from "./TradingPostModel.js";
+import { HABITAT_SPIN_TICKS, TradingPostModel } from "./TradingPostModel.js";
 import { orbitColor } from "./theme.js";
 import { obliquityRotation, orbitPlaneRotation } from "./orbitPlane.js";
 import type { Vec3 } from "./tiers.js";
@@ -240,7 +242,23 @@ export function RotatingBody({
  */
 const ASTEROIDS = 90;
 
-function AsteroidBelt({ belt }: { belt: StarSystem["belts"][number] }) {
+/** Culbute d'un rocher de ceinture : deux à vingt minutes par tour, comme un jour de planète. */
+const ROCK_TUMBLE_TICKS = [24, 240] as const;
+
+/**
+ * Objet de travail des matrices de rochers, alloué une fois pour toutes les ceintures : un
+ * `new` par rocher et par image faisait tomber une transition à dix images par seconde
+ * (`GalaxyLayer.tsx`, `useNodeScale`).
+ */
+const ROCK = new Object3D();
+
+function AsteroidBelt({
+  belt,
+  tickAt,
+}: {
+  belt: StarSystem["belts"][number];
+  tickAt: () => number;
+}) {
   const first = useRef<InstancedMesh>(null);
   const second = useRef<InstancedMesh>(null);
   const third = useRef<InstancedMesh>(null);
@@ -263,32 +281,58 @@ function AsteroidBelt({ belt }: { belt: StarSystem["belts"][number] }) {
   const tint = asteroidTint(belt);
   const perShape = Math.ceil(ASTEROIDS / ASTEROID_SHAPES);
 
-  useEffect(() => {
-    const dummy = new Object3D();
+  // Ce qui ne bouge pas se tire une fois, rocher par rocher ; seuls l'angle et la culbute
+  // avancent par image (chantier 50.11).
+  const rocks = useMemo(
+    () =>
+      Array.from({ length: ASTEROIDS }, (_, i) => {
+        // Dispersion dérivée de l'id : deux ceintures ne se ressemblent pas.
+        const spread = (seedOf(`${belt.id}:${i}`) - 0.5) * 14;
+        const radius = belt.orbitRadius + spread;
+        const tumbleTicks =
+          ROCK_TUMBLE_TICKS[0] +
+          seedOf(`${belt.id}:t${i}`) *
+            (ROCK_TUMBLE_TICKS[1] - ROCK_TUMBLE_TICKS[0]);
+        return {
+          radius,
+          spread,
+          start: (i / ASTEROIDS) * Math.PI * 2,
+          // Chaque rocher suit la loi des planètes à SON rayon : les internes doublent les
+          // externes, et l'anneau cisaille au lieu de tourner d'un bloc. « Un anneau n'a pas
+          // UNE position » reste vrai : c'est le rocher qui a un angle, et il tient à son rang.
+          speed: angularSpeedAt(radius, PLANET_KEPLER_CONSTANT),
+          lift: (seedOf(`${belt.id}:z${i}`) - 0.5) * 8,
+          size: 0.8 + seedOf(`${belt.id}:s${i}`) * 2.2,
+          tumble: (2 * Math.PI) / tumbleTicks,
+        };
+      }),
+    [belt],
+  );
+
+  useFrame(() => {
+    const tick = tickAt();
     for (const [shape, ref] of refs.entries()) {
       const mesh = ref.current;
       if (!mesh) continue;
       for (let n = 0; n < perShape; n++) {
         const i = shape * perShape + n;
-        const angle = (i / ASTEROIDS) * Math.PI * 2;
-        // Dispersion dérivée de l'id : deux ceintures ne se ressemblent pas.
-        const spread = (seedOf(`${belt.id}:${i}`) - 0.5) * 14;
-        const radius = belt.orbitRadius + spread;
-        dummy.position.set(
-          Math.cos(angle) * radius,
-          Math.sin(angle) * radius,
-          (seedOf(`${belt.id}:z${i}`) - 0.5) * 8,
+        const rock = rocks[i];
+        if (!rock) continue;
+        const angle = rock.start + rock.speed * tick;
+        const turn = rock.tumble * tick;
+        ROCK.position.set(
+          Math.cos(angle) * rock.radius,
+          Math.sin(angle) * rock.radius,
+          rock.lift,
         );
-        dummy.scale.setScalar(0.8 + seedOf(`${belt.id}:s${i}`) * 2.2);
-        dummy.rotation.set(angle, spread, i);
-        dummy.updateMatrix();
-        mesh.setMatrixAt(n, dummy.matrix);
+        ROCK.scale.setScalar(rock.size);
+        ROCK.rotation.set(rock.start + turn, rock.spread + turn * 0.61, i);
+        ROCK.updateMatrix();
+        mesh.setMatrixAt(n, ROCK.matrix);
       }
       mesh.instanceMatrix.needsUpdate = true;
     }
-    // Dépendances volontairement incomplètes : les trois références sont stables, seul le
-    // contenu de la ceinture décide des matrices.
-  }, [belt, perShape]);
+  });
 
   return (
     <group rotation={orbitPlaneRotation(belt)}>
@@ -395,6 +439,32 @@ function InOrbitOf({
     if (!ref.current) return;
     const p = bodyPositionAt(system, body, tickAt());
     ref.current.position.set(p.x + offset, p.y + offset * 0.35, p.z);
+  });
+  return <group ref={ref}>{children}</group>;
+}
+
+/**
+ * Une station joueur qui tourne sur elle-même (chantier 50.12).
+ *
+ * Sa grille est dans le plan `xy` et s'extrude en `z` (`stationLayout`) : son axe est déjà
+ * celui du système, et un groupe englobant suffit. Le comptoir, lui, a son tore dressé, et
+ * tourne dans son propre repère (`TradingPostModel`).
+ */
+function SpinningHabitat({
+  id,
+  tickAt,
+  children,
+}: {
+  id: string;
+  tickAt: () => number;
+  children: ReactNode;
+}) {
+  const ref = useRef<Group>(null);
+  const phase = seedOf(`${id}:spin`) * Math.PI * 2;
+  useFrame(() => {
+    if (!ref.current) return;
+    ref.current.rotation.z =
+      phase + (2 * Math.PI * tickAt()) / HABITAT_SPIN_TICKS;
   });
   return <group ref={ref}>{children}</group>;
 }
@@ -579,6 +649,7 @@ function CentralBodies({
                 radius={STAR_CORE * look.star.radius * scale}
                 coronaRadius={STAR_CORONA * look.star.corona * scale}
                 starClass={body.typeId}
+                tickAt={tickAt}
               />
             )}
           </group>
@@ -622,7 +693,7 @@ export function SystemLayer({
       ))}
 
       {system.belts.map((belt) => (
-        <AsteroidBelt key={belt.id} belt={belt} />
+        <AsteroidBelt key={belt.id} belt={belt} tickAt={tickAt} />
       ))}
 
       <Crossers system={system} tickAt={tickAt} />
@@ -651,6 +722,7 @@ export function SystemLayer({
             id={system.station.id}
             color={factionTint(system.station.factionId)}
             size={TRADING_POST}
+            tickAt={tickAt}
           />
         </group>
       )}
@@ -669,7 +741,9 @@ export function SystemLayer({
             tickAt={tickAt}
             offset={bodyRadiusOf(body) * 2.2}
           >
-            <StationModel station={station} size={STATION} />
+            <SpinningHabitat id={station.id} tickAt={tickAt}>
+              <StationModel station={station} size={STATION} />
+            </SpinningHabitat>
           </InOrbitOf>
         );
       })}
@@ -691,6 +765,7 @@ export function SystemLayer({
               id={station.id}
               color={station.ownerColor}
               size={STATION}
+              tickAt={tickAt}
             />
           </InOrbitOf>
         );

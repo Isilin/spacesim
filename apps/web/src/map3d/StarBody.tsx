@@ -1,7 +1,21 @@
 import { useFrame } from "@react-three/fiber";
+import { spinAngleAt, type SpinElements } from "@spacesim/shared";
 import { useMemo, useRef } from "react";
-import { AdditiveBlending, BackSide, Color, type ShaderMaterial } from "three";
+import {
+  AdditiveBlending,
+  BackSide,
+  Color,
+  type Mesh,
+  type ShaderMaterial,
+} from "three";
 import { seedOf, starAppearance } from "./appearance.js";
+
+/**
+ * Rotation propre d'une étoile, en ticks : dix à quarante minutes par tour (chantier 50.10).
+ * Plus lente que celle des planètes : une étoile est l'objet le plus gros de l'écran, et le
+ * même angle y parcourt bien plus de pixels.
+ */
+const STAR_SPIN_TICKS = [120, 480] as const;
 
 /**
  * Étoile procédurale (chantier 33.8).
@@ -99,6 +113,7 @@ export function StarBody({
   radius,
   coronaRadius,
   starClass = "yellow_dwarf",
+  tickAt,
 }: {
   id: string;
   /**
@@ -119,9 +134,25 @@ export function StarBody({
    * naine blanche vibre. La TAILLE, elle, est passée par l'appelant.
    */
   starClass?: string;
+  /** Tick fractionnaire de la scène : c'est lui qui fait tourner l'étoile (chantier 50.10). */
+  tickAt: () => number;
 }) {
   const surface = useRef<ShaderMaterial>(null);
+  const body = useRef<Mesh>(null);
   const look = starAppearance(starClass);
+  // Sans obliquité : c'est le plan du système qui se forme sur l'équateur de son étoile.
+  const spin = useMemo<SpinElements>(
+    () => ({
+      axialTilt: 0,
+      axisNode: 0,
+      periodTicks:
+        STAR_SPIN_TICKS[0] +
+        seedOf(`${id}:spin`) * (STAR_SPIN_TICKS[1] - STAR_SPIN_TICKS[0]),
+      spinAngle: seedOf(id) * Math.PI * 2,
+      retrograde: false,
+    }),
+    [id],
+  );
   const uniforms = useMemo(
     () => ({
       uCore: { value: new Color(look.core) },
@@ -145,11 +176,14 @@ export function StarBody({
   useFrame((state) => {
     const time = surface.current?.uniforms.uTime;
     if (time) time.value = state.clock.elapsedTime;
+    // La granulation est échantillonnée en coordonnées d'objet : tourner la sphère la fait
+    // défiler d'un bloc, par-dessus son bouillonnement. Le halo, lui, n'a pas de face.
+    if (body.current) body.current.rotation.z = spinAngleAt(spin, tickAt());
   });
 
   return (
     <>
-      <mesh>
+      <mesh ref={body}>
         <sphereGeometry args={[radius, 48, 48]} />
         <shaderMaterial
           ref={surface}
