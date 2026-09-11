@@ -552,14 +552,16 @@ export function MapScene({
       );
     }
     for (const site of systemSites) {
-      const p = sitePosition(site);
-      const at = under(home, [p.x, p.y, p.z]);
       out.push(
         feature(
           site.id,
           t(`systemPanel.siteKind.${site.kind}`),
           t("systemPanel.siteOrbit", { radius: Math.round(site.orbitRadius) }),
-          () => at,
+          // Une fonction et non un point figé : le site orbite (chantier 50.9).
+          () => {
+            const p = sitePosition(site, tickAt());
+            return under(home, [p.x, p.y, p.z]);
+          },
         ),
       );
     }

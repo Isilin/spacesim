@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { StarSystem } from "../../model/universe.js";
+import { distance3, orbitPosition } from "./geometry.js";
 import { sitePosition, sitesOfSystem, sitesReward } from "./sites.js";
 
 function system(id: string, orbits: number[] = [100, 200]): StarSystem {
@@ -83,18 +84,29 @@ describe("sitesOfSystem", () => {
 });
 
 describe("sitePosition", () => {
+  // Le premier site d'un échantillon : `system("s-fixe")` pouvait n'en avoir aucun, et le cas
+  // qui le lisait sortait alors sans rien vérifier.
+  const site = Array.from({ length: 40 }, (_, i) =>
+    sitesOfSystem("graine", system(`s${i}`)),
+  ).flat()[0]!;
+
   it("place le site à son rayon d'orbite, hors du plan quand il est incliné", () => {
     const sites = sitesOfSystem("graine", system("s-position"));
-    for (const site of sites) {
-      const pos = sitePosition(site);
-      expect(Math.hypot(pos.x, pos.y, pos.z)).toBeCloseTo(site.orbitRadius, 6);
+    for (const one of sites) {
+      for (const tick of [0, 12_345]) {
+        const pos = sitePosition(one, tick);
+        expect(Math.hypot(pos.x, pos.y, pos.z)).toBeCloseTo(one.orbitRadius, 6);
+      }
     }
   });
 
-  it("ne bouge pas : un site repéré reste retrouvable", () => {
-    const site = sitesOfSystem("graine", system("s-fixe"))[0];
-    if (!site) return;
-    expect(sitePosition(site)).toEqual(sitePosition(site));
+  it("à t=0, il est à sa position initiale (chantier 50.9)", () => {
+    expect(sitePosition(site, 0)).toEqual(orbitPosition(site));
+  });
+
+  it("il orbite ensuite sous la loi des planètes, au lieu d'être figé", () => {
+    const start = sitePosition(site, 0);
+    expect(distance3(start, sitePosition(site, 5000))).toBeGreaterThan(1);
   });
 });
 

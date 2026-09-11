@@ -19,7 +19,7 @@ import {
   type SystemSite,
 } from "@spacesim/shared";
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
-import { type Group, type InstancedMesh, Object3D } from "three";
+import { type Group, type InstancedMesh, type Mesh, Object3D } from "three";
 import { ASTEROID_SHAPES, asteroidGeometry } from "./asteroids.js";
 import {
   asteroidTint,
@@ -399,6 +399,56 @@ function InOrbitOf({
   return <group ref={ref}>{children}</group>;
 }
 
+/** Culbute d'un site de scan : quatre à seize minutes par tour. */
+const SITE_TUMBLE_TICKS = [48, 192] as const;
+
+/**
+ * Un site de scan, sur son orbite (chantier 50.9).
+ *
+ * `sitePosition` le figeait à son angle initial. Il orbite désormais sous la loi des planètes
+ * — trop lentement, là où il se tient, pour qu'on le voie avancer — et culbute, ce qui se voit :
+ * une épave à la dérive ne se tient pas droite.
+ */
+function DriftingSite({
+  site,
+  tickAt,
+}: {
+  site: SystemSite;
+  tickAt: () => number;
+}) {
+  const ref = useRef<Mesh>(null);
+  const tumbleTicks =
+    SITE_TUMBLE_TICKS[0] +
+    seedOf(`${site.id}:tumble`) * (SITE_TUMBLE_TICKS[1] - SITE_TUMBLE_TICKS[0]);
+  useFrame(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const tick = tickAt();
+    const p = sitePosition(site, tick);
+    mesh.position.set(p.x, p.y, p.z);
+    const turn = (2 * Math.PI * tick) / tumbleTicks;
+    mesh.rotation.set(
+      seedOf(site.id) * 6.283 + turn,
+      seedOf(`${site.id}:r`) * 6.283 + turn * 0.61,
+      0,
+    );
+  });
+  return (
+    <mesh ref={ref}>
+      {/* Une forme par nature (chantier 35.10) : les trois ne se distinguaient que par leur
+          teinte, ce qui ne se lit pas de loin. */}
+      {site.kind === "wreck" ? (
+        <boxGeometry args={[12, 3, 3]} />
+      ) : site.kind === "cache" ? (
+        <boxGeometry args={[5, 5, 5]} />
+      ) : (
+        <octahedronGeometry args={[5]} />
+      )}
+      <meshBasicMaterial color={siteColor(site.kind)} />
+    </mesh>
+  );
+}
+
 interface Props {
   system: StarSystem;
   /** Sites révélés par un scan (chantier 31.11) — absents tant que le système n'est pas scanné. */
@@ -688,32 +738,10 @@ export function SystemLayer({
         </mesh>
       ))}
 
-      {/* Sites du scan : figés, une épave à la dérive n'a pas de période utile. */}
-      {sites.map((site) => {
-        const p = sitePosition(site);
-        return (
-          <mesh
-            key={site.id}
-            position={[p.x, p.y, p.z]}
-            rotation={[
-              seedOf(site.id) * 6.283,
-              seedOf(`${site.id}:r`) * 6.283,
-              0,
-            ]}
-          >
-            {/* Une forme par nature (chantier 35.10) : les trois ne se distinguaient que
-                par leur teinte, ce qui ne se lit pas de loin. */}
-            {site.kind === "wreck" ? (
-              <boxGeometry args={[12, 3, 3]} />
-            ) : site.kind === "cache" ? (
-              <boxGeometry args={[5, 5, 5]} />
-            ) : (
-              <octahedronGeometry args={[5]} />
-            )}
-            <meshBasicMaterial color={siteColor(site.kind)} />
-          </mesh>
-        );
-      })}
+      {/* Sites du scan : sur leur orbite, et qui culbutent (chantier 50.9). */}
+      {sites.map((site) => (
+        <DriftingSite key={site.id} site={site} tickAt={tickAt} />
+      ))}
     </>
   );
 }
