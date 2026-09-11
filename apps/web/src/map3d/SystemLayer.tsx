@@ -41,6 +41,7 @@ import { StarBody } from "./StarBody.js";
 import { StationModel } from "./StationModel.js";
 import { TradingPostModel } from "./TradingPostModel.js";
 import { orbitColor } from "./theme.js";
+import { orbitPlaneRotation } from "./orbitPlane.js";
 import type { Vec3 } from "./tiers.js";
 
 /** Ré-exportés depuis `centralBodies` : `MapScene` les importe d'ici depuis le chantier 37. */
@@ -242,7 +243,7 @@ function AsteroidBelt({ belt }: { belt: StarSystem["belts"][number] }) {
   }, [belt, perShape]);
 
   return (
-    <group rotation={[belt.inclination, 0, belt.ascendingNode]}>
+    <group rotation={orbitPlaneRotation(belt)}>
       {shapes.map((geometry, k) => (
         <instancedMesh
           key={`${belt.id}:${k}`}
@@ -291,7 +292,7 @@ function OrbitRing({
 
   return (
     <group ref={ref}>
-      <mesh rotation={[body.inclination, 0, body.ascendingNode]}>
+      <mesh rotation={orbitPlaneRotation(body)}>
         <ringGeometry
           args={[body.orbitRadius - 0.35, body.orbitRadius + 0.35, 96]}
         />
@@ -601,10 +602,7 @@ export function SystemLayer({
         if (!belt) return null;
         const angle = seedOf(`${outpost.id}:angle`) * Math.PI * 2;
         return (
-          <group
-            key={outpost.id}
-            rotation={[belt.inclination, 0, belt.ascendingNode]}
-          >
+          <group key={outpost.id} rotation={orbitPlaneRotation(belt)}>
             <mesh
               position={[
                 Math.cos(angle) * belt.orbitRadius,
