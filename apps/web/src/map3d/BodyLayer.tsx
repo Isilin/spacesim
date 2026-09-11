@@ -9,10 +9,9 @@ import {
 import { useRef } from "react";
 import type { Group } from "three";
 import { focusOf, type Focus } from "./bounds.js";
-import { hasRings, PlanetRings } from "./PlanetRings.js";
-import { ProceduralBody } from "./ProceduralBody.js";
-import { bodyRadiusOf } from "./SystemLayer.js";
+import { bodyRadiusOf, RotatingBody } from "./SystemLayer.js";
 import { orbitColor } from "./theme.js";
+import { orbitPlaneRotation } from "./orbitPlane.js";
 
 /** Lunes en orbite d'un corps, dans l'ordre du modèle. */
 export function moonsOf(system: StarSystem, body: Planet): Planet[] {
@@ -54,7 +53,7 @@ export function bodyFocus(system: StarSystem, body: Planet): Focus {
 function MoonOrbitRing({ moon }: { moon: Planet }) {
   const width = Math.max(0.12, moon.orbitRadius * 0.008);
   return (
-    <mesh rotation={[moon.inclination, 0, moon.ascendingNode]}>
+    <mesh rotation={orbitPlaneRotation(moon)}>
       <ringGeometry
         args={[moon.orbitRadius - width, moon.orbitRadius + width, 96]}
       />
@@ -103,7 +102,7 @@ function OrbitingMoon({
           focusable ni clavier — le chemin accessible est la liste DOM parallèle
           (chantier 31.16). */}
       <group onClick={onSelect} onDoubleClick={onOpen}>
-        <ProceduralBody id={moon.id} body={moon} radius={bodyRadiusOf(moon)} />
+        <RotatingBody system={system} body={moon} tickAt={tickAt} />
       </group>
     </group>
   );
@@ -171,11 +170,10 @@ export function BodyLayer({
             grillage de sélection — dimensionné pour le repérer de loin dans un système —
             le recouvrait entièrement. Les lunes gardent le leur, elles restent à choisir
             parmi d'autres. */}
-        <ProceduralBody id={body.id} body={body} radius={radius} />
-        {/* Les mêmes anneaux qu'au palier système (chantier 35.12) : la géante les portait
-            de loin et les perdait de près, au moment exact où l'on s'approchait pour les
-            regarder. */}
-        {hasRings(body) && <PlanetRings body={body} radius={radius} />}
+        {/* Le même corps qu'au palier système, anneaux compris (chantier 35.12) : la géante
+            les portait de loin et les perdait de près, au moment exact où l'on s'approchait
+            pour les regarder. Il tourne ici comme là-haut (chantier 50.7). */}
+        <RotatingBody system={system} body={body} tickAt={tickAt} />
       </group>
 
       {/* Deux rayons distincts : un corps peut porter colonie ET station (chantier 24). */}

@@ -18,6 +18,11 @@ import {
   systemHazard,
   hazardFuelMult,
   NEUTRAL_ASTRO,
+  HABITABLE_SCENE_RADIUS,
+  lockedToPlanet,
+  lockedToStar,
+  tidalLockPenalty,
+  tidalLockRadiusAu,
 } from "./physics.js";
 
 /**
@@ -230,6 +235,7 @@ describe("habitabilité calculée", () => {
     gravityG: 1,
     radiation: 0.2,
     breathable: true,
+    lockedToStar: false,
   };
 
   it("la Terre est excellente", () => {
@@ -275,12 +281,66 @@ describe("habitabilité calculée", () => {
             gravityG: g,
             radiation: 1,
             breathable: false,
+            lockedToStar: false,
           });
           expect(h).toBeGreaterThanOrEqual(0);
           expect(h).toBeLessThanOrEqual(100);
         }
       }
     }
+  });
+
+  it("un monde verrouillé sur son étoile, sans air, perd franchement (chantier 50.4)", () => {
+    // Une face brûlante, une face gelée, et la colonie tenue dans la bande du terminateur.
+    const bare = { ...earth, pressureBar: 0, breathable: false };
+    expect(habitabilityOf({ ...bare, lockedToStar: true })).toBeLessThan(
+      habitabilityOf(bare) * 0.7,
+    );
+  });
+
+  it("sous une atmosphère d'un bar, le verrouillage ne coûte rien", () => {
+    // L'atmosphère redistribue la chaleur : un monde verrouillé ne se distingue plus d'un
+    // monde qui tourne.
+    expect(habitabilityOf({ ...earth, lockedToStar: true })).toBe(
+      habitabilityOf(earth),
+    );
+  });
+
+  it("le coût du verrouillage décroît avec la pression, sans falaise", () => {
+    expect(tidalLockPenalty(0)).toBeLessThan(tidalLockPenalty(0.5));
+    expect(tidalLockPenalty(0.5)).toBeLessThan(tidalLockPenalty(1));
+    expect(tidalLockPenalty(1)).toBe(1);
+    expect(tidalLockPenalty(90)).toBe(1);
+  });
+});
+
+describe("verrouillage par marée (chantier 50.3)", () => {
+  it("le rayon de verrouillage suit la racine cubique de la masse", () => {
+    // Temps de verrouillage en a⁶/M² : à âge égal, la distance limite suit M^(1/3).
+    const light = tidalLockRadiusAu([star("red_dwarf", 0.125)]);
+    const heavy = tidalLockRadiusAu([star("yellow_dwarf", 1)]);
+    expect(heavy / light).toBeCloseTo(2, 9);
+  });
+
+  it("autour du Soleil, il s'arrête vers l'orbite de Mercure", () => {
+    // Mercure, à 0,39 UA, a été capturée par les marées ; Vénus, à 0,72 UA, ne l'a pas été.
+    expect(tidalLockRadiusAu([SUN])).toBeGreaterThan(0.35);
+    expect(tidalLockRadiusAu([SUN])).toBeLessThan(0.72);
+  });
+
+  it("une naine rouge verrouille sa zone habitable, le Soleil non", () => {
+    // Le prolongement du chantier 45 : la zone habitable d'une naine rouge tombe à
+    // l'intérieur de son rayon de verrouillage. Ses mondes tempérés gardent une face au jour.
+    expect(
+      lockedToStar([star("red_dwarf", 0.26)], HABITABLE_SCENE_RADIUS),
+    ).toBe(true);
+    expect(lockedToStar([SUN], HABITABLE_SCENE_RADIUS)).toBe(false);
+  });
+
+  it("une lune proche est verrouillée sur sa planète, une lointaine non", () => {
+    expect(lockedToPlanet(16)).toBe(true);
+    expect(lockedToPlanet(36)).toBe(true);
+    expect(lockedToPlanet(46)).toBe(false);
   });
 });
 

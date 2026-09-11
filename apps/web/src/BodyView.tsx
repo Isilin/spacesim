@@ -6,6 +6,7 @@ import {
   orbitalUsed,
   popCap,
   usedSlots,
+  TICK_MS,
   type Atmosphere,
   type BuildingId,
   type Colony,
@@ -18,6 +19,7 @@ import { useSearchParams } from "react-router-dom";
 import { Panel } from "@spacesim/ui";
 import { useTranslation } from "react-i18next";
 import { BodyActions } from "./BodyActions.js";
+import { formatDuration } from "./format.js";
 import {
   buildingLabel,
   bodyClassLabel,
@@ -125,11 +127,18 @@ export function BodyView({ system, body, effects, now }: Props) {
               </div>
               <div>
                 <dt>{t("bodyView.day")}</dt>
-                <dd>{physicals.dayLengthHours} h</dd>
+                {/* Jour et révolution en ticks, rendus dans la même unité (chantier 50.2) :
+                    c'est ce qui les rend comparables, et ce qui laisse lire qu'un monde
+                    verrouillé a un jour égal à son année. */}
+                <dd>
+                  {formatDuration(physicals.spin.periodTicks * TICK_MS)}
+                  {physicals.tidallyLocked &&
+                    ` · ${t("bodyView.tidallyLocked")}`}
+                </dd>
               </div>
               <div>
                 <dt>{t("bodyView.revolution")}</dt>
-                <dd>{physicals.orbitPeriodDays} j</dd>
+                <dd>{formatDuration(physicals.orbitPeriodTicks * TICK_MS)}</dd>
               </div>
               <div>
                 <dt>{t("bodyView.habitability")}</dt>

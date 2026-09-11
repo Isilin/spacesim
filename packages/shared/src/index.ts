@@ -112,6 +112,7 @@ export {
 export {
   TICK_MS,
   MAX_CATCHUP_TICKS,
+  PLANET_KEPLER_CONSTANT,
   MAP_WIDTH,
   MAP_HEIGHT,
   UNIVERSE_CENTER_X,
@@ -653,15 +654,22 @@ export {
   type TravelPlan,
 } from "./sim/exploration/route.js";
 export {
+  angularSpeedAt,
   angularSpeedOf,
   bodyPositionAt,
   centralBodyPositionAt,
   distance3,
+  eccentricPointAt,
+  eccentricPositionAt,
   orbitalPeriodTicks,
   orbitPosition,
+  spinAngleAt,
+  type EccentricElements,
   type OrbitalElements,
+  type SpinElements,
   type Vec3,
 } from "./sim/exploration/geometry.js";
+export { crossersOf, type Crosser } from "./sim/exploration/crossers.js";
 export {
   CONTIGUOUS_CLAIM_BONUS,
   systemNeighbors,

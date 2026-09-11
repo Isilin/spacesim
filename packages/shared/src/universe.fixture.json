@@ -1,5 +1,5 @@
 {
-  "generatorVersion": 12,
+  "generatorVersion": 13,
   "seed": "fixture-seed",
   "galaxies": [
     {
@@ -21,7 +21,7 @@
       "drifterCount": 6,
       "singularSystemCount": 9,
       "bridgeCount": 1,
-      "fingerprint": "249e26a7",
+      "fingerprint": "fc23f004",
       "sample": [
         {
           "id": "gal-0-sys-0",
@@ -38,7 +38,7 @@
               "classId": "super_earth",
               "variantId": "barren",
               "hostStarId": "gal-0-sys-0-s1",
-              "habitability": 3,
+              "habitability": 2,
               "slots": 20,
               "deposits": {
                 "ore": 1.47,
@@ -116,7 +116,7 @@
               "classId": "dwarf",
               "variantId": "arid",
               "hostStarId": "gal-0-sys-0-s1",
-              "habitability": 4,
+              "habitability": 2,
               "slots": 4,
               "deposits": {
                 "ore": 1.15
@@ -382,7 +382,7 @@
       "drifterCount": 7,
       "singularSystemCount": 10,
       "bridgeCount": 1,
-      "fingerprint": "13886f3d",
+      "fingerprint": "8a47ae2b",
       "sample": [
         {
           "id": "gal-1-sys-0",
@@ -1045,7 +1045,7 @@
       "drifterCount": 3,
       "singularSystemCount": 2,
       "bridgeCount": 0,
-      "fingerprint": "892e757a",
+      "fingerprint": "3435de25",
       "sample": [
         {
           "id": "gal-2-sys-0",

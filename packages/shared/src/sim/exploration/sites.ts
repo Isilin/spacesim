@@ -1,7 +1,13 @@
+import { PLANET_KEPLER_CONSTANT } from "../../constants.js";
 import type { ResourceId } from "../../model/resources.js";
 import type { StarSystem } from "../../model/universe.js";
 import { createRng, randInt } from "../../rng.js";
-import { type OrbitalElements, orbitPosition, type Vec3 } from "./geometry.js";
+import {
+  angularSpeedAt,
+  type OrbitalElements,
+  orbitPosition,
+  type Vec3,
+} from "./geometry.js";
 
 /**
  * Sites découvrables au scan (chantier 31.11). Le chantier 31 a ouvert du volume
@@ -85,12 +91,22 @@ export function sitesOfSystem(
 }
 
 /**
- * Position d'un site dans le repère de son système. Les sites ne tournent pas : une
- * épave à la dérive n'a pas de période orbitale utile au joueur, et une position figée
- * rend le site retrouvable après l'avoir repéré.
+ * Position d'un site dans le repère de son système, au tick donné (chantier 50.9).
+ *
+ * Les sites étaient figés, par décision : « une épave à la dérive n'a pas de période
+ * orbitale utile au joueur, et une position figée rend le site retrouvable ». La première
+ * moitié reste vraie — au-delà des orbites connues, une révolution prend des jours de jeu. La
+ * seconde ne l'est plus : la carte nomme les sites dans sa liste et les vise à leur position
+ * de l'instant, comme les corps. Ils orbitent donc, sous la loi des planètes, et ce que le
+ * joueur a repéré se retrouve là où il a dérivé.
+ *
+ * Aucun coût de trajet ne lit cette position : seuls le rendu et la sélection l'emploient.
  */
-export function sitePosition(site: SystemSite): Vec3 {
-  return orbitPosition(site);
+export function sitePosition(site: SystemSite, tick: number): Vec3 {
+  return orbitPosition(
+    site,
+    angularSpeedAt(site.orbitRadius, PLANET_KEPLER_CONSTANT) * tick,
+  );
 }
 
 /** Butin cumulé d'un lot de sites — ce que rapporte un scan qui les révèle tous. */

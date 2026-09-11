@@ -1,5 +1,4 @@
 import {
-  TICK_MS,
   type Colony,
   type Fleet,
   type ForeignFleet,
@@ -14,6 +13,8 @@ import {
   type Territory,
   type ResourceId,
   type ClientUniverse,
+  crossersOf,
+  eccentricPositionAt,
   galacticCoreDisc,
   sitePosition,
   starsOf,
@@ -49,6 +50,8 @@ import {
   SystemLayer,
   systemExtent,
 } from "./SystemLayer.js";
+import { useReducedMotion } from "../hooks/useReducedMotion.js";
+import { fractionalTick } from "./tickClock.js";
 import { TierCamera } from "./TierCamera.js";
 import {
   tierAt,
@@ -205,10 +208,19 @@ export function MapScene({
   const [childMounted, setChildMounted] = useState(tier !== "universe");
   const [jump, setJump] = useState<JumpRequest | null>(null);
 
-  // Tick fractionnaire : le serveur n'avance que par pas de TICK_MS, l'écran par image.
+  // Tick fractionnaire : le serveur n'avance que par pas de TICK_MS, l'écran par image. Voir
+  // `fractionalTick`, qui dit pourquoi il n'est plus borné à zéro (chantier 50.5).
+  //
+  // Sous « réduire les animations », la carte avance d'un pas par tick serveur au lieu d'un
+  // pas par image (chantier 50.13) : un seul point de coupure pour tout ce qui orbite, et
+  // l'information reste — seule l'animation part.
+  const reducedMotion = useReducedMotion();
   const tickAt = useMemo(
-    () => () => tick + Math.max(0, (Date.now() - lastTickAt) / TICK_MS),
-    [tick, lastTickAt],
+    () =>
+      reducedMotion
+        ? () => tick
+        : () => fractionalTick(tick, lastTickAt, Date.now()),
+    [tick, lastTickAt, reducedMotion],
   );
 
   /**
@@ -549,17 +561,35 @@ export function MapScene({
       );
     }
     for (const site of systemSites) {
-      const p = sitePosition(site);
-      const at = under(home, [p.x, p.y, p.z]);
       out.push(
         feature(
           site.id,
           t(`systemPanel.siteKind.${site.kind}`),
           t("systemPanel.siteOrbit", { radius: Math.round(site.orbitRadius) }),
-          () => at,
+          // Une fonction et non un point figé : le site orbite (chantier 50.9).
+          () => {
+            const p = sitePosition(site, tickAt());
+            return under(home, [p.x, p.y, p.z]);
+          },
         ),
       );
     }
+    // Les géocroiseurs (chantier 50.8) : sur une ellipse, donc une position par image comme
+    // les corps. Nommés par leur rang, et par le monde dont ils coupent la route.
+    crossersOf(system).forEach((crosser, index) => {
+      const planet = system.planets.find((p) => p.id === crosser.crossesId);
+      out.push(
+        feature(
+          crosser.id,
+          t("mapInfobox.crosserName", { n: index + 1 }),
+          t("mapInfobox.crosser", { planet: planet?.name ?? "" }),
+          () => {
+            const p = eccentricPositionAt(crosser, tickAt());
+            return under(home, [p.x, p.y, p.z]);
+          },
+        ),
+      );
+    });
     return out;
   }, [
     tier,

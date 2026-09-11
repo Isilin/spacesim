@@ -6,7 +6,8 @@ import {
   starsOf,
 } from "../../model/universe.js";
 import { allPlanets, allSystems, generateUniverse } from "../../universe.js";
-import { bodyPhysicals, isBreathable } from "./bodies.js";
+import { SPIN_PERIOD_TICKS, bodyPhysicals, isBreathable } from "./bodies.js";
+import { orbitalPeriodTicks } from "./geometry.js";
 
 /**
  * Fiche physique d'un corps (chantier 10, réécrite au chantier 45.2).
@@ -225,6 +226,54 @@ describe("l'atmosphère est retenue, plus tirée", () => {
   });
 });
 
+describe("rotation propre et verrouillage (chantiers 50.2 et 50.3)", () => {
+  const moon = (id: string, orbitRadius: number) =>
+    body({
+      id,
+      classId: "regular",
+      variantId: "airless",
+      kind: "moon",
+      orbitRadius,
+    });
+
+  it("un corps libre tourne dans la bande réglée pour être vue", () => {
+    const p = bodyPhysicals(
+      body({ id: "libre", classId: "rocky", variantId: "temperate" }),
+      SUN,
+    );
+    expect(p.tidallyLocked).toBe(false);
+    expect(p.spin.periodTicks).toBeGreaterThanOrEqual(SPIN_PERIOD_TICKS[0]);
+    expect(p.spin.periodTicks).toBeLessThanOrEqual(SPIN_PERIOD_TICKS[1]);
+  });
+
+  it("une lune proche est verrouillée sur sa planète, une lointaine tourne", () => {
+    expect(bodyPhysicals(moon("m1", 16), SUN, 130).tidallyLocked).toBe(true);
+    expect(bodyPhysicals(moon("m5", 56), SUN, 130).tidallyLocked).toBe(false);
+  });
+
+  it("un corps verrouillé a un jour égal à son année, et un axe droit", () => {
+    const locked = bodyPhysicals(moon("m1", 16), SUN, 130);
+    expect(locked.spin.periodTicks).toBe(locked.orbitPeriodTicks);
+    expect(locked.spin.axialTilt).toBe(0);
+    expect(locked.spin.retrograde).toBe(false);
+  });
+
+  it("le monde tempéré d'une naine rouge est verrouillé, celui du Soleil non", () => {
+    // Le prolongement du chantier 45 : la zone habitable d'une naine rouge tombe dans son
+    // rayon de verrouillage, celle d'une étoile solaire bien au-delà.
+    const temperate = body({
+      id: "t",
+      classId: "rocky",
+      variantId: "temperate",
+      orbitRadius: 125,
+    });
+    expect(
+      bodyPhysicals(temperate, [star("red_dwarf", 0.26)]).tidallyLocked,
+    ).toBe(true);
+    expect(bodyPhysicals(temperate, SUN).tidallyLocked).toBe(false);
+  });
+});
+
 describe("sur tout un univers généré", () => {
   const universe = generateUniverse("physique", 3);
   const starsOfSystem = new Map(
@@ -241,8 +290,12 @@ describe("sur tout un univers généré", () => {
       expect(p.meanTempC).toBeGreaterThan(-274);
       expect(ATMOSPHERES).toContain(p.atmosphere);
       expect(p.pressureBar).toBeGreaterThanOrEqual(0);
-      expect(p.dayLengthHours).toBeGreaterThan(0);
-      expect(p.orbitPeriodDays).toBeGreaterThan(0);
+      expect(p.spin.periodTicks).toBeGreaterThan(0);
+      // Une seule loi de Kepler (chantier 50.2) : la fiche lit la révolution que l'écran montre.
+      expect(p.orbitPeriodTicks).toBe(orbitalPeriodTicks(planet));
+      // Le jour est plus court que l'année — ou lui est égal, et c'est alors le verrouillage.
+      if (p.tidallyLocked) expect(p.spin.periodTicks).toBe(p.orbitPeriodTicks);
+      else expect(p.spin.periodTicks).toBeLessThan(p.orbitPeriodTicks);
     }
   });
 

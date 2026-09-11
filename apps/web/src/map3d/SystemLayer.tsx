@@ -1,7 +1,11 @@
 import { useFrame } from "@react-three/fiber";
 import {
+  angularSpeedAt,
+  bodyPhysicals,
   bodyPositionAt,
+  PLANET_KEPLER_CONSTANT,
   sitePosition,
+  spinAngleAt,
   bodyStructure,
   starsOf,
   orbitsBarycenter,
@@ -16,8 +20,8 @@ import {
   type Station,
   type SystemSite,
 } from "@spacesim/shared";
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
-import { type Group, type InstancedMesh, Object3D } from "three";
+import { useMemo, useRef, type ReactNode } from "react";
+import { type Group, type InstancedMesh, type Mesh, Object3D } from "three";
 import { ASTEROID_SHAPES, asteroidGeometry } from "./asteroids.js";
 import {
   asteroidTint,
@@ -27,6 +31,7 @@ import {
   centralBodyAppearance,
 } from "./appearance.js";
 import { astroOverrides } from "../state/astro-content.js";
+import { useReducedMotion } from "../hooks/useReducedMotion.js";
 import { focusOf, type Focus } from "./bounds.js";
 import {
   centralBodySlots,
@@ -37,10 +42,12 @@ import {
 import { hasRings, PlanetRings } from "./PlanetRings.js";
 import { ProceduralBody } from "./ProceduralBody.js";
 import { BlackHole } from "./BlackHole.js";
+import { Crossers } from "./Crossers.js";
 import { StarBody } from "./StarBody.js";
 import { StationModel } from "./StationModel.js";
-import { TradingPostModel } from "./TradingPostModel.js";
+import { HABITAT_SPIN_TICKS, TradingPostModel } from "./TradingPostModel.js";
 import { orbitColor } from "./theme.js";
+import { obliquityRotation, orbitPlaneRotation } from "./orbitPlane.js";
 import type { Vec3 } from "./tiers.js";
 
 /** Ré-exportés depuis `centralBodies` : `MapScene` les importe d'ici depuis le chantier 37. */
@@ -175,10 +182,59 @@ function OrbitingBody({
           focusable ni clavier — le chemin accessible est la liste DOM parallèle
           (chantier 31.16). */}
       <group onClick={onSelect} onDoubleClick={onOpen}>
-        <ProceduralBody id={body.id} body={body} radius={bodyRadiusOf(body)} />
-        {hasRings(body) && (
-          <PlanetRings body={body} radius={bodyRadiusOf(body)} />
-        )}
+        <RotatingBody system={system} body={body} tickAt={tickAt} />
+      </group>
+    </group>
+  );
+}
+
+/**
+ * Un corps qui tourne sur lui-même (chantier 50.7), aux paliers système et corps.
+ *
+ * Trois repères emboîtés : le plan de son orbite, son obliquité, sa rotation propre — le
+ * dernier seul bouge, d'un scalaire par image. `ProceduralBody` échantillonne son relief en
+ * coordonnées d'objet et s'éclaire dans le repère de la vue : tourner le maillage fait glisser
+ * le relief sous le terminateur, sans une ligne de shader.
+ *
+ * Les anneaux vivent dans le repère d'obliquité, hors du spin : dans le plan équatorial, sans
+ * tourner d'un bloc. Leurs bandes sont de révolution — une rotation rigide ne s'y verrait pas,
+ * et elle serait fausse.
+ *
+ * Un corps verrouillé tourne au rythme de son orbite depuis sa phase orbitale : il garde la
+ * même face tournée vers ce qu'il orbite, et c'est ce qui le distingue à l'œil d'un corps libre.
+ */
+export function RotatingBody({
+  system,
+  body,
+  tickAt,
+}: {
+  system: StarSystem;
+  body: Planet;
+  tickAt: () => number;
+}) {
+  const spinning = useRef<Group>(null);
+  // La fiche est déterministe et sans état : le spin se dérive une fois, seul l'angle avance.
+  const { spin, tidallyLocked } = useMemo(
+    () => bodyPhysicals(body, starsOf(system)),
+    [body, system],
+  );
+  const still = useReducedMotion();
+  useFrame(() => {
+    if (!spinning.current) return;
+    // Sous « réduire les animations » (chantier 50.13), un corps libre se fige ; un corps
+    // verrouillé suit encore son orbite, pas à pas — sans quoi il cesserait de faire face à ce
+    // qu'il orbite.
+    spinning.current.rotation.z =
+      still && !tidallyLocked ? spin.spinAngle : spinAngleAt(spin, tickAt());
+  });
+  const radius = bodyRadiusOf(body);
+  return (
+    <group rotation={orbitPlaneRotation(body)}>
+      <group rotation={obliquityRotation(spin)}>
+        <group ref={spinning}>
+          <ProceduralBody id={body.id} body={body} radius={radius} />
+        </group>
+        {hasRings(body) && <PlanetRings body={body} radius={radius} />}
       </group>
     </group>
   );
@@ -191,7 +247,23 @@ function OrbitingBody({
  */
 const ASTEROIDS = 90;
 
-function AsteroidBelt({ belt }: { belt: StarSystem["belts"][number] }) {
+/** Culbute d'un rocher de ceinture : deux à vingt minutes par tour, comme un jour de planète. */
+const ROCK_TUMBLE_TICKS = [24, 240] as const;
+
+/**
+ * Objet de travail des matrices de rochers, alloué une fois pour toutes les ceintures : un
+ * `new` par rocher et par image faisait tomber une transition à dix images par seconde
+ * (`GalaxyLayer.tsx`, `useNodeScale`).
+ */
+const ROCK = new Object3D();
+
+function AsteroidBelt({
+  belt,
+  tickAt,
+}: {
+  belt: StarSystem["belts"][number];
+  tickAt: () => number;
+}) {
   const first = useRef<InstancedMesh>(null);
   const second = useRef<InstancedMesh>(null);
   const third = useRef<InstancedMesh>(null);
@@ -214,35 +286,63 @@ function AsteroidBelt({ belt }: { belt: StarSystem["belts"][number] }) {
   const tint = asteroidTint(belt);
   const perShape = Math.ceil(ASTEROIDS / ASTEROID_SHAPES);
 
-  useEffect(() => {
-    const dummy = new Object3D();
+  // Ce qui ne bouge pas se tire une fois, rocher par rocher ; seuls l'angle et la culbute
+  // avancent par image (chantier 50.11).
+  const rocks = useMemo(
+    () =>
+      Array.from({ length: ASTEROIDS }, (_, i) => {
+        // Dispersion dérivée de l'id : deux ceintures ne se ressemblent pas.
+        const spread = (seedOf(`${belt.id}:${i}`) - 0.5) * 14;
+        const radius = belt.orbitRadius + spread;
+        const tumbleTicks =
+          ROCK_TUMBLE_TICKS[0] +
+          seedOf(`${belt.id}:t${i}`) *
+            (ROCK_TUMBLE_TICKS[1] - ROCK_TUMBLE_TICKS[0]);
+        return {
+          radius,
+          spread,
+          start: (i / ASTEROIDS) * Math.PI * 2,
+          // Chaque rocher suit la loi des planètes à SON rayon : les internes doublent les
+          // externes, et l'anneau cisaille au lieu de tourner d'un bloc. « Un anneau n'a pas
+          // UNE position » reste vrai : c'est le rocher qui a un angle, et il tient à son rang.
+          speed: angularSpeedAt(radius, PLANET_KEPLER_CONSTANT),
+          lift: (seedOf(`${belt.id}:z${i}`) - 0.5) * 8,
+          size: 0.8 + seedOf(`${belt.id}:s${i}`) * 2.2,
+          tumble: (2 * Math.PI) / tumbleTicks,
+        };
+      }),
+    [belt],
+  );
+
+  // La culbute se fige sous « réduire les animations » (chantier 50.13).
+  const still = useReducedMotion();
+  useFrame(() => {
+    const tick = tickAt();
     for (const [shape, ref] of refs.entries()) {
       const mesh = ref.current;
       if (!mesh) continue;
       for (let n = 0; n < perShape; n++) {
         const i = shape * perShape + n;
-        const angle = (i / ASTEROIDS) * Math.PI * 2;
-        // Dispersion dérivée de l'id : deux ceintures ne se ressemblent pas.
-        const spread = (seedOf(`${belt.id}:${i}`) - 0.5) * 14;
-        const radius = belt.orbitRadius + spread;
-        dummy.position.set(
-          Math.cos(angle) * radius,
-          Math.sin(angle) * radius,
-          (seedOf(`${belt.id}:z${i}`) - 0.5) * 8,
+        const rock = rocks[i];
+        if (!rock) continue;
+        const angle = rock.start + rock.speed * tick;
+        const turn = still ? 0 : rock.tumble * tick;
+        ROCK.position.set(
+          Math.cos(angle) * rock.radius,
+          Math.sin(angle) * rock.radius,
+          rock.lift,
         );
-        dummy.scale.setScalar(0.8 + seedOf(`${belt.id}:s${i}`) * 2.2);
-        dummy.rotation.set(angle, spread, i);
-        dummy.updateMatrix();
-        mesh.setMatrixAt(n, dummy.matrix);
+        ROCK.scale.setScalar(rock.size);
+        ROCK.rotation.set(rock.start + turn, rock.spread + turn * 0.61, i);
+        ROCK.updateMatrix();
+        mesh.setMatrixAt(n, ROCK.matrix);
       }
       mesh.instanceMatrix.needsUpdate = true;
     }
-    // Dépendances volontairement incomplètes : les trois références sont stables, seul le
-    // contenu de la ceinture décide des matrices.
-  }, [belt, perShape]);
+  });
 
   return (
-    <group rotation={[belt.inclination, 0, belt.ascendingNode]}>
+    <group rotation={orbitPlaneRotation(belt)}>
       {shapes.map((geometry, k) => (
         <instancedMesh
           key={`${belt.id}:${k}`}
@@ -291,7 +391,7 @@ function OrbitRing({
 
   return (
     <group ref={ref}>
-      <mesh rotation={[body.inclination, 0, body.ascendingNode]}>
+      <mesh rotation={orbitPlaneRotation(body)}>
         <ringGeometry
           args={[body.orbitRadius - 0.35, body.orbitRadius + 0.35, 96]}
         />
@@ -348,6 +448,86 @@ function InOrbitOf({
     ref.current.position.set(p.x + offset, p.y + offset * 0.35, p.z);
   });
   return <group ref={ref}>{children}</group>;
+}
+
+/**
+ * Une station joueur qui tourne sur elle-même (chantier 50.12).
+ *
+ * Sa grille est dans le plan `xy` et s'extrude en `z` (`stationLayout`) : son axe est déjà
+ * celui du système, et un groupe englobant suffit. Le comptoir, lui, a son tore dressé, et
+ * tourne dans son propre repère (`TradingPostModel`).
+ */
+function SpinningHabitat({
+  id,
+  tickAt,
+  children,
+}: {
+  id: string;
+  tickAt: () => number;
+  children: ReactNode;
+}) {
+  const ref = useRef<Group>(null);
+  const phase = seedOf(`${id}:spin`) * Math.PI * 2;
+  const still = useReducedMotion();
+  useFrame(() => {
+    if (!ref.current) return;
+    ref.current.rotation.z = still
+      ? phase
+      : phase + (2 * Math.PI * tickAt()) / HABITAT_SPIN_TICKS;
+  });
+  return <group ref={ref}>{children}</group>;
+}
+
+/** Culbute d'un site de scan : quatre à seize minutes par tour. */
+const SITE_TUMBLE_TICKS = [48, 192] as const;
+
+/**
+ * Un site de scan, sur son orbite (chantier 50.9).
+ *
+ * `sitePosition` le figeait à son angle initial. Il orbite désormais sous la loi des planètes
+ * — trop lentement, là où il se tient, pour qu'on le voie avancer — et culbute, ce qui se voit :
+ * une épave à la dérive ne se tient pas droite.
+ */
+function DriftingSite({
+  site,
+  tickAt,
+}: {
+  site: SystemSite;
+  tickAt: () => number;
+}) {
+  const ref = useRef<Mesh>(null);
+  const tumbleTicks =
+    SITE_TUMBLE_TICKS[0] +
+    seedOf(`${site.id}:tumble`) * (SITE_TUMBLE_TICKS[1] - SITE_TUMBLE_TICKS[0]);
+  // La culbute se fige sous « réduire les animations » ; l'orbite avance au pas du serveur.
+  const still = useReducedMotion();
+  useFrame(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const tick = tickAt();
+    const p = sitePosition(site, tick);
+    mesh.position.set(p.x, p.y, p.z);
+    const turn = still ? 0 : (2 * Math.PI * tick) / tumbleTicks;
+    mesh.rotation.set(
+      seedOf(site.id) * 6.283 + turn,
+      seedOf(`${site.id}:r`) * 6.283 + turn * 0.61,
+      0,
+    );
+  });
+  return (
+    <mesh ref={ref}>
+      {/* Une forme par nature (chantier 35.10) : les trois ne se distinguaient que par leur
+          teinte, ce qui ne se lit pas de loin. */}
+      {site.kind === "wreck" ? (
+        <boxGeometry args={[12, 3, 3]} />
+      ) : site.kind === "cache" ? (
+        <boxGeometry args={[5, 5, 5]} />
+      ) : (
+        <octahedronGeometry args={[5]} />
+      )}
+      <meshBasicMaterial color={siteColor(site.kind)} />
+    </mesh>
+  );
 }
 
 interface Props {
@@ -480,6 +660,7 @@ function CentralBodies({
                 radius={STAR_CORE * look.star.radius * scale}
                 coronaRadius={STAR_CORONA * look.star.corona * scale}
                 starClass={body.typeId}
+                tickAt={tickAt}
               />
             )}
           </group>
@@ -523,8 +704,10 @@ export function SystemLayer({
       ))}
 
       {system.belts.map((belt) => (
-        <AsteroidBelt key={belt.id} belt={belt} />
+        <AsteroidBelt key={belt.id} belt={belt} tickAt={tickAt} />
       ))}
+
+      <Crossers system={system} tickAt={tickAt} />
 
       {drawn.map((body) => (
         <OrbitingBody
@@ -550,6 +733,7 @@ export function SystemLayer({
             id={system.station.id}
             color={factionTint(system.station.factionId)}
             size={TRADING_POST}
+            tickAt={tickAt}
           />
         </group>
       )}
@@ -568,7 +752,9 @@ export function SystemLayer({
             tickAt={tickAt}
             offset={bodyRadiusOf(body) * 2.2}
           >
-            <StationModel station={station} size={STATION} />
+            <SpinningHabitat id={station.id} tickAt={tickAt}>
+              <StationModel station={station} size={STATION} />
+            </SpinningHabitat>
           </InOrbitOf>
         );
       })}
@@ -590,6 +776,7 @@ export function SystemLayer({
               id={station.id}
               color={station.ownerColor}
               size={STATION}
+              tickAt={tickAt}
             />
           </InOrbitOf>
         );
@@ -601,10 +788,7 @@ export function SystemLayer({
         if (!belt) return null;
         const angle = seedOf(`${outpost.id}:angle`) * Math.PI * 2;
         return (
-          <group
-            key={outpost.id}
-            rotation={[belt.inclination, 0, belt.ascendingNode]}
-          >
+          <group key={outpost.id} rotation={orbitPlaneRotation(belt)}>
             <mesh
               position={[
                 Math.cos(angle) * belt.orbitRadius,
@@ -640,32 +824,10 @@ export function SystemLayer({
         </mesh>
       ))}
 
-      {/* Sites du scan : figés, une épave à la dérive n'a pas de période utile. */}
-      {sites.map((site) => {
-        const p = sitePosition(site);
-        return (
-          <mesh
-            key={site.id}
-            position={[p.x, p.y, p.z]}
-            rotation={[
-              seedOf(site.id) * 6.283,
-              seedOf(`${site.id}:r`) * 6.283,
-              0,
-            ]}
-          >
-            {/* Une forme par nature (chantier 35.10) : les trois ne se distinguaient que
-                par leur teinte, ce qui ne se lit pas de loin. */}
-            {site.kind === "wreck" ? (
-              <boxGeometry args={[12, 3, 3]} />
-            ) : site.kind === "cache" ? (
-              <boxGeometry args={[5, 5, 5]} />
-            ) : (
-              <octahedronGeometry args={[5]} />
-            )}
-            <meshBasicMaterial color={siteColor(site.kind)} />
-          </mesh>
-        );
-      })}
+      {/* Sites du scan : sur leur orbite, et qui culbutent (chantier 50.9). */}
+      {sites.map((site) => (
+        <DriftingSite key={site.id} site={site} tickAt={tickAt} />
+      ))}
     </>
   );
 }
