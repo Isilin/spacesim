@@ -64,6 +64,7 @@ import {
   habitabilityOf,
   irradianceAt,
   lightingFor,
+  lockedToStar,
   radiationAt,
   surfaceGravity,
   surfaceTempC,
@@ -90,7 +91,7 @@ import type {
  * bumper cette version vont ensemble, dans le même commit. Les galaxies déjà
  * matérialisées en DB gardent la version qui les a produites et ne changent jamais.
  */
-export const GENERATOR_VERSION = 12;
+export const GENERATOR_VERSION = 13;
 
 /** Part des systèmes accueillant un comptoir commercial PNJ. */
 const TRADING_POST_PROBABILITY = 0.35;
@@ -484,6 +485,11 @@ function bodyHabitability(
       gravityG: surfaceGravity(radiusEarth, density),
       radiation: Math.max(radiationAt(lighting, au), env.hazard),
       breathable: env.atmosphere === "breathable" && retention > 0.5,
+      // Seule une planète se verrouille sur son étoile : une lune l'est sur sa planète, et
+      // garde un jour et une nuit (chantier 50.4). Lu de la géométrie, sans tirage : le flux
+      // du générateur ne bouge pas, seule l'habitabilité des planètes verrouillées change.
+      lockedToStar:
+        ref.kind === "planet" && lockedToStar(lighting, orbitRadius),
     }),
     radiusEarth,
     density,

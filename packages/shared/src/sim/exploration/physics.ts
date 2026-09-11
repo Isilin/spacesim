@@ -418,6 +418,61 @@ export function lightingFor(
   return host ? [host] : bodies;
 }
 
+// ── Verrouillage par effet de marée (chantier 50.3) ──────────────────────────
+
+/**
+ * Rayon de verrouillage d'une planète autour d'une masse solaire, en unités astronomiques.
+ *
+ * Calé sur Mercure, à 0,39 UA : les marées du Soleil l'ont capturée — en résonance 3:2 plutôt
+ * qu'en 1:1, ce que ce modèle ne distingue pas —, quand Vénus, à 0,72 UA, leur a échappé.
+ */
+const TIDAL_LOCK_AU_AT_SOLAR_MASS = 0.4;
+
+/**
+ * Rayon d'orbite, en unités de scène, sous lequel une lune est verrouillée sur sa planète.
+ *
+ * Les lunes du générateur orbitent à `16 + 10 i` : la valeur verrouille les trois orbites
+ * internes et laisse tourner les suivantes. C'est l'image du système solaire, où presque toutes
+ * les grandes lunes montrent toujours la même face et où seules les lointaines tournent.
+ */
+const MOON_TIDAL_LOCK_RADIUS = 40;
+
+/**
+ * Rayon de verrouillage d'une planète sur les corps qui l'éclairent, en unités astronomiques.
+ *
+ * Le temps qu'il faut aux marées pour figer une rotation croît comme `a⁶/M²` : à âge de système
+ * égal, la distance limite suit donc `M^(1/3)`. C'est ce qui fait du verrouillage le compagnon
+ * du chantier 45 : la zone habitable d'une naine rouge est à 0,1–0,2 UA, sous son rayon de
+ * verrouillage — ses mondes tempérés gardent une face au jour —, quand celle d'une étoile
+ * solaire commence à 0,95 UA, bien au-delà. Une naine orange est à la frontière.
+ *
+ * `lighting` et non le système entier, pour la même raison que l'irradiance : en orbite S, la
+ * compagne lointaine ne retient rien.
+ */
+export function tidalLockRadiusAu(lighting: readonly CentralBody[]): number {
+  const mass = lighting.reduce((sum, body) => sum + body.mass, 0);
+  return TIDAL_LOCK_AU_AT_SOLAR_MASS * Math.cbrt(Math.max(0, mass));
+}
+
+/** Une planète à ce rayon d'orbite est-elle verrouillée sur son étoile ? */
+export function lockedToStar(
+  lighting: readonly CentralBody[],
+  orbitRadius: number,
+): boolean {
+  return auAt(lighting, orbitRadius) < tidalLockRadiusAu(lighting);
+}
+
+/**
+ * Une lune à ce rayon d'orbite est-elle verrouillée sur sa planète ?
+ *
+ * Un verrouillage distinct du précédent, et qui ne coûte rien à l'habitabilité : une lune
+ * verrouillée sur sa planète garde un jour et une nuit vis-à-vis de l'étoile — son jour solaire
+ * vaut sa révolution, 29,5 jours pour la Lune.
+ */
+export function lockedToPlanet(moonOrbitRadius: number): boolean {
+  return moonOrbitRadius < MOON_TIDAL_LOCK_RADIUS;
+}
+
 // ── Ce que le ciel rapporte ──────────────────────────────────────────────────
 
 /**
@@ -610,6 +665,11 @@ export interface SurfaceConditions {
   /** 0–5, tel que `radiationAt` le rend. */
   radiation: number;
   breathable: boolean;
+  /**
+   * Verrouillé sur son étoile (chantier 50.4) — jamais une lune verrouillée sur sa planète,
+   * qui garde un jour et une nuit.
+   */
+  lockedToStar: boolean;
 }
 
 /**
@@ -644,12 +704,34 @@ function band(
 }
 
 /**
+ * Ce qu'il reste de l'habitabilité d'un monde verrouillé sur son étoile et privé d'air
+ * (chantier 50.4). Le même poids que ne pas pouvoir respirer : les deux disent qu'une colonie
+ * vit enfermée — ici dans l'étroite bande du terminateur, entre une face brûlante et une face
+ * gelée. Posé par analogie physique, jamais réglé pour faire passer une calibration.
+ */
+const TIDAL_LOCK_FLOOR = 0.55;
+
+/**
+ * Facteur d'habitabilité d'un monde verrouillé sur son étoile, entre `TIDAL_LOCK_FLOOR` et 1.
+ *
+ * C'est l'atmosphère qui décide : elle transporte la chaleur de la face éclairée vers la face
+ * nocturne, et vers un bar elle efface la différence — un monde verrouillé ne se distingue plus
+ * alors d'un monde qui tourne. C'est ce qui donne son prix à une naine rouge : ses mondes
+ * tempérés ne valent quelque chose que s'ils tiennent une atmosphère.
+ */
+export function tidalLockPenalty(pressureBar: number): number {
+  const redistributed = Math.min(1, Math.max(0, pressureBar));
+  return TIDAL_LOCK_FLOOR + (1 - TIDAL_LOCK_FLOOR) * redistributed;
+}
+
+/**
  * Habitabilité, 0–100 — **calculée**, plus jamais tirée.
  *
  * C'est le point d'arrivée de toute la chaîne, et la raison d'être du chantier. La
  * température domine (une planète hors de la bande liquide ne vaut rien, quelles que soient
  * ses autres qualités), la pression et la gravité modulent, le rayonnement retranche, et
- * respirer double la valeur du reste.
+ * respirer double la valeur du reste. Un monde verrouillé sur son étoile paie en plus ce que
+ * son atmosphère ne redistribue pas (chantier 50.4).
  *
  * Le produit plutôt que la somme : un seul facteur rédhibitoire suffit à annuler le tout, ce
  * qui est le comportement voulu — on ne colonise pas un monde tempéré et écrasant.
@@ -660,6 +742,9 @@ export function habitabilityOf(conditions: SurfaceConditions): number {
   const gravity = band(conditions.gravityG, GRAVITY_G);
   const irradiated = Math.max(0.05, 1 - conditions.radiation / 6);
   const air = conditions.breathable ? 1 : 0.55;
+  const locked = conditions.lockedToStar
+    ? tidalLockPenalty(conditions.pressureBar)
+    : 1;
 
   // Moyenne géométrique pondérée, et non un produit sec.
   //
@@ -673,7 +758,8 @@ export function habitabilityOf(conditions: SurfaceConditions): number {
     pressure ** 0.2 *
     gravity ** 0.2 *
     irradiated ** 0.4 *
-    air;
+    air *
+    locked;
 
   // Plancher à 1, jamais 0 : le zéro est réservé aux corps SANS SURFACE, qui n'arrivent
   // pas jusqu'ici. Sans lui, une super-Terre à 594 °C sous 135 bars tombe sous 0,005 et

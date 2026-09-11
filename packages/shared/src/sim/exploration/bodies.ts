@@ -4,6 +4,7 @@ import {
 } from "../../content/astro/body-defs.js";
 import type { Atmosphere, CentralBody, Planet } from "../../model/universe.js";
 import { createRng, type Rng } from "../../rng.js";
+import { orbitalPeriodTicks, type SpinElements } from "./geometry.js";
 import {
   atmosphereRetention,
   auAt,
@@ -13,6 +14,8 @@ import {
   greenhouseK,
   irradianceAt,
   lightingFor,
+  lockedToPlanet,
+  lockedToStar,
   surfaceGravity,
   surfaceTempC,
 } from "./physics.js";
@@ -39,8 +42,9 @@ import {
  *
  * ## Ce qui reste ici
  *
- * Ce qui n'appartient pas à la chaîne : la durée du jour, la période de révolution, et la
- * mise en forme. Le reste n'est plus qu'un appel à `physics.ts`.
+ * Ce qui n'appartient pas à la chaîne : la rotation propre, la période de révolution, et la
+ * mise en forme. Le reste n'est plus qu'un appel à `physics.ts` — et la révolution, depuis le
+ * chantier 50.2, un appel à `geometry.ts`.
  *
  * Toujours **dérivée de l'id du corps**, donc identique côté client et côté serveur, et
  * recalculable sans toucher au générateur (ADR 0002).
@@ -60,10 +64,18 @@ export interface BodyPhysicals {
   pressureBar: number;
   /** Flux stellaire reçu, en constantes solaires (la Terre en reçoit 1). */
   irradiance: number;
-  /** Durée de rotation, en heures. */
-  dayLengthHours: number;
-  /** Période de révolution autour du corps parent, en jours. */
-  orbitPeriodDays: number;
+  /**
+   * Rotation propre : axe, période, phase (chantier 50.2). `spin.periodTicks` EST la durée du
+   * jour — aucun autre champ ne la dit, donc aucun ne peut la contredire.
+   */
+  spin: SpinElements;
+  /**
+   * Période de révolution autour du corps parent, en ticks : celle-là même que l'écran montre,
+   * lue dans `geometry.ts`. La fiche en calculait une seconde, avec sa propre loi de Kepler.
+   */
+  orbitPeriodTicks: number;
+  /** Le corps montre-t-il toujours la même face à ce qu'il orbite ? (chantier 50.3) */
+  tidallyLocked: boolean;
 }
 
 /** Rayon terrestre, en kilomètres — le pont entre les unités de la chaîne et la fiche. */
@@ -73,6 +85,28 @@ const EARTH_RADIUS_KM = 6371;
 const RETENTION_NONE = 0.15;
 const RETENTION_TRACE = 0.4;
 const RETENTION_THIN = 0.8;
+
+/**
+ * Période de rotation propre d'un corps libre, en ticks — 2 à 20 minutes de temps réel
+ * (chantier 50.2).
+ *
+ * Le spin ne décide de rien : c'est le seul mouvement du jeu qu'on puisse régler pour l'œil.
+ * Les orbites restent réglées pour la stratégie (chantier 31.9), et la plus rapide du jeu —
+ * une lune interne, 1 440 ticks — reste six fois plus longue que le jour le plus long ; une
+ * planète, 3 600 ticks au plus vite, quinze fois. Le jour redevient plus court que l'année, ce
+ * qu'il n'était plus : l'ancien tirage donnait 8 à 90 h contre des révolutions de 2 à 51 h.
+ */
+export const SPIN_PERIOD_TICKS = [24, 240] as const;
+
+/**
+ * Obliquité d'un corps libre, en radians : 0 à 29°, l'ordre de la Terre, de Mars ou de
+ * Saturne. Un corps verrouillé n'en a pas — les marées qui ont figé sa rotation ont aussi
+ * redressé son axe.
+ */
+const AXIAL_TILT = [0, 0.5] as const;
+
+/** Part des corps libres qui tournent à contresens de leur orbite, comme Vénus. */
+const RETROGRADE_SHARE = 0.1;
 
 function range(rng: Rng, [min, max]: readonly [number, number]): number {
   return min + rng() * (max - min);
@@ -152,6 +186,41 @@ export function bodyPhysicals(
     greenhouseK(pressureBar, env.greenhousePerBar),
   );
 
+  // Une seule loi de Kepler : la révolution est celle que l'écran montre (chantier 50.2).
+  const orbitPeriodTicks = orbitalPeriodTicks(planet);
+  // Deux verrouillages, deux seuils (chantier 50.3) : une lune se verrouille sur sa planète,
+  // une planète sur l'étoile qui l'éclaire.
+  const tidallyLocked = isMoon
+    ? lockedToPlanet(planet.orbitRadius)
+    : lockedToStar(lighting, orbitRadius);
+
+  // Le jour se tire à la place qu'occupait l'ancien, les tirages nouveaux viennent après : le
+  // rayon et la densité d'un corps restent ceux d'avant le chantier. Un corps verrouillé tire
+  // comme les autres et ignore le résultat — sans quoi retoucher un seuil décalerait l'axe de
+  // tous les corps qu'il fait basculer.
+  const freeDay = range(rng, SPIN_PERIOD_TICKS);
+  const tilt = range(rng, AXIAL_TILT);
+  const axisNode = rng() * Math.PI * 2;
+  const phase = rng() * Math.PI * 2;
+  const retrograde = rng() < RETROGRADE_SHARE;
+  const spin: SpinElements = tidallyLocked
+    ? {
+        // Un jour égal à l'année, un axe droit, et la phase de l'orbite : c'est ce qui garde
+        // la même face tournée vers ce que le corps orbite.
+        axialTilt: 0,
+        axisNode: 0,
+        periodTicks: orbitPeriodTicks,
+        spinAngle: planet.orbitAngle,
+        retrograde: false,
+      }
+    : {
+        axialTilt: tilt,
+        axisNode,
+        periodTicks: freeDay,
+        spinAngle: phase,
+        retrograde,
+      };
+
   return {
     radiusKm: Math.round(radiusEarth * EARTH_RADIUS_KM),
     gravityG: Math.round(gravityG * 100) / 100,
@@ -161,15 +230,9 @@ export function bodyPhysicals(
     atmosphere,
     pressureBar: Math.round(pressureBar * 1000) / 1000,
     irradiance: Math.round(irradiance * 1000) / 1000,
-    dayLengthHours:
-      Math.round(range(rng, isMoon ? [40, 700] : [8, 90]) * 10) / 10,
-    // Période orbitale : loi de Kepler (T ∝ r^1.5) autour du corps parent.
-    orbitPeriodDays:
-      Math.round(
-        ((planet.orbitRadius / (isMoon ? 4 : 40)) ** 1.5 +
-          range(rng, [0.2, 2])) *
-          10,
-      ) / 10,
+    spin,
+    orbitPeriodTicks,
+    tidallyLocked,
   };
 }
 
