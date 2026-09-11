@@ -50,6 +50,7 @@ import {
   SystemLayer,
   systemExtent,
 } from "./SystemLayer.js";
+import { useReducedMotion } from "../hooks/useReducedMotion.js";
 import { fractionalTick } from "./tickClock.js";
 import { TierCamera } from "./TierCamera.js";
 import {
@@ -209,9 +210,17 @@ export function MapScene({
 
   // Tick fractionnaire : le serveur n'avance que par pas de TICK_MS, l'écran par image. Voir
   // `fractionalTick`, qui dit pourquoi il n'est plus borné à zéro (chantier 50.5).
+  //
+  // Sous « réduire les animations », la carte avance d'un pas par tick serveur au lieu d'un
+  // pas par image (chantier 50.13) : un seul point de coupure pour tout ce qui orbite, et
+  // l'information reste — seule l'animation part.
+  const reducedMotion = useReducedMotion();
   const tickAt = useMemo(
-    () => () => fractionalTick(tick, lastTickAt, Date.now()),
-    [tick, lastTickAt],
+    () =>
+      reducedMotion
+        ? () => tick
+        : () => fractionalTick(tick, lastTickAt, Date.now()),
+    [tick, lastTickAt, reducedMotion],
   );
 
   /**

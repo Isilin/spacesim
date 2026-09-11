@@ -8,6 +8,7 @@ import {
   type Mesh,
   type ShaderMaterial,
 } from "three";
+import { useReducedMotion } from "../hooks/useReducedMotion.js";
 import { seedOf, starAppearance } from "./appearance.js";
 
 /**
@@ -173,7 +174,11 @@ export function StarBody({
     [look.halo],
   );
 
+  // Sous « réduire les animations » (chantier 50.13), l'étoile cesse de bouillir et de
+  // tourner : sa surface reste, son mouvement part.
+  const still = useReducedMotion();
   useFrame((state) => {
+    if (still) return;
     const time = surface.current?.uniforms.uTime;
     if (time) time.value = state.clock.elapsedTime;
     // La granulation est échantillonnée en coordonnées d'objet : tourner la sphère la fait

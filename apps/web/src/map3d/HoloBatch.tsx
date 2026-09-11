@@ -14,6 +14,7 @@ import {
 } from "three";
 import { buildGeometry } from "./partGeometry.js";
 import type { PartShape } from "./shipLayout.js";
+import { useReducedMotion } from "../hooks/useReducedMotion.js";
 
 /**
  * Registre holographique des objets manufacturés (chantiers 33.3, 34.2) : volume
@@ -94,8 +95,10 @@ const timeUniform = { value: 0 };
 /** À monter une fois dans la scène. Écrit directement dans l'uniforme, jamais par un état
  *  React — un `setState` par image re-rendrait tout l'arbre soixante fois par seconde. */
 export function HoloClock() {
+  // Les bandes cessent de défiler sous « réduire les animations » (chantier 50.13).
+  const still = useReducedMotion();
   useFrame((state) => {
-    timeUniform.value = state.clock.elapsedTime;
+    if (!still) timeUniform.value = state.clock.elapsedTime;
   });
   return null;
 }

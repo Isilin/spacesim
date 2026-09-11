@@ -13,6 +13,7 @@ import {
   type Group,
   type Mesh,
 } from "three";
+import { useReducedMotion } from "../hooks/useReducedMotion.js";
 import { asteroidGeometry } from "./asteroids.js";
 import { seedOf } from "./appearance.js";
 import { orbitColor } from "./theme.js";
@@ -65,12 +66,14 @@ function CrosserBody({
   const tumbleTicks =
     TUMBLE_TICKS[0] +
     seedOf(`${crosser.id}:tumble`) * (TUMBLE_TICKS[1] - TUMBLE_TICKS[0]);
+  // La culbute est un décor : elle se fige sous « réduire les animations » (chantier 50.13).
+  const still = useReducedMotion();
 
   useFrame(() => {
     const tick = tickAt();
     const p = eccentricPositionAt(crosser, tick);
     place.current?.position.set(p.x, p.y, p.z);
-    if (rock.current) {
+    if (rock.current && !still) {
       const turn = (2 * Math.PI * tick) / tumbleTicks;
       // Deux axes à des rythmes différents : une culbute, pas une rotation propre.
       rock.current.rotation.set(turn, turn * 0.61, 0);

@@ -1,6 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { AdditiveBlending, BackSide, Color, type ShaderMaterial } from "three";
+import { useReducedMotion } from "../hooks/useReducedMotion.js";
 import { seedOf } from "./appearance.js";
 
 /**
@@ -191,9 +192,12 @@ export function BlackHole({
     [color],
   );
 
+  // Le disque s'arrête sous « réduire les animations » (chantier 50.13) : ses filaments
+  // restent, leur rotation part.
+  const still = useReducedMotion();
   useFrame((state) => {
     const time = disc.current?.uniforms.uTime;
-    if (time) time.value = state.clock.elapsedTime;
+    if (time && !still) time.value = state.clock.elapsedTime;
   });
 
   return (

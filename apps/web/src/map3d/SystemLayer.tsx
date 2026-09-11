@@ -31,6 +31,7 @@ import {
   centralBodyAppearance,
 } from "./appearance.js";
 import { astroOverrides } from "../state/astro-content.js";
+import { useReducedMotion } from "../hooks/useReducedMotion.js";
 import { focusOf, type Focus } from "./bounds.js";
 import {
   centralBodySlots,
@@ -213,14 +214,18 @@ export function RotatingBody({
 }) {
   const spinning = useRef<Group>(null);
   // La fiche est déterministe et sans état : le spin se dérive une fois, seul l'angle avance.
-  const spin = useMemo(
-    () => bodyPhysicals(body, starsOf(system)).spin,
+  const { spin, tidallyLocked } = useMemo(
+    () => bodyPhysicals(body, starsOf(system)),
     [body, system],
   );
+  const still = useReducedMotion();
   useFrame(() => {
-    if (spinning.current) {
-      spinning.current.rotation.z = spinAngleAt(spin, tickAt());
-    }
+    if (!spinning.current) return;
+    // Sous « réduire les animations » (chantier 50.13), un corps libre se fige ; un corps
+    // verrouillé suit encore son orbite, pas à pas — sans quoi il cesserait de faire face à ce
+    // qu'il orbite.
+    spinning.current.rotation.z =
+      still && !tidallyLocked ? spin.spinAngle : spinAngleAt(spin, tickAt());
   });
   const radius = bodyRadiusOf(body);
   return (
@@ -309,6 +314,8 @@ function AsteroidBelt({
     [belt],
   );
 
+  // La culbute se fige sous « réduire les animations » (chantier 50.13).
+  const still = useReducedMotion();
   useFrame(() => {
     const tick = tickAt();
     for (const [shape, ref] of refs.entries()) {
@@ -319,7 +326,7 @@ function AsteroidBelt({
         const rock = rocks[i];
         if (!rock) continue;
         const angle = rock.start + rock.speed * tick;
-        const turn = rock.tumble * tick;
+        const turn = still ? 0 : rock.tumble * tick;
         ROCK.position.set(
           Math.cos(angle) * rock.radius,
           Math.sin(angle) * rock.radius,
@@ -461,10 +468,12 @@ function SpinningHabitat({
 }) {
   const ref = useRef<Group>(null);
   const phase = seedOf(`${id}:spin`) * Math.PI * 2;
+  const still = useReducedMotion();
   useFrame(() => {
     if (!ref.current) return;
-    ref.current.rotation.z =
-      phase + (2 * Math.PI * tickAt()) / HABITAT_SPIN_TICKS;
+    ref.current.rotation.z = still
+      ? phase
+      : phase + (2 * Math.PI * tickAt()) / HABITAT_SPIN_TICKS;
   });
   return <group ref={ref}>{children}</group>;
 }
@@ -490,13 +499,15 @@ function DriftingSite({
   const tumbleTicks =
     SITE_TUMBLE_TICKS[0] +
     seedOf(`${site.id}:tumble`) * (SITE_TUMBLE_TICKS[1] - SITE_TUMBLE_TICKS[0]);
+  // La culbute se fige sous « réduire les animations » ; l'orbite avance au pas du serveur.
+  const still = useReducedMotion();
   useFrame(() => {
     const mesh = ref.current;
     if (!mesh) return;
     const tick = tickAt();
     const p = sitePosition(site, tick);
     mesh.position.set(p.x, p.y, p.z);
-    const turn = (2 * Math.PI * tick) / tumbleTicks;
+    const turn = still ? 0 : (2 * Math.PI * tick) / tumbleTicks;
     mesh.rotation.set(
       seedOf(site.id) * 6.283 + turn,
       seedOf(`${site.id}:r`) * 6.283 + turn * 0.61,

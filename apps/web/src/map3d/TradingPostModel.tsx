@@ -1,6 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import type { Group } from "three";
+import { useReducedMotion } from "../hooks/useReducedMotion.js";
 import { seedOf } from "./appearance.js";
 
 /**
@@ -36,11 +37,13 @@ export function TradingPostModel({
   const arms = 3 + Math.floor(seedOf(`${id}:arms`) * 3);
   const hub = size * 0.45;
   const spinning = useRef<Group>(null);
+  // Figé à sa phase propre sous « réduire les animations » (chantier 50.13).
+  const still = useReducedMotion();
 
   useFrame(() => {
     if (!spinning.current) return;
-    spinning.current.rotation.z =
-      seed * Math.PI * 2 + (2 * Math.PI * tickAt()) / HABITAT_SPIN_TICKS;
+    const turned = still ? 0 : (2 * Math.PI * tickAt()) / HABITAT_SPIN_TICKS;
+    spinning.current.rotation.z = seed * Math.PI * 2 + turned;
   });
 
   return (
