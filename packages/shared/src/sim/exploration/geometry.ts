@@ -131,6 +131,67 @@ export function spinAngleAt(el: SpinElements, tick: number): number {
   return el.spinAngle + (el.retrograde ? -turned : turned);
 }
 
+/**
+ * Orbite excentrique (chantier 50.8) — celle des géocroiseurs, seuls objets du jeu à ne pas
+ * tourner en cercle. `orbitRadius` y est le demi-grand axe et `orbitAngle` l'argument du
+ * périastre ; le reste se lit comme sur une orbite circulaire.
+ *
+ * Un type à part plutôt qu'un champ de plus sur `OrbitalElements` : `orbitPosition` est le
+ * chemin chaud de tous les corps et du coût de trajet, et rien d'autre ne s'y excentre.
+ */
+export interface EccentricElements extends OrbitalElements {
+  /** Excentricité : 0 pour un cercle, strictement sous 1. */
+  eccentricity: number;
+  /** Anomalie moyenne à t=0, en radians. */
+  meanAnomaly: number;
+}
+
+/**
+ * Position sur une orbite excentrique, au tick donné.
+ *
+ * La loi est celle des corps, `angularSpeedAt` sur le demi-grand axe : un géocroiseur ne
+ * tourne ni plus vite ni plus lentement que sa taille d'orbite ne l'impose. Mais il ne la
+ * parcourt pas à vitesse constante — il plonge au périastre et traîne à l'apoastre, ce que
+ * dit l'équation de Kepler, `M = E − e·sin E`, résolue ici par cinq pas de Newton. Sans
+ * boucle de convergence, donc sans branche, et exacte bien au-delà du pixel sous e = 0,5 :
+ * pour deux objets par image, le coût est nul.
+ */
+export function eccentricPositionAt(
+  el: EccentricElements,
+  tick: number,
+  k = PLANET_KEPLER_CONSTANT,
+): Vec3 {
+  const e = el.eccentricity;
+  const mean = el.meanAnomaly + angularSpeedAt(el.orbitRadius, k) * tick;
+  let eccentric = mean + e * Math.sin(mean);
+  for (let step = 0; step < 5; step++) {
+    eccentric -=
+      (eccentric - e * Math.sin(eccentric) - mean) /
+      (1 - e * Math.cos(eccentric));
+  }
+  return eccentricPointAt(el, eccentric);
+}
+
+/**
+ * Point d'une orbite excentrique à une anomalie excentrique donnée : ce que parcourt
+ * `eccentricPositionAt`, et ce que la carte trace. Une seule formule pour les deux — le corps
+ * ne peut pas s'écarter de la ligne qui prétend dessiner sa route.
+ */
+export function eccentricPointAt(
+  el: EccentricElements,
+  eccentricAnomaly: number,
+): Vec3 {
+  const e = el.eccentricity;
+  const trueAnomaly =
+    2 *
+    Math.atan2(
+      Math.sqrt(1 + e) * Math.sin(eccentricAnomaly / 2),
+      Math.sqrt(1 - e) * Math.cos(eccentricAnomaly / 2),
+    );
+  const radius = el.orbitRadius * (1 - e * Math.cos(eccentricAnomaly));
+  return orbitPosition({ ...el, orbitRadius: radius }, trueAnomaly);
+}
+
 /** Position d'un corps sur sa propre orbite, à un tick donné. */
 function localPositionAt(body: Planet, tick: number): Vec3 {
   return orbitPosition(body, angularSpeedOf(body) * tick);

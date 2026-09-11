@@ -13,6 +13,8 @@ import {
   type Territory,
   type ResourceId,
   type ClientUniverse,
+  crossersOf,
+  eccentricPositionAt,
   galacticCoreDisc,
   sitePosition,
   starsOf,
@@ -561,6 +563,22 @@ export function MapScene({
         ),
       );
     }
+    // Les géocroiseurs (chantier 50.8) : sur une ellipse, donc une position par image comme
+    // les corps. Nommés par leur rang, et par le monde dont ils coupent la route.
+    crossersOf(system).forEach((crosser, index) => {
+      const planet = system.planets.find((p) => p.id === crosser.crossesId);
+      out.push(
+        feature(
+          crosser.id,
+          t("mapInfobox.crosserName", { n: index + 1 }),
+          t("mapInfobox.crosser", { planet: planet?.name ?? "" }),
+          () => {
+            const p = eccentricPositionAt(crosser, tickAt());
+            return under(home, [p.x, p.y, p.z]);
+          },
+        ),
+      );
+    });
     return out;
   }, [
     tier,

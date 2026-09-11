@@ -39,6 +39,7 @@ import {
 import { hasRings, PlanetRings } from "./PlanetRings.js";
 import { ProceduralBody } from "./ProceduralBody.js";
 import { BlackHole } from "./BlackHole.js";
+import { Crossers } from "./Crossers.js";
 import { StarBody } from "./StarBody.js";
 import { StationModel } from "./StationModel.js";
 import { TradingPostModel } from "./TradingPostModel.js";
@@ -573,6 +574,8 @@ export function SystemLayer({
       {system.belts.map((belt) => (
         <AsteroidBelt key={belt.id} belt={belt} />
       ))}
+
+      <Crossers system={system} tickAt={tickAt} />
 
       {drawn.map((body) => (
         <OrbitingBody

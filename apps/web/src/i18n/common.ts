@@ -67,6 +67,8 @@ export const commonFr = {
     foreignStation: "Station de {{owner}}",
     belt: "Ceinture · {{list}}",
     beltMined: "Ceinture · avant-poste minier",
+    crosserName: "Géocroiseur {{n}}",
+    crosser: "Coupe l'orbite de {{planet}}",
     // Convention astronomique réelle (Sagittarius A*) : le cœur porte le nom de sa galaxie.
     galacticCoreName: "{{galaxy}} A*",
     galacticCore: "Trou noir supermassif",
@@ -763,6 +765,8 @@ export const commonEn: typeof commonFr = {
     foreignStation: "Station of {{owner}}",
     belt: "Belt · {{list}}",
     beltMined: "Belt · mining outpost",
+    crosserName: "Crosser {{n}}",
+    crosser: "Crosses the orbit of {{planet}}",
     galacticCoreName: "{{galaxy}} A*",
     galacticCore: "Supermassive black hole",
     open: "Open sheet",

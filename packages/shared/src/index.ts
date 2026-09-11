@@ -658,13 +658,17 @@ export {
   bodyPositionAt,
   centralBodyPositionAt,
   distance3,
+  eccentricPointAt,
+  eccentricPositionAt,
   orbitalPeriodTicks,
   orbitPosition,
   spinAngleAt,
+  type EccentricElements,
   type OrbitalElements,
   type SpinElements,
   type Vec3,
 } from "./sim/exploration/geometry.js";
+export { crossersOf, type Crosser } from "./sim/exploration/crossers.js";
 export {
   CONTIGUOUS_CLAIM_BONUS,
   systemNeighbors,

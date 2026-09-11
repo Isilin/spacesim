@@ -10,9 +10,14 @@ import {
   bodyPositionAt,
   centralBodyPositionAt,
   distance3,
+  eccentricPointAt,
+  eccentricPositionAt,
   orbitalPeriodTicks,
+  orbitPosition,
   spinAngleAt,
+  type EccentricElements,
   type SpinElements,
+  type Vec3,
 } from "./geometry.js";
 
 function planet(over: Partial<Planet> & { id: string }): Planet {
@@ -349,5 +354,72 @@ describe("spinAngleAt (chantier 50.1)", () => {
     const retrograde = spinAngleAt(spin({ retrograde: true }), 30) - 0.7;
     expect(retrograde).toBeCloseTo(-prograde, 9);
     expect(retrograde).toBeLessThan(0);
+  });
+});
+
+describe("eccentricPositionAt (chantier 50.8)", () => {
+  const orbit = (over: Partial<EccentricElements> = {}): EccentricElements => ({
+    orbitRadius: 150,
+    orbitAngle: 0.4,
+    inclination: 0.1,
+    ascendingNode: 1.2,
+    eccentricity: 0.3,
+    meanAnomaly: 0,
+    ...over,
+  });
+  const fromCenter = (p: Vec3) => Math.hypot(p.x, p.y, p.z);
+  /** Une demi-période orbitale, en ticks. */
+  const half = Math.PI / angularSpeedAt(150, PLANET_KEPLER_CONSTANT);
+
+  it("sans excentricité, c'est l'orbite circulaire au même pas", () => {
+    const circle = orbit({ eccentricity: 0 });
+    for (const tick of [0, 333, 5000]) {
+      const p = eccentricPositionAt(circle, tick);
+      const q = orbitPosition(
+        circle,
+        angularSpeedAt(150, PLANET_KEPLER_CONSTANT) * tick,
+      );
+      expect(p.x).toBeCloseTo(q.x, 9);
+      expect(p.y).toBeCloseTo(q.y, 9);
+      expect(p.z).toBeCloseTo(q.z, 9);
+    }
+  });
+
+  it("au périastre à t=0, à l'apoastre une demi-période plus tard", () => {
+    expect(fromCenter(eccentricPositionAt(orbit(), 0))).toBeCloseTo(105, 9);
+    expect(fromCenter(eccentricPositionAt(orbit(), half))).toBeCloseTo(195, 9);
+  });
+
+  it("plonge au périastre et traîne à l'apoastre, comme le veut Kepler", () => {
+    // Deuxième loi : les vitesses aux apsides sont dans le rapport inverse des distances,
+    // (1 + e) / (1 − e) ≈ 1,86 à e = 0,3.
+    const el = orbit();
+    const atPeri = distance3(
+      eccentricPositionAt(el, 0),
+      eccentricPositionAt(el, 10),
+    );
+    const atApo = distance3(
+      eccentricPositionAt(el, half),
+      eccentricPositionAt(el, half + 10),
+    );
+    expect(atPeri / atApo).toBeCloseTo(1.3 / 0.7, 2);
+  });
+
+  it("revient au même point après une période complète", () => {
+    const el = orbit({ meanAnomaly: 2.2 });
+    const start = eccentricPositionAt(el, 0);
+    const back = eccentricPositionAt(el, 2 * half);
+    expect(distance3(start, back)).toBeCloseTo(0, 6);
+  });
+
+  it("le tracé passe par les apsides que le corps atteint", () => {
+    // `eccentricPointAt` dessine la route, `eccentricPositionAt` la parcourt : mêmes apsides.
+    const el = orbit();
+    expect(distance3(eccentricPointAt(el, 0), eccentricPositionAt(el, 0))).toBe(
+      0,
+    );
+    expect(
+      distance3(eccentricPointAt(el, Math.PI), eccentricPositionAt(el, half)),
+    ).toBeCloseTo(0, 9);
   });
 });
