@@ -84,12 +84,51 @@ function isMoon(body: Planet): boolean {
  */
 export function angularSpeedOf(body: Planet): number {
   const k = isMoon(body) ? MOON_KEPLER_CONSTANT : PLANET_KEPLER_CONSTANT;
-  return k / body.orbitRadius ** 1.5;
+  return angularSpeedAt(body.orbitRadius, k);
+}
+
+/**
+ * Vitesse angulaire d'un rayon d'orbite, pour une constante donnée (chantier 50.1).
+ *
+ * `angularSpeedOf` n'en est que le cas d'un corps du générateur. Les rochers d'une ceinture,
+ * les sites de scan et les géocroiseurs orbitent aussi sans être des `Planet` : ils suivent
+ * cette même loi, et non une copie qui pourrait en diverger.
+ */
+export function angularSpeedAt(orbitRadius: number, k: number): number {
+  return k / orbitRadius ** 1.5;
 }
 
 /** Période orbitale en ticks — l'inverse de `angularSpeedOf`, utile aux tests et à l'UI. */
 export function orbitalPeriodTicks(body: Planet): number {
   return (2 * Math.PI) / angularSpeedOf(body);
+}
+
+/**
+ * Rotation propre d'un corps (chantier 50.1). Symétrique d'`OrbitalElements` : des éléments
+ * constants, et un angle qui se dérive du tick sans jamais être persisté (ADR 0006).
+ *
+ * L'orbite et le spin ne sont pas réglés sur la même échelle, et c'est voulu. L'orbite porte
+ * une mécanique — attendre la conjonction raccourcit un transfert — et reste calibrée pour la
+ * stratégie (chantier 31.9) : une planète y parcourt un degré par minute, ce qu'aucun œil ne
+ * voit. Le spin ne décide de rien ; il est donc libre d'être réglé pour être vu.
+ */
+export interface SpinElements {
+  /** Obliquité : inclinaison de l'axe sur la normale au plan orbital, en radians. */
+  axialTilt: number;
+  /** Longitude du nœud de l'axe : oriente l'obliquité dans le plan orbital, en radians. */
+  axisNode: number;
+  /** Période de rotation, en ticks. Toujours positive : le sens vit dans `retrograde`. */
+  periodTicks: number;
+  /** Angle de rotation à t=0, en radians. */
+  spinAngle: number;
+  /** Rotation à contresens de l'orbite — Vénus en est une. */
+  retrograde: boolean;
+}
+
+/** Angle de rotation propre au tick donné. La seule fonction du spin appelée par image. */
+export function spinAngleAt(el: SpinElements, tick: number): number {
+  const turned = (2 * Math.PI * tick) / el.periodTicks;
+  return el.spinAngle + (el.retrograde ? -turned : turned);
 }
 
 /** Position d'un corps sur sa propre orbite, à un tick donné. */

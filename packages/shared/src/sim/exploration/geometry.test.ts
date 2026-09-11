@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vite-plus/test";
+import {
+  MOON_KEPLER_CONSTANT,
+  PLANET_KEPLER_CONSTANT,
+} from "../../constants.js";
 import type { CentralBody, Planet, StarSystem } from "../../model/universe.js";
 import {
+  angularSpeedAt,
   angularSpeedOf,
   bodyPositionAt,
   centralBodyPositionAt,
   distance3,
   orbitalPeriodTicks,
+  spinAngleAt,
+  type SpinElements,
 } from "./geometry.js";
 
 function planet(over: Partial<Planet> & { id: string }): Planet {
@@ -293,5 +300,54 @@ describe("orbites S et P (chantier 45.2)", () => {
     expect(bodyPositionAt(wide, orphan, 0)).toEqual(
       bodyPositionAt(systemOf([anchor], [world({})]), world({}), 0),
     );
+  });
+});
+
+describe("angularSpeedAt (chantier 50.1)", () => {
+  it("redonne exactement la vitesse d'un corps, planète comme lune", () => {
+    // Les objets qui orbitent sans être des `Planet` — rochers, sites, géocroiseurs — suivent
+    // la même loi : la moindre divergence ici en ferait deux.
+    const planete = planet({ id: "p1", orbitRadius: 137 });
+    const lune = planet({ id: "m1", kind: "moon", orbitRadius: 26 });
+    expect(angularSpeedAt(137, PLANET_KEPLER_CONSTANT)).toBe(
+      angularSpeedOf(planete),
+    );
+    expect(angularSpeedAt(26, MOON_KEPLER_CONSTANT)).toBe(angularSpeedOf(lune));
+  });
+});
+
+describe("spinAngleAt (chantier 50.1)", () => {
+  const spin = (over: Partial<SpinElements> = {}): SpinElements => ({
+    axialTilt: 0.4,
+    axisNode: 1.1,
+    periodTicks: 120,
+    spinAngle: 0.7,
+    retrograde: false,
+    ...over,
+  });
+
+  it("à t=0, l'angle est la phase initiale", () => {
+    expect(spinAngleAt(spin(), 0)).toBe(0.7);
+  });
+
+  it("avance linéairement : une demi-période, un demi-tour", () => {
+    expect(spinAngleAt(spin(), 60) - spinAngleAt(spin(), 0)).toBeCloseTo(
+      Math.PI,
+      9,
+    );
+  });
+
+  it("fait exactement un tour en une période", () => {
+    expect(spinAngleAt(spin(), 120) - spinAngleAt(spin(), 0)).toBeCloseTo(
+      2 * Math.PI,
+      9,
+    );
+  });
+
+  it("un corps rétrograde tourne à contresens", () => {
+    const prograde = spinAngleAt(spin(), 30) - 0.7;
+    const retrograde = spinAngleAt(spin({ retrograde: true }), 30) - 0.7;
+    expect(retrograde).toBeCloseTo(-prograde, 9);
+    expect(retrograde).toBeLessThan(0);
   });
 });

@@ -653,13 +653,16 @@ export {
   type TravelPlan,
 } from "./sim/exploration/route.js";
 export {
+  angularSpeedAt,
   angularSpeedOf,
   bodyPositionAt,
   centralBodyPositionAt,
   distance3,
   orbitalPeriodTicks,
   orbitPosition,
+  spinAngleAt,
   type OrbitalElements,
+  type SpinElements,
   type Vec3,
 } from "./sim/exploration/geometry.js";
 export {
