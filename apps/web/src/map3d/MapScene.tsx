@@ -1,5 +1,4 @@
 import {
-  TICK_MS,
   type Colony,
   type Fleet,
   type ForeignFleet,
@@ -49,6 +48,7 @@ import {
   SystemLayer,
   systemExtent,
 } from "./SystemLayer.js";
+import { fractionalTick } from "./tickClock.js";
 import { TierCamera } from "./TierCamera.js";
 import {
   tierAt,
@@ -205,9 +205,10 @@ export function MapScene({
   const [childMounted, setChildMounted] = useState(tier !== "universe");
   const [jump, setJump] = useState<JumpRequest | null>(null);
 
-  // Tick fractionnaire : le serveur n'avance que par pas de TICK_MS, l'écran par image.
+  // Tick fractionnaire : le serveur n'avance que par pas de TICK_MS, l'écran par image. Voir
+  // `fractionalTick`, qui dit pourquoi il n'est plus borné à zéro (chantier 50.5).
   const tickAt = useMemo(
-    () => () => tick + Math.max(0, (Date.now() - lastTickAt) / TICK_MS),
+    () => () => fractionalTick(tick, lastTickAt, Date.now()),
     [tick, lastTickAt],
   );
 
