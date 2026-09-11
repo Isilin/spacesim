@@ -1,7 +1,13 @@
-import { orbitPosition } from "@spacesim/shared";
+import {
+  angularSpeedOf,
+  bodyPhysicals,
+  orbitPosition,
+  spinAngleAt,
+  type Planet,
+} from "@spacesim/shared";
 import { Euler, Vector3 } from "three";
 import { describe, expect, it } from "vite-plus/test";
-import { orbitPlaneRotation } from "./orbitPlane.js";
+import { obliquityRotation, orbitPlaneRotation } from "./orbitPlane.js";
 
 /** Un point du cercle de rayon `r`, à l'angle `theta`, posé par une rotation d'Euler. */
 function drawn(
@@ -51,5 +57,42 @@ describe("orbitPlaneRotation (chantier 50.6)", () => {
     expect(
       normal([el.inclination, 0, el.ascendingNode, "XYZ"]).angleTo(real),
     ).toBeGreaterThan((10 * Math.PI) / 180);
+  });
+});
+
+describe("un corps verrouillé montre toujours la même face (chantier 50.7)", () => {
+  it("sa face avant pointe à l'opposé de ce qu'il orbite, à tout instant", () => {
+    // Les trois repères de `RotatingBody` — plan d'orbite, obliquité, spin — composés tels que
+    // la scène les emboîte. Un seul degré d'écart dans l'une des conventions, et la lune se
+    // mettrait à tourner sous les yeux du joueur au lieu de lui montrer toujours la même face.
+    const moon: Planet = {
+      id: "sys-p1-m1",
+      systemId: "sys",
+      name: "M",
+      kind: "moon",
+      parentPlanetId: "sys-p1",
+      classId: "regular",
+      variantId: "airless",
+      habitability: 1,
+      slots: 1,
+      deposits: {},
+      orbitRadius: 16,
+      orbitAngle: 1.3,
+      inclination: 0.12,
+      ascendingNode: 2.4,
+    };
+    const { spin, tidallyLocked } = bodyPhysicals(moon);
+    expect(tidallyLocked).toBe(true);
+    const plane = new Euler(...orbitPlaneRotation(moon));
+    const tilt = new Euler(...obliquityRotation(spin));
+    for (const tick of [0, 137, 900, 4321]) {
+      const face = new Vector3(1, 0, 0)
+        .applyAxisAngle(new Vector3(0, 0, 1), spinAngleAt(spin, tick))
+        .applyEuler(tilt)
+        .applyEuler(plane);
+      const away = orbitPosition(moon, angularSpeedOf(moon) * tick);
+      const radial = new Vector3(away.x, away.y, away.z).normalize();
+      expect(face.angleTo(radial)).toBeCloseTo(0, 6);
+    }
   });
 });

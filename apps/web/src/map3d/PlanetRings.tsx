@@ -67,7 +67,12 @@ export function PlanetRings({
     [body.id],
   );
   return (
-    <mesh rotation={[1.2 + seedOf(`${body.id}:tilt`) * 0.4, 0, 0]}>
+    // Dans le plan équatorial, sans inclinaison propre (chantier 50.7) : c'est le repère
+    // d'obliquité de `RotatingBody` qui les incline. Ils portaient la leur, tirée de
+    // l'identifiant — 69 à 92° autour de X, tournés vers la caméra par défaut et vus par la
+    // tranche dès qu'on tournait autour. Sur l'équateur, ils s'ouvrent sous le même angle
+    // quel que soit l'azimut.
+    <mesh>
       {/* Un seul segment radial : c'est le fragment qui calcule le rayon, subdiviser dans
           cette direction n'ajoute aucun détail et multiplie les triangles d'un anneau
           transparent — donc trié à chaque image. */}

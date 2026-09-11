@@ -17,3 +17,14 @@ export function orbitPlaneRotation(el: {
 }): [number, number, number, "ZYX"] {
   return [el.inclination, 0, el.ascendingNode, "ZYX"];
 }
+
+/**
+ * Rotation qui incline l'axe d'un corps de son obliquité, dans le repère de son orbite
+ * (chantier 50.7) : `Rz(nœud de l'axe)·Rx(obliquité)`, la même composition que le plan.
+ */
+export function obliquityRotation(spin: {
+  axialTilt: number;
+  axisNode: number;
+}): [number, number, number, "ZYX"] {
+  return [spin.axialTilt, 0, spin.axisNode, "ZYX"];
+}

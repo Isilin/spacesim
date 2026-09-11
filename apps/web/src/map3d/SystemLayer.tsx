@@ -1,7 +1,9 @@
 import { useFrame } from "@react-three/fiber";
 import {
+  bodyPhysicals,
   bodyPositionAt,
   sitePosition,
+  spinAngleAt,
   bodyStructure,
   starsOf,
   orbitsBarycenter,
@@ -41,7 +43,7 @@ import { StarBody } from "./StarBody.js";
 import { StationModel } from "./StationModel.js";
 import { TradingPostModel } from "./TradingPostModel.js";
 import { orbitColor } from "./theme.js";
-import { orbitPlaneRotation } from "./orbitPlane.js";
+import { obliquityRotation, orbitPlaneRotation } from "./orbitPlane.js";
 import type { Vec3 } from "./tiers.js";
 
 /** Ré-exportés depuis `centralBodies` : `MapScene` les importe d'ici depuis le chantier 37. */
@@ -176,10 +178,55 @@ function OrbitingBody({
           focusable ni clavier — le chemin accessible est la liste DOM parallèle
           (chantier 31.16). */}
       <group onClick={onSelect} onDoubleClick={onOpen}>
-        <ProceduralBody id={body.id} body={body} radius={bodyRadiusOf(body)} />
-        {hasRings(body) && (
-          <PlanetRings body={body} radius={bodyRadiusOf(body)} />
-        )}
+        <RotatingBody system={system} body={body} tickAt={tickAt} />
+      </group>
+    </group>
+  );
+}
+
+/**
+ * Un corps qui tourne sur lui-même (chantier 50.7), aux paliers système et corps.
+ *
+ * Trois repères emboîtés : le plan de son orbite, son obliquité, sa rotation propre — le
+ * dernier seul bouge, d'un scalaire par image. `ProceduralBody` échantillonne son relief en
+ * coordonnées d'objet et s'éclaire dans le repère de la vue : tourner le maillage fait glisser
+ * le relief sous le terminateur, sans une ligne de shader.
+ *
+ * Les anneaux vivent dans le repère d'obliquité, hors du spin : dans le plan équatorial, sans
+ * tourner d'un bloc. Leurs bandes sont de révolution — une rotation rigide ne s'y verrait pas,
+ * et elle serait fausse.
+ *
+ * Un corps verrouillé tourne au rythme de son orbite depuis sa phase orbitale : il garde la
+ * même face tournée vers ce qu'il orbite, et c'est ce qui le distingue à l'œil d'un corps libre.
+ */
+export function RotatingBody({
+  system,
+  body,
+  tickAt,
+}: {
+  system: StarSystem;
+  body: Planet;
+  tickAt: () => number;
+}) {
+  const spinning = useRef<Group>(null);
+  // La fiche est déterministe et sans état : le spin se dérive une fois, seul l'angle avance.
+  const spin = useMemo(
+    () => bodyPhysicals(body, starsOf(system)).spin,
+    [body, system],
+  );
+  useFrame(() => {
+    if (spinning.current) {
+      spinning.current.rotation.z = spinAngleAt(spin, tickAt());
+    }
+  });
+  const radius = bodyRadiusOf(body);
+  return (
+    <group rotation={orbitPlaneRotation(body)}>
+      <group rotation={obliquityRotation(spin)}>
+        <group ref={spinning}>
+          <ProceduralBody id={body.id} body={body} radius={radius} />
+        </group>
+        {hasRings(body) && <PlanetRings body={body} radius={radius} />}
       </group>
     </group>
   );
