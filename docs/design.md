@@ -3481,22 +3481,22 @@ tous invisibles à ses tests.
 
 ### Ce que le joueur voyait vraiment
 
-- **46.1** `GalaxyLayer` lisait `starsOf(system)[0]` sans regarder son `kind` et envoyait toute
+- **47.1** `GalaxyLayer` lisait `starsOf(system)[0]` sans regarder son `kind` et envoyait toute
   étoile dans `blackHoleType()`, dont le repli est le trou noir stellaire : **tout système
   exploré rendait son orange**. Écrit au 45.1 quand seuls les errants portaient des corps
   centraux ; le 45.2 en a donné à tous.
-- **46.1** La table i18n `starClass` portait les six identifiants **dérivés d'avant le 45**.
+- **47.1** La table i18n `starClass` portait les six identifiants **dérivés d'avant le 45**.
   Dix classes d'étoiles sur onze et les onze types de singularité s'affichaient en snake_case
   anglais dans une interface française.
-- **46.2** Une singularité rendait `radius: 0.55, corona: 1.6` en dur — les proportions du trou
+- **47.2** Une singularité rendait `radius: 0.55, corona: 1.6` en dur — les proportions du trou
   noir stellaire. Les onze types avaient **la même taille**, alors que leurs trois rayons sont
   éditables au CMS.
-- **46.2** Un **dormant** éclairait son système et portait un disque, alors que son catalogue
+- **47.2** Un **dormant** éclairait son système et portait un disque, alors que son catalogue
   dit `intensity: 0` et `discRadius: 0` — « son danger étant qu'on ne le voit pas venir ». Une
   **fontaine blanche** rendait une sphère absolument noire.
-- **46.3** `SystemLayer` ne dessinait que l'ancre : une **binaire large montrait une seule
+- **47.3** `SystemLayer` ne dessinait que l'ancre : une **binaire large montrait une seule
   étoile**, son second cortège tournant autour d'un point vide.
-- **46.4** `galaxyGraph` ne lisait pas `galaxy.bridges` : **aucun pont d'Einstein-Rosen n'était
+- **47.4** `galaxyGraph` ne lisait pas `galaxy.bridges` : **aucun pont d'Einstein-Rosen n'était
   franchissable**. Générés, persistés, testés, inutilisables — le rôle n°1 de la famille des
   fontaines blanches.
 
@@ -3517,7 +3517,7 @@ traductions déclarent. Vérifié mordant en renommant une clé.
 **Il n'existe pas de test qui échoue quand une donnée n'est PAS consommée.** C'est ce qui a
 laissé `exoticYield` inerte pendant cinq paliers, puis `bridges` pendant un chantier entier. La
 seule forme qui l'attrape est un comptage sur un univers généré — celui des quatre emplacements
-de singularité (45.5), celui de la borne des corps centraux (46.3).
+de singularité (45.5), celui de la borne des corps centraux (47.3).
 
 ### Ce que la mesure a dit
 
@@ -3546,7 +3546,7 @@ raccourcit, sans qu'il y ait de défaut. Les ponts entrent dans les deux membres
 ### Les trous de ver inter-galactiques restent hors périmètre
 
 La question ne se posait pas tant que le raccourci **intra**-galactique ne fonctionnait pas.
-Elle a un sens depuis le 46.4, et la réponse reste non, pour quatre raisons.
+Elle a un sens depuis le 47.4, et la réponse reste non, pour quatre raisons.
 
 1. **La progression inter-galactique a déjà son axe, et il est neuf.** Le 45.5 l'a posé : les
    fontaines blanches sont le raccourci intra-galactique, ce qu'elles crachent paie le passage
@@ -3783,3 +3783,145 @@ et sert sur 3001.
 | Chemin de production serveur | aucun | image + smoke en CI |
 
 Le générateur n'est pas touché : `GENERATOR_VERSION` et la fixture d'univers ne bougent pas.
+
+## Chantier 50 — Le ciel visible se met à tourner (11/09/2026)
+
+**Question de départ.** « On veut les rotations des différents éléments spatiaux : orbites et
+rotations propres, physiques et visuelles, sur tous les objets où ça a du sens. » Puis, le plan
+écrit : « si les orbites existent déjà, je n'ai jamais vu les planètes tourner. Est-ce normal ? »
+C'est la seconde question qui a décidé du chantier.
+
+### Ce que personne n'avait vu : les orbites ne bougent pas
+
+Les orbites existent depuis le chantier 31 et se recalculent à chaque image. Mais le 31.9 les a
+calibrées pour le jeu — période synodique médiane de 19,5 h, 21 % gagnés à attendre une
+conjonction, des ETA qui ne gigotent pas. À ce réglage, une planète interne parcourt un degré par
+minute : un pixel toutes les vingt secondes environ. Aucun œil ne le voit, et c'est juste ainsi —
+accélérer les orbites viderait la seule mécanique du jeu où attendre paie.
+
+Le mouvement visible devait donc venir d'ailleurs. **L'orbite reste lente parce que le jeu
+l'exige, le spin est rapide parce que rien ne l'en empêche** : il ne décide de rien, il est libre
+d'être réglé pour l'œil. C'est l'objet de l'[ADR 0024](adr/0024-le-spin-se-derive-du-tick.md).
+
+### Quatre faussetés que le sujet a mises à nu
+
+- **Le jour était plus long que l'année.** `dayLengthHours` tirait 8 à 90 h pour des révolutions
+  de 2 à 51 h : 94 % des corps avaient un jour plus long que leur année, trente-six fois plus
+  long en médiane. Brancher ce tirage sur l'écran l'aurait rendu flagrant.
+- **Deux lois de Kepler cohabitaient.** La fiche recalculait une révolution par son propre
+  diviseur, bruit additif compris, et contredisait ce que l'écran faisait tourner.
+- **Aucune lune n'était verrouillée**, alors qu'elles orbitent à 16-56 unités de leur planète.
+- **Ce qui aurait dû dériver était immobile** : les rochers des ceintures, les sites de scan.
+
+### Les tranches
+
+- **50.1** Le spin devient une géométrie partagée : `SpinElements` et `spinAngleAt` dans
+  `geometry.ts`, par symétrie exacte avec `OrbitalElements`. `angularSpeedAt` étend la loi de
+  Kepler aux objets qui orbitent sans être des `Planet`.
+- **50.2 à 50.4** Le jour redevient plus court que l'année — 24 à 240 ticks, deux à vingt
+  minutes —, la révolution de la fiche est celle de l'écran, et le verrouillage par marée se
+  calcule : une lune sur sa planète, une planète sur son étoile sous un rayon en `M^(1/3)`. Seul
+  le verrouillage stellaire coûte en habitabilité, et seulement à qui manque d'air.
+- **50.5** Le tick fractionnaire ne cale plus sur une horloge en retard. *Non prévue au plan.*
+- **50.6** Les anneaux d'orbite tracent enfin l'orbite des corps. *Non prévue au plan.*
+- **50.7** Les corps tournent sur eux-mêmes ; les anneaux planétaires passent sur l'équateur.
+- **50.8** Des géocroiseurs coupent les orbites.
+- **50.9** Les sites de scan orbitent, et culbutent.
+- **50.10 à 50.12** Les étoiles, les ceintures et les stations tournent.
+- **50.13** La carte respecte « réduire les animations », défaut consigné depuis le 34.
+- **50.14** Ce journal, l'ADR 0024, et la numérotation du chantier 47 : son corps disait encore
+  `46.x` quand ses commits portaient `47.x`.
+
+L'ordre n'est pas celui du plan. Les géocroiseurs sont passés avant les ceintures, dont l'export
+partageait `index.ts` avec eux : un commit qui les aurait mêlés ne se retirait plus seul, alors que
+le plan les avait placés en dernier pour être coupés les premiers si le budget d'images mordait.
+
+### Deux défauts que le mouvement aurait rendus flagrants
+
+**Le tick fractionnaire calait.** Toute la scène anime
+`tick + Math.max(0, (Date.now() − lastTickAt) / TICK_MS)`. `lastTickAt` est une heure du serveur,
+lue avec l'horloge du client : en retard de δ, le bornage collait la fraction à zéro pendant δ
+après chaque tick, puis la faisait bondir. Mesuré avant correction, sur 1,5 s de retard — ce
+qu'une horloge synchronisée une fois par semaine fait sans peine : un bond de 0,284 tick à chaque
+instantané et une demi-seconde d'immobilité. Le test a été écrit d'abord et a échoué sur l'ancien
+code. Non bornée, la fraction est une fonction continue de l'heure du client.
+
+**Les anneaux d'orbite ignoraient le nœud ascendant.** `orbitPosition` compose `Rz(Ω)·Rx(i)` ; un
+Euler three.js en ordre `XYZ` compose l'inverse, et la rotation autour de Z s'appliquait la
+première — à un cercle, qu'elle laisse inchangé. Tous les anneaux, lunaires compris, et les
+ceintures étaient inclinés autour du même axe : jusqu'à deux fois l'inclinaison d'écart entre le
+plan tracé et le plan parcouru, soit une quarantaine d'unités entre un corps et l'anneau censé
+tracer sa route. Il fallait de toute façon le bon repère pour faire tourner les corps.
+
+### Ce que la mesure a dit
+
+**Le verrouillage est partout, et ne coûte presque rien.** Sur l'univers de calibration,
+2 406 planètes sur 5 966 sont verrouillées sur leur étoile — naines rouges, naines blanches,
+pulsars, et l'orbite interne des naines orange — et 8 331 lunes sur 9 800 sur leur planète.
+1 153 habitabilités changent, toutes sur ces planètes, et rien d'autre au bit près : le
+verrouillage se lit de la géométrie, sans tirage. Mais la baisse médiane n'est que de 3 points,
+13 au plus, et la part de systèmes viables passe de 0,596 à 0,594. Les mondes qui comptaient
+tenaient déjà une atmosphère ; ceux qui paient étaient déjà pauvres. Le verrou de calibration de
+l'habitabilité passe sans qu'aucune fourchette ne bouge.
+
+C'est moins que ce que le plan annonçait — « ce qui donne son prix à une naine rouge ». Le
+verrouillage est d'abord **une observation** : sur une même vue, un monde verrouillé reste figé
+quand son voisin tourne. Il n'est qu'à peine une mécanique.
+
+**Le plan avait tort sur deux mouvements.** Les ceintures devaient cisailler : chaque rocher suit
+bien Kepler à son propre rayon, mais au-delà de deux cents unités l'écart ne se voit pas en une
+session — c'est la culbute qui se voit. Les anneaux planétaires devaient cisailler comme le disque
+d'un trou noir : leurs bandes sont de révolution, une rotation ne s'y verrait pas, et leur donner
+une structure angulaire pour la montrer aurait été inventer. Ils ont gagné autre chose : posés sur
+l'équateur au lieu d'être tournés vers la caméra par défaut, ils s'ouvrent sous le même angle quel
+que soit l'azimut.
+
+**Géocroiseurs : l'équation de Kepler plutôt que la série.** Le plan prévoyait l'équation du
+centre au troisième ordre, pour le coût par image. Cinq pas de Newton, sans boucle de
+convergence, sont exacts, et pour deux objets le coût est nul. Ils suivent la loi des planètes
+qu'ils croisent, donc avancent aussi lentement qu'elles : c'est l'ellipse qui se lit.
+
+### Ce que le chantier n'a pas fait
+
+- **Accélérer les orbites**, ou leur donner une échelle de temps visuelle distincte de la
+  simulée : la carte mentirait sur la position réelle d'un corps.
+- **Faire tourner les galaxies au palier univers.** Le nuage de points y est le positionnement
+  réel des systèmes : le tourner désalignerait les paliers que le zoom continu enchaîne, et une
+  galaxie tourne en différentiel — ce serait enrouler ses bras. Exclusion arbitrée au cadrage.
+- **Les singularités** : leur disque tournait déjà, et un horizon absolument noir n'a aucune face
+  à montrer.
+- **Rétro-corriger l'habitabilité des galaxies déjà matérialisées** (ADR 0002) : leur fiche
+  affiche le verrouillage que leur valeur en base ignore. Acceptable avant le lancement du
+  serveur officiel ; ce ne le serait plus après.
+- **L'auto-rotation des aperçus d'objets**, hors carte, ne respecte toujours pas « réduire les
+  animations ».
+- **Aucune vérification à l'œil dans le navigateur** : sans route de connexion de développement,
+  voir la carte demande un compte. La preuve tient aux tests purs et aux budgets de l'e2e.
+
+### Relevés
+
+| | avant | après |
+|---|---|---|
+| Vitesse apparente d'une orbite planétaire interne | 0,017 °/s | inchangée |
+| Vitesse apparente d'un spin libre | 0 | 0,3 à 3 °/s |
+| Corps dont le jour dépasse l'année | 94 % | 0 |
+| Rapport jour/révolution, médiane (après : corps libres) | 36 | 0,011 |
+| Rapport jour/révolution, maximum (après : corps libres) | 350 | 0,066 |
+| Planètes verrouillées sur leur étoile | 0 | 2 406 sur 5 966 |
+| Lunes verrouillées sur leur planète | 0 | 8 331 sur 9 800 |
+| Part de systèmes viables | 0,596 | 0,594 |
+| Mondes de premier ordre | 6,5 % | 6,4 % |
+| Bond du tick fractionnaire, horloge en retard de 1,5 s | 0,284 tick | 0 |
+| Écart entre le plan d'un anneau d'orbite et l'orbite réelle | jusqu'à 2 × l'inclinaison | 0 |
+| Images/s au palier système (build) | 45 | 61 |
+| Images/s au milieu d'une transition (build) | 61 | 62 |
+| Fichiers de test / tests | 101 / 1 134 | 105 / 1 168 |
+
+Les images/s montent partout — univers 55 → 61, galaxie 30 → 42, système 45 → 61 — alors que le
+chantier n'a fait qu'ajouter du travail par image. Le relevé du chantier 49 avait été pris sous
+une autre charge de la machine : ces chiffres prouvent que le budget tient, loin au-dessus de 20,
+et rien de plus. Les 34 tests de bout en bout passent, dont la traversée de l'amas jusqu'à un
+corps et la sélection par le nom, les corps en rotation.
+
+`GENERATOR_VERSION` passe de 12 à 13 : seules les habitabilités des planètes verrouillées sur
+leur étoile changent, et le diff de la fixture n'en montre que deux, avec les empreintes.
