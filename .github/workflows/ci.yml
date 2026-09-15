@@ -23,7 +23,7 @@ jobs:
       # Le cache de tâches est un cache SÉPARÉ : sans lui, `vp run` ne sert à rien en CI,
       # où chaque job part d'un runner neuf. Le remote cache de Vite+ n'est pas livré
       # avant la 1.0 ; c'est le seul mécanisme disponible aujourd'hui.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: node_modules/.vite/task-cache
           key: vite-task-${{ runner.os }}-${{ github.sha }}
@@ -51,7 +51,7 @@ jobs:
           cache: true
       # Chromium était retéléchargé à chaque run — rien ne le cachait. La clé suit le
       # lockfile, où la version de @playwright/test est épinglée exactement.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
