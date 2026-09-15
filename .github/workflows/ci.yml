@@ -17,7 +17,7 @@ jobs:
       # de Node vient de `devEngines` du package.json racine, la même source que l'image
       # Docker. Les deux déclarations indépendantes qui pouvaient diverger en silence
       # n'existent plus. `cache: true` couvre les données du gestionnaire de paquets.
-      - uses: voidzero-dev/setup-vp@v1.19.0
+      - uses: voidzero-dev/setup-vp@v1.20.0
         with:
           cache: true
       # Le cache de tâches est un cache SÉPARÉ : sans lui, `vp run` ne sert à rien en CI,
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: voidzero-dev/setup-vp@v1.19.0
+      - uses: voidzero-dev/setup-vp@v1.20.0
         with:
           cache: true
       # Chromium était retéléchargé à chaque run — rien ne le cachait. La clé suit le
@@ -84,7 +84,7 @@ jobs:
           - 5432:5432
     steps:
       - uses: actions/checkout@v7
-      - uses: voidzero-dev/setup-vp@v1.19.0
+      - uses: voidzero-dev/setup-vp@v1.20.0
         with:
           cache: true
       - run: vp install
