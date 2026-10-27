@@ -6,9 +6,9 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "i18next": "^26.4.2",
-    "i18next-browser-languagedetector": "^8.2.1",
-    "react-i18next": "^17.0.13"
+    "i18next": "^26.5.7",
+    "i18next-browser-languagedetector": "^8.2.2",
+    "react-i18next": "^17.1.5"
   },
   "peerDependencies": {
     "react": "catalog:"

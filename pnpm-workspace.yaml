@@ -13,18 +13,18 @@ allowBuilds:
   esbuild: true
 
 catalog:
-  react: ^19.0.0
-  react-dom: ^19.0.0
-  "@types/react": ^19.0.0
-  "@types/react-dom": ^19.2.5
+  react: ^19.3.1
+  react-dom: ^19.3.1
+  "@types/react": ^19.3.0
+  "@types/react-dom": ^19.3.0
   typescript: ^7.0.0
   zod: ^4.5.4
   # Rendu 3D de la carte (chantier 31.12). Catalogués ensemble : three, son binding
   # React et drei doivent monter de version de concert, un décalage casse le rendu.
-  three: ^0.185.1
+  three: ^0.186.1
   "@types/three": ^0.185.4
-  "@react-three/fiber": ^9.0.0
-  "@react-three/drei": ^10.0.0
+  "@react-three/fiber": ^9.8.2
+  "@react-three/drei": ^10.7.9
   # Gestes souris/pavé tactile de la carte (chantier 38). Normalise l'amplitude de la
   # molette entre périphériques et porte le `passive: false` que la carte exige : c'est la
   # seule couche du pilotage caméra qu'aucun test unitaire n'atteint.
